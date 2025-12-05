@@ -12,6 +12,7 @@ tools:
     "edit",
     "search",
     "web",
+    "upstash/context7/*",
     "docs.context7/*",
     "docs.material-ui/*",
     "docs.microsoft/*",
@@ -21,10 +22,6 @@ tools:
     "github/search_issues",
     "github/search_pull_requests",
     "perplexity/*",
-    "snyk/snyk_code_scan",
-    "snyk/snyk_container_scan",
-    "snyk/snyk_iac_scan",
-    "snyk/snyk_sca_scan",
     "agent",
     "todo",
   ]

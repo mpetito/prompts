@@ -12,6 +12,7 @@ tools:
     "edit",
     "search",
     "web",
+    "upstash/context7/*",
     "docs.context7/*",
     "docs.material-ui/*",
     "docs.microsoft/*",

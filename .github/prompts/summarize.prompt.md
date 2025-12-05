@@ -12,6 +12,7 @@ tools:
     "search",
     "web",
     "azure.devops/*",
+    "upstash/context7/*",
     "docs.context7/*",
     "docs.material-ui/*",
     "docs.microsoft/*",

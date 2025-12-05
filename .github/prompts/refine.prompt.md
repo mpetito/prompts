@@ -15,6 +15,7 @@ tools:
     "azure.devops/search_wiki",
     "azure.devops/search_workitem",
     "azure.devops/wit_get_work_item",
+    "upstash/context7/*",
     "docs.context7/*",
     "docs.material-ui/*",
     "docs.microsoft/*",
