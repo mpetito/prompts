@@ -1,5 +1,5 @@
 ---
-name: review
+name: summarize
 description: Compress conversation history into an actionable summary for the next development session.
 model: Gemini 3 Pro (Preview) (copilot)
 agent: agent
