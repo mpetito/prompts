@@ -7,18 +7,21 @@ argument-hint: Topic, API, library, or technical question to research
 tools:
   [
     "vscode",
+    "execute",
     "read",
+    "edit",
     "search",
     "web",
+    "perplexity/*",
     "upstash/context7/*",
     "docs.context7/*",
-    "docs.material-ui/*",
-    "docs.microsoft/*",
-    "github/search_code",
-    "github/search_issues",
-    "github/search_pull_requests",
-    "perplexity/*",
     "agent",
+    "github.vscode-pull-request-github/issue_fetch",
+    "github.vscode-pull-request-github/suggest-fix",
+    "github.vscode-pull-request-github/searchSyntax",
+    "github.vscode-pull-request-github/doSearch",
+    "github.vscode-pull-request-github/renderIssues",
+    "github.vscode-pull-request-github/activePullRequest",
     "todo",
   ]
 ---
