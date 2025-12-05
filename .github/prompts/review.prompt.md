@@ -12,18 +12,11 @@ tools:
     "edit",
     "search",
     "web",
-    "upstash/context7/*",
-    "docs.context7/*",
-    "docs.material-ui/*",
-    "docs.microsoft/*",
-    "github/add_issue_comment",
-    "github/issue_read",
-    "github/search_code",
-    "github/search_issues",
-    "github/search_pull_requests",
-    "perplexity/*",
     "agent",
     "todo",
+    "perplexity/*",
+    "docs.context7/*",
+    "github/*",
   ]
 ---
 

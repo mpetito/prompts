@@ -11,11 +11,10 @@ tools:
     "read",
     "edit",
     "search",
-    "github/*",
-    "github.vscode-pull-request-github/activePullRequest",
-    "github.vscode-pull-request-github/openPullRequest",
     "agent",
     "todo",
+    "github/*",
+    "github.vscode-pull-request-github/*",
   ]
 ---
 

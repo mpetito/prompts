@@ -12,17 +12,11 @@ tools:
     "edit",
     "search",
     "web",
-    "perplexity/*",
-    "upstash/context7/*",
-    "docs.context7/*",
     "agent",
-    "github.vscode-pull-request-github/issue_fetch",
-    "github.vscode-pull-request-github/suggest-fix",
-    "github.vscode-pull-request-github/searchSyntax",
-    "github.vscode-pull-request-github/doSearch",
-    "github.vscode-pull-request-github/renderIssues",
-    "github.vscode-pull-request-github/activePullRequest",
     "todo",
+    "perplexity/*",
+    "docs.context7/*",
+    "github/*",
   ]
 ---
 

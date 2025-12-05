@@ -1,0 +1,33 @@
+{
+	// ============================================================================
+	// RESEARCH & DOCUMENTATION
+	// Reference existing MCP server toolsets by their reference name (no wildcards)
+	// ============================================================================
+	"research": {
+		"description": "Deep research using Perplexity AI for web search and reasoning",
+		"icon": "beaker",
+		"tools": [
+			"perplexity"
+		]
+	},
+	"docs": {
+		"description": "Documentation lookup via Context7",
+		"icon": "book",
+		"tools": [
+			"docs.context7"
+		]
+	},
+	// ============================================================================
+	// COMBINED TOOLSETS
+	// Compose toolsets from other toolsets
+	// ============================================================================
+	"investigation": {
+		"description": "Combined research: Perplexity + docs + GitHub",
+		"icon": "compass",
+		"tools": [
+			// Reference other toolsets by name
+			"perplexity",
+			"docs"
+		]
+	}
+}
