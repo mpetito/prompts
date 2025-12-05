@@ -1,7 +1,7 @@
 ---
 name: tweak
 description: Execute small, focused modifications without structural changes
-model: Gemini 3 Pro (Preview) (copilot)
+model: Claude Sonnet 4.5 (copilot)
 agent: agent
 argument-hint: Describe the small change to make
 tools:

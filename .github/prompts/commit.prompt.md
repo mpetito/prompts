@@ -1,7 +1,7 @@
 ---
 name: commit
 description: Commit, push, and create/update pull request
-model: Gemini 3 Pro (Preview) (copilot)
+model: Claude Sonnet 4.5 (copilot)
 agent: agent
 argument-hint: Optional commit message or PR context
 tools:

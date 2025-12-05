@@ -1,7 +1,7 @@
 ---
 name: summarize
 description: Compress conversation history into an actionable summary for the next development session.
-model: Gemini 3 Pro (Preview) (copilot)
+model: Claude Sonnet 4.5 (copilot)
 agent: agent
 tools:
   [

@@ -4,16 +4,17 @@ A collection of VS Code prompt files designed for reliable agentic coding workfl
 
 ## Prompts
 
-| Prompt      | Purpose                                                   | Model           |
-| ----------- | --------------------------------------------------------- | --------------- |
-| `/refine`   | Clarify ambiguous requests into actionable specifications | Gemini 3 Pro    |
-| `/plan`     | Research and create detailed implementation plans         | Gemini 3 Pro    |
-| `/exec`     | Execute comprehensive implementations end-to-end          | Claude Opus 4.5 |
-| `/tweak`    | Make small, focused modifications                         | Gemini 3 Pro    |
-| `/review`   | Senior engineer code review                               | Claude Opus 4.5 |
-| `/feedback` | Address PR feedback from reviews, CI, and analysis tools  | Claude Opus 4.5 |
-| `/resolve`  | Reply to and resolve PR review threads via GH CLI         | Gemini 3 Pro    |
-| `/commit`   | Branch, commit, push, and create PR                       | Gemini 3 Pro    |
+| Prompt       | Purpose                                                   | Model             |
+| ------------ | --------------------------------------------------------- | ----------------- |
+| `/refine`    | Clarify ambiguous requests into actionable specifications | Gemini 3 Pro      |
+| `/plan`      | Research and create detailed implementation plans         | Gemini 3 Pro      |
+| `/exec`      | Execute comprehensive implementations end-to-end          | Claude Opus 4.5   |
+| `/tweak`     | Make small, focused modifications                         | Claude Sonnet 4.5 |
+| `/review`    | Senior engineer code review                               | Claude Opus 4.5   |
+| `/feedback`  | Address PR feedback from reviews, CI, and analysis tools  | Claude Opus 4.5   |
+| `/resolve`   | Reply to and resolve PR review threads via GH CLI         | Gemini 3 Pro      |
+| `/commit`    | Branch, commit, push, and create PR                       | Claude Sonnet 4.5 |
+| `/summarize` | Compress conversation history into actionable summary     | Claude Sonnet 4.5 |
 
 ## Fragments
 
