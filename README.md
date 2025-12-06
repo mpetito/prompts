@@ -4,17 +4,19 @@ A collection of VS Code prompt files designed for reliable agentic coding workfl
 
 ## Prompts
 
-| Prompt       | Purpose                                                   | Model             |
-| ------------ | --------------------------------------------------------- | ----------------- |
-| `/refine`    | Clarify ambiguous requests into actionable specifications | Gemini 3 Pro      |
-| `/plan`      | Research and create detailed implementation plans         | Gemini 3 Pro      |
-| `/exec`      | Execute comprehensive implementations end-to-end          | Claude Opus 4.5   |
-| `/tweak`     | Make small, focused modifications                         | Claude Sonnet 4.5 |
-| `/review`    | Senior engineer code review                               | Claude Opus 4.5   |
-| `/feedback`  | Address PR feedback from reviews, CI, and analysis tools  | Claude Opus 4.5   |
-| `/resolve`   | Reply to and resolve PR review threads via GH CLI         | Gemini 3 Pro      |
-| `/commit`    | Branch, commit, push, and create PR                       | Claude Sonnet 4.5 |
-| `/summarize` | Compress conversation history into actionable summary     | Claude Sonnet 4.5 |
+| Prompt       | Purpose                                                         | Model                       |
+| ------------ | --------------------------------------------------------------- | --------------------------- |
+| `/refine`    | Refine and clarify user input into a comprehensive prompt       | GPT-5.1-Codex-Max (Preview) |
+| `/plan`      | Create a detailed implementation plan                           | GPT-5.1-Codex-Max (Preview) |
+| `/exec`      | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (Preview)   |
+| `/upgrade`   | Review and upgrade dependencies safely end-to-end               | GPT-5.1-Codex-Max (Preview) |
+| `/tweak`     | Execute small, focused modifications without structural changes | GPT-5.1-Codex-Max (Preview) |
+| `/review`    | Code review for correctness, maintainability, and quality       | GPT-5.1-Codex-Max (Preview) |
+| `/feedback`  | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (Preview)   |
+| `/resolve`   | Reply to and resolve PR review threads via GH CLI               | GPT-5.1-Codex-Max (Preview) |
+| `/commit`    | Commit, push, and create/update pull request                    | Claude Sonnet 4.5           |
+| `/summarize` | Compress conversation history into an actionable summary        | Claude Sonnet 4.5           |
+| `/research`  | Deep technical research and option evaluation                   | Claude Opus 4.5 (Preview)   |
 
 ## Fragments
 

@@ -1,7 +1,7 @@
 ---
 name: resolve
 description: Reply to and resolve PR review threads using GH CLI
-model: Gemini 3 Pro (Preview) (copilot)
+model: GPT-5.1-Codex-Max (Preview) (copilot)
 agent: agent
 argument-hint: Optional thread IDs or feedback to focus on
 tools:
@@ -191,7 +191,18 @@ Ready for re-review."
 
 ## Output Format
 
-After completing all resolutions:
+After completing all resolutions, provide a conversational summary of what was achieved.
+
+Example:
+"I've resolved the review threads for PR #123.
+
+- Fixed the `setTimeout` issue in `utils.ts`.
+- Replied to the comment about sorting in `list.ts` explaining the current optimization.
+- Left the design discussion about the API open for you to close.
+
+I also added a summary comment to the PR and updated the description."
+
+Include the detailed table if it helps clarity, but feel free to be conversational and helpful.
 
 ```markdown
 ## Thread Resolution Summary

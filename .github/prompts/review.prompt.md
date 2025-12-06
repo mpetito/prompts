@@ -1,7 +1,7 @@
 ---
 name: review
 description: Code review for correctness, maintainability, and quality
-model: Claude Opus 4.5 (Preview) (copilot)
+model: GPT-5.1-Codex-Max (Preview) (copilot)
 agent: agent
 argument-hint: Optional focus areas or context for the review
 tools:

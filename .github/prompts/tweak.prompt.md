@@ -1,7 +1,7 @@
 ---
 name: tweak
 description: Execute small, focused modifications without structural changes
-model: Claude Sonnet 4.5 (copilot)
+model: GPT-5.1-Codex-Max (Preview) (copilot)
 agent: agent
 argument-hint: Describe the small change to make
 tools:
