@@ -15,7 +15,7 @@ tools:
     "agent",
     "todo",
     "perplexity/*",
-    "docs.context7/*",
+    "docs-context7/*",
     "github/*",
     "azure.devops/*",
   ]

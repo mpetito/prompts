@@ -1,6 +1,6 @@
 ---
 name: resolve
-description: Reply to and resolve PR review threads using GH CLI
+description: Reply to and resolve PR review threads using github-pr-review-tools
 model: GPT-5.1-Codex-Max (Preview) (copilot)
 agent: agent
 argument-hint: Optional thread IDs or feedback to focus on
@@ -14,78 +14,33 @@ tools:
     "agent",
     "todo",
     "github/*",
+    "github-pr-review-tools/*",
     "github.vscode-pull-request-github/*",
   ]
 ---
 
 # PR Thread Resolution Prompt
 
-You are resolving review threads on a pull request after `/feedback` has addressed the feedback and the user has confirmed the changes. Use the GH CLI with GraphQL to reply to comments and resolve threads.
+You are resolving review threads on a pull request after `/feedback` has addressed the feedback and the user has confirmed the changes. Use the github-pr-review-tools functions when available (preferred over GH CLI/GraphQL shell commands) to reply to comments and resolve threads.
 
 ## Prerequisites
 
 - Changes have been committed and pushed (from `/feedback` confirmation)
-- User has confirmed which feedback items were addressed
+- User has confirmed which feedback items were addressed if clarification was needed
 
 ## Process
 
 ### Step 1: Get Current PR Context
 
-Identify the current PR:
-
-```bash
-# Get current branch and PR number
-gh pr view --json number,url,title
-```
+Identify the current PR using the repo metadata that is already available to the agent (owner/repo/branch) or ask the user for the PR number if unclear.
 
 ### Step 2: Fetch All Review Threads
 
-Get all review threads with their IDs and resolution status:
-
-```bash
-gh api graphql -f query='
-  query($owner: String!, $repo: String!, $pr: Int!) {
-    repository(owner: $owner, name: $repo) {
-      pullRequest(number: $pr) {
-        reviewThreads(first: 100) {
-          nodes {
-            id
-            isResolved
-            path
-            line
-            comments(first: 50) {
-              nodes {
-                id
-                body
-                author { login }
-                createdAt
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-' -f owner=OWNER -f repo=REPO -F pr=PR_NUMBER
-```
+Use `get_pull_request_threads` (preferred) or `get_pull_request_review_threads` to retrieve threads, IDs, resolution status, file/line, and comments. Provide `owner`, `repo`, and `pullRequestNumber`.
 
 ### Step 3: Reply to Each Thread
 
-For threads that were addressed, reply with what was done:
-
-```bash
-# Reply to a review thread
-gh api graphql -f query='
-  mutation($threadId: ID!, $body: String!) {
-    addPullRequestReviewThreadReply(input: {
-      pullRequestReviewThreadId: $threadId,
-      body: $body
-    }) {
-      comment { id }
-    }
-  }
-' -f threadId="PRRT_xxx" -f body="Fixed in commit abc123 — description of fix."
-```
+For threads that were addressed, call `reply_to_pull_request_comment` with the specific comment ID you are replying to and the reply body. If you need full thread detail first, call `get_pull_request_thread` to pick the correct comment ID.
 
 **Reply templates by resolution type:**
 
@@ -98,18 +53,7 @@ gh api graphql -f query='
 
 ### Step 4: Resolve Fixed Threads
 
-For threads where the issue was fixed, resolve them:
-
-```bash
-# Resolve a review thread
-gh api graphql -f query='
-  mutation($threadId: ID!) {
-    resolveReviewThread(input: {threadId: $threadId}) {
-      thread { isResolved }
-    }
-  }
-' -f threadId="PRRT_xxx"
-```
+For threads where the issue was fixed, call `resolve_pull_request_review_thread` with the thread ID. Use `check_pull_request_review_resolution` if you need to verify all threads are resolved for a review.
 
 **When to resolve vs. leave open:**
 
@@ -122,71 +66,29 @@ gh api graphql -f query='
 
 ### Step 5: Add Summary Comment
 
-Add a PR comment summarizing all resolutions:
-
-```bash
-gh pr comment --body "## Review Feedback Addressed
-
-| Thread | File | Resolution | Status |
-|--------|------|------------|--------|
-| [Description] | \`path/to/file.ts\` | Fixed in abc123 | ✅ Resolved |
-| [Description] | \`path/to/file.ts\` | Explained rationale | 💬 Replied |
-
-All automated checks passing. Ready for re-review."
-```
+Add a PR comment summarizing all resolutions using the available GitHub comment tooling. Keep the table format below for clarity.
 
 ### Step 6: Update PR Description (If Needed)
 
-If significant changes were made, append to the PR description:
-
-```bash
-# Get current description
-gh pr view --json body -q '.body' > pr_body.md
-
-# Append update section
-echo "
----
-
-## Updates from Review Feedback
-
-**Commit:** abc123
-
-- Fixed: [description]
-- Fixed: [description]
-- Addressed: [description]
-" >> pr_body.md
-
-# Update PR
-gh pr edit --body-file pr_body.md
-
-# Cleanup
-rm pr_body.md
-```
+If significant changes were made, append to the PR description using the GitHub UI or available automation tools instead of shelling out to `gh`.
 
 ## Example Session
 
 ```bash
 # 1. Get review threads
-gh api graphql -f query='query { repository(owner: "myorg", name: "myrepo") { pullRequest(number: 42) { reviewThreads(first: 100) { nodes { id isResolved path comments(first: 1) { nodes { body } } } } } } }'
+tools.get_pull_request_threads({ owner: "myorg", repo: "myrepo", pullRequestNumber: 42 })
 
-# 2. Reply to fixed thread
-gh api graphql -f query='mutation { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: "PRRT_kwDOP3aAEM5knHc7", body: "Fixed in commit 186e28a. Replaced nested setTimeout with requestAnimationFrame for reliable DOM settling."}) { comment { id } } }'
+# 2. Reply to fixed thread (reply to the latest comment in the thread)
+tools.reply_to_pull_request_comment({ owner: "myorg", repo: "myrepo", commentId: "PRRC_kwDOP3aAEM5knHc7", body: "Fixed in commit 186e28a. Replaced nested setTimeout with requestAnimationFrame for reliable DOM settling." })
 
 # 3. Resolve the thread
-gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "PRRT_kwDOP3aAEM5knHc7"}) { thread { isResolved } } }'
+tools.resolve_pull_request_review_thread({ owner: "myorg", repo: "myrepo", threadId: "PRRT_kwDOP3aAEM5knHc7" })
 
 # 4. Reply to design decision (don't resolve)
-gh api graphql -f query='mutation { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: "PRRT_kwDOP3aAEM5knHco", body: "The current implementation already optimizes by checking sort_order before updating. A batch method would require interface changes beyond this PR scope."}) { comment { id } } }'
+tools.reply_to_pull_request_comment({ owner: "myorg", repo: "myrepo", commentId: "PRRC_kwDOP3aAEM5knHco", body: "The current implementation already optimizes by checking sort_order before updating. A batch method would require interface changes beyond this PR scope." })
 
 # 5. Add summary comment
-gh pr comment --body "## Review Feedback Addressed
-
-| Thread | Resolution | Status |
-|--------|------------|--------|
-| setTimeout pattern | Fixed with requestAnimationFrame | ✅ Resolved |
-| Batch update method | Explained current optimization | 💬 Replied |
-
-Ready for re-review."
+Use the PR comment tools available to post the summary block.
 ```
 
 ## Output Format

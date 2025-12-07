@@ -15,8 +15,9 @@ tools:
     "agent",
     "todo",
     "perplexity/*",
-    "docs.context7/*",
+    "docs-context7/*",
     "github/*",
+    "github-pr-review-tools/*",
   ]
 ---
 
@@ -112,15 +113,15 @@ Review what was just implemented or what is currently staged in git. Use `#chang
 
 ### Critical Issues 🔴
 
-- [Issue description with file:line reference]
+- [Issue description with clear file or section reference]
 
 ### Important Issues 🟡
 
-- [Issue description with file:line reference]
+- [Issue description with clear file or section reference]
 
 ### Suggestions 🟢
 
-- [Suggestion with file:line reference]
+- [Suggestion with clear file or section reference]
 
 ### Changes Made
 

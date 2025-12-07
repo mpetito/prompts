@@ -16,6 +16,7 @@ tools:
     "perplexity/search",
     "github/*",
     "github.vscode-pull-request-github/*",
+    "github-pr-review-tools/*",
     "todo",
   ]
 ---

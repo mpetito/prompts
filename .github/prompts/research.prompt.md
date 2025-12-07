@@ -15,7 +15,7 @@ tools:
     "agent",
     "todo",
     "perplexity/*",
-    "docs.context7/*",
+    "docs-context7/*",
     "github/*",
   ]
 ---
@@ -47,7 +47,7 @@ Use tools strategically:
 
 | Tool                   | Use For                                             |
 | ---------------------- | --------------------------------------------------- |
-| `docs.context7/*`      | Official library/framework documentation            |
+| `docs-context7/*`      | Official library/framework documentation            |
 | `docs.microsoft/*`     | .NET, Azure, TypeScript, VS Code APIs               |
 | `perplexity/search`    | Quick factual lookups, version info, comparisons    |
 | `perplexity/reason`    | Complex trade-off analysis, architectural decisions |

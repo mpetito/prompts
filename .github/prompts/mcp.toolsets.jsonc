@@ -14,7 +14,7 @@
 		"description": "Documentation lookup via Context7",
 		"icon": "book",
 		"tools": [
-			"docs.context7"
+			"docs-context7"
 		]
 	},
 	// ============================================================================

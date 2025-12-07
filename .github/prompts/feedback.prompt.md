@@ -15,8 +15,9 @@ tools:
     "agent",
     "todo",
     "perplexity/*",
-    "docs.context7/*",
+    "docs-context7/*",
     "github/*",
+    "github-pr-review-tools/*",
     "github.vscode-pull-request-github/*",
   ]
 ---
