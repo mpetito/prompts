@@ -43,7 +43,8 @@ Gather feedback from all available sources:
 ### Step 1: Collect All Feedback
 
 - Use `#activePullRequest` or `#openPullRequest` to access PR details
-- Review all pending comments and review threads
+- Fetch review threads with `get_pull_request_threads` (or `get_pull_request_review_threads` for a specific review); if you already have thread IDs, use `get_pull_request_threads_batch`. Provide `owner`, `repo`, and `pull_number`.
+- Review all pending comments and thread statuses from the retrieved data
 - Check CI/CD status for failures
 - Identify CodeQL and SonarQube findings if available
 
@@ -104,8 +105,8 @@ For each piece of feedback:
 Once the user confirms:
 
 1. Commit and push all changes
-2. Reply to each comment explaining what was done
-3. Mark threads as resolved (if you have permission)
+2. Reply to each comment using `reply_to_pull_request_comment` (provide `owner`, `repo`, `pull_number`, `comment_id`) explaining what was done
+3. Resolve fixed threads with `resolve_pull_request_review_thread` or `resolve_pull_request_review_threads_batch`; use `check_pull_request_review_resolution` if you need to confirm review-wide resolution
 
 ## Output Format
 

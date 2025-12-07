@@ -36,11 +36,11 @@ Identify the current PR using the repo metadata that is already available to the
 
 ### Step 2: Fetch All Review Threads
 
-Use `get_pull_request_threads` (preferred) or `get_pull_request_review_threads` to retrieve threads, IDs, resolution status, file/line, and comments. Provide `owner`, `repo`, and `pullRequestNumber`.
+Use `get_pull_request_threads` (preferred) to retrieve threads, IDs, resolution status, file/line, and comments. Provide `owner`, `repo`, and `pull_number`. If you already have thread IDs, use `get_pull_request_threads_batch`. To scope to a specific review, use `get_pull_request_review_threads` (owner, repo, pull_number, review_id).
 
 ### Step 3: Reply to Each Thread
 
-For threads that were addressed, call `reply_to_pull_request_comment` with the specific comment ID you are replying to and the reply body. If you need full thread detail first, call `get_pull_request_thread` to pick the correct comment ID.
+For threads that were addressed, call `reply_to_pull_request_comment` with `owner`, `repo`, `pull_number`, the specific `comment_id` you are replying to, and the reply body. If you need full thread detail first, call `get_pull_request_thread` to pick the correct `comment_id`.
 
 **Reply templates by resolution type:**
 
@@ -53,7 +53,7 @@ For threads that were addressed, call `reply_to_pull_request_comment` with the s
 
 ### Step 4: Resolve Fixed Threads
 
-For threads where the issue was fixed, call `resolve_pull_request_review_thread` with the thread ID. Use `check_pull_request_review_resolution` if you need to verify all threads are resolved for a review.
+For threads where the issue was fixed, call `resolve_pull_request_review_thread` with the `thread_id`, or `resolve_pull_request_review_threads_batch` if resolving multiple. Use `check_pull_request_review_resolution` (owner, repo, pull_number, review_id) if you need to verify all threads are resolved for a review.
 
 **When to resolve vs. leave open:**
 
@@ -76,16 +76,16 @@ If significant changes were made, append to the PR description using the GitHub 
 
 ```bash
 # 1. Get review threads
-tools.get_pull_request_threads({ owner: "myorg", repo: "myrepo", pullRequestNumber: 42 })
+tools.get_pull_request_threads({ owner: "myorg", repo: "myrepo", pull_number: 42 })
 
 # 2. Reply to fixed thread (reply to the latest comment in the thread)
-tools.reply_to_pull_request_comment({ owner: "myorg", repo: "myrepo", commentId: "PRRC_kwDOP3aAEM5knHc7", body: "Fixed in commit 186e28a. Replaced nested setTimeout with requestAnimationFrame for reliable DOM settling." })
+tools.reply_to_pull_request_comment({ owner: "myorg", repo: "myrepo", pull_number: 42, comment_id: "PRRC_kwDOP3aAEM5knHc7", body: "Fixed in commit 186e28a. Replaced nested setTimeout with requestAnimationFrame for reliable DOM settling." })
 
 # 3. Resolve the thread
-tools.resolve_pull_request_review_thread({ owner: "myorg", repo: "myrepo", threadId: "PRRT_kwDOP3aAEM5knHc7" })
+tools.resolve_pull_request_review_thread({ thread_id: "PRRT_kwDOP3aAEM5knHc7" })
 
 # 4. Reply to design decision (don't resolve)
-tools.reply_to_pull_request_comment({ owner: "myorg", repo: "myrepo", commentId: "PRRC_kwDOP3aAEM5knHco", body: "The current implementation already optimizes by checking sort_order before updating. A batch method would require interface changes beyond this PR scope." })
+tools.reply_to_pull_request_comment({ owner: "myorg", repo: "myrepo", pull_number: 42, comment_id: "PRRC_kwDOP3aAEM5knHco", body: "The current implementation already optimizes by checking sort_order before updating. A batch method would require interface changes beyond this PR scope." })
 
 # 5. Add summary comment
 Use the PR comment tools available to post the summary block.
