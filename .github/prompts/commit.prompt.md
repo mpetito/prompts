@@ -43,14 +43,19 @@ Before committing, verify the code is ready:
 
 If any checks fail, stop and inform the user. Do not commit broken code.
 
-### Step 3: Create Branch (if needed)
+### Step 3: Create Branch (REQUIRED)
+
+**CRITICAL: Never commit directly to `main`, `master`, or `develop`.**
 
 If on `main`, `master`, or `develop`:
 
+- **STOP immediately and create a new branch**
 - Create a descriptive branch name: `<type>/<short-description>`
 - Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 - Example: `feat/user-authentication`, `fix/null-pointer-exception`
-- Create and switch to the branch
+- Create and switch to the branch: `git checkout -b <branch-name>`
+
+**Do not proceed to commit without being on a feature branch.**
 
 ### Step 4: Stage and Commit
 
