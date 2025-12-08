@@ -16,6 +16,9 @@ tools:
     "todo",
     "perplexity/*",
     "docs-context7/*",
+    "docs-aws/*",
+    "docs-microsoft/*",
+    "docs-material-ui/*",
     "github/*",
     "azure.devops/*",
   ]
