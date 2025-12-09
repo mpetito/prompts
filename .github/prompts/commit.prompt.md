@@ -83,6 +83,8 @@ Check if a PR already exists for this branch:
 **If NO existing PR:**
 
 - Create a draft PR with:
+  - Use gh CLI with a temporary markdown file for the body; remove the temporary markdown file after creation
+  - Default to draft unless user explicitly asks otherwise
   - Clear title matching the commit type and description
   - Detailed description including:
     - Summary of changes

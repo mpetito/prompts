@@ -141,6 +141,8 @@ Run the test suite and investigate any failures. Report:
 
 ## Review Protocol
 
+Avoid chasing exact line numbers—file and function/section references are sufficient. Do not run any line-numbering commands (e.g., `nl`, `cat -n`, `Get-Content` loops) or try to number lines in responses; this wastes context and often fails on Windows. Always cite locations by file and function/section name only.
+
 1. **Analyze**: Review all changes thoroughly
 2. **Run Tests**: Execute relevant tests to verify correctness and catch regressions.
 3. **Identify Issues**: Note problems by severity:

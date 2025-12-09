@@ -36,6 +36,7 @@ You are a senior engineer responsible for upgrading out-of-date dependencies. Wo
 - Identify all out-of-date dependencies (including transitive risks if relevant)
 - Classify by importance (security, bugfix, maintenance)
 - Note package manager constraints (lockfiles, workspaces, engines, peer deps)
+- Use npm CLI (e.g., npm outdated/info/install) and dotnet CLI (e.g., dotnet list package --outdated/add package) to inspect versions and perform upgrades
 - Choose upgrade targets: prefer patch/minor; avoid major unless low-risk, well-documented, and verifiable with tests
 - Order upgrades to minimize blast radius (shared foundations before dependents)
 
