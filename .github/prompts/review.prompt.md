@@ -93,6 +93,52 @@ Review what was just implemented or what is currently staged in git. Use `#chang
 - Is there sufficient logging for debugging?
 - Are log levels appropriate (info vs debug vs error)?
 
+## Subagent Delegation
+
+Use `runSubagent` to preserve your context window for the review summary while delegating detailed analysis:
+
+| Scenario                       | Subagent Task                                                           | What to Request Back                                              |
+| ------------------------------ | ----------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| **Parallel file review**       | Review specific files or components independently                       | Issues found with severity, file references, and suggested fixes  |
+| **Test execution & analysis**  | Run tests and analyze any failures in detail                            | Test results, failure root causes, code paths affected            |
+| **Security deep-dive**         | Analyze code for security vulnerabilities, injection risks, auth issues | Security findings with severity, affected code, remediation steps |
+| **Performance analysis**       | Analyze code for performance bottlenecks, N+1 queries, memory issues    | Performance concerns with benchmarks or complexity analysis       |
+| **Dependency impact analysis** | Analyze how changes affect downstream code and consumers                | Impact assessment, breaking change risks, affected files          |
+| **Pattern compliance check**   | Verify code follows established patterns in the codebase                | Compliance issues with references to correct patterns             |
+
+**When to delegate**:
+
+- For large PRs: Delegate review of independent file groups in parallel
+- For test failures: Delegate investigation to get actionable fix recommendations
+- For specialized analysis: Delegate security or performance deep-dives
+- For pattern verification: Delegate codebase searches to verify compliance
+
+**Review efficiency pattern**: Delegate detailed analysis of specific concerns to subagents, then synthesize findings into a cohesive review. This preserves context for the final assessment and recommendations.
+
+**Example delegations**:
+
+_Parallel file review_:
+
+```
+Review [file path] for:
+1. Correctness issues (logic errors, edge cases, null handling)
+2. Maintainability concerns (naming, structure, complexity)
+3. Error handling adequacy
+4. Test coverage gaps
+
+Report issues with clear file references and brief context (function/class/section) plus severity (🔴 Critical, 🟡 Important, 🟢 Suggestion).
+```
+
+_Test failure investigation_:
+
+```
+Run the test suite and investigate any failures. Report:
+1. Which tests failed and their error messages
+2. Root cause analysis for each failure
+3. Whether failures are due to code changes or existing issues
+4. Suggested fixes with specific code changes
+```
+
 ## Review Protocol
 
 1. **Analyze**: Review all changes thoroughly

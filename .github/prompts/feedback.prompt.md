@@ -108,6 +108,53 @@ Once the user confirms:
 2. Reply to each comment using `reply_to_pull_request_comment` (provide `owner`, `repo`, `pull_number`, `comment_id`) explaining what was done
 3. Resolve fixed threads with `resolve_pull_request_review_thread` or `resolve_pull_request_review_threads_batch`; use `check_pull_request_review_resolution` if you need to confirm review-wide resolution
 
+## Subagent Delegation
+
+Use `runSubagent` to preserve your context window for the feedback workflow while delegating analysis and resolution:
+
+| Scenario                         | Subagent Task                                                    | What to Request Back                                             |
+| -------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Parallel feedback resolution** | Address a group of related feedback items independently          | Changes made, issues encountered, files modified                 |
+| **CI failure investigation**     | Investigate specific build or test failures blocking merge       | Root cause, affected code, suggested fix                         |
+| **CodeQL/SonarQube analysis**    | Deep-dive into security or quality findings                      | Detailed explanation of issue, remediation options, code changes |
+| **Large diff understanding**     | Analyze extensive changes to understand context for feedback     | Summary of changes, intent of modifications, affected areas      |
+| **Test coverage analysis**       | Verify that feedback-related changes have adequate test coverage | Coverage gaps, suggested test cases                              |
+
+**When to delegate**:
+
+- For multiple independent feedback items: Delegate groups of related feedback in parallel
+- For CI failures: Delegate investigation to get actionable fix recommendations
+- For complex findings: Delegate deep analysis of security or quality issues
+- For context gathering: Delegate understanding of large diffs to inform responses
+
+**Feedback efficiency pattern**: Group related feedback items and delegate each group to a subagent for parallel resolution. Synthesize results and present to user for confirmation.
+
+**Example delegations**:
+
+_Parallel feedback resolution_:
+
+```
+Address the following review feedback items:
+[List of related feedback items with file/line references]
+
+For each item:
+1. Implement the requested change
+2. Verify the fix doesn't break related code
+3. Report what was changed and any concerns
+
+Do NOT commit or respond to comments - just implement the fixes locally.
+```
+
+_CI failure investigation_:
+
+```
+Investigate the CI failure in [workflow/job]. Analyze:
+1. The error message and stack trace
+2. Which code changes likely caused the failure
+3. Root cause analysis
+4. Suggested fix with specific code changes
+```
+
 ## Output Format
 
 Present this summary for user review before committing:

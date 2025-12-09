@@ -118,6 +118,28 @@ Added null check to prevent crash when external API returns empty response.
 refactor: extract common validation logic into shared utility
 ```
 
+## Subagent Delegation
+
+Use `runSubagent` to preserve your context window for the commit workflow while delegating analysis tasks:
+
+| Scenario                      | Subagent Task                                                              | What to Request Back                                                 |
+| ----------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Large changesets**          | Analyze changed files to understand the scope and purpose of modifications | Summary of changes grouped by feature/area, suggested commit message |
+| **CI/build failures**         | Investigate specific test or build failures blocking the commit            | Root cause, affected files, suggested fix                            |
+| **PR description generation** | Review all changes and generate comprehensive PR description               | Formatted PR description with summary, file list, and testing notes  |
+| **Multi-package changes**     | Analyze cross-package dependencies and ordering concerns                   | Dependency graph, recommended commit order                           |
+
+**When to delegate**: If changes span more than 5-10 files, or if you need to understand the impact of changes across the codebase, delegate the analysis to preserve context for the commit workflow itself.
+
+**Example delegation**:
+
+```
+Analyze the current git diff and provide:
+1. A grouped summary of all changes by feature/area
+2. A suggested conventional commit message
+3. Any concerns about the changes (breaking changes, missing tests, etc.)
+```
+
 ## Guidelines
 
 - If using GH CLI, use temporary markdown files for PR descriptions to ensure proper formatting

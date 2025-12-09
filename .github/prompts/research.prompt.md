@@ -66,6 +66,50 @@ Use tools strategically:
 - Identify consensus vs. contested approaches
 - Adapt findings to the current codebase context
 
+## Subagent Delegation
+
+Use `runSubagent` to preserve your context window for synthesis while delegating deep research tasks:
+
+| Scenario                           | Subagent Task                                                            | What to Request Back                                            |
+| ---------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| **Parallel source research**       | Research a specific aspect across documentation, GitHub, and web sources | Findings summary with citations and code examples               |
+| **Codebase analysis**              | Analyze existing usage of a library/pattern in the codebase              | Usage patterns, file references, current implementation details |
+| **GitHub issue investigation**     | Deep-dive into GitHub issues for known bugs, workarounds, edge cases     | Summary of relevant issues with links and key takeaways         |
+| **Version compatibility research** | Research compatibility between specific versions of dependencies         | Compatibility matrix, known issues, migration requirements      |
+| **API documentation deep-dive**    | Thoroughly document a specific API surface                               | Complete API reference with examples and gotchas                |
+
+**When to delegate**:
+
+- When researching multiple independent topics that can be parallelized
+- For deep documentation dives that would consume significant context
+- When analyzing large codebases for existing patterns
+- For GitHub issue archaeology on complex topics
+
+**Research efficiency pattern**: Delegate specific research threads to subagents, then synthesize their findings into a cohesive report. This preserves your context for cross-referencing and synthesis.
+
+**Example delegations**:
+
+_Parallel research_:
+
+```
+Research [specific topic] using official documentation and recent articles. Report:
+1. Key concepts and terminology
+2. Best practices and recommended patterns
+3. Code examples relevant to our stack
+4. Any gotchas or common pitfalls
+5. Sources with dates for verification
+```
+
+_Codebase analysis_:
+
+```
+Search the codebase for all usages of [library/pattern]. Report:
+1. Files where it's used with brief surrounding context (e.g., function or module names)
+2. Common patterns in how it's implemented
+3. Any inconsistencies or technical debt
+4. Recommendations for our new implementation
+```
+
 ## Output Format
 
 ```markdown
