@@ -35,11 +35,12 @@ You are handling the git workflow for committing and creating pull requests.
 
 ### Step 2: Pre-Validation (if not already done)
 
-Before committing, verify the code is ready:
+Before committing, verify the code is ready by running CLI commands:
 
-- **Linting**: Run linter if available (e.g., `npm run lint`, `dotnet format --verify-no-changes`)
+- **Linting**: Run linter via CLI (e.g., `npm run lint`, `dotnet format --verify-no-changes`) in addition to checking `#problems`
 - **Formatting**: Ensure code is formatted (e.g., `prettier --check`, `dotnet format`)
-- **Tests**: Run test suite if available (e.g., `npm test`, `dotnet test`)
+- **Type Checks**: Run type checks via CLI if applicable (e.g., `npx tsc --noEmit`)
+- **Tests**: Run test suite via CLI (e.g., `npm test`, `dotnet test`)
 
 If any checks fail, stop and inform the user. Do not commit broken code.
 

@@ -47,6 +47,7 @@ You are a senior engineer executing a comprehensive implementation task. You wil
 - Create necessary types, interfaces, and contracts first
 - Implement core logic
 - Add error handling and edge cases
+- For package installation/updates: use CLI commands (`npm install`, `dotnet add package`, etc.) rather than directly editing manifest files
 
 ### Phase 3: Testing
 
@@ -57,7 +58,7 @@ You are a senior engineer executing a comprehensive implementation task. You wil
 
 ### Phase 4: Validation
 
-- Check for linting/type errors using `#problems`
+- Run linters and type checks via CLI (e.g., `npm run lint`, `npx tsc --noEmit`, `dotnet format --verify-no-changes`) in addition to checking `#problems`
 - Verify the implementation matches requirements
 - Clean up any debug code or comments
 

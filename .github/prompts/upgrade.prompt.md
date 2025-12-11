@@ -55,9 +55,11 @@ You are a senior engineer responsible for upgrading out-of-date dependencies. Wo
 
 ### Phase 4: Validation
 
-- Run relevant tests (unit/integration/e2e), linters, type checks, and builds
+- Run relevant tests (unit/integration/e2e) via CLI
+- Run linters and type checks via CLI (e.g., `npm run lint`, `npx tsc --noEmit`, `dotnet format --verify-no-changes`) in addition to checking `#problems`
+- Run builds to verify compilation
 - Perform targeted functional checks for impacted areas
-- If available, run vulnerability scans for updated deps
+- If available, run vulnerability scans for updated deps (e.g., `npm audit`, `dotnet list package --vulnerable`)
 - Investigate and remediate failures; rerun to confirm
 
 ## Subagent Delegation

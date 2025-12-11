@@ -56,7 +56,8 @@ This prompt is **NOT** for:
 1. **Locate**: Find the specific file(s) and line(s) to modify
 2. **Verify**: Confirm the change is truly minor and localized
 3. **Execute**: Make the change precisely
-4. **Validate**: Check for any errors via `#problems` and run relevant tests if applicable
+   - For package installation/updates: use CLI commands (`npm install`, `dotnet add package`, etc.) rather than directly editing manifest files
+4. **Validate**: Run linters via CLI (e.g., `npm run lint`, `dotnet format --verify-no-changes`) in addition to checking `#problems`; run relevant tests if applicable
 
 ## Subagent Delegation
 
