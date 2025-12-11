@@ -36,7 +36,7 @@ Review what was just implemented or what is currently staged in git. Use `#chang
 3. DRY/Clean: duplication, missing abstractions, single-responsibility, unnecessary complexity, name constants.
 4. Error Handling: graceful handling, helpful messages, no unhandled rejections/exceptions.
 5. Tests: new coverage, edge cases, meaningful assertions.
-6. Security: input validation, secret handling; run Snyk if deps changed.
+6. Security: input validation, secret handling; if Snyk available and deps changed, run scan.
 7. Performance: bottlenecks, memory waste, query efficiency.
 8. Documentation: public API docs, README updates, hard logic explained.
 9. Observability: sufficient logging, proper log levels.
@@ -96,15 +96,15 @@ Run the test suite and investigate any failures. Report:
 
 ### Critical Issues 🔴
 
-- ...
+- [Issue with file/section reference]
 
 ### Important Issues 🟡
 
-- ...
+- [Issue with file/section reference]
 
 ### Suggestions 🟢
 
-- ...
+- [Suggestion with context]
 
 ### Changes Made
 

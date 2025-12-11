@@ -46,7 +46,7 @@ You are a senior engineer executing the task end-to-end until implemented and te
 
 ### Phase 3: Testing
 
-- Add unit tests covering happy/edge cases; run and fix failures/regressions.
+- Write and run unit tests covering happy/edge cases; fix failures/regressions.
 
 ### Phase 4: Validation
 

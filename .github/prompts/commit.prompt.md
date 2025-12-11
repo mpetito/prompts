@@ -44,7 +44,7 @@ If any fail, stop and report; do not commit broken code.
 
 ### Step 3: Create Branch (REQUIRED)
 
-Never commit directly to `main`/`master`/`develop`. If on one, stop and `git checkout -b <type>/<short-description>` (types: feat, fix, refactor, docs, chore, test). Do not proceed until on a feature branch.
+**CRITICAL**: Never commit directly to `main`/`master`/`develop`. If on one, **stop immediately** and run `git checkout -b <type>/<short-description>` (types: feat, fix, refactor, docs, chore, test). Do not proceed until on a feature branch.
 
 ### Step 4: Stage and Commit
 

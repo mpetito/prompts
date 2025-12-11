@@ -57,7 +57,7 @@ Use `runSubagent` to delegate analysis/research while preserving context:
 | **Similar implementation search** | Locate similar implementations      | Patterns, structure, test strategies              |
 | **Impact assessment**             | Identify affected code and risks    | Affected files, breaking-change risks, migrations |
 
-Delegate for codebase analysis, research, pattern discovery, and impact analysis to preserve context; then synthesize findings.
+**Always delegate** codebase analysis, research, pattern discovery, and impact analysis to preserve planning context; then synthesize findings.
 
 **Example delegations**:
 

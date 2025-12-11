@@ -54,7 +54,12 @@ For addressed threads, `reply_to_pull_request_comment` (owner/repo/pull_number/c
 
 - Use `resolve_pull_request_review_thread` (or batch) for fixed items; use `check_pull_request_review_resolution` if needed.
 
-Resolve only when code fixed/obsolete; leave open for explanations, deferrals, or disagreements.
+| Situation    | Action                          |
+| ------------ | ------------------------------- |
+| Code fixed   | ✅ Resolve                      |
+| Explained    | ❌ Leave open (reviewer closes) |
+| Deferred     | ❌ Leave open                   |
+| Disagreement | ❌ Leave open for discussion    |
 
 ### Step 5: Add Summary Comment
 

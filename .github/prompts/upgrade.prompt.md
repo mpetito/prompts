@@ -40,7 +40,8 @@ You are a senior engineer upgrading dependencies end-to-end. Work autonomously a
 
 ### Phase 2: Research & Risk
 
-- Read release notes/migrations; log breaking changes and required steps (especially for majors).
+- Read release notes/migrations; log breaking changes and required steps.
+- For majors: map required code/config changes and validation steps before touching code.
 
 ### Phase 3: Implement
 
@@ -67,7 +68,7 @@ Use `runSubagent` to delegate research/analysis while preserving context:
 | **Test failure investigation**   | Analyze upgrade-caused test failures    | Root cause, whether break is code or upgrade |
 | **Peer dependency resolution**   | Resolve peer conflicts                  | Resolution strategy and compatible ranges    |
 
-Delegate for majors, usage analysis, parallel research, or failure investigation.
+**When to delegate**: before majors (breaking change research), for usage analysis, parallel independent research, or failure investigation.
 
 Efficiency: delegate major-upgrade research, then apply findings.
 

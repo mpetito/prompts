@@ -59,7 +59,8 @@ Use tools strategically:
 
 ### Phase 3: Synthesis
 
-- Cross-reference; flag contradictions/stale info; separate consensus vs contested; adapt to codebase.
+- Cross-reference sources; flag contradictions and stale info.
+- Distinguish consensus from contested findings; adapt to codebase.
 
 ## Subagent Delegation
 
@@ -73,7 +74,7 @@ Use `runSubagent` to delegate deep research while preserving context:
 | **Version compatibility research** | Check version compatibility            | Compatibility matrix, known issues, migration reqs |
 | **API documentation deep-dive**    | Document specific API surface          | API reference with examples/gotchas                |
 
-Delegate for parallel topics, deep docs, large codebase analysis, or issue archaeology; then synthesize findings.
+Delegate for parallel topics, deep docs, large codebase analysis, or issue archaeology to preserve context for synthesis.
 
 **Example delegations**:
 

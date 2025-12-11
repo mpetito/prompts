@@ -47,6 +47,7 @@ Blocking (must fix), Improvement (should fix), Question (needs reply), Suggestio
 ### Step 3: Clarify Ambiguity FIRST
 
 - Ask concise questions in-thread before coding; do not guess intent.
+- E.g., "This could be improved" → ask "What specific improvement do you have in mind?"
 
 ### Step 4: Reference Design
 
