@@ -21,28 +21,27 @@ tools:
 
 # PR Thread Resolution Prompt
 
-You are resolving review threads on a pull request after `/feedback` has addressed the feedback and the user has confirmed the changes. Use the github-pr-review-tools functions when available (preferred over GH CLI/GraphQL shell commands) to reply to comments and resolve threads.
+You are resolving PR review threads after `/feedback` changes are confirmed. Prefer github-pr-review-tools functions over GH CLI/GraphQL.
 
 ## Prerequisites
 
-- Changes have been committed and pushed (from `/feedback` confirmation)
-- User has confirmed which feedback items were addressed if clarification was needed
+- Changes committed/pushed; user confirmed addressed items.
 
 ## Process
 
 ### Step 1: Get Current PR Context
 
-Identify the current PR using the repo metadata that is already available to the agent (owner/repo/branch) or ask the user for the PR number if unclear.
+Identify current PR from available repo metadata; ask for PR number if unclear.
 
 ### Step 2: Fetch All Review Threads
 
-Use `get_pull_request_threads` (preferred) to retrieve threads, IDs, resolution status, file/line, and comments. Provide `owner`, `repo`, and `pull_number`. If you already have thread IDs, use `get_pull_request_threads_batch`. To scope to a specific review, use `get_pull_request_review_threads` (owner, repo, pull_number, review_id).
+Use `get_pull_request_threads` (preferred) for threads/IDs/status/file/line/comments; use batch if IDs known; use review-scoped variant if needed.
 
 ### Step 3: Reply to Each Thread
 
-For threads that were addressed, call `reply_to_pull_request_comment` with `owner`, `repo`, `pull_number`, the specific `comment_id` you are replying to, and the reply body. If you need full thread detail first, call `get_pull_request_thread` to pick the correct `comment_id`.
+For addressed threads, `reply_to_pull_request_comment` (owner/repo/pull_number/comment_id/body). If needed, fetch detail via `get_pull_request_thread` first.
 
-**Reply templates by resolution type:**
+**Reply templates:**
 
 | Type      | Template                                                                       |
 | --------- | ------------------------------------------------------------------------------ |
@@ -53,24 +52,17 @@ For threads that were addressed, call `reply_to_pull_request_comment` with `owne
 
 ### Step 4: Resolve Fixed Threads
 
-For threads where the issue was fixed, call `resolve_pull_request_review_thread` with the `thread_id`, or `resolve_pull_request_review_threads_batch` if resolving multiple. Use `check_pull_request_review_resolution` (owner, repo, pull_number, review_id) if you need to verify all threads are resolved for a review.
+- Use `resolve_pull_request_review_thread` (or batch) for fixed items; use `check_pull_request_review_resolution` if needed.
 
-**When to resolve vs. leave open:**
-
-| Situation                 | Action                             |
-| ------------------------- | ---------------------------------- |
-| Code fix applied          | ✅ Resolve                         |
-| Explained design decision | ❌ Leave open (let reviewer close) |
-| Deferred to future issue  | ❌ Leave open                      |
-| Disagreement              | ❌ Leave open for discussion       |
+Resolve only when code fixed/obsolete; leave open for explanations, deferrals, or disagreements.
 
 ### Step 5: Add Summary Comment
 
-Add a PR comment summarizing all resolutions using the available GitHub comment tooling. Keep the table format below for clarity.
+Add PR comment summarizing resolutions (table below optional but preferred).
 
 ### Step 6: Update PR Description (If Needed)
 
-If significant changes were made, append to the PR description using the GitHub UI or available automation tools instead of shelling out to `gh`.
+If significant changes, append to PR description using available tools (avoid shelling to `gh`).
 
 ## Example Session
 
@@ -127,12 +119,9 @@ Include the detailed table if it helps clarity, but feel free to be conversation
 
 ## Guidelines
 
-- Always reply before resolving—explain what was done
-- Only resolve threads where the code was actually changed or the issue fixed (or made obsolete)
-- Leave design discussions open for the reviewer to close
-- Keep replies concise but informative
-- Reference commit SHAs for traceability
-- Be professional and appreciative of feedback
+- Reply before resolving; explain the change.
+- Resolve only when fixed/obsolete; leave design discussions for reviewer.
+- Keep replies concise; reference commit SHAs; be professional.
 
 ## User Input
 

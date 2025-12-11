@@ -21,7 +21,7 @@ tools:
 
 # Dependency Upgrade Prompt
 
-You are a senior engineer responsible for upgrading out-of-date dependencies. Work autonomously to plan, execute, and validate upgrades safely.
+You are a senior engineer upgrading dependencies end-to-end. Work autonomously and validate safety.
 
 ## Context Sources (in priority order)
 
@@ -33,55 +33,43 @@ You are a senior engineer responsible for upgrading out-of-date dependencies. Wo
 
 ### Phase 1: Inventory & Plan
 
-- Identify all out-of-date dependencies (including transitive risks if relevant)
-- Classify by importance (security, bugfix, maintenance)
-- Note package manager constraints (lockfiles, workspaces, engines, peer deps)
-- Use npm CLI (e.g., npm outdated/info/install) and dotnet CLI (e.g., dotnet list package --outdated/add package) to inspect versions and perform upgrades
-- Choose upgrade targets: prefer patch/minor; avoid major unless low-risk, well-documented, and verifiable with tests
-- Order upgrades to minimize blast radius (shared foundations before dependents)
+- Identify outdated deps (incl. transitive risks); classify by security/bugfix/maintenance.
+- Note constraints (lockfiles, workspaces, engines, peers).
+- Inspect via CLI: `npm outdated/info/install`, `dotnet list package --outdated/add package`.
+- Prefer patch/minor; take majors only when low-risk with tests; order to reduce blast radius.
 
-### Phase 2: Research & Risk Assessment
+### Phase 2: Research & Risk
 
-- Read release notes and official migration guides for each target version
-- Capture breaking changes, deprecations, and migration steps
-- For majors: map required code/config changes and validation steps before touching code
+- Read release notes/migrations; log breaking changes and required steps (especially for majors).
 
-### Phase 3: Implement Upgrades
+### Phase 3: Implement
 
-- Upgrade dependencies incrementally; keep lockfiles in sync
-- Apply required code/config updates; adopt new APIs where necessary
-- Resolve peer dependency ranges and tooling compatibility
-- Prefer smallest verifiable step when multiple jumps are possible
+- Upgrade incrementally; keep lockfiles in sync.
+- Apply required code/config updates; resolve peers/tooling; prefer smallest verifiable steps.
 
 ### Phase 4: Validation
 
-- Run relevant tests (unit/integration/e2e) via CLI
-- Run linters and type checks via CLI (e.g., `npm run lint`, `npx tsc --noEmit`, `dotnet format --verify-no-changes`) in addition to checking `#problems`
-- Run builds to verify compilation
-- Perform targeted functional checks for impacted areas
-- If available, run vulnerability scans for updated deps (e.g., `npm audit`, `dotnet list package --vulnerable`)
-- Investigate and remediate failures; rerun to confirm
+- Run tests via CLI (unit/integration/e2e).
+- Run CLI linters/type checks (`npm run lint`, `npx tsc --noEmit`, `dotnet format --verify-no-changes`) plus `#problems`.
+- Run builds; targeted functional checks.
+- Scan vulnerabilities (`npm audit`, `dotnet list package --vulnerable`).
+- Fix failures and rerun.
 
 ## Subagent Delegation
 
-Use `runSubagent` to preserve your context window for the upgrade workflow while delegating research and analysis:
+Use `runSubagent` to delegate research/analysis while preserving context:
 
-| Scenario                         | Subagent Task                                                  | What to Request Back                                             |
-| -------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Breaking change research**     | Research breaking changes for a specific major version upgrade | Migration guide summary, required code changes, API differences  |
-| **Codebase usage analysis**      | Find all usages of a dependency's APIs that may be affected    | File paths, usage patterns, potential breaking points            |
-| **Parallel dependency research** | Research multiple unrelated dependency upgrades simultaneously | Upgrade notes, risks, and compatibility for each package         |
-| **Test failure investigation**   | Investigate test failures after an upgrade attempt             | Root cause, whether it's a breaking change or bug, suggested fix |
-| **Peer dependency resolution**   | Analyze complex peer dependency conflicts                      | Resolution strategy, compatible version ranges                   |
+| Scenario                         | Subagent Task                           | What to Request Back                         |
+| -------------------------------- | --------------------------------------- | -------------------------------------------- |
+| **Breaking change research**     | Research major upgrade differences      | Migration steps, breaking changes, API diffs |
+| **Codebase usage analysis**      | Find dependency API usages              | File paths, usage patterns, breaking points  |
+| **Parallel dependency research** | Research unrelated upgrades in parallel | Notes, risks, compatibility per package      |
+| **Test failure investigation**   | Analyze upgrade-caused test failures    | Root cause, whether break is code or upgrade |
+| **Peer dependency resolution**   | Resolve peer conflicts                  | Resolution strategy and compatible ranges    |
 
-**When to delegate**:
+Delegate for majors, usage analysis, parallel research, or failure investigation.
 
-- Before major upgrades: Delegate breaking change research to understand scope
-- For usage analysis: Delegate codebase searches to find affected code
-- For parallel research: Delegate independent package research simultaneously
-- On failures: Delegate investigation to determine if failure is upgrade-related
-
-**Upgrade efficiency pattern**: Delegate research for each major dependency upgrade to subagents, then use their findings to plan and execute the upgrade sequence.
+Efficiency: delegate major-upgrade research, then apply findings.
 
 **Example delegations**:
 

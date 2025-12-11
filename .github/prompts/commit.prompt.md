@@ -23,55 +23,33 @@ tools:
 
 # Commit Prompt
 
-You are handling the git workflow for committing and creating pull requests.
+You are handling git workflow for committing and creating pull requests.
 
 ## Process
 
 ### Step 1: Assess Current State
 
-- Check current branch with `git branch --show-current`
-- Check for existing changes with `git status`
-- Review the diff with `#changes`
+- `git branch --show-current`, `git status`, review diff with `#changes`.
 
 ### Step 2: Pre-Validation (if not already done)
 
-Before committing, verify the code is ready by running CLI commands:
+Run CLI checks before committing:
 
-- **Linting**: Run linter via CLI (e.g., `npm run lint`, `dotnet format --verify-no-changes`) in addition to checking `#problems`
-- **Formatting**: Ensure code is formatted (e.g., `prettier --check`, `dotnet format`)
-- **Type Checks**: Run type checks via CLI if applicable (e.g., `npx tsc --noEmit`)
-- **Tests**: Run test suite via CLI (e.g., `npm test`, `dotnet test`)
+- **Linting**: `npm run lint`, `dotnet format --verify-no-changes` + `#problems`
+- **Formatting**: `prettier --check`, `dotnet format`
+- **Type Checks**: `npx tsc --noEmit` if applicable
+- **Tests**: `npm test`, `dotnet test`
 
-If any checks fail, stop and inform the user. Do not commit broken code.
+If any fail, stop and report; do not commit broken code.
 
 ### Step 3: Create Branch (REQUIRED)
 
-**CRITICAL: Never commit directly to `main`, `master`, or `develop`.**
-
-If on `main`, `master`, or `develop`:
-
-- **STOP immediately and create a new branch**
-- Create a descriptive branch name: `<type>/<short-description>`
-- Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
-- Example: `feat/user-authentication`, `fix/null-pointer-exception`
-- Create and switch to the branch: `git checkout -b <branch-name>`
-
-**Do not proceed to commit without being on a feature branch.**
+Never commit directly to `main`/`master`/`develop`. If on one, stop and `git checkout -b <type>/<short-description>` (types: feat, fix, refactor, docs, chore, test). Do not proceed until on a feature branch.
 
 ### Step 4: Stage and Commit
 
-- Stage all changes: `git add -A`
-- Create a conventional commit message:
-
-  ```
-  <type>(<optional-scope>): <description>
-
-  [optional body with more details]
-  ```
-
-- **First letter of description must be lowercase**
-- Types: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`
-- Keep the first line under 72 characters
+- Stage all: `git add -A`.
+- Conventional message `<type>(<scope>): <description>` (lowercase description, types feat/fix/refactor/docs/style/test/chore, <72 chars). Optional body allowed.
 
 ### Step 5: Push
 
@@ -79,26 +57,9 @@ If on `main`, `master`, or `develop`:
 
 ### Step 6: Create or Update PR
 
-Check if a PR already exists for this branch:
+If no PR: create draft via gh CLI (temp markdown body, then delete), default draft unless requested otherwise; title matches commit type/description; include summary, modified files, context, tests.
 
-**If NO existing PR:**
-
-- Create a draft PR with:
-  - Use gh CLI with a temporary markdown file for the body; remove the temporary markdown file after creation
-  - Default to draft unless user explicitly asks otherwise
-  - Clear title matching the commit type and description
-  - Detailed description including:
-    - Summary of changes
-    - List of modified files
-    - Any relevant context
-    - Testing notes if applicable
-
-**If PR already exists:**
-
-- Update the PR description:
-  - Append a new section "## Update [Date/Time]" with the latest changes
-  - Do not overwrite the original description unless it was a placeholder
-  - Ensure the file list is accurate
+If PR exists: append "## Update [Date/Time]" with latest changes; don't overwrite original; ensure file list is accurate.
 
 ## Commit Message Examples
 
@@ -123,16 +84,16 @@ refactor: extract common validation logic into shared utility
 
 ## Subagent Delegation
 
-Use `runSubagent` to preserve your context window for the commit workflow while delegating analysis tasks:
+Use `runSubagent` to delegate analysis while preserving context:
 
-| Scenario                      | Subagent Task                                                              | What to Request Back                                                 |
-| ----------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **Large changesets**          | Analyze changed files to understand the scope and purpose of modifications | Summary of changes grouped by feature/area, suggested commit message |
-| **CI/build failures**         | Investigate specific test or build failures blocking the commit            | Root cause, affected files, suggested fix                            |
-| **PR description generation** | Review all changes and generate comprehensive PR description               | Formatted PR description with summary, file list, and testing notes  |
-| **Multi-package changes**     | Analyze cross-package dependencies and ordering concerns                   | Dependency graph, recommended commit order                           |
+| Scenario                      | Subagent Task                           | What to Request Back                        |
+| ----------------------------- | --------------------------------------- | ------------------------------------------- |
+| **Large changesets**          | Analyze diff scope                      | Grouped summary + commit message suggestion |
+| **CI/build failures**         | Investigate failing tests/builds        | Root cause, affected files, suggested fix   |
+| **PR description generation** | Draft PR description                    | Summary, file list, testing notes           |
+| **Multi-package changes**     | Cross-package dependency/order analysis | Dependency graph, commit ordering           |
 
-**When to delegate**: If changes span more than 5-10 files, or if you need to understand the impact of changes across the codebase, delegate the analysis to preserve context for the commit workflow itself.
+Delegate for >5-10 files or when impact analysis needed.
 
 **Example delegation**:
 
@@ -154,11 +115,7 @@ Analyze the current git diff and provide:
 
 ## Output
 
-Confirm:
-
-- Branch name
-- Commit message
-- PR URL (if created/updated)
+Confirm: branch name, commit message, PR URL (if created/updated).
 
 ## User Input
 

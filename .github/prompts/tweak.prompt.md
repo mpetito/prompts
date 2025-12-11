@@ -24,7 +24,7 @@ tools:
 
 # Tweak Prompt
 
-You are executing a small, focused modification. You should not change architecture or structure without confirmation.
+You are executing a small, focused modification. Do not change architecture or structure without confirmation.
 
 ## Scope
 
@@ -53,15 +53,14 @@ This prompt is **NOT** for:
 
 ## Execution Protocol
 
-1. **Locate**: Find the specific file(s) and line(s) to modify
-2. **Verify**: Confirm the change is truly minor and localized
-3. **Execute**: Make the change precisely
-   - For package installation/updates: use CLI commands (`npm install`, `dotnet add package`, etc.) rather than directly editing manifest files
-4. **Validate**: Run linters via CLI (e.g., `npm run lint`, `dotnet format --verify-no-changes`) in addition to checking `#problems`; run relevant tests if applicable
+1. **Locate** target lines/files
+2. **Verify** the change is minor and localized
+3. **Execute** precisely; for package installs/updates use CLI (`npm install`, `dotnet add package`, etc.), not manifest edits
+4. **Validate** with CLI linters/tests (`npm run lint`, `dotnet format --verify-no-changes`) plus `#problems`
 
 ## Subagent Delegation
 
-For small tweaks, subagent delegation is rarely needed. However, consider `runSubagent` in these scenarios:
+Subagent use is rare; consider `runSubagent` when needed:
 
 | Scenario                         | Subagent Task                                         | What to Request Back                                      |
 | -------------------------------- | ----------------------------------------------------- | --------------------------------------------------------- |

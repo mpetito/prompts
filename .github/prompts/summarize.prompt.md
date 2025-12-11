@@ -1,6 +1,6 @@
 ---
 name: summarize
-description: Compress conversation history into an actionable summary for the next development session.
+description: Compress conversation history into an actionable summary for the next session.
 model: Claude Sonnet 4.5 (copilot)
 agent: agent
 tools:
@@ -71,4 +71,4 @@ Brief 1-2 sentence description of what was accomplished.
 - What should be tackled next
 - Any blockers or dependencies to be aware of
 
-**Keep it brief and actionable.** The next agent should be able to read this in 30 seconds and understand exactly where to pick up.
+**Keep it brief and actionable.** The next agent should understand in ~30 seconds.

@@ -24,110 +24,61 @@ tools:
 
 # PR Feedback Resolution Prompt
 
-You are addressing feedback on the current pull request. Your goal is to resolve all actionable feedback while maintaining the original design intent.
+You are addressing feedback on the current PR. Resolve actionable items while keeping design intent.
 
-**IMPORTANT**: Do NOT commit, push, or respond to PR feedback until the user has reviewed and explicitly confirmed your changes. Prepare all changes locally, present them for review, and wait for confirmation before finalizing.
+**IMPORTANT**: Do NOT commit, push, or respond until the user reviews and confirms. Prepare locally, present, then wait.
 
 ## Feedback Sources
 
-Gather feedback from all available sources:
-
-1. **Copilot Review Comments** — Automated suggestions from GitHub Copilot
-2. **Human Review Comments** — Feedback from team members
-3. **CodeQL Findings** — Security and code quality issues from CodeQL analysis
-4. **SonarQube Findings** — Code smells, bugs, and vulnerabilities from SonarQube
-5. **CI Failures** — Build, test, or pipeline failures
+Gather feedback from: Copilot comments, human reviews, CodeQL, SonarQube, CI failures.
 
 ## Process
 
-### Step 1: Collect All Feedback
+### Step 1: Collect Feedback
 
-- Use `#activePullRequest` or `#openPullRequest` to access PR details
-- Fetch review threads with `get_pull_request_threads` (or `get_pull_request_review_threads` for a specific review); if you already have thread IDs, use `get_pull_request_threads_batch`. Provide `owner`, `repo`, and `pull_number`.
-- Review all pending comments and thread statuses from the retrieved data
-- Check CI/CD status for failures
-- Identify CodeQL and SonarQube findings if available
+- Use `#activePullRequest`/`#openPullRequest` for PR info.
+- Fetch threads via `get_pull_request_threads` (or review-specific); batch if IDs known.
+- Review pending comments/thread status; check CI status; gather CodeQL/Sonar findings.
 
-### Step 2: Categorize Feedback
+### Step 2: Categorize
 
-Organize feedback by type:
-
-| Category        | Action Required                          |
-| --------------- | ---------------------------------------- |
-| **Blocking**    | Must resolve before merge                |
-| **Improvement** | Should address, reviewer expects changes |
-| **Question**    | Needs clarification or response          |
-| **Suggestion**  | Optional, can discuss or defer           |
-| **CI Failure**  | Must fix—build/test must pass            |
+Blocking (must fix), Improvement (should fix), Question (needs reply), Suggestion (optional), CI Failure (must fix).
 
 ### Step 3: Clarify Ambiguity FIRST
 
-**Before making any changes**, if feedback is ambiguous:
+- Ask concise questions in-thread before coding; do not guess intent.
 
-- Ask clarifying questions in the PR thread
-- Confirm understanding of the expected change
-- Do NOT guess at intent—ask the reviewer
+### Step 4: Reference Design
 
-Examples of ambiguity requiring clarification:
+- Re-read plans/refined prompts; if feedback conflicts, discuss first.
 
-- "This could be improved" (How?)
-- "Consider refactoring this" (What approach?)
-- "Is this the right pattern?" (What alternative is suggested?)
+### Step 5: Address (Local Only)
 
-### Step 4: Reference Design Documents
+Implement aligned changes locally, run relevant tests, **do not commit/push/respond yet**.
 
-Before addressing feedback:
+### Step 6: Present to User
 
-- Review any planning documents or refined prompts from earlier steps
-- Ensure proposed changes align with the original design intent
-- If feedback conflicts with the design, discuss before changing
+Summarize changes and planned responses; get explicit confirmation before proceeding.
 
-### Step 5: Address Feedback (Local Only)
+### Step 7: Finalize (after confirmation)
 
-For each piece of feedback:
-
-1. Implement the requested change locally (if clear and aligned with design)
-2. Run relevant tests to verify the fix
-3. **Do NOT commit, push, or respond to comments yet**
-
-### Step 6: Present Changes for User Review
-
-**STOP and present a summary to the user before proceeding:**
-
-- List all changes made
-- Show the planned responses to each feedback item
-- Ask the user to review and confirm
-
-**Wait for explicit user confirmation before proceeding to Step 7.**
-
-### Step 7: Finalize (After User Confirmation)
-
-Once the user confirms:
-
-1. Commit and push all changes
-2. Reply to each comment using `reply_to_pull_request_comment` (provide `owner`, `repo`, `pull_number`, `comment_id`) explaining what was done
-3. Resolve fixed threads with `resolve_pull_request_review_thread` or `resolve_pull_request_review_threads_batch`; use `check_pull_request_review_resolution` if you need to confirm review-wide resolution
+- Commit/push.
+- Reply via `reply_to_pull_request_comment` (owner/repo/pull_number/comment_id) with fixes.
+- Resolve fixed threads (`resolve_pull_request_review_thread` or batch); use `check_pull_request_review_resolution` if needed.
 
 ## Subagent Delegation
 
-Use `runSubagent` to preserve your context window for the feedback workflow while delegating analysis and resolution:
+Use `runSubagent` to delegate analysis/resolution while preserving context:
 
-| Scenario                         | Subagent Task                                                    | What to Request Back                                             |
-| -------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Parallel feedback resolution** | Address a group of related feedback items independently          | Changes made, issues encountered, files modified                 |
-| **CI failure investigation**     | Investigate specific build or test failures blocking merge       | Root cause, affected code, suggested fix                         |
-| **CodeQL/SonarQube analysis**    | Deep-dive into security or quality findings                      | Detailed explanation of issue, remediation options, code changes |
-| **Large diff understanding**     | Analyze extensive changes to understand context for feedback     | Summary of changes, intent of modifications, affected areas      |
-| **Test coverage analysis**       | Verify that feedback-related changes have adequate test coverage | Coverage gaps, suggested test cases                              |
+| Scenario                         | Subagent Task                            | What to Request Back                     |
+| -------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| **Parallel feedback resolution** | Fix related feedback in parallel         | Changes, issues, files modified          |
+| **CI failure investigation**     | Investigate blocking build/test failures | Root cause, affected code, suggested fix |
+| **CodeQL/SonarQube analysis**    | Deep-dive security/quality findings      | Issue details, remediation, code changes |
+| **Large diff understanding**     | Summarize extensive changes for context  | Intent summary, affected areas           |
+| **Test coverage analysis**       | Check coverage for feedback changes      | Gaps and suggested tests                 |
 
-**When to delegate**:
-
-- For multiple independent feedback items: Delegate groups of related feedback in parallel
-- For CI failures: Delegate investigation to get actionable fix recommendations
-- For complex findings: Delegate deep analysis of security or quality issues
-- For context gathering: Delegate understanding of large diffs to inform responses
-
-**Feedback efficiency pattern**: Group related feedback items and delegate each group to a subagent for parallel resolution. Synthesize results and present to user for confirmation.
+Delegate for multiple items, CI failures, complex findings, or large diff context. Group and delegate to parallelize.
 
 **Example delegations**:
 
@@ -196,14 +147,11 @@ Please review the changes and confirm to proceed.
 
 ## Guidelines
 
-- **Ask first, code second** — Never guess at ambiguous feedback
-- **User confirms before finalizing** — Do not commit, push, or respond until user approves
-- Preserve the original design intent unless explicitly told to change it
-- Be respectful and professional in all responses
-- If a suggestion improves the code, accept it graciously
-- If you disagree, explain your reasoning constructively
-- Mark threads resolved only after the change is verified
-- Run tests after every change to catch regressions
+- Ask first, code second; do not guess.
+- Wait for user approval before committing/responding.
+- Preserve design intent unless told otherwise.
+- Be respectful; accept good suggestions; justify disagreements.
+- Resolve threads only after verifying changes; run tests after each change.
 
 ## User Input
 
