@@ -1,7 +1,7 @@
 ---
 name: commit
 description: Commit, push, and create/update pull request
-model: GPT-5.2 (Preview) (copilot)
+model: GPT-5.1-Codex-Max (Preview)
 agent: agent
 argument-hint: Optional commit message or PR context
 tools:
