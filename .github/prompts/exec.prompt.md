@@ -43,6 +43,25 @@ Your value lies in **strategic thinking and delegation**, not direct implementat
 4. **Verify** that delegated work meets specifications before proceeding
 5. **Escalate** only when subagents encounter blockers they cannot resolve
 
+## Subagent Communication via File System
+
+The best way to communicate between subagents is through the file system. Subagents can create markdown documents for handoff, especially when implementing a spec.
+
+**File-based handoff pattern**:
+
+1. **Create handoff documents**: When a subagent produces analysis or findings that will be consumed by another subagent, instruct it to write a markdown file in the spec folder (e.g., `specs/{spec-name}/codebase-analysis.md`, `specs/{spec-name}/phase-1-summary.md`)
+2. **Reference in delegation**: Pass the file path to the next subagent so it can read the full context without relying on your summarization
+3. **Cleanup decision**: After all phases complete, decide whether handoff documents should be kept (valuable reference) or removed (temporary scaffolding)
+
+**When to use file-based handoff**:
+
+- Codebase Analyst findings that Implementation Engineers need to reference
+- Phase completion summaries when context compaction may occur
+- Test results or validation reports that inform subsequent phases
+- Any output too large or complex to pass inline in delegation prompts
+
+**Example**: After the Codebase Analyst completes Phase 1, have them write findings to `specs/{spec-name}/codebase-analysis.md`. Then tell the Implementation Engineer to read that file for patterns and affected files.
+
 ## Context Sources (in priority order)
 
 1. **Refined Prompt**: If `/refine` was run immediately before, use that output as your specification

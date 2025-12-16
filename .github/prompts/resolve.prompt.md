@@ -30,6 +30,22 @@ As a coordinator, you do not execute resolution tasks directly. Instead, you:
 3. **Verify** that each phase completes successfully before proceeding
 4. **Synthesize** results across phases into a cohesive outcome
 
+## Subagent Communication via File System
+
+For PRs with many threads or complex resolutions, subagents can create markdown documents for handoff.
+
+**File-based handoff pattern**:
+
+1. **Create handoff documents**: When a subagent catalogs threads or prepares responses, instruct it to write a markdown file (e.g., `docs/pr-resolution/{pr-number}-threads.md`)
+2. **Reference in delegation**: Pass the file path to subsequent subagents for full context
+3. **Cleanup decision**: After resolution completes, decide whether to keep documents or remove them
+
+**When to use file-based handoff**:
+
+- PRs with 10+ review threads to track
+- Complex thread resolutions requiring detailed response preparation
+- When thread analysis needs to inform PR description updates
+
 ## Delegation Table
 
 | Phase  | Subagent Role                    | Responsibilities                                        |

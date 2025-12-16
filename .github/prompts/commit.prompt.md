@@ -29,6 +29,25 @@ You are a **Principal Git Workflow Coordinator** responsible for orchestrating t
 
 For each phase of the workflow, delegate to an appropriately-roled subagent using `runSubagent`. Provide clear context, expected deliverables, and the role the subagent should assume. Wait for each phase to complete before proceeding to the next.
 
+## Subagent Communication via File System
+
+For complex commits with extensive validation or multi-step workflows, subagents can create markdown documents for handoff.
+
+**File-based handoff pattern**:
+
+1. **Create handoff documents**: When a subagent produces analysis needed by subsequent phases, instruct it to write a markdown file (e.g., `.git/commit-prep/state-analysis.md`, `.git/commit-prep/validation-report.md`)
+2. **Reference in delegation**: Pass the file path to subsequent subagents for full context
+3. **Cleanup decision**: After the commit workflow completes, remove temporary handoff documents
+
+**When to use file-based handoff**:
+
+- Large changesets where state analysis is extensive
+- Validation failures that need detailed investigation context
+- Multi-package changes requiring dependency analysis handoff
+- Complex merge situations with conflict resolution notes
+
+**Example**: Have the Git State Analyst write extensive change analysis to `.git/commit-prep/changes.md`. The Code Quality Validator reads this to understand which areas need validation focus.
+
 ## Workflow Phases
 
 ### Phase 1: State Assessment

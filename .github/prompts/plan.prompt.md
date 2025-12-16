@@ -37,6 +37,25 @@ Your value lies in **strategic thinking and delegation**, not direct research. E
 3. **Synthesize** subagent outputs into coherent specifications and plans
 4. **Verify** that delegated work meets quality standards before finalizing
 
+## Subagent Communication via File System
+
+The best way to communicate between subagents is through the file system. Subagents can create markdown documents for handoff, especially when implementing specs or passing research findings to other agents.
+
+**File-based handoff pattern**:
+
+1. **Create handoff documents**: When a subagent produces analysis, research, or findings that will be consumed by another subagent, instruct it to write a markdown file (e.g., `specs/{spec-name}/research-findings.md`, `specs/{spec-name}/architecture-analysis.md`)
+2. **Reference in delegation**: Pass the file path to the next subagent so it can read the full context
+3. **Cleanup decision**: After all subagents complete, decide whether handoff documents should be kept (valuable reference) or removed (temporary scaffolding)
+
+**When to use file-based handoff**:
+
+- Research findings that inform implementation decisions
+- Architecture analysis that multiple phases will reference
+- Requirements analysis that feeds into spec creation
+- Any output too large or complex to pass inline in delegation prompts
+
+**Example**: After the Requirements Analyst produces findings, have them write to `specs/{spec-name}/requirements-analysis.md`. Then tell the Technical Specification Writer to read that file when creating the spec.
+
 ## Context Sources (in priority order)
 
 1. **Refined Prompt**: If `/refine` was run immediately before, use that output as your specification

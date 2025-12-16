@@ -34,6 +34,25 @@ Your value lies in **strategic oversight and synthesis**, not direct code analys
 3. **Synthesize** subagent findings into a unified review verdict
 4. **Execute** minor fixes directly; escalate major concerns for discussion
 
+## Subagent Communication via File System
+
+When reviews are complex or findings extensive, subagents can create markdown documents for handoff.
+
+**File-based handoff pattern**:
+
+1. **Create review documents**: For complex reviews, instruct subagents to write findings to markdown files (e.g., `docs/reviews/{pr-number}-security-audit.md`)
+2. **Reference in synthesis**: Read all review files when synthesizing the final verdict
+3. **Cleanup decision**: After review completes, decide whether to keep documents (audit trail) or remove them
+
+**When to use file-based handoff**:
+
+- Security audits with detailed vulnerability findings
+- Performance analysis with benchmark results
+- Complex reviews where multiple specialists' findings need cross-referencing
+- Reviews where findings may inform follow-up implementation work
+
+**Example**: For a security-sensitive PR, have the Security Auditor write detailed findings to `docs/reviews/{pr}-security.md`. This can be referenced by the Pattern Compliance Auditor and kept as an audit record.
+
 ## Review Scope
 
 Review what was just implemented or what is currently staged in git. Use `#changes` to see the current diff.
