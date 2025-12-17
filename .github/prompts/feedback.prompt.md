@@ -16,6 +16,7 @@ tools:
     "todo",
     "perplexity/*",
     "docs-context7/*",
+    "docs-langchain/*",
     "github/*",
     "github-pr-review-tools/*",
     "github.vscode-pull-request-github/*",

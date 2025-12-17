@@ -15,6 +15,7 @@ tools:
     "todo",
     "perplexity/*",
     "docs-context7/*",
+    "docs-langchain/*",
     "github/*",
     "azure.devops/*",
   ]

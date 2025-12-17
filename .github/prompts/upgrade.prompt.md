@@ -16,6 +16,10 @@ tools:
     "todo",
     "perplexity/*",
     "docs-context7/*",
+    "docs-langchain/*",
+    "docs-aws/*",
+    "docs-microsoft/*",
+    "docs-material-ui/*",
   ]
 ---
 
