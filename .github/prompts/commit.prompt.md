@@ -1,7 +1,7 @@
 ---
 name: commit
 description: Commit, push, and create/update pull request
-model: GPT-5.1-Codex-Max (Preview)
+model: Claude Sonnet 4.5 (copilot)
 agent: agent
 argument-hint: Optional commit message or PR context
 tools:
