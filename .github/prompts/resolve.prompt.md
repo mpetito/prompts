@@ -1,7 +1,7 @@
 ---
 name: resolve
 description: Reply to and resolve PR review threads using github-pr-review-tools
-model: GPT-5.1-Codex-Max (Preview) (copilot)
+model: GPT-5.1-Codex-Max (copilot)
 agent: agent
 argument-hint: Optional thread IDs or feedback to focus on
 tools:

@@ -1,7 +1,7 @@
 ---
 name: upgrade
 description: Review and upgrade dependencies safely end-to-end
-model: GPT-5.1-Codex-Max (Preview) (copilot)
+model: GPT-5.1-Codex-Max (copilot)
 agent: agent
 argument-hint: List the packages or dependency areas to review (or leave blank to scan all)
 tools:

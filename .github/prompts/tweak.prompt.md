@@ -1,7 +1,7 @@
 ---
 name: tweak
 description: Execute small, focused modifications without structural changes
-model: GPT-5.1-Codex-Max (Preview) (copilot)
+model: GPT-5.1-Codex-Max (copilot)
 agent: agent
 argument-hint: Describe the small change to make
 tools:

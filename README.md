@@ -7,16 +7,16 @@ A collection of VS Code prompt files designed for reliable agentic coding workfl
 | Prompt       | Purpose                                                         | Model                            |
 | ------------ | --------------------------------------------------------------- | -------------------------------- |
 | `/refine`    | Refine and clarify user input into a comprehensive prompt       | Gemini 3 Pro (Preview) (copilot) |
-| `/plan`      | Create a detailed implementation plan                           | Claude Opus 4.5 (Preview)        |
-| `/exec`      | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (Preview)        |
-| `/tweak`     | Execute small, focused modifications without structural changes | GPT-5.1-Codex-Max (Preview)      |
-| `/review`    | Code review for correctness, maintainability, and quality       | GPT-5.1-Codex-Max (Preview)      |
-| `/feedback`  | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (Preview)        |
+| `/plan`      | Create a detailed implementation plan                           | Claude Opus 4.5 (copilot)        |
+| `/exec`      | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (copilot)        |
+| `/tweak`     | Execute small, focused modifications without structural changes | GPT-5.1-Codex-Max (copilot)      |
+| `/review`    | Code review for correctness, maintainability, and quality       | Claude Opus 4.5 (copilot)        |
+| `/feedback`  | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (copilot)        |
 | `/resolve`   | Reply to and resolve PR review threads via GH CLI               | GPT-5.1-Codex-Max (Preview)      |
-| `/commit`    | Commit, push, and create/update pull request                    | GPT-5.1-Codex-Max (Preview)      |
-| `/summarize` | Compress conversation history into an actionable summary        | Claude Sonnet 4.5                |
-| `/research`  | Deep technical research and option evaluation                   | Claude Opus 4.5 (Preview)        |
-| `/upgrade`   | Review and upgrade dependencies safely end-to-end               | GPT-5.1-Codex-Max (Preview)      |
+| `/commit`    | Commit, push, and create/update pull request                    | Claude Sonnet 4.5 (copilot)      |
+| `/summarize` | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      |
+| `/research`  | Deep technical research and option evaluation                   | Claude Opus 4.5 (copilot)        |
+| `/upgrade`   | Review and upgrade dependencies safely end-to-end               | GPT-5.1-Codex-Max (copilot)      |
 
 ## Fragments
 
