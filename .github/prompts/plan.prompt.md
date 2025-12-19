@@ -1,7 +1,7 @@
 ---
 name: plan
 description: Create a detailed implementation plan for complex tasks requiring research and consideration
-model: Claude Opus 4.5 (Preview) (copilot)
+model: Claude Opus 4.5 (copilot)
 agent: agent
 argument-hint: Describe the feature or task to plan
 tools:

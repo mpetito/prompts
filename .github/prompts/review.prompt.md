@@ -1,7 +1,7 @@
 ---
 name: review
 description: Code review for correctness, maintainability, and quality
-model: Claude Opus 4.5 (Preview) (copilot)
+model: Claude Opus 4.5 (copilot)
 agent: agent
 argument-hint: Optional focus areas or context for the review
 tools:

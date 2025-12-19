@@ -1,7 +1,7 @@
 ---
 name: research
 description: Deep technical research and option evaluation using Perplexity and documentation sources
-model: Claude Opus 4.5 (Preview) (copilot)
+model: Claude Opus 4.5 (copilot)
 agent: agent
 argument-hint: Topic, API, library, or technical question to research
 tools:
