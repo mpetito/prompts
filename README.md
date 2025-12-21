@@ -17,6 +17,7 @@ A collection of VS Code prompt files designed for reliable agentic coding workfl
 | `/summarize` | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      |
 | `/research`  | Deep technical research and option evaluation                   | Claude Opus 4.5 (copilot)        |
 | `/upgrade`   | Review and upgrade dependencies safely end-to-end               | GPT-5.1-Codex-Max (copilot)      |
+| `/agents`    | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.5       |
 
 ## Fragments
 
