@@ -4,20 +4,21 @@ A collection of VS Code prompt files designed for reliable agentic coding workfl
 
 ## Prompts
 
-| Prompt       | Purpose                                                         | Model                            |
-| ------------ | --------------------------------------------------------------- | -------------------------------- |
-| `/refine`    | Refine and clarify user input into a comprehensive prompt       | Gemini 3 Pro (Preview) (copilot) |
-| `/plan`      | Create a detailed implementation plan                           | Claude Opus 4.5 (copilot)        |
-| `/exec`      | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (copilot)        |
-| `/tweak`     | Execute small, focused modifications without structural changes | GPT-5.1-Codex-Max (copilot)      |
-| `/review`    | Code review for correctness, maintainability, and quality       | Claude Opus 4.5 (copilot)        |
-| `/pr-feedback`  | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (copilot)        |
-| `/pr-resolve`   | Reply to and resolve PR review threads via GH CLI               | GPT-5.1-Codex-Max     |
-| `/commit`    | Commit, push, and create/update pull request                    | Claude Sonnet 4.5 (copilot)      |
-| `/summarize` | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      |
-| `/research`  | Deep technical research and option evaluation                   | Claude Opus 4.5 (copilot)        |
-| `/upgrade`   | Review and upgrade dependencies safely end-to-end               | GPT-5.1-Codex-Max (copilot)      |
-| `/agents`    | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.5       |
+| Prompt            | Purpose                                                         | Model                            |
+| ----------------- | --------------------------------------------------------------- | -------------------------------- |
+| `/refine`         | Refine and clarify user input into a comprehensive prompt       | Gemini 3 Pro (Preview) (copilot) |
+| `/plan`           | Create a detailed implementation plan                           | Claude Opus 4.5 (copilot)        |
+| `/exec`           | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (copilot)        |
+| `/tweak`          | Execute small, focused modifications without structural changes | GPT-5.1-Codex-Max (copilot)      |
+| `/review`         | Code review for correctness, maintainability, and quality       | Claude Opus 4.5 (copilot)        |
+| `/pr-feedback`    | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (copilot)        |
+| `/pr-resolve`     | Reply to and resolve PR review threads via GH CLI               | GPT-5.1-Codex-Max                |
+| `/pr-consolidate` | Consolidate multiple PRs or branches into a unified branch      | Claude Opus 4.5 (copilot)        |
+| `/commit`         | Commit, push, and create/update pull request                    | Claude Sonnet 4.5 (copilot)      |
+| `/summarize`      | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      |
+| `/research`       | Deep technical research and option evaluation                   | Claude Opus 4.5 (copilot)        |
+| `/upgrade`        | Review and upgrade dependencies safely end-to-end               | GPT-5.1-Codex-Max (copilot)      |
+| `/agents`         | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.5                  |
 
 ## Fragments
 
@@ -71,6 +72,23 @@ Or for obvious changes:
 ```
 /exec → /review → /commit
 ```
+
+### Branch Consolidation
+
+When merging multiple PRs or agent branches:
+
+```
+/pr-consolidate → /commit
+```
+
+1. **Consolidate**: Merge multiple PRs/branches, resolve conflicts, prepare metadata
+2. **Commit**: Create unified PR with references to closed PRs
+
+Use cases:
+
+- Merge overlapping PRs before review
+- Combine independent agent work
+- Incorporate PR dependencies into current branch
 
 ## Setup
 
