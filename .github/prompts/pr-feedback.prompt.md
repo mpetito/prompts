@@ -1,5 +1,5 @@
 ---
-name: feedback
+name: pr-feedback
 description: Address PR feedback from reviews, CI, and code analysis tools
 model: Claude Opus 4.5 (copilot)
 agent: agent

@@ -11,8 +11,8 @@ A collection of VS Code prompt files designed for reliable agentic coding workfl
 | `/exec`      | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (copilot)        |
 | `/tweak`     | Execute small, focused modifications without structural changes | GPT-5.1-Codex-Max (copilot)      |
 | `/review`    | Code review for correctness, maintainability, and quality       | Claude Opus 4.5 (copilot)        |
-| `/feedback`  | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (copilot)        |
-| `/resolve`   | Reply to and resolve PR review threads via GH CLI               | GPT-5.1-Codex-Max (Preview)      |
+| `/pr-feedback`  | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (copilot)        |
+| `/pr-resolve`   | Reply to and resolve PR review threads via GH CLI               | GPT-5.1-Codex-Max     |
 | `/commit`    | Commit, push, and create/update pull request                    | Claude Sonnet 4.5 (copilot)      |
 | `/summarize` | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      |
 | `/research`  | Deep technical research and option evaluation                   | Claude Opus 4.5 (copilot)        |
