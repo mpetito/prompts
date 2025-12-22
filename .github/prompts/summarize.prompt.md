@@ -29,6 +29,8 @@ $ARGUMENTS
 
 You **MUST** consider the above user input before proceeding (if not empty).
 
+**Terminal**: Use PowerShell syntax for all terminal commands.
+
 ## Your Task
 
 Review the conversation and distill it into a concise, actionable summary.
