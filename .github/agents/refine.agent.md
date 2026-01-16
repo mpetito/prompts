@@ -2,8 +2,22 @@
 name: refine
 description: Refine and clarify user input into a comprehensive prompt for subsequent steps
 model: Gemini 3 Pro (Preview) (copilot)
-agent: agent
 argument-hint: Describe what you want to build or accomplish
+infer: true
+target: vscode
+handoffs:
+  - label: Create Plan
+    agent: plan
+    prompt: Create a detailed implementation plan based on the refined specification above.
+    send: false
+  - label: Quick Implementation
+    agent: exec
+    prompt: Implement the refined specification above.
+    send: false
+  - label: Small Tweak
+    agent: tweak
+    prompt: Apply the small change described in the refined specification above.
+    send: false
 tools:
   [
     "vscode",
@@ -82,6 +96,14 @@ Output **ONLY** the refined prompt content.
 - Be concise yet complete; preserve intent; add structure without changing goal.
 - Reference relevant files when available; default to common conventions.
 - State assumptions made to fill gaps.
+
+## Boundaries
+
+- ✅ **Always**: Read files, search codebase, research documentation
+- ✅ **Always**: Produce structured, actionable specifications
+- ⚠️ **Ask first**: Clarify ambiguous requirements before assuming
+- 🚫 **Never**: Implement code directly—hand off to @exec or @tweak
+- 🚫 **Never**: Make architectural decisions without explicit user input
 
 ## User Input
 

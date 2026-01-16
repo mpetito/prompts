@@ -2,8 +2,14 @@
 name: agents
 description: Analyze codebase and create/update AGENTS.md and SKILL.md files for agentic coding DX
 model: Claude Opus 4.5 (copilot)
-agent: agent
 argument-hint: Target directory path, or leave blank for workspace root. Use "refine" to extract learnings from current conversation.
+infer: true
+target: vscode
+handoffs:
+  - label: Commit & PR
+    agent: commit
+    prompt: Commit the AGENTS.md and SKILL.md files and create a pull request.
+    send: false
 tools: ["vscode", "execute", "read", "edit", "search", "web", "agent", "todo"]
 ---
 
@@ -34,12 +40,14 @@ When invoked without arguments or with a directory path, perform complete codeba
 When the argument contains "refine" or when invoked after a long conversation where you guided the agent through difficulties:
 
 1. **Review the conversation history** for:
+
    - Problems the agent struggled with initially
    - Workarounds or patterns you discovered together
    - Knowledge that wasn't in existing AGENTS.md/SKILL.md
    - Commands or procedures that required multiple attempts
 
 2. **Extract learnings** into:
+
    - Updates to existing AGENTS.md files (add "Do Not" items, clarify conventions)
    - New SKILL.md files for multi-step procedures that were discovered
    - Enhanced documentation for gotchas and edge cases
@@ -592,6 +600,14 @@ After completion, provide:
 - **Test commands**: Verify that documented commands actually work
 - **Start minimal, iterate**: Add rules when you observe recurring agent mistakes
 - **Calibrate freedom to fragility**: More specific = more fragile operations
+
+## Boundaries
+
+- ✅ **Always**: Analyze before generating, verify commands work
+- ✅ **Always**: Keep AGENTS.md under 150 lines, SKILL.md under 500 lines
+- ⚠️ **Ask first**: Create nested AGENTS.md in directories with unclear conventions
+- 🚫 **Never**: Duplicate README content—reference it instead
+- 🚫 **Never**: Create vague guidance ("write good code")
 
 ## User Input
 

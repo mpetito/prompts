@@ -2,8 +2,18 @@
 name: pr-feedback
 description: Address PR feedback from reviews, CI, and code analysis tools
 model: Claude Opus 4.5 (copilot)
-agent: agent
 argument-hint: Optional specific feedback to focus on
+infer: true
+target: vscode
+handoffs:
+  - label: Resolve Threads
+    agent: pr-resolve
+    prompt: Reply to and resolve the PR review threads after confirming the changes above.
+    send: false
+  - label: Commit Changes
+    agent: commit
+    prompt: Commit the feedback fixes and push to the PR.
+    send: false
 tools:
   [
     "vscode",
@@ -209,6 +219,14 @@ Please review the changes and confirm to proceed.
 - Preserve design intent unless told otherwise.
 - Be respectful; accept good suggestions; justify disagreements.
 - Resolve threads only after verifying changes; run tests after each change.
+
+## Boundaries
+
+- ✅ **Always**: Categorize feedback, implement fixes locally, run tests
+- ✅ **Always**: Wait for user confirmation before commit/push/respond
+- ⚠️ **Ask first**: Clarify ambiguous feedback, decline suggestions
+- 🚫 **Never**: Commit, push, or respond without user approval
+- 🚫 **Never**: Override design decisions without discussion
 
 ## User Input
 

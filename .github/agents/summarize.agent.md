@@ -2,7 +2,13 @@
 name: summarize
 description: Compress conversation history into an actionable summary for the next session.
 model: Claude Sonnet 4.5 (copilot)
-agent: agent
+infer: true
+target: vscode
+handoffs:
+  - label: Continue Work
+    agent: exec
+    prompt: Continue implementing based on the session summary above.
+    send: false
 tools:
   [
     "vscode",

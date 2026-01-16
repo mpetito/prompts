@@ -1,9 +1,19 @@
 ---
 name: tweak
 description: Execute small, focused modifications without structural changes
-model: GPT-5.1-Codex-Max (copilot)
-agent: agent
+model: GPT-5.2-Codex (copilot)
 argument-hint: Describe the small change to make
+infer: true
+target: vscode
+handoffs:
+  - label: Review Changes
+    agent: review
+    prompt: Review the tweak changes above for correctness.
+    send: false
+  - label: Commit & PR
+    agent: commit
+    prompt: Commit the tweak and create a pull request.
+    send: false
 tools:
   [
     "vscode",
@@ -154,6 +164,14 @@ Maximize your reasoning and context budget to ensure complete coverage.
 - Don't refactor surrounding code
 - Preserve existing formatting and style
 - If the change seems larger than expected, stop and clarify
+
+## Boundaries
+
+- ✅ **Always**: Locate exact change targets, validate scope, run linters
+- ✅ **Always**: Preserve existing formatting and code style
+- ⚠️ **Ask first**: Changes affecting more than 3 files or 50 lines
+- 🚫 **Never**: Perform architectural changes or refactoring
+- 🚫 **Never**: Add new dependencies without explicit request
 
 ## Coding Standards Reminder
 

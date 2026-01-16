@@ -2,8 +2,14 @@
 name: pr-consolidate
 description: Consolidate multiple PRs or branches into a unified integration branch
 model: Claude Sonnet 4.5 (copilot)
-agent: agent
 argument-hint: "PR numbers or branch names to merge (e.g., #123 #456, feature-a feature-b). Options: --target <branch>, --dry-run"
+infer: true
+target: vscode
+handoffs:
+  - label: Commit & PR
+    agent: commit
+    prompt: Create a unified PR for the consolidated branch above.
+    send: false
 tools:
   [
     "vscode",
@@ -417,6 +423,14 @@ git merge-base HEAD origin/<branch>
 - **Document everything** — the commit message should tell the full story
 - **Prepare for /commit** — the integration prepares state, /commit handles the PR workflow
 - **Clean up on abort** — restore original state if user cancels
+
+## Boundaries
+
+- ✅ **Always**: Create backup branch before integration, validate after merge
+- ✅ **Always**: Wait for user confirmation before push operations
+- ⚠️ **Ask first**: Conflict resolution strategies, complex merge decisions
+- 🚫 **Never**: Force push or modify remote branches without confirmation
+- 🚫 **Never**: Discard work during consolidation—preserve everything
 
 ## User Input
 

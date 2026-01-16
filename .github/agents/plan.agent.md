@@ -2,8 +2,14 @@
 name: plan
 description: Create a detailed implementation plan for complex tasks requiring research and consideration
 model: Claude Opus 4.5 (copilot)
-agent: agent
 argument-hint: Describe the feature or task to plan
+infer: true
+target: vscode
+handoffs:
+  - label: Implement Plan
+    agent: exec
+    prompt: Implement the plan outlined above.
+    send: false
 tools:
   [
     "vscode",
@@ -315,6 +321,14 @@ Write the plan file using this structure:
 - Keep plans actionable—each step should be implementable
 - Identify dependencies between steps
 - Consider backwards compatibility and migration paths
+
+## Boundaries
+
+- ✅ **Always**: Research documentation, analyze codebase, create spec files
+- ✅ **Always**: Delegate analysis tasks to subagents
+- ⚠️ **Ask first**: Major architectural decisions, new dependency introductions
+- 🚫 **Never**: Implement code directly—produce plans, not implementations
+- 🚫 **Never**: Skip research phase for complex features
 
 ## User Input
 

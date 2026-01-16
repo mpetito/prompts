@@ -1,9 +1,19 @@
 ---
 name: upgrade
 description: Review and upgrade dependencies safely end-to-end
-model: GPT-5.1-Codex-Max (copilot)
-agent: agent
+model: GPT-5.2-Codex (copilot)
 argument-hint: List the packages or dependency areas to review (or leave blank to scan all)
+infer: true
+target: vscode
+handoffs:
+  - label: Commit & PR
+    agent: commit
+    prompt: Commit the dependency upgrades and create a pull request.
+    send: false
+  - label: Review Changes
+    agent: review
+    prompt: Review the dependency upgrade changes for safety.
+    send: false
 tools:
   [
     "vscode",
@@ -171,6 +181,14 @@ Find all usages of [package] APIs in the codebase. Maximize your reasoning and c
 - **Persistence**: Your context window will be automatically compacted as it approaches its limit. Do not stop tasks early due to token budget concerns. Save progress to memory/todo list if needed, but complete the upgrade process fully.
 
 CRITICAL CONTEXT RULE: After summarization, your context window will lose specific important details about your goal and implementation guidance. You MUST revisit original specifications or planning documents to refresh your memory and maintain alignment with requirements.
+
+## Boundaries
+
+- ✅ **Always**: Run full validation suite after upgrades (tests, linters, builds)
+- ✅ **Always**: Use CLI for package operations, keep lockfiles in sync
+- ⚠️ **Ask first**: Major version upgrades, upgrades with breaking changes
+- 🚫 **Never**: Skip validation or ignore test failures
+- 🚫 **Never**: Upgrade security-critical packages without verification
 
 ## Output
 

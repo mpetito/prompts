@@ -2,8 +2,18 @@
 name: review
 description: Code review for correctness, maintainability, and quality
 model: Claude Opus 4.5 (copilot)
-agent: agent
 argument-hint: Optional focus areas or context for the review
+infer: true
+target: vscode
+handoffs:
+  - label: Commit & PR
+    agent: commit
+    prompt: Commit the reviewed changes and create a pull request.
+    send: false
+  - label: Fix Issues
+    agent: tweak
+    prompt: Address the issues identified in the review above.
+    send: false
 tools:
   [
     "vscode",
@@ -204,6 +214,14 @@ Verify:
 - Don't nitpick style if it's consistent with codebase
 - Focus on substance over style
 - If the implementation is fundamentally wrong, explain the issue and discuss before rewriting
+
+## Boundaries
+
+- ✅ **Always**: Run linters/tests, check #problems, review all changed files
+- ✅ **Always**: Fix minor issues directly (typos, formatting)
+- ⚠️ **Ask first**: Major rewrites or architectural changes
+- 🚫 **Never**: Approve code with critical issues or failing tests
+- 🚫 **Never**: Commit or push changes—leave that to @commit
 
 ## User Input
 

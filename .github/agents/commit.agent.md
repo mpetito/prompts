@@ -2,8 +2,14 @@
 name: commit
 description: Commit, push, and create/update pull request
 model: Claude Haiku 4.5 (copilot)
-agent: agent
 argument-hint: Optional commit message or PR context
+infer: true
+target: vscode
+handoffs:
+  - label: Address Feedback
+    agent: pr-feedback
+    prompt: Address the PR feedback and review comments.
+    send: false
 tools:
   [
     "vscode",
@@ -117,6 +123,14 @@ refactor: extract validation logic into shared utility
 - Reference issue numbers if applicable: `fixes #123`
 - Don't commit unrelated changes together
 - Verify push succeeded before creating PR
+
+## Boundaries
+
+- ✅ **Always**: Run validation before committing, use conventional commit format
+- ✅ **Always**: Create feature branches, never commit to protected branches
+- ⚠️ **Ask first**: Force push, amend commits, delete branches
+- 🚫 **Never**: Delete, overwrite, or truncate files (except temp PR body file)
+- 🚫 **Never**: Commit code that fails validation
 
 ## Output
 

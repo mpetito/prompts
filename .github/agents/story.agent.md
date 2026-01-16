@@ -2,8 +2,14 @@
 name: story
 description: Create a new user story, issue, or bug in Azure DevOps
 model: Claude Sonnet 4.5 (copilot)
-agent: agent
 argument-hint: Describe the feature, issue, or bug to create
+infer: true
+target: vscode
+handoffs:
+  - label: Plan Implementation
+    agent: plan
+    prompt: Create an implementation plan for the user story created above.
+    send: false
 tools:
   ["vscode", "execute", "read", "search", "agent", "todo", "azure-devops/*"]
 ---
@@ -285,6 +291,14 @@ Also summarize:
 - The description that was set
 - The acceptance criteria (for User Story/Issue) or repro steps (for Bug)
 - Any design context added as a comment (if applicable)
+
+## Boundaries
+
+- ✅ **Always**: Ask clarifying questions for missing information
+- ✅ **Always**: Use specific, measurable acceptance criteria
+- ⚠️ **Ask first**: Estimate story points above 8 (should consider splitting)
+- 🚫 **Never**: Create work items with vague acceptance criteria
+- 🚫 **Never**: Assume user type, benefit, or scope when unclear
 
 ## User Input
 

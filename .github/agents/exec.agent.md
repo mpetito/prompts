@@ -2,8 +2,18 @@
 name: exec
 description: Execute comprehensive implementation tasks end-to-end
 model: Claude Opus 4.5 (copilot)
-agent: agent
 argument-hint: Describe the feature to implement (or leave blank if using /refine output)
+infer: true
+target: vscode
+handoffs:
+  - label: Review Changes
+    agent: review
+    prompt: Review the implementation changes above for correctness and quality.
+    send: false
+  - label: Commit & PR
+    agent: commit
+    prompt: Commit the implementation and create a pull request.
+    send: false
 tools:
   [
     "vscode",
@@ -264,6 +274,14 @@ Follow these guidelines for clarity, pragmatism, and maintainable code. Make sur
 - Ensure all new code is properly typed; avoid `any` types and non-null assertions
 - Run the test suite after implementation to verify nothing is broken
 - **Persistence**: Your context window will be automatically compacted as it approaches its limit. Do not stop tasks early due to token budget concerns. Save progress to memory/todo list if needed, but complete the task fully. After summarization, revisit original specifications or planning documents to refresh your memory and maintain alignment with requirements.
+
+## Boundaries
+
+- ✅ **Always**: Delegate to specialist subagents, run tests, validate changes
+- ✅ **Always**: Use CLI for package operations, follow coding standards
+- ⚠️ **Ask first**: Delete files, modify CI/CD configuration, change project structure
+- 🚫 **Never**: Commit directly to protected branches
+- 🚫 **Never**: Skip testing phase or ignore failing tests
 
 ## Output
 

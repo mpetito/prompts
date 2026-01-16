@@ -1,9 +1,15 @@
 ---
 name: pr-resolve
 description: Reply to and resolve PR review threads using github-pr-review-tools
-model: GPT-5.1-Codex-Max (copilot)
-agent: agent
+model: GPT-5.2-Codex (copilot)
 argument-hint: Optional thread IDs or feedback to focus on
+infer: true
+target: vscode
+handoffs:
+  - label: Push Changes
+    agent: commit
+    prompt: Push the changes and update the PR.
+    send: false
 tools:
   [
     "vscode",
@@ -212,6 +218,14 @@ Include the detailed table if it helps clarity, but feel free to be conversation
 - Reply before resolving; explain the change.
 - Resolve only when fixed/obsolete; leave design discussions for reviewer.
 - Keep replies concise; reference commit SHAs; be professional.
+
+## Boundaries
+
+- ✅ **Always**: Reply before resolving, reference commit SHAs
+- ✅ **Always**: Leave design discussions for reviewer to close
+- ⚠️ **Ask first**: Resolve threads for non-trivial feedback
+- 🚫 **Never**: Resolve threads without verifying the fix is pushed
+- 🚫 **Never**: Be dismissive or unprofessional in responses
 
 ## User Input
 
