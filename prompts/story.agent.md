@@ -187,13 +187,13 @@ Use `azure-devops/wit_create_work_item` with the appropriate fields for the work
     {
       "name": "System.Description",
       "value": "<description>",
-      "format": "Html"
+      "format": "Markdown"
     },
     { "name": "Microsoft.VSTS.Scheduling.StoryPoints", "value": "<points>" },
     {
       "name": "Microsoft.VSTS.Common.AcceptanceCriteria",
       "value": "<criteria>",
-      "format": "Html"
+      "format": "Markdown"
     },
     { "name": "System.IterationPath", "value": "<project>\\<sprint-path>" }
   ]
@@ -211,12 +211,12 @@ Use `azure-devops/wit_create_work_item` with the appropriate fields for the work
     {
       "name": "Microsoft.VSTS.TCM.ReproSteps",
       "value": "<repro-steps>",
-      "format": "Html"
+      "format": "Markdown"
     },
     {
       "name": "Microsoft.VSTS.TCM.SystemInfo",
       "value": "<system-info>",
-      "format": "Html"
+      "format": "Markdown"
     },
     { "name": "Microsoft.VSTS.Common.Severity", "value": "2 - High" },
     { "name": "Microsoft.VSTS.Common.Priority", "value": "2" },
@@ -225,7 +225,7 @@ Use `azure-devops/wit_create_work_item` with the appropriate fields for the work
 }
 ```
 
-**Note**: Format rich text fields (Description, AcceptanceCriteria, ReproSteps, SystemInfo) as HTML for proper rendering in Azure DevOps.
+**Note**: Format rich text fields (Description, AcceptanceCriteria, ReproSteps, SystemInfo) as Markdown for proper rendering in Azure DevOps.
 
 ### 5. Add Design Context Comment (If Applicable)
 
@@ -239,7 +239,7 @@ If the user provided significant design considerations, architectural context, i
   "project": "<project-name>",
   "workItemId": <work-item-id>,
   "comment": "<design-context>",
-  "format": "html"
+  "format": "markdown"
 }
 ```
 
@@ -255,24 +255,66 @@ If the user provided significant design considerations, architectural context, i
 
 **Format the comment with a clear heading**:
 
-```html
-<h3>Design Context</h3>
-<p>[Design considerations and context here]</p>
+```markdown
+### Design Context
+
+[Design considerations and context here]
 ```
 
-## HTML Formatting for Azure DevOps
+## Markdown Formatting for Azure DevOps
 
-Convert markdown to HTML for rich text fields:
+### Formatting Requirements
 
-| Markdown     | HTML                     |
-| ------------ | ------------------------ |
-| `**bold**`   | `<strong>bold</strong>`  |
-| `*italic*`   | `<em>italic</em>`        |
-| `- item`     | `<ul><li>item</li></ul>` |
-| `1. item`    | `<ol><li>item</li></ol>` |
-| `` `code` `` | `<code>code</code>`      |
-| `## Heading` | `<h2>Heading</h2>`       |
-| Line break   | `<br>`                   |
+1. **Use Markdown format** for all rich text fields (Description, AcceptanceCriteria, ReproSteps, SystemInfo):
+   - When creating work items via `wit_create_work_item`, specify `"format": "Markdown"` on each rich text field
+   - When updating work items, use `wit_update_work_items_batch` which supports the `format` parameter
+
+2. **No bold fragments** - Avoid using `**bold**` or `<strong>` within sentences for emphasis. Use headers and plain text for emphasis instead.
+
+3. **Acceptance Criteria Structure** - Use numbered section headers with checklists:
+
+   ```markdown
+   ### 1. Category Name
+
+   - [ ] First criterion
+   - [ ] Second criterion
+
+   ### 2. Another Category
+
+   - [ ] Third criterion
+   - [ ] Fourth criterion
+   ```
+
+4. **Description Structure** - Use plain paragraphs with markdown headers for sections:
+
+   ```markdown
+   As a [user], I want [action] so that [benefit].
+
+   #### Additional Context
+
+   - Bullet point context
+   - Another point
+
+   #### Dependencies
+
+   Related items or references.
+   ```
+
+### API Usage Notes
+
+- **Creating work items**: Use `wit_create_work_item` with `"format": "Markdown"` on each field object
+- **Updating work items**: Prefer `wit_update_work_items_batch` over `wit_update_work_item` because it supports the `format` parameter
+- **Known limitation**: Field formats cannot be changed unless the content of the field also changes
+
+### Example Field Specification
+
+```json
+{
+  "name": "Microsoft.VSTS.Common.AcceptanceCriteria",
+  "value": "## 1. Validation\n\n- [ ] Input is validated\n- [ ] Errors display correctly\n\n## 2. Testing\n\n- [ ] Unit tests pass",
+  "format": "Markdown"
+}
+```
 
 ## Output
 
