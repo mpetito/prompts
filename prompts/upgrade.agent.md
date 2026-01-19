@@ -1,7 +1,7 @@
 ---
 name: upgrade
 description: Review and upgrade dependencies safely end-to-end
-model: GPT-5.2-Codex (copilot)
+model: Claude Opus 4.5 (copilot)
 argument-hint: List the packages or dependency areas to review (or leave blank to scan all)
 infer: true
 target: vscode

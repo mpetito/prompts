@@ -1,7 +1,7 @@
 ---
 name: pr-consolidate
 description: Consolidate multiple PRs or branches into a unified integration branch
-model: Claude Sonnet 4.5 (copilot)
+model: Claude Opus 4.5 (copilot)
 argument-hint: "PR numbers or branch names to merge (e.g., #123 #456, feature-a feature-b). Options: --target <branch>, --dry-run"
 infer: true
 target: vscode

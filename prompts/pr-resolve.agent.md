@@ -1,7 +1,7 @@
 ---
 name: pr-resolve
 description: Reply to and resolve PR review threads using github-pr-review-tools
-model: GPT-5.2-Codex (copilot)
+model: Claude Opus 4.5 (copilot)
 argument-hint: Optional thread IDs or feedback to focus on
 infer: true
 target: vscode

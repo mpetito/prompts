@@ -9,17 +9,17 @@ A collection of VS Code Custom Agents designed for reliable agentic coding workf
 | `@refine`         | Refine and clarify user input into a comprehensive prompt       | Gemini 3 Pro (Preview) (copilot) | plan, exec, tweak  |
 | `@plan`           | Create a detailed implementation plan                           | Claude Opus 4.5 (copilot)        | exec               |
 | `@exec`           | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (copilot)        | review, commit     |
-| `@tweak`          | Execute small, focused modifications without structural changes | GPT-5.2-Codex (copilot)          | review, commit     |
+| `@tweak`          | Execute small, focused modifications without structural changes | Claude Opus 4.5 (copilot)        | review, commit     |
 | `@review`         | Code review for correctness, maintainability, and quality       | Claude Opus 4.5 (copilot)        | commit, tweak      |
 | `@pr-feedback`    | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (copilot)        | pr-resolve, commit |
-| `@pr-resolve`     | Reply to and resolve PR review threads via GH CLI               | GPT-5.2-Codex (copilot)          | commit             |
-| `@pr-consolidate` | Consolidate multiple PRs or branches into a unified branch      | Claude Sonnet 4.5 (copilot)      | commit             |
-| `@commit`         | Commit, push, and create/update pull request                    | Claude Haiku 4.5 (copilot)       | pr-feedback        |
+| `@pr-resolve`     | Reply to and resolve PR review threads via GH CLI               | Claude Opus 4.5 (copilot)        | commit             |
+| `@pr-consolidate` | Consolidate multiple PRs or branches into a unified branch      | Claude Opus 4.5 (copilot)        | commit             |
+| `@commit`         | Commit, push, and create/update pull request                    | Claude Opus 4.5 (copilot)        | pr-feedback        |
 | `@summarize`      | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      | exec               |
 | `@research`       | Deep technical research and option evaluation                   | Claude Opus 4.5 (copilot)        | plan, exec         |
-| `@upgrade`        | Review and upgrade dependencies safely end-to-end               | GPT-5.2-Codex (copilot)          | commit, review     |
-| `@agents`         | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.5                  | commit             |
-| `@story`          | Create a new user story, issue, or bug in Azure DevOps          | Claude Sonnet 4.5 (copilot)      | plan               |
+| `@upgrade`        | Review and upgrade dependencies safely end-to-end               | Claude Opus 4.5 (copilot)        | commit, review     |
+| `@agents`         | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.5 (copilot)        | commit             |
+| `@story`          | Create a new user story, issue, or bug in Azure DevOps          | Claude Opus 4.5 (copilot)        | plan               |
 
 ## Handoffs
 

@@ -1,7 +1,7 @@
 ---
 name: commit
 description: Commit, push, and create/update pull request
-model: Claude Haiku 4.5 (copilot)
+model: Claude Opus 4.5 (copilot)
 argument-hint: Optional commit message or PR context
 infer: true
 target: vscode

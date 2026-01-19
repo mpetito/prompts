@@ -1,7 +1,7 @@
 ---
 name: story
 description: Create a new user story, issue, or bug in Azure DevOps
-model: Claude Sonnet 4.5 (copilot)
+model: Claude Opus 4.5 (copilot)
 argument-hint: Describe the feature, issue, or bug to create
 infer: true
 target: vscode
