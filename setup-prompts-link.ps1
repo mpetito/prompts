@@ -4,7 +4,7 @@
 
 # Get the script's directory (repository root)
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sourcePrompts = Join-Path $repoRoot ".github\prompts"
+$sourcePrompts = Join-Path $repoRoot "./prompts"
 
 # Define the VS Code Insiders user prompts folder
 $userPromptsFolder = Join-Path $env:APPDATA "Code - Insiders\User\prompts"
