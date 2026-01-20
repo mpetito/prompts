@@ -200,9 +200,9 @@ When converting to a skill:
 
 ## Open Questions
 
-1. **Prompt tool access**: Should prompts specify `agent: exec` to get implementation tools, or remain tool-agnostic?
-2. **Skill preview**: Comfortable enabling `chat.useAgentSkills` preview setting?
-3. **Handoff replacement**: For converted prompts, add "Next Steps" section to guide users, or trust they know the workflow?
+1. **Prompt tool access**: Should prompts specify `agent: exec` to get implementation tools, or remain tool-agnostic? Remain agnostic.
+2. **Skill preview**: Comfortable enabling `chat.useAgentSkills` preview setting? Already enabled.
+3. **Handoff replacement**: For converted prompts, add "Next Steps" section to guide users, or trust they know the workflow? Trust.
 
 ## References
 

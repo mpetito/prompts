@@ -10,10 +10,6 @@ handoffs:
     agent: review
     prompt: Review the implementation changes above for correctness and quality.
     send: false
-  - label: Commit & PR
-    agent: commit
-    prompt: Commit the implementation and create a pull request.
-    send: false
 tools:
   [
     "vscode",

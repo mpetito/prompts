@@ -5,15 +5,6 @@ model: Claude Opus 4.5 (copilot)
 argument-hint: Optional focus areas or context for the review
 infer: true
 target: vscode
-handoffs:
-  - label: Commit & PR
-    agent: commit
-    prompt: Commit the reviewed changes and create a pull request.
-    send: false
-  - label: Fix Issues
-    agent: tweak
-    prompt: Address the issues identified in the review above.
-    send: false
 tools:
   [
     "vscode",
@@ -69,6 +60,16 @@ When reviews are complex or findings extensive, subagents can create markdown do
 ## Review Scope
 
 Review what was just implemented or what is currently staged in git. Use `#changes` to see the current diff.
+
+### PR Context Check
+
+Before starting the review, check for open PR context:
+
+1. **Check for active PR**: Use `#activePullRequest` or `#openPullRequest` to identify if changes are part of a PR
+2. **Fetch existing feedback**: If a PR exists, use `get_pull_request_threads` to retrieve any existing review comments
+3. **Consider PR feedback**: Incorporate any outstanding review comments into your review scope
+
+Reference the **pr-management** skill for detailed PR tool usage.
 
 ## Review Criteria (Delegated)
 
@@ -221,7 +222,7 @@ Verify:
 - ✅ **Always**: Fix minor issues directly (typos, formatting)
 - ⚠️ **Ask first**: Major rewrites or architectural changes
 - 🚫 **Never**: Approve code with critical issues or failing tests
-- 🚫 **Never**: Commit or push changes—leave that to @commit
+- 🚫 **Never**: Commit or push changes—leave that to a separate commit prompt
 
 ## User Input
 
