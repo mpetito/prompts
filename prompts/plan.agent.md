@@ -20,6 +20,7 @@ tools:
     "web",
     "agent",
     "todo",
+    "askQuestions",
     "perplexity/*",
     "docs-context7/*",
     "docs-langchain/*",
