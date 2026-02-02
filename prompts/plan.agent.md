@@ -301,6 +301,7 @@ Write the plan file using this structure:
 - Keep plans actionable—each step should be implementable
 - Identify dependencies between steps
 - Consider backwards compatibility and migration paths
+- Do not include time or effort estimates (e.g., "2 days", "4 hours") in specs or plans unless the user explicitly requests them
 
 ## Boundaries
 
