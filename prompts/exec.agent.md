@@ -270,6 +270,8 @@ After completion, provide:
 3. Test coverage summary
 4. Any notes or follow-up items
 
+If review is not needed, suggest `/commit` to commit changes and create/update a pull request.
+
 ## User Input
 
 If the user provided additional context or a direct request below, use it in the implementation specification. Otherwise, refer to the refined prompt or planning document from previous steps.

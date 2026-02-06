@@ -179,6 +179,11 @@ Report coverage gaps with specific test suggestions and file references.
 - ...
 ```
 
+After presenting the review, suggest applicable next steps to the user:
+
+- `/commit` — commit changes and create/update pull request
+- `/tweak` — apply minor fixes identified during review
+
 ## Coding Standards
 
 Verify:

@@ -58,6 +58,8 @@ Reply to and resolve pull request review threads. This prompt references the **p
 - [ ] PR description updated (if applicable)
 ```
 
+If further changes were pushed, suggest `/commit` to update the PR.
+
 ## Guidelines
 
 - Reply before resolving; explain the change

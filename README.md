@@ -1,35 +1,46 @@
-# Agentic Coding Agents
+# Agentic Coding Toolkit
 
-A collection of VS Code Custom Agents designed for reliable agentic coding workflows with seamless handoffs between specialized agents.
+A collection of VS Code custom agents, prompts, and skills for reliable agentic coding workflows.
 
 ## Agents
 
-| Agent             | Purpose                                                         | Model                            | Handoffs To        |
-| ----------------- | --------------------------------------------------------------- | -------------------------------- | ------------------ |
-| `@refine`         | Refine and clarify user input into a comprehensive prompt       | Gemini 3 Pro (Preview) (copilot) | plan, exec, tweak  |
-| `@plan`           | Create a detailed implementation plan                           | Claude Opus 4.6 (copilot)        | exec               |
-| `@exec`           | Execute comprehensive implementations end-to-end                | Claude Opus 4.6 (copilot)        | review, commit     |
-| `@tweak`          | Execute small, focused modifications without structural changes | Claude Opus 4.6 (copilot)        | review, commit     |
-| `@review`         | Code review for correctness, maintainability, and quality       | Claude Opus 4.6 (copilot)        | commit, tweak      |
-| `@pr-feedback`    | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.6 (copilot)        | pr-resolve, commit |
-| `@pr-resolve`     | Reply to and resolve PR review threads via GH CLI               | Claude Opus 4.6 (copilot)        | commit             |
-| `@pr-consolidate` | Consolidate multiple PRs or branches into a unified branch      | Claude Opus 4.6 (copilot)        | commit             |
-| `@commit`         | Commit, push, and create/update pull request                    | Claude Opus 4.6 (copilot)        | pr-feedback        |
-| `@summarize`      | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      | exec               |
-| `@research`       | Deep technical research and option evaluation                   | Claude Opus 4.6 (copilot)        | plan, exec         |
-| `@upgrade`        | Review and upgrade dependencies safely end-to-end               | Claude Opus 4.6 (copilot)        | commit, review     |
-| `@agents`         | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.6 (copilot)        | commit             |
-| `@story`          | Create a new user story, issue, or bug in Azure DevOps          | Claude Opus 4.6 (copilot)        | plan               |
+Specialized AI personas with tool access, model selection, and handoffs. Switch agents via the agent picker in Copilot Chat.
 
-## Handoffs
+| Agent         | Purpose                                                        | Handoffs To |
+| ------------- | -------------------------------------------------------------- | ----------- |
+| `@exec`       | Execute comprehensive implementation tasks end-to-end          | review      |
+| `@plan`       | Create a detailed implementation plan with research            | exec        |
+| `@research`   | Deep technical research and option evaluation                  | plan, exec  |
+| `@review`     | Code review for correctness, maintainability, and quality      | —           |
+| `@agentic-dx` | Analyze codebases and create/update AGENTS.md, prompts, skills | —           |
 
-Agents now support **handoffs**—interactive buttons that appear after an agent completes, allowing you to seamlessly transition to the next agent in the workflow with pre-filled context. This enables guided, step-by-step development flows.
+## Prompts
 
-Example handoff flow:
+Reusable task templates invoked on-demand via `/name` in chat. Run within any agent session.
 
-```
-@refine → [Create Plan] → @plan → [Implement Plan] → @exec → [Review Changes] → @review → [Commit & PR] → @commit
-```
+| Prompt            | Purpose                                                                |
+| ----------------- | ---------------------------------------------------------------------- |
+| `/refine`         | Refine and clarify user input into a comprehensive prompt              |
+| `/commit`         | Commit changes with conventional messages and create/update PR         |
+| `/tweak`          | Execute small, focused modifications without structural changes        |
+| `/summarize`      | Compress conversation history into an actionable summary               |
+| `/story`          | Create a new user story, issue, or bug in Azure DevOps                 |
+| `/upgrade`        | Review and upgrade outdated dependencies safely                        |
+| `/pr-feedback`    | Address PR feedback from reviews, CI, and code analysis tools          |
+| `/pr-resolve`     | Reply to and resolve PR review threads                                 |
+| `/pr-consolidate` | Consolidate multiple PRs or branches into a unified integration branch |
+
+## Skills
+
+Auto-discovered procedures loaded on-demand when relevant to the user's task. Stored in `skills/` and symlinked to `~/.copilot/skills/`.
+
+| Skill             | Purpose                                                         |
+| ----------------- | --------------------------------------------------------------- |
+| `agent-authoring` | Methodology for creating AGENTS.md and SKILL.md files           |
+| `pr-management`   | PR review lifecycle: feedback, thread resolution, consolidation |
+| `research`        | Deep technical research using Perplexity and documentation      |
+| `story-writing`   | User story and work item creation for Azure DevOps              |
+| `upgrade`         | Dependency upgrade workflow with validation                     |
 
 ## Fragments
 
@@ -39,87 +50,77 @@ Reusable prompt fragments for specialized workflows:
 | --------------------- | ----------------------------------------------- |
 | `snyk-upgrade-review` | Review and complete Snyk dependency upgrade PRs |
 
-## Workflow
+## Workflows
 
 ### Standard Feature Development
 
 ```
-@refine → @plan → @exec → @review → @commit
+/refine → @plan → @exec → @review → /commit
 ```
 
-1. **Refine**: Start with your idea, get clarifying questions answered → click **"Create Plan"**
-2. **Plan**: Generate a detailed implementation plan with research → click **"Implement Plan"**
-3. **Exec**: Implement the feature completely with tests → click **"Review Changes"**
-4. **Review**: Get a senior engineer review of the code → click **"Commit & PR"**
-5. **Commit**: Create branch, commit, and open PR
+1. **Refine** (`/refine`): Clarify requirements and generate a comprehensive prompt
+2. **Plan** (`@plan`): Generate a detailed implementation plan → handoff to exec
+3. **Exec** (`@exec`): Implement the feature with tests → handoff to review
+4. **Review** (`@review`): Code review for correctness and quality
+5. **Commit** (`/commit`): Create branch, commit, and open PR
 
 ### PR Feedback Loop
 
-After receiving review feedback:
-
 ```
-@pr-feedback → @pr-resolve
+/pr-feedback → /pr-resolve → /commit
 ```
 
-1. **Feedback**: Address all review comments locally → click **"Resolve Threads"**
-2. **Resolve**: Reply to and resolve threads, then push
+1. **Feedback** (`/pr-feedback`): Address review comments locally
+2. **Resolve** (`/pr-resolve`): Reply to and resolve threads, then push
+3. **Commit** (`/commit`): Push changes and update PR
 
 Repeat until approved.
 
 ### Quick Fixes
 
 ```
-@refine → @tweak → @commit
+/refine → /tweak → /commit
 ```
 
-Or for obvious changes:
-
-```
-@tweak → @commit
-```
+Or for obvious changes: `/tweak` → `/commit`
 
 ### Direct Implementation (Clear Requirements)
 
 ```
-@exec → @review → @commit
+@exec → @review → /commit
+```
+
+### Dependency Upgrade
+
+```
+/upgrade → /commit
 ```
 
 ### Branch Consolidation
 
-When merging multiple PRs or agent branches:
-
 ```
-@pr-consolidate → @commit
+/pr-consolidate → /commit
 ```
-
-1. **Consolidate**: Merge multiple PRs/branches, resolve conflicts → click **"Commit & PR"**
-2. **Commit**: Create unified PR with references to closed PRs
-
-Use cases:
-
-- Merge overlapping PRs before review
-- Combine independent agent work
-- Incorporate PR dependencies into current branch
 
 ## Setup
 
-1. Ensure VS Code 1.106+ (custom agents support)
-2. Copy the `.github/agents/` folder to your project root
-3. Agents will appear in the agents dropdown in Copilot Chat (use `@agent-name`)
+1. Ensure VS Code 1.106+ with GitHub Copilot
+2. Run `setup-prompts-link.ps1` (as Admin or with Developer Mode enabled) to symlink:
+   - `prompts/` → VS Code user prompts folder
+   - `skills/` → `~/.copilot/skills/`
+3. Agents appear in the agent picker; prompts are invoked via `/name` in chat
 
 ## Customization
 
 ### Model Selection
 
-Update the `model` field in each agent's frontmatter to match your preferred model IDs.
+Update the `model` field in each agent's YAML frontmatter.
 
 ### Tools
 
-MCP tools (Context7, Perplexity, GitHub) are referenced in agents that benefit from research capabilities. If you don't have these configured, remove those tool references—the agents will still work with reduced functionality.
+MCP tools (Context7, Perplexity, GitHub) are referenced in agents that benefit from research capabilities. Remove those tool references if not configured—agents still work with reduced functionality.
 
-### Handoffs
-
-Customize handoffs in the YAML frontmatter of each agent:
+### Handoffs (Agents only)
 
 ```yaml
 handoffs:
@@ -127,14 +128,6 @@ handoffs:
     agent: target-agent-name
     prompt: Context to pass to the next agent.
     send: false # true = auto-submit, false = pre-fill only
-```
-
-### Extending Agents
-
-You can reference shared instructions using Markdown links:
-
-```markdown
-See [coding-standards](../instructions/coding-standards.md) for style guidelines.
 ```
 
 ## Requirements

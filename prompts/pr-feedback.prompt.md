@@ -50,6 +50,11 @@ Resolve pull request feedback systematically. This prompt references the **pr-ma
 **Ready to commit, push, and respond?**
 ```
 
+After the user confirms, suggest next steps:
+
+- `/pr-resolve` — reply to and resolve PR review threads
+- `/commit` — commit, push, and update the PR
+
 ## Guidelines
 
 - Ask first, code second—don't guess intent

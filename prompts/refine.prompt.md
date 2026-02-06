@@ -61,7 +61,7 @@ Output **ONLY** the refined prompt content:
 
 - ✅ Read files, search codebase, research documentation
 - ✅ Produce structured, actionable specifications
-- 🚫 Do not implement code directly—hand off to @exec or @tweak
+- 🚫 Do not implement code directly—hand off to @exec or /tweak
 - 🚫 Do not make architectural decisions without explicit input
 
 ## User Input
