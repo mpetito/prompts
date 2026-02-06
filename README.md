@@ -7,19 +7,19 @@ A collection of VS Code Custom Agents designed for reliable agentic coding workf
 | Agent             | Purpose                                                         | Model                            | Handoffs To        |
 | ----------------- | --------------------------------------------------------------- | -------------------------------- | ------------------ |
 | `@refine`         | Refine and clarify user input into a comprehensive prompt       | Gemini 3 Pro (Preview) (copilot) | plan, exec, tweak  |
-| `@plan`           | Create a detailed implementation plan                           | Claude Opus 4.5 (copilot)        | exec               |
-| `@exec`           | Execute comprehensive implementations end-to-end                | Claude Opus 4.5 (copilot)        | review, commit     |
-| `@tweak`          | Execute small, focused modifications without structural changes | Claude Opus 4.5 (copilot)        | review, commit     |
-| `@review`         | Code review for correctness, maintainability, and quality       | Claude Opus 4.5 (copilot)        | commit, tweak      |
-| `@pr-feedback`    | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.5 (copilot)        | pr-resolve, commit |
-| `@pr-resolve`     | Reply to and resolve PR review threads via GH CLI               | Claude Opus 4.5 (copilot)        | commit             |
-| `@pr-consolidate` | Consolidate multiple PRs or branches into a unified branch      | Claude Opus 4.5 (copilot)        | commit             |
-| `@commit`         | Commit, push, and create/update pull request                    | Claude Opus 4.5 (copilot)        | pr-feedback        |
+| `@plan`           | Create a detailed implementation plan                           | Claude Opus 4.6 (copilot)        | exec               |
+| `@exec`           | Execute comprehensive implementations end-to-end                | Claude Opus 4.6 (copilot)        | review, commit     |
+| `@tweak`          | Execute small, focused modifications without structural changes | Claude Opus 4.6 (copilot)        | review, commit     |
+| `@review`         | Code review for correctness, maintainability, and quality       | Claude Opus 4.6 (copilot)        | commit, tweak      |
+| `@pr-feedback`    | Address PR feedback from reviews, CI, and analysis tools        | Claude Opus 4.6 (copilot)        | pr-resolve, commit |
+| `@pr-resolve`     | Reply to and resolve PR review threads via GH CLI               | Claude Opus 4.6 (copilot)        | commit             |
+| `@pr-consolidate` | Consolidate multiple PRs or branches into a unified branch      | Claude Opus 4.6 (copilot)        | commit             |
+| `@commit`         | Commit, push, and create/update pull request                    | Claude Opus 4.6 (copilot)        | pr-feedback        |
 | `@summarize`      | Compress conversation history into an actionable summary        | Claude Sonnet 4.5 (copilot)      | exec               |
-| `@research`       | Deep technical research and option evaluation                   | Claude Opus 4.5 (copilot)        | plan, exec         |
-| `@upgrade`        | Review and upgrade dependencies safely end-to-end               | Claude Opus 4.5 (copilot)        | commit, review     |
-| `@agents`         | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.5 (copilot)        | commit             |
-| `@story`          | Create a new user story, issue, or bug in Azure DevOps          | Claude Opus 4.5 (copilot)        | plan               |
+| `@research`       | Deep technical research and option evaluation                   | Claude Opus 4.6 (copilot)        | plan, exec         |
+| `@upgrade`        | Review and upgrade dependencies safely end-to-end               | Claude Opus 4.6 (copilot)        | commit, review     |
+| `@agents`         | Analyze codebase and create/update AGENTS.md and SKILL.md files | Claude Opus 4.6 (copilot)        | commit             |
+| `@story`          | Create a new user story, issue, or bug in Azure DevOps          | Claude Opus 4.6 (copilot)        | plan               |
 
 ## Handoffs
 
@@ -140,5 +140,5 @@ See [coding-standards](../instructions/coding-standards.md) for style guidelines
 ## Requirements
 
 - VS Code 1.106+ with GitHub Copilot
-- Recommended: Claude Opus 4.5 access (for `@exec` and `@review`)
+- Recommended: Claude Opus 4.6 access (for `@exec` and `@review`)
 - Optional: MCP servers (Context7, Perplexity, GitHub)

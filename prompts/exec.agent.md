@@ -1,7 +1,7 @@
 ---
 name: exec
 description: Execute comprehensive implementation tasks end-to-end
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Describe the feature to implement (or leave blank if using /refine output)
 target: vscode
 handoffs:

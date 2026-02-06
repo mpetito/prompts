@@ -1,7 +1,7 @@
 ---
 name: research
 description: Deep technical research and option evaluation using Perplexity and documentation sources
-model: Claude Opus 4.5 (copilot)
+model: Claude Opus 4.6 (copilot)
 argument-hint: Topic, API, library, or technical question to research
 target: vscode
 handoffs:
