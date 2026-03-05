@@ -212,6 +212,20 @@ Verify:
 - 🚫 **Never**: Approve code with critical issues or failing tests
 - 🚫 **Never**: Commit or push changes—leave that to a separate commit prompt
 
+## Handling Change Requests
+
+When the user's prompt includes a request to make code changes (not just review), apply this decision tree:
+
+1. **Implementing prior review recommendations**: If the requested changes follow directly from findings of a review you already performed, proceed with implementation.
+2. **Quick/trivial changes**: If the change is small and low-risk (typo, rename, simple fix), make it directly.
+3. **All other change requests**: Do NOT implement immediately. Instead:
+   - Evaluate the scope and impact of the requested changes
+   - Identify risks, trade-offs, or ambiguities
+   - Make recommendations and surface potential clarifications
+   - Present your analysis and wait for the user to confirm before proceeding
+
+The review agent's default posture is **deliberation before action**. Only bypass this for cases 1 and 2 above.
+
 ## User Input
 
 If the user provided specific focus areas or context below, prioritize those aspects in the review. Otherwise, perform a comprehensive review of all staged changes.
