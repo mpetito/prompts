@@ -97,6 +97,8 @@ git push -u origin <branch-name>
 
 ### 6. Create/Update PR
 
+When authoring or updating a PR description, follow the [`pr-authoring`](../skills/pr-authoring/SKILL.md) skill — concise summary with motivation, grouped by area not file, concrete validation, work item references in the body.
+
 **If no PR exists:**
 
 - Create `.github/.pr-body.md` with PR description

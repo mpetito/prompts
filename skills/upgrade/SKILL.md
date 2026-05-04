@@ -1,6 +1,6 @@
 ---
 name: upgrade
-description: "Use when user asks to upgrade dependencies, update packages, review outdated libraries, or resolve security vulnerabilities. Covers dependency analysis, breaking change research, incremental implementation, and validation for npm, dotnet, and other ecosystems."
+description: "Procedural knowledge for safely upgrading dependencies across ecosystems with proper research, risk assessment, and validation. Use when upgrading dependencies, updating packages, reviewing outdated libraries, or resolving security vulnerabilities."
 ---
 
 # Dependency Upgrade Skill

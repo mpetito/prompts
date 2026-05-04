@@ -32,7 +32,7 @@ The best way to communicate between subagents is through the file system. Subage
 
 **File-based handoff pattern**:
 
-1. **Create handoff documents**: When a subagent produces analysis, research, or findings that will be consumed by another subagent, instruct it to write a markdown file (e.g., `specs/{spec-name}/research-findings.md`, `specs/{spec-name}/architecture-analysis.md`)
+1. **Create handoff documents**: When a subagent produces analysis, research, or findings that will be consumed by another subagent, instruct it to write a markdown file inside the spec folder (e.g., `specs/013-feature-name/research-findings.md`, `specs/013-feature-name/architecture-analysis.md`)
 2. **Reference in delegation**: Pass the file path to the next subagent so it can read the full context
 3. **Cleanup decision**: After all subagents complete, decide whether handoff documents should be kept (valuable reference) or removed (temporary scaffolding)
 
@@ -43,7 +43,7 @@ The best way to communicate between subagents is through the file system. Subage
 - Requirements analysis that feeds into spec creation
 - Any output too large or complex to pass inline in delegation prompts
 
-**Example**: After the Requirements Analyst produces findings, have them write to `specs/{spec-name}/requirements-analysis.md`. Then tell the Technical Specification Writer to read that file when creating the spec.
+**Example**: After the Requirements Analyst produces findings, have them write to `specs/013-feature-name/requirements-analysis.md`. Then tell the Technical Specification Writer to read that file when creating the spec.
 
 ## Context Sources (in priority order)
 
@@ -88,35 +88,61 @@ Report:
 2. For each: why it's blocking and what decision it unlocks
 ```
 
-### Phase 4: Produce Spec + Plan → Delegate to **Technical Specification Writer**
+### Phase 4: Write Spec → Delegate to **Specification Writer**
 
 ```
-Role: Technical Specification Writer
+Role: Specification Writer
 
-Synthesize all research findings and requirements into spec.md and plan.md files. Maximize your reasoning on document quality.
+Synthesize all research findings and requirements into a spec.md file. Maximize your reasoning on document quality.
 Context: [aggregated outputs from all previous phases]
 
 Requirements:
-- Ensure `specs/` exists at repo root; if missing, create
-- Choose next zero-padded prefix + kebab slug (e.g., next after existing `012-x` → `013-new-feature/`)
-- Inside, create `spec.md` and `plan.md` (speckit style) via `create_file` (or `apply_patch` if updating)
+- Determine the spec folder: scan `specs/` for existing numbered folders and choose the next zero-padded prefix + kebab slug (e.g., next after `012-x` → `013-new-feature/`)
+- Create `specs/{NNN-slug}/spec.md` via `create_file`
+- The spec defines WHAT must be built and WHY — requirements, constraints, decisions, and acceptance criteria
+- Any unresolved ambiguities must be captured in an "Open Questions" section
+- Do NOT include implementation details — those belong in the plan
+```
+
+### Phase 5: Evaluate Readiness → Coordinator Decision
+
+After the spec is written, review its Open Questions section:
+
+- **If blocking open questions exist**: Stop here. Present the open questions to the user for resolution before creating a plan. A plan built on unresolved ambiguities risks rework.
+- **If no blocking questions** (or only minor/low-risk uncertainties): Proceed immediately to Phase 6.
+
+### Phase 6: Write Plan → Delegate to **Plan Writer**
+
+```
+Role: Plan Writer
+
+Create a plan.md implementation roadmap based on the spec. Maximize your reasoning on actionability and completeness.
+Context: Read `specs/{NNN-slug}/spec.md` and all research/analysis documents in that folder.
+
+Requirements:
+- Create `specs/{NNN-slug}/plan.md` via `create_file`
+- The plan defines HOW to implement the spec — phases, steps, file changes, and verification
+- Every requirement and acceptance criterion in the spec must be addressed by at least one step
+- Steps must be specific and actionable (name files, components, functions)
+- Group steps into logical phases with verification checkpoints
 ```
 
 ## Subagent Delegation Table
 
 Use `runSubagent` to delegate analysis/research. Always specify the role explicitly to focus each subagent:
 
-| Scenario                          | Subagent Role                  | Task Description                    | What to Request Back                              |
-| --------------------------------- | ------------------------------ | ----------------------------------- | ------------------------------------------------- |
-| **Understand request**            | Requirements Analyst           | Decompose and analyze requirements  | Objectives, assumptions, ambiguities, scope       |
-| **Architecture analysis**         | Codebase Architect             | Map folders/modules/patterns        | Architecture summary and key abstractions         |
-| **Pattern discovery**             | Pattern Discovery Specialist   | Find similar features/patterns      | Files, reusable code, conventions                 |
-| **Dependency analysis**           | Dependency Analyst             | Map dependencies/integration points | Dependency graph, affected files/risks            |
-| **API/Library research**          | API Research Specialist        | Deep-dive relevant docs             | APIs, examples, constraints                       |
-| **Similar implementation search** | Implementation Analyst         | Locate similar implementations      | Patterns, structure, test strategies              |
-| **Impact assessment**             | Impact Assessment Analyst      | Identify affected code and risks    | Affected files, breaking-change risks, migrations |
-| **Clarification drafting**        | Clarification Specialist       | Formulate blocking questions        | Numbered questions with rationale                 |
-| **Spec/Plan creation**            | Technical Specification Writer | Write spec.md and plan.md           | Complete specification and plan documents         |
+| Scenario                          | Subagent Role                | Task Description                    | What to Request Back                                |
+| --------------------------------- | ---------------------------- | ----------------------------------- | --------------------------------------------------- |
+| **Understand request**            | Requirements Analyst         | Decompose and analyze requirements  | Objectives, assumptions, ambiguities, scope         |
+| **Architecture analysis**         | Codebase Architect           | Map folders/modules/patterns        | Architecture summary and key abstractions           |
+| **Pattern discovery**             | Pattern Discovery Specialist | Find similar features/patterns      | Files, reusable code, conventions                   |
+| **Dependency analysis**           | Dependency Analyst           | Map dependencies/integration points | Dependency graph, affected files/risks              |
+| **API/Library research**          | API Research Specialist      | Deep-dive relevant docs             | APIs, examples, constraints                         |
+| **Similar implementation search** | Implementation Analyst       | Locate similar implementations      | Patterns, structure, test strategies                |
+| **Impact assessment**             | Impact Assessment Analyst    | Identify affected code and risks    | Affected files, breaking-change risks, migrations   |
+| **Clarification drafting**        | Clarification Specialist     | Formulate blocking questions        | Numbered questions with rationale                   |
+| **Spec creation**                 | Specification Writer         | Write spec.md                       | Complete specification with requirements + criteria |
+| **Plan creation**                 | Plan Writer                  | Write plan.md                       | Implementation roadmap with phases + steps          |
 
 **Always delegate** codebase analysis, research, pattern discovery, and impact analysis to preserve your planning context; then synthesize findings into cohesive specifications.
 
@@ -179,78 +205,114 @@ Report:
 4. Integration test coverage gaps
 ```
 
-## Spec Location Rules
+## Spec Organization
 
-- Root folder: `specs/`
-- Subfolder naming: zero-padded numeric prefix + slug, e.g., `013-{spec-name}`
-- Files per spec: `spec.md` (problem & requirements) and `plan.md` (implementation plan)
-- Style reference: if similar specs exist (e.g., `specs/012-{spec-name}/spec.md`), consider similar structure, headings, and depth.
+Specs follow a lightweight speckit convention with two documents per feature:
+
+### Folder Structure
+
+```
+specs/
+  001-user-auth/
+    spec.md          # What to build and why
+    plan.md          # How to build it (phases + steps)
+  002-api-caching/
+    spec.md
+    plan.md
+  003-notification-service/
+    spec.md          # May exist without plan.md if open questions are unresolved
+```
+
+- **Root folder**: `specs/`
+- **Subfolder naming**: 3-digit zero-padded prefix + kebab-case slug (e.g., `013-feature-name`)
+- **Numbering**: Scan existing folders to determine the next sequential number
+- **Style reference**: If similar specs exist, match their structure, headings, and depth
+
+### Document Purposes
+
+| Document  | Purpose                              | Contains                                                                                                                                | Does NOT contain                                  |
+| --------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `spec.md` | Define **what** to build and **why** | Requirements (functional + non-functional), design constraints, acceptance criteria, scope, decisions, open questions                   | Implementation details, file paths, code patterns |
+| `plan.md` | Define **how** to build it           | Implementation phases, ordered steps with file/component targets, architecture decisions, file change manifest, testing strategy, risks | New requirements (those belong in the spec)       |
+
+### Spec → Plan Gating
+
+- `spec.md` is always created first
+- If the spec has **unresolved open questions** that could materially affect the plan, stop and surface them to the user
+- If all critical questions are resolved (or remaining uncertainty is low-risk), create `plan.md` immediately
 
 ## Output Format
 
-- **Clarifications Needed**: short numbered questions (no code block).
-- **Spec + Plan Created**: brief summary with paths to `spec.md`/`plan.md`, highlight goal/phases/key decisions.
+- **Spec Created (with open questions)**: Present the open questions for resolution. Include path to `spec.md`. Plan will be created after questions are answered.
+- **Spec + Plan Created**: Brief summary with paths to both files. Highlight goal, phases, and key decisions.
+- **Clarifications Needed** (pre-spec): Short numbered questions when the request itself is too ambiguous to even write a spec.
 
-## Spec File Template (speckit style)
+## Spec File Template
 
 ```markdown
-# Feature Specification: [Name]
+# Spec: [Name]
 
-**Branch**: `[branch-name]` | **Date**: [YYYY-MM-DD] | **Status**: Draft
-**Context**: [Short background and why now]
+**Date**: [YYYY-MM-DD] | **Status**: Draft
+
+## Context
+
+[Short background — what prompted this work and why now]
 
 ## Objective
 
-- [Primary objective]
+[Primary goal in 1-2 sentences]
 
 ## Scope
 
-- In scope: [items]
-- Out of scope: [items]
+### In Scope
 
-## Clarifications
+- [item]
 
-- Q: [question] → A: [answer]
+### Out of Scope
 
-## User Stories & Acceptance
-
-- Story: As a [role], I want [goal], so that [benefit].
-  - Acceptance: [bullets]
+- [item]
 
 ## Requirements
 
-- Functional: [bullets]
-- Non-Functional: [performance, reliability, security, observability]
+### Functional
 
-## Data & Interfaces
+- [requirement]
 
-- Inputs: [APIs, files]
-- Outputs: [artifacts, responses]
-- Contracts: [schemas, tool signatures]
+### Non-Functional
 
-## Risks & Mitigations
+- [performance, reliability, security, observability requirements]
 
-- [Risk] → [Mitigation]
+## Design Constraints
+
+- [Constraint and rationale — e.g., must use existing auth system, must support backwards compatibility]
+
+## Acceptance Criteria
+
+- [ ] [Criterion that can be verified]
+- [ ] [Criterion that can be verified]
+
+## Decisions
+
+| Decision | Choice   | Rationale |
+| -------- | -------- | --------- |
+| [Area]   | [Choice] | [Why]     |
 
 ## Open Questions
 
-- [Question]
+- [ ] [Question that must be resolved before or during planning]
+- [ ] [Question — include context on why it matters and what it blocks]
 ```
 
 ## Plan File Template
 
-Write the plan file using this structure:
-
 ```markdown
-# Implementation Plan: [Feature/Task Name]
+# Plan: [Feature/Task Name]
+
+**Spec**: [specs/NNN-slug/spec.md](specs/NNN-slug/spec.md) | **Date**: [YYYY-MM-DD]
 
 ## Summary
 
-[2-3 sentence overview of what will be implemented]
-
-## Research Findings
-
-[Key insights from documentation/research that inform the approach]
+[2-3 sentence overview of what will be implemented and the approach]
 
 ## Architecture Decisions
 
@@ -258,18 +320,19 @@ Write the plan file using this structure:
 | -------- | -------- | --------- |
 | [Area]   | [Choice] | [Why]     |
 
-## Implementation Steps
+## Implementation Phases
 
 ### Phase 1: [Name]
 
 1. [ ] Step with specific file/component targets
 2. [ ] Step with specific file/component targets
-3. [ ] Verification step (e.g., manual check or specific test run)
+3. [ ] Verification: [how to confirm this phase is complete]
 
 ### Phase 2: [Name]
 
 1. [ ] Step with specific file/component targets
 2. [ ] Step with specific file/component targets
+3. [ ] Verification: [how to confirm this phase is complete]
 
 ## File Changes
 
@@ -279,18 +342,14 @@ Write the plan file using this structure:
 
 ## Testing Strategy
 
-- [ ] Unit tests for [components]
-- [ ] Integration tests for [flows]
+- [ ] [Test type] for [component/flow]
+- [ ] [Test type] for [component/flow]
 
 ## Risks & Mitigations
 
-| Risk   | Mitigation      |
-| ------ | --------------- |
-| [Risk] | [How to handle] |
-
-## Open Questions
-
-- [Any remaining questions for discussion]
+| Risk   | Likelihood | Mitigation      |
+| ------ | ---------- | --------------- |
+| [Risk] | [H/M/L]    | [How to handle] |
 ```
 
 ## Guidelines
