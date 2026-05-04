@@ -1,6 +1,6 @@
 ---
 name: pr-management
-description: "Use when addressing PR review feedback, resolving review threads, replying to comments, or consolidating multiple PRs/branches. Covers the complete PR review lifecycle from feedback collection through thread resolution and branch integration."
+description: "Procedural knowledge for managing pull request reviews, threads, and branch consolidation using GitHub PR review tools. Use when addressing PR review feedback, resolving review threads, replying to comments, or consolidating multiple PRs/branches."
 ---
 
 # PR Management Skill

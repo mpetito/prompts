@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Use when performing deep technical research, evaluating libraries, comparing options, or investigating APIs. Covers documentation lookup, issue investigation, version compatibility analysis, and synthesis of findings into actionable recommendations."
+description: "Procedural knowledge for conducting comprehensive technical research using documentation tools, search APIs, and GitHub resources. Use when performing deep technical research, evaluating libraries, comparing options, or investigating APIs."
 ---
 
 # Research Skill

@@ -1,6 +1,6 @@
 ---
 name: story-writing
-description: "Use when creating user stories, writing acceptance criteria, or formatting work items for Azure DevOps. Triggers include create user story, write acceptance criteria, format work item, story points, bug report, technical issue, backlog item, and Azure DevOps work item."
+description: "Guidelines for creating well-structured Azure DevOps work items including User Stories, Issues, and Bugs with proper formatting, story points, and acceptance criteria. Use when creating user stories, writing acceptance criteria, formatting work items for Azure DevOps, or estimating story points."
 ---
 
 # Story Writing Skill
@@ -394,3 +394,13 @@ We need [capability] to [purpose].
 - **3-5**: Moderate complexity, some unknowns
 - **8**: Complex, multiple components
 - **13**: Very complex - consider splitting
+
+---
+
+## Common Mistakes
+
+1. **Vague acceptance criteria**: "Performance is good" → "Page loads in under 2 seconds on 3G connection"
+2. **Missing user context**: Omitting the "so that [benefit]" clause makes it impossible to evaluate whether the implementation satisfies the need
+3. **Wrong work item type**: Using a Bug for missing features (should be Story) or a Story for technical debt (should be Issue)
+4. **Overloaded stories**: Single story spanning multiple components or concerns — split when estimated above 8 points
+5. **Untestable criteria**: Criteria that require subjective judgment ("looks good", "feels fast") instead of measurable outcomes
