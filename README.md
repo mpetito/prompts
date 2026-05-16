@@ -1,50 +1,55 @@
 # Agentic Coding Toolkit
 
-A collection of VS Code custom agents, prompts, and skills for reliable agentic coding workflows.
+A collection of VS Code prompts and skills for reliable agentic coding workflows.
 
-## Agents
-
-Specialized AI personas with tool access, model selection, and handoffs. Switch agents via the agent picker in Copilot Chat.
-
-| Agent         | Purpose                                                        | Handoffs To |
-| ------------- | -------------------------------------------------------------- | ----------- |
-| `@exec`       | Execute comprehensive implementation tasks end-to-end          | review      |
-| `@plan`       | Create a detailed implementation plan with research            | exec        |
-| `@research`   | Deep technical research and option evaluation                  | plan, exec  |
-| `@review`     | Code review for correctness, maintainability, and quality      | —           |
-| `@agentic-dx` | Analyze codebases and create/update AGENTS.md, prompts, skills | —           |
+Skills capture procedural knowledge and load on-demand when relevant; prompts are the explicit entry points you invoke via `/name` in chat. There are no custom agents — auto tool-narrowing and auto model routing make persona-switching unnecessary.
 
 ## Prompts
 
-Reusable task templates invoked on-demand via `/name` in chat. Run within any agent session.
+Reusable task entry points invoked via `/name` in chat.
 
-| Prompt            | Purpose                                                                |
-| ----------------- | ---------------------------------------------------------------------- |
-| `/refine`         | Refine and clarify user input into a comprehensive prompt              |
-| `/commit`         | Commit changes with conventional messages and create/update PR         |
-| `/tweak`          | Execute small, focused modifications without structural changes        |
-| `/summarize`      | Compress conversation history into an actionable summary               |
-| `/story`          | Create a new user story, issue, or bug in Azure DevOps                 |
-| `/upgrade`        | Review and upgrade outdated dependencies safely                        |
-| `/pr-feedback`    | Address PR feedback from reviews, CI, and code analysis tools          |
-| `/pr-resolve`     | Reply to and resolve PR review threads                                 |
-| `/pr-consolidate` | Consolidate multiple PRs or branches into a unified integration branch |
+| Prompt            | Purpose                                                                      | Activates Skill |
+| ----------------- | ---------------------------------------------------------------------------- | --------------- |
+| `/refine`         | Refine and clarify user input into a comprehensive prompt                    | —               |
+| `/research`       | Deep technical research and option evaluation                                | `research`      |
+| `/spec`           | Produce `spec.md` (what + why) and `plan.md` (how) under `specs/{NNN-slug}/` | `spec-planning` |
+| `/implement`      | Execute a spec end-to-end: apply clarifications, create/review plan, build   | `spec-planning`, `code-authoring` |
+| `/review`         | Structured code review of staged or just-implemented changes                 | `code-review`   |
+| `/tweak`          | Small, surgical modifications without structural changes                     | —               |
+| `/commit`         | Validate, commit with conventional messages, push, and open/update a PR      | `pr-authoring`  |
+| `/summarize`      | Compress conversation history into an actionable summary                     | —               |
+| `/story`          | Create a user story, issue, or bug in Azure DevOps                           | `story-writing` |
+| `/upgrade`        | Review and upgrade outdated dependencies safely                              | `upgrade`       |
+| `/pr-feedback`    | Address PR feedback from reviews, CI, and code analysis tools                | `pr-management` |
+| `/pr-resolve`     | Reply to and resolve PR review threads                                       | `pr-management` |
+| `/pr-consolidate` | Consolidate multiple PRs or branches into a unified integration branch       | `pr-management` |
+
+When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, just describe the work — the `code-authoring` skill picks up automatically.
 
 ## Skills
 
-Auto-discovered procedures loaded on-demand when relevant to the user's task. Stored in `skills/` and symlinked to `~/.copilot/skills/`.
+Auto-discovered procedures loaded on-demand when the user's task matches the skill description. Stored in `skills/` and symlinked to `~/.copilot/skills/`.
 
-| Skill             | Purpose                                                         |
-| ----------------- | --------------------------------------------------------------- |
-| `agent-authoring` | Methodology for creating AGENTS.md and SKILL.md files           |
-| `pr-management`   | PR review lifecycle: feedback, thread resolution, consolidation |
-| `research`        | Deep technical research using Perplexity and documentation      |
-| `story-writing`   | User story and work item creation for Azure DevOps              |
-| `upgrade`         | Dependency upgrade workflow with validation                     |
+| Skill                     | Purpose                                                                     |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `code-authoring`          | Implementation methodology: prepare, implement, test, self-review, validate |
+| `spec-planning`           | Produce `spec.md` + `plan.md` for non-trivial features                      |
+| `code-review`             | Multi-dimensional code review methodology and verdict format                |
+| `research`                | Deep technical research using docs, Perplexity, and GitHub                  |
+| `agent-authoring`         | Authoring AGENTS.md and SKILL.md files                                      |
+| `pr-management`           | PR review lifecycle: feedback, thread resolution, consolidation             |
+| `pr-authoring`            | Writing concise, motivation-led PR descriptions                             |
+| `story-writing`           | User story and work item creation for Azure DevOps                          |
+| `upgrade`                 | Dependency upgrade workflow with validation                                 |
+| `code-quality-standards`  | Detailed Next.js / React / TypeScript code quality reference                |
+| `design-review-standards` | UI/UX review reference                                                      |
+| `ecommerce-patterns`      | Cart, checkout, payments, and order patterns for Next.js                    |
+| `playwright-e2e-monorepo` | Playwright e2e setup with POM in an npm monorepo                            |
+| `seo-aeo-structured-data` | SEO, AEO, and structured data implementation                                |
 
 ## Fragments
 
-Reusable prompt fragments for specialized workflows:
+Reusable prompt fragments for specialized workflows.
 
 | Fragment              | Purpose                                         |
 | --------------------- | ----------------------------------------------- |
@@ -55,14 +60,32 @@ Reusable prompt fragments for specialized workflows:
 ### Standard Feature Development
 
 ```
-/refine → @plan → @exec → @review → /commit
+/refine → /spec → /implement spec NNN → /review → /commit
 ```
 
-1. **Refine** (`/refine`): Clarify requirements and generate a comprehensive prompt
-2. **Plan** (`@plan`): Generate a detailed implementation plan → handoff to exec
-3. **Exec** (`@exec`): Implement the feature with tests → handoff to review
-4. **Review** (`@review`): Code review for correctness and quality
-5. **Commit** (`/commit`): Create branch, commit, and open PR
+1. **Refine** (`/refine`): clarify requirements into a comprehensive prompt
+2. **Spec** (`/spec`): produce `spec.md` + `plan.md` under `specs/{NNN-slug}/`
+3. **Implement** (`/implement spec NNN`): apply any clarifications, create or review the plan, build all phases
+4. **Review** (`/review`): independent quality pass
+5. **Commit** (`/commit`): branch, commit, push, open/update PR
+
+### Direct Implementation (Clear Requirements, No Spec)
+
+```
+(describe the work) → /review → /commit
+```
+
+### Quick Fixes
+
+```
+/tweak → /commit
+```
+
+### Research Spike
+
+```
+/research → /spec → ...
+```
 
 ### PR Feedback Loop
 
@@ -70,25 +93,7 @@ Reusable prompt fragments for specialized workflows:
 /pr-feedback → /pr-resolve → /commit
 ```
 
-1. **Feedback** (`/pr-feedback`): Address review comments locally
-2. **Resolve** (`/pr-resolve`): Reply to and resolve threads, then push
-3. **Commit** (`/commit`): Push changes and update PR
-
 Repeat until approved.
-
-### Quick Fixes
-
-```
-/refine → /tweak → /commit
-```
-
-Or for obvious changes: `/tweak` → `/commit`
-
-### Direct Implementation (Clear Requirements)
-
-```
-@exec → @review → /commit
-```
 
 ### Dependency Upgrade
 
@@ -108,30 +113,19 @@ Or for obvious changes: `/tweak` → `/commit`
 2. Run `setup-prompts-link.ps1` (as Admin or with Developer Mode enabled) to symlink:
    - `prompts/` → VS Code user prompts folder
    - `skills/` → `~/.copilot/skills/`
-3. Agents appear in the agent picker; prompts are invoked via `/name` in chat
+3. Prompts are invoked via `/name` in chat; skills activate automatically when relevant
 
 ## Customization
 
-### Model Selection
-
-Update the `model` field in each agent's YAML frontmatter.
-
 ### Tools
 
-MCP tools (Context7, Perplexity, GitHub) are referenced in agents that benefit from research capabilities. Remove those tool references if not configured—agents still work with reduced functionality.
+MCP tools (Context7, Perplexity, GitHub) are referenced from skills that benefit from research or PR capabilities. Skills still work with reduced functionality if those tools are not configured.
 
-### Handoffs (Agents only)
+### Skill Descriptions
 
-```yaml
-handoffs:
-  - label: Button Text
-    agent: target-agent-name
-    prompt: Context to pass to the next agent.
-    send: false # true = auto-submit, false = pre-fill only
-```
+Skills auto-load based on their `description` frontmatter. To make a skill trigger on different phrasing, edit its description to include the trigger phrases you use.
 
 ## Requirements
 
 - VS Code 1.106+ with GitHub Copilot
-- Recommended: Claude Opus 4.6 access (for `@exec` and `@review`)
-- Optional: MCP servers (Context7, Perplexity, GitHub)
+- Optional: MCP servers (Context7, Perplexity, GitHub) for richer research and PR workflows
