@@ -109,11 +109,22 @@ Repeat until approved.
 
 ## Setup
 
+### VS Code + GitHub Copilot (Windows)
+
 1. Ensure VS Code 1.106+ with GitHub Copilot
 2. Run `setup-prompts-link.ps1` (as Admin or with Developer Mode enabled) to symlink:
    - `prompts/` → VS Code user prompts folder
    - `skills/` → `~/.copilot/skills/`
 3. Prompts are invoked via `/name` in chat; skills activate automatically when relevant
+
+### Cross-Tool Skills (WSL / Linux / macOS)
+
+For tools that support the generalized `~/.agents/skills/` convention (e.g., opencode, Claude Code):
+
+1. Run `./setup-opencode.sh` to symlink `skills/` → `~/.agents/skills/`
+2. Skills are auto-discovered by any compatible tool
+
+**Note:** The prompts in `prompts/` use VS Code Copilot-specific context variables (`#changes`, `#problems`) and are not converted for cross-tool use. They remain VS Code Copilot-only.
 
 ## Customization
 
