@@ -11,6 +11,21 @@ This skill provides the methodology for authoring AGENTS.md and SKILL.md files t
 
 ---
 
+## Top Priorities (Apply First)
+
+When authoring or reviewing these files, enforce these rules in order. Stop at the first violation, fix it, then continue applying the remaining rules in order.
+
+1. **Frontmatter validity** (SKILL.md only): YAML must include `name` and `description` with explicit "Use when..." trigger phrases.
+2. **Length budget**: AGENTS.md ≤ 150 lines; SKILL.md ≤ 500 lines.
+3. **Concrete commands**: Every command must be copy-pasteable and verified to run.
+4. **Explicit boundaries**: AGENTS.md must include a "Do Not" section with specific prohibitions.
+5. **No README duplication**: Reference other docs instead of restating them.
+6. **Correct placement**: Root AGENTS.md always; nested only where conventions differ; SKILL.md under `.github/skills/{skill-name}/`.
+
+All other rules below provide additional details for these six. Apply rules in this hierarchy: (1) top priorities always override; (2) in cases not covered by a top priority, follow the conflict resolution rules; (3) only after both have been satisfied, apply the remaining detailed guidance.
+
+---
+
 ## AGENTS.md Standards
 
 ### Purpose
@@ -20,8 +35,18 @@ AGENTS.md provides project-wide context, conventions, and explicit boundaries fo
 ### Behavior
 
 - Always loaded when agent works in that directory or below
-- **Nearest file takes precedence** (nested overrides root)
+- **Closest-ancestor precedence**: The AGENTS.md file in the closest parent directory (in the directory hierarchy) takes precedence over AGENTS.md files in higher-level directories. Modification time is irrelevant.
 - Automatically included in agent context
+
+### Conflict Resolution Between Nested Files
+
+When a nested AGENTS.md and an ancestor AGENTS.md provide contradictory guidance, apply these rules in order:
+
+1. **Closest ancestor wins** for any directly contradictory instruction (commands, conventions, prohibitions). The nested file is assumed to reflect intentional local overrides.
+2. **Union, not override, for additive guidance**: Additive guidance refers to rules that expand on, rather than contradict, existing rules in ancestor files. "Do Not" prohibitions and safety rules from ancestor files still apply unless the nested file explicitly relaxes them with a statement such as `Override: this directory permits <X>`.
+3. **Explicit overrides must be labeled**: Nested files that intentionally override an ancestor rule must call it out (e.g., `> Overrides root AGENTS.md: uses pnpm instead of npm`) so the conflict is visible to readers.
+4. **When ambiguous and no top priority applies, prefer the stricter rule** and surface the conflict to the user rather than silently choosing.
+5. **No explicit override provided**: If nested files contradict without an explicit override label, log a warning that identifies the conflicting rules and their source files, and suggest the author review the files for clarity before proceeding.
 
 ### Format Requirements
 
