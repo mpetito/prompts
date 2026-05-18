@@ -8,21 +8,21 @@ Skills capture procedural knowledge and load on-demand when relevant; prompts ar
 
 Reusable task entry points invoked via `/name` in chat.
 
-| Prompt            | Purpose                                                                      | Activates Skill |
-| ----------------- | ---------------------------------------------------------------------------- | --------------- |
-| `/refine`         | Refine and clarify user input into a comprehensive prompt                    | —               |
-| `/research`       | Deep technical research and option evaluation                                | `research`      |
-| `/spec`           | Produce `spec.md` (what + why) and `plan.md` (how) under `specs/{NNN-slug}/` | `spec-planning` |
+| Prompt            | Purpose                                                                      | Activates Skill                   |
+| ----------------- | ---------------------------------------------------------------------------- | --------------------------------- |
+| `/refine`         | Refine and clarify user input into a comprehensive prompt                    | —                                 |
+| `/research`       | Deep technical research and option evaluation                                | `research`                        |
+| `/spec`           | Produce `spec.md` (what + why) and `plan.md` (how) under `specs/{NNN-slug}/` | `spec-planning`                   |
 | `/implement`      | Execute a spec end-to-end: apply clarifications, create/review plan, build   | `spec-planning`, `code-authoring` |
-| `/review`         | Structured code review of staged or just-implemented changes                 | `code-review`   |
-| `/tweak`          | Small, surgical modifications without structural changes                     | —               |
-| `/commit`         | Validate, commit with conventional messages, push, and open/update a PR      | `pr-authoring`  |
-| `/summarize`      | Compress conversation history into an actionable summary                     | —               |
-| `/story`          | Create a user story, issue, or bug in Azure DevOps                           | `story-writing` |
-| `/upgrade`        | Review and upgrade outdated dependencies safely                              | `upgrade`       |
-| `/pr-feedback`    | Address PR feedback from reviews, CI, and code analysis tools                | `pr-management` |
-| `/pr-resolve`     | Reply to and resolve PR review threads                                       | `pr-management` |
-| `/pr-consolidate` | Consolidate multiple PRs or branches into a unified integration branch       | `pr-management` |
+| `/review`         | Structured code review of staged or just-implemented changes                 | `code-review`                     |
+| `/tweak`          | Small, surgical modifications without structural changes                     | —                                 |
+| `/commit`         | Validate, commit with conventional messages, push, and open/update a PR      | `pr-authoring`                    |
+| `/summarize`      | Compress conversation history into an actionable summary                     | —                                 |
+| `/story`          | Create a user story, issue, or bug in Azure DevOps                           | `story-writing`                   |
+| `/upgrade`        | Review and upgrade outdated dependencies safely                              | `upgrade`                         |
+| `/pr-feedback`    | Address PR feedback from reviews, CI, and code analysis tools                | `pr-management`                   |
+| `/pr-resolve`     | Reply to and resolve PR review threads                                       | `pr-management`                   |
+| `/pr-consolidate` | Consolidate multiple PRs or branches into a unified integration branch       | `pr-management`                   |
 
 When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, just describe the work — the `code-authoring` skill picks up automatically.
 
@@ -46,6 +46,7 @@ Auto-discovered procedures loaded on-demand when the user's task matches the ski
 | `ecommerce-patterns`      | Cart, checkout, payments, and order patterns for Next.js                    |
 | `playwright-e2e-monorepo` | Playwright e2e setup with POM in an npm monorepo                            |
 | `seo-aeo-structured-data` | SEO, AEO, and structured data implementation                                |
+| `autonomous-loops`        | Iterative agent loops against async external evaluators (CI, PSI, deploys)  |
 
 ## Fragments
 
