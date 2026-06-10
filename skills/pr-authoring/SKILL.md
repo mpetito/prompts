@@ -1,6 +1,6 @@
 ---
 name: pr-authoring
-description: "Procedural knowledge for writing concise, useful pull request descriptions that lead with motivation and outcomes rather than file-level changelogs. Use when creating a new pull request, updating an existing PR description, or when the commit prompt produces a PR body."
+description: "Procedural knowledge for writing concise, useful pull request descriptions that lead with motivation and outcomes rather than file-level changelogs. Use when creating a new pull request, updating an existing PR description, or when the commit prompt produces a PR body. After a PR is created or updated, logs estimated time via the time-tracking skill."
 ---
 
 # PR Authoring
@@ -142,6 +142,7 @@ When asked to update a PR description:
 5. **Draft Summary last** — once you've grouped the work, the one-paragraph framing usually writes itself
 6. **Self-review against "What to Avoid"** before saving the body file
 7. **Write body to a temp file** (e.g., `.github/.pr-body.md`) and pass to `gh pr create --body-file` — never inline multi-line bodies as shell args
+8. **Log time (follow-up, non-blocking)** — after the PR is created or updated, invoke the **time-tracking** skill, passing the changeset, branch name, commit subject(s), and PR title/number as context so it can resolve the ADO work item and log estimated time. Do not block the PR on time logging; run it as a follow-up. Never delete entries.
 
 ## Length Heuristics
 

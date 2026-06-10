@@ -113,6 +113,10 @@ When authoring or updating a PR description, follow the [`pr-authoring`](../skil
 - Update title/body if significant changes
 - Ensure `AB#<id>` references are present in PR body if work items are known
 
+### 7. Log Time (follow-up, non-blocking)
+
+After the PR is created or updated, invoke the [`time-tracking`](../skills/time-tracking/SKILL.md) skill, passing the changeset, branch name, commit subject(s), and PR title/number as context. It resolves the ADO work item and logs estimated time (`log_time`, never timers; create or update, never delete). Do not block the commit/PR on time logging.
+
 ## Commit Examples
 
 ```

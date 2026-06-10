@@ -23,6 +23,7 @@ Reusable task entry points invoked via `/name` in chat.
 | `/pr-feedback`    | Address PR feedback from reviews, CI, and code analysis tools                | `pr-management`                   |
 | `/pr-resolve`     | Reply to and resolve PR review threads                                       | `pr-management`                   |
 | `/pr-consolidate` | Consolidate multiple PRs or branches into a unified integration branch       | `pr-management`                   |
+| `/tt`             | Log or update a Harvest time entry for current work, linked to an ADO item    | `time-tracking`                   |
 
 When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, just describe the work — the `code-authoring` skill picks up automatically.
 
@@ -47,6 +48,7 @@ Auto-discovered procedures loaded on-demand when the user's task matches the ski
 | `playwright-e2e-monorepo` | Playwright e2e setup with POM in an npm monorepo                            |
 | `seo-aeo-structured-data` | SEO, AEO, and structured data implementation                                |
 | `autonomous-loops`        | Iterative agent loops against async external evaluators (CI, PSI, deploys)  |
+| `time-tracking`           | Log/update Harvest time entries linked to ADO work items (create, never delete) |
 
 ## Fragments
 
