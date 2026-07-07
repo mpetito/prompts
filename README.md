@@ -20,6 +20,7 @@ Reusable task entry points invoked via `/name` in chat.
 | `/summarize`      | Compress conversation history into an actionable summary                     | —                                 |
 | `/story`          | Create a user story, issue, or bug in Azure DevOps                           | `story-writing`                   |
 | `/upgrade`        | Review and upgrade outdated dependencies safely                              | `upgrade`                         |
+| `/pr-review`      | Review someone else's PR by number; collaboratively draft and post comments  | `pr-review`                       |
 | `/pr-feedback`    | Address PR feedback from reviews, CI, and code analysis tools                | `pr-management`                   |
 | `/pr-resolve`     | Reply to and resolve PR review threads                                       | `pr-management`                   |
 | `/pr-consolidate` | Consolidate multiple PRs or branches into a unified integration branch       | `pr-management`                   |
@@ -39,6 +40,7 @@ Auto-discovered procedures loaded on-demand when the user's task matches the ski
 | `research`                | Deep technical research using docs, Perplexity, and GitHub                  |
 | `agent-authoring`         | Authoring AGENTS.md and SKILL.md files                                      |
 | `pr-management`           | PR review lifecycle: feedback, thread resolution, consolidation             |
+| `pr-review`               | Review another author's PR; draft feedback, post only after user approval   |
 | `pr-authoring`            | Writing concise, motivation-led PR descriptions                             |
 | `story-writing`           | User story and work item creation for Azure DevOps                          |
 | `upgrade`                 | Dependency upgrade workflow with validation                                 |
