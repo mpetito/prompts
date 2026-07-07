@@ -51,11 +51,11 @@ in the same workspace.
 
 Tasks are account-global; these ids are stable:
 
-| Work kind                         | Task             | task_id    |
-| --------------------------------- | ---------------- | ---------- |
-| Build / dev work (default)        | `Development`    | `6127094`  |
-| Meetings (standup, planning, etc.)| `Meetings`       | `12876566` |
-| Out of office                     | `Internal Time`  | `6127097`  |
+| Work kind                          | Task            | task_id    |
+| ---------------------------------- | --------------- | ---------- |
+| Build / dev work (default)         | `Development`   | `6127094`  |
+| Meetings (standup, planning, etc.) | `Meetings`      | `12876566` |
+| Out of office                      | `Internal Time` | `6127097`  |
 
 Use **Development** unless the work is clearly a meeting or time off. If unsure whether a
 task is assigned to the resolved project, confirm with `list_tasks`.
@@ -66,14 +66,25 @@ task is assigned to the resolved project, confirm with `list_tasks`.
   for text). Capture `System.WorkItemType`, `System.Title`, and the item URL.
 - **If none was given:** search ADO using the branch name, PR title, and recent commit
   subjects.
-- Finding nothing is acceptable for internal/high-level work — fall through to the
-  canonical descriptive note in step 4.
+- **If the work is a code change, feature, bug fix, or tied to a pull request and ADO
+  search finds nothing, ask the user for a work item id before logging** (question tool).
+  Such work almost always has a backing item; logging without one produces an unlinked
+  entry that has to be corrected later. Only skip the question for clearly internal or
+  high-level work (e.g. general meetings, RFP exploration, ad-hoc bug fixes with no item).
+- Finding nothing is acceptable **only** for that internal/high-level work — fall through
+  to the canonical descriptive note in step 4.
+- A related-but-not-resolving item still counts: cite it in the note. The work item link
+  records _what the time was spent near_, not only what a PR closes.
 - **Never invent or guess a work item id.** Only cite one you verified in ADO.
 
 ### 4. Compose the note (plain text)
 
 Notes are plain text only; the MCP server sets no structured link. Embed `#<id>` literally
 so Harvest's own ADO integration renders the link.
+
+**Notes must be short summaries — never exhaustive changelogs.** Do not list
+implementation details, file names, test counts, or step-by-step changes. One line,
+≤ 80 characters.
 
 **Case A — with a work item:** `<WorkItemType> #<id>: <Title>`
 
@@ -89,6 +100,13 @@ no trailing punctuation, ≤ 80 chars.
 - `NYEH Tixsense Backend Design`
 - `RFP Copilot - SAM.gov connector & validation`
 - `Bug fixes`
+
+❌ **Bad** (verbose changelog — never do this):
+
+> `RFP Agent - spec 015 dashboard lens display/filter/tabs: denormalized a per-lens lensScores map onto OpportunitySummary (seed-then-set per-lens path writes in putScore; conditional brief flag in recordBrief); list now shows scored-lens chips + a single-select lens segmented filter...`
+
+✅ **Good** (work item note): `User Story #1234: Dashboard lens display, filter, and tabs`
+✅ **Good** (descriptive note): `RFP Agent - Dashboard Lens Display`
 
 ### 5. Determine hours
 
@@ -117,6 +135,7 @@ State the entry id, project, task, hours, and final note back to the user.
 - ❌ Never delete, zero-out, or replace an existing entry's hours with a smaller value.
 - ❌ Never invent a work item id; cite only ids verified in ADO.
 - ❌ Never use `start_timer` / `stop_timer` — this workflow logs estimated, rounded hours.
+- ❌ Never write verbose changelogs in notes — one summary line, ≤ 80 chars.
 - ✅ Keep estimates honest; prefer asking over guessing wildly.
 - ✅ Keep the repo→project mapping in repo memory current; append, don't overwrite.
 
@@ -127,16 +146,16 @@ State the entry id, project, task, hours, and final note back to the user.
 ```markdown
 # Harvest project mappings
 
-| Git remote / repo               | Project name                    | project_id | default task_id |
-| ------------------------------- | ------------------------------- | ---------- | --------------- |
-| <remote-url-or-repo-folder>     | <Harvest project name>          | <id>       | 6127094         |
+| Git remote / repo           | Project name           | project_id | default task_id |
+| --------------------------- | ---------------------- | ---------- | --------------- |
+| <remote-url-or-repo-folder> | <Harvest project name> | <id>       | 6127094         |
 ```
 
 ## Common Issues
 
-| Problem                                   | Resolution                                                     |
-| ----------------------------------------- | ------------------------------------------------------------- |
-| `not_found` on `update_time_entry`        | The entry isn't yours — `log_time` a new one instead.         |
-| `list_projects` `truncated: true`         | Refine `search` / pass `client_ids` to narrow.                |
-| Task not assigned to project              | Confirm with `list_tasks`; pick an assigned task or ask user. |
-| Two equally strong project matches        | Ask with the question tool; record the choice in repo memory. |
+| Problem                            | Resolution                                                    |
+| ---------------------------------- | ------------------------------------------------------------- |
+| `not_found` on `update_time_entry` | The entry isn't yours — `log_time` a new one instead.         |
+| `list_projects` `truncated: true`  | Refine `search` / pass `client_ids` to narrow.                |
+| Task not assigned to project       | Confirm with `list_tasks`; pick an assigned task or ask user. |
+| Two equally strong project matches | Ask with the question tool; record the choice in repo memory. |
