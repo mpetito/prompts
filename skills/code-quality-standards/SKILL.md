@@ -1,9 +1,6 @@
 ---
 name: code-quality-standards
 description: Code review and quality standards for Next.js + React + TypeScript projects. Covers security validation (input sanitization, API route hardening, regex safety), DRY patterns (shared utilities, constant extraction), correctness (type safety, boundary conditions, error handling), performance (React memoization, lazy loading), and accessibility (ARIA, semantic HTML, keyboard navigation). Use when conducting code reviews, auditing code quality, or establishing coding standards.
-metadata:
-  author: probably-printing
-  version: "1.0"
 ---
 
 # Code Quality and Security Standards
@@ -140,7 +137,7 @@ const label = status === 'pending' ? 'Order Placed' : ...
 export const ORDER_STATUSES = {
   pending:   { label: 'Order Placed', color: 'bg-gray-400' },
   confirmed: { label: 'Confirmed',    color: 'bg-blue-500' },
-  printing:  { label: 'Printing',     color: 'bg-yellow-500' },
+  processing: { label: 'Processing',   color: 'bg-yellow-500' },
   // ...
 } as const
 
@@ -180,7 +177,7 @@ export interface CartItem {
   price: number
   quantity: number
   image?: string
-  configuration?: { flag?: string; customText?: string; colors?: string[] }
+  configuration?: { option?: string; customText?: string; colors?: string[] }
 }
 ```
 
@@ -210,13 +207,13 @@ interface ShippingOptionProps {
 function ShippingOption({ value, icon: Icon, label, description, price, selected, onChange }: ShippingOptionProps) {
   return (
     <label className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-      selected ? 'border-brand-black bg-brand-surface' : 'border-brand-border'
+      selected ? 'border-primary bg-surface' : 'border-border'
     }`}>
       <input type="radio" name="shipping" value={value} checked={selected} onChange={onChange} className="sr-only" />
-      <Icon className="h-5 w-5 text-brand-muted" />
+      <Icon className="h-5 w-5 text-muted" />
       <div className="flex-1">
         <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-brand-muted">{description}</p>
+        <p className="text-xs text-muted">{description}</p>
       </div>
       <span className="text-sm font-semibold">{formatPrice(price)}</span>
     </label>
@@ -432,9 +429,9 @@ setLiveMessage(`Added ${item.name} to cart`);
 components/
 ├── layout/          # Header, Footer, Navigation, CartDrawer
 ├── products/        # ProductCard, ProductGallery, ProductFilters
-├── configurator/    # BrickConfigurator, BrickModel, BrickScene
+├── configurator/    # ProductConfigurator, ProductModel, ProductScene
 ├── cart/            # CartProvider, CartItem, CartSummary
-├── checkout/        # CheckoutForm, StripePayment, OrderConfirmation
+├── checkout/        # CheckoutForm, PaymentForm, OrderConfirmation
 ├── account/         # OrderHistory, OrderDetail, AddressBook
 ├── ui/              # Button, Input, Badge, Skeleton, Toast, ThemeToggle
 ├── shared/          # Logo, ErrorBoundary, OptimizedImage, NewsletterSignup
@@ -455,8 +452,8 @@ components/
 // RIGHT — 'use client' only where needed
 // Server Component (default) — no directive needed
 export default function ProductPage({ params }) {
-  const product = await getPayload().then((p) =>
-    p.findBySlug("products", params.slug),
+  const product = await getCmsClient().then((cms) =>
+    cms.findBySlug("products", params.slug),
   );
   return <ProductDetail product={product} />;
 }

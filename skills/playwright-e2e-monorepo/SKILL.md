@@ -1,9 +1,6 @@
 ---
 name: playwright-e2e-monorepo
-description: Set up and write Playwright end-to-end tests in an npm monorepo with Page Object Model (POM) pattern. Covers playwright.config.ts with webServer for monorepo dev server, Desktop + Mobile Chrome projects, POM architecture with data-testid selectors, test patterns for e-commerce flows (cart, checkout, configurator), localStorage handling, and CI configuration. Use when writing e2e tests, setting up Playwright in a monorepo, or implementing the Page Object Model pattern.
-metadata:
-  author: probably-printing
-  version: "1.0"
+description: Set up and write Playwright end-to-end tests in an npm-workspaces monorepo using the Page Object Model (POM). Covers playwright.config.ts with a webServer for the monorepo dev server, Desktop + Mobile projects, POM architecture with data-testid selectors, localStorage/state handling, example app flows, and CI configuration. Use when writing e2e tests, setting up Playwright in a monorepo, or applying the Page Object Model.
 ---
 
 # Playwright E2E Testing in Monorepo
@@ -14,7 +11,7 @@ Use when:
 
 - Setting up Playwright in an npm workspaces monorepo
 - Writing end-to-end tests with the Page Object Model pattern
-- Testing e-commerce flows (cart, checkout, configurator)
+- Testing example app flows such as e-commerce cart, checkout, product, and application-specific interactive flows
 - Configuring multi-device testing (desktop + mobile)
 - Handling localStorage-dependent state in tests
 - Setting up CI for Playwright tests
@@ -33,14 +30,14 @@ project-root/
         ├── pom/                    # Page Object Models
         │   ├── HomePage.ts
         │   ├── CartPage.ts
-        │   ├── ConfiguratorPage.ts
+        │   ├── ProductCustomizerPage.ts
         │   ├── CheckoutPage.ts
         │   ├── ProductPage.ts
         │   └── AccountPage.ts
         └── tests/                  # Test specs
             ├── homepage.spec.ts
             ├── cart.spec.ts
-            ├── configurator.spec.ts
+            ├── customizer.spec.ts
             ├── checkout.spec.ts
             ├── products.spec.ts
             ├── order-history.spec.ts
@@ -141,7 +138,7 @@ export class HomePage {
   readonly page: Page;
   readonly heroHeading: Locator;
   readonly shopButton: Locator;
-  readonly buildBrickButton: Locator;
+  readonly customizeProductButton: Locator;
   readonly featuredProducts: Locator;
   readonly missionSection: Locator;
 
@@ -149,7 +146,9 @@ export class HomePage {
     this.page = page;
     this.heroHeading = page.getByTestId("hero-heading");
     this.shopButton = page.getByTestId("hero-shop-button");
-    this.buildBrickButton = page.getByTestId("hero-build-brick-button");
+    this.customizeProductButton = page.getByTestId(
+      "hero-customize-product-button",
+    );
     this.featuredProducts = page.getByTestId("featured-products");
     this.missionSection = page.getByTestId("mission-section");
   }
@@ -162,8 +161,8 @@ export class HomePage {
     await this.shopButton.click();
   }
 
-  async clickBuildBrick() {
-    await this.buildBrickButton.click();
+  async clickCustomizeProduct() {
+    await this.customizeProductButton.click();
   }
 }
 ```
@@ -240,34 +239,34 @@ export class CartPage {
 }
 ```
 
-**Configurator POM:**
+**Application-specific interactive flow POM (example product customizer):**
 
 ```ts
-// pom/ConfiguratorPage.ts
-export class ConfiguratorPage {
+// pom/ProductCustomizerPage.ts
+export class ProductCustomizerPage {
   readonly page: Page;
-  readonly configurator: Locator;
-  readonly brickScene: Locator;
-  readonly flagSelector: Locator;
+  readonly customizer: Locator;
+  readonly productPreview: Locator;
+  readonly optionSelector: Locator;
   readonly customTextInput: Locator;
   readonly configSummary: Locator;
   readonly addToCartButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.configurator = page.getByTestId("brick-configurator");
-    this.brickScene = page.getByTestId("brick-scene");
-    this.flagSelector = page.getByTestId("flag-selector");
+    this.customizer = page.getByTestId("product-customizer");
+    this.productPreview = page.getByTestId("product-preview");
+    this.optionSelector = page.getByTestId("option-selector");
     this.customTextInput = page.getByTestId("custom-text-input");
     this.configSummary = page.getByTestId("config-summary");
-    this.addToCartButton = page.getByTestId("configurator-add-to-cart");
+    this.addToCartButton = page.getByTestId("customizer-add-to-cart");
   }
 
   async goto() {
-    await this.page.goto("/build-your-brick");
+    await this.page.goto("/customize-product");
   }
-  async selectFlag(name: string) {
-    await this.page.getByTestId(`flag-option-${name}`).click();
+  async selectOption(name: string) {
+    await this.page.getByTestId(`option-${name}`).click();
   }
   async setCustomText(text: string) {
     await this.customTextInput.fill(text);
@@ -276,8 +275,8 @@ export class ConfiguratorPage {
     await this.addToCartButton.click();
   }
 
-  getFlagOptions() {
-    return this.flagSelector.locator('button[data-testid^="flag-option-"]');
+  getOptions() {
+    return this.optionSelector.locator('button[data-testid^="option-"]');
   }
 }
 ```
@@ -290,7 +289,7 @@ export class ConfiguratorPage {
 test.describe("Shopping Cart", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
-    await page.evaluate(() => localStorage.removeItem("pp-cart"));
+    await page.evaluate(() => localStorage.removeItem("cart"));
   });
 
   test("should show empty cart message", async ({ page }) => {
@@ -306,10 +305,10 @@ test.describe("Shopping Cart", () => {
 ```ts
 async function addItemToCart(page: Page) {
   await page.goto("/");
-  await page.evaluate(() => localStorage.removeItem("pp-cart"));
-  const configurator = new ConfiguratorPage(page);
-  await configurator.goto();
-  await configurator.addToCart();
+  await page.evaluate(() => localStorage.removeItem("cart"));
+  const customizer = new ProductCustomizerPage(page);
+  await customizer.goto();
+  await customizer.addToCart();
   const cart = new CartPage(page);
   await cart.closeDrawer();
 }
@@ -319,9 +318,9 @@ async function addItemToCart(page: Page) {
 
 ```ts
 test("should update cart count after adding item", async ({ page }) => {
-  const configurator = new ConfiguratorPage(page);
-  await configurator.goto();
-  await configurator.addToCart();
+  const customizer = new ProductCustomizerPage(page);
+  await customizer.goto();
+  await customizer.addToCart();
 
   const cart = new CartPage(page);
   await expect(cart.cartCount).toBeVisible();
@@ -373,18 +372,18 @@ Display elements: {type}-{content}
   text-username, badge-cart-count, status-payment
 
 Dynamic elements: {type}-{description}-{id}
-  card-product-${productId}, flag-option-${flagName}, faq-item-${index}
+  card-product-${productId}, option-${optionName}, faq-item-${index}
 
 Component containers: {component-name}
-  brick-configurator, cart-drawer, checkout-form
+  product-customizer, cart-drawer, checkout-form
 ```
 
 **In JSX:**
 
 ```tsx
-<button data-testid="configurator-add-to-cart">Add to Cart</button>
+<button data-testid="customizer-add-to-cart">Add to Cart</button>
 <div data-testid="cart-drawer">...</div>
-<button data-testid={`flag-option-${flag}`} aria-pressed={selected}>...</button>
+<button data-testid={`option-${option}`} aria-pressed={selected}>...</button>
 <details data-testid={`faq-item-${i}`}>...</details>
 ```
 
@@ -403,9 +402,9 @@ Use this hierarchy in POM locators:
 
 ```ts
 test("should persist cart across page reloads", async ({ page }) => {
-  const configurator = new ConfiguratorPage(page);
-  await configurator.goto();
-  await configurator.addToCart();
+  const customizer = new ProductCustomizerPage(page);
+  await customizer.goto();
+  await customizer.addToCart();
 
   const cart = new CartPage(page);
   await cart.closeDrawer();

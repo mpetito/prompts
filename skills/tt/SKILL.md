@@ -1,5 +1,5 @@
 ---
-name: time-tracking
+name: tt
 description: "Log or update a Harvest time entry for work performed, with best-effort linkage to an Azure DevOps work item. Use when logging time, recording hours, tracking time, updating a timesheet, after authoring or updating a pull request, or when invoked via /tt. Triggers: log time, track time, harvest entry, timesheet, record hours, /tt."
 ---
 
@@ -26,6 +26,16 @@ an Azure DevOps (ADO) work item when one can be identified.
 Anything omitted is inferred (work item via ADO search; hours from the session/changeset
 scope). Use the question tool only when the project is genuinely ambiguous or the time
 truly cannot be estimated.
+
+## Parsing the invocation
+
+From the user's input, extract whatever is present (all optional):
+
+- A standalone **4–6 digit number** -> the ADO work item id.
+- A **trailing decimal** (e.g. `1.5`) -> hours worked.
+- Any other **free text** -> search terms for the work item.
+
+Examples: `/tt 62196 1.5`, `/tt 1.5`, `/tt mount compatibility`, `/tt` (infer everything).
 
 ## Procedure
 

@@ -1,9 +1,7 @@
 ---
 name: seo-aeo-structured-data
-description: Implement SEO, AEO (Answer Engine Optimization), and structured data for Next.js e-commerce sites. Covers JSON-LD schema generators (Product, FAQ, HowTo, Organization, Breadcrumb, Speakable), metadata utilities, robots.txt with AI bot allowlisting, XML sitemaps, RSS feeds, Open Graph tags, Twitter cards, and Core Web Vitals. Use when optimizing for search engines, AI answer engines (ChatGPT, Perplexity, Google AI Overviews), or implementing structured data.
-metadata:
-  author: probably-printing
-  version: "1.0"
+description: |
+  Implement SEO, AEO (Answer Engine Optimization), and structured data for React/Next.js sites: JSON-LD generators (Product, FAQ, HowTo, Organization, Breadcrumb, Speakable), metadata utilities, robots.txt with AI-bot rules, XML sitemaps, RSS feeds, Open Graph and Twitter cards, and Core Web Vitals. Use when optimizing for search engines, AI answer engines (ChatGPT, Perplexity, Google AI Overviews), or adding structured data.
 ---
 
 # SEO, AEO, and Structured Data
@@ -25,7 +23,7 @@ Use when:
 lib/
 ├── seo.ts              # Site constants, generatePageMetadata(), generateProductMetadata()
 ├── structured-data.ts  # JSON-LD generator functions
-├── analytics.ts        # GA4 + Plausible event tracking
+├── analytics.ts        # Provider-agnostic event tracking
 └── web-vitals.ts       # CLS, INP, LCP, FCP, TTFB reporting
 
 components/
@@ -199,8 +197,8 @@ export function organizationJsonLd() {
       height: 512,
     },
     sameAs: [
-      "https://instagram.com/yourhandle",
-      "https://tiktok.com/@yourhandle",
+      "https://social.example.com/yourprofile",
+      "https://profiles.example.com/yourprofile",
     ],
     contactPoint: {
       "@type": "ContactPoint",
@@ -493,10 +491,10 @@ export default function robots(): MetadataRoute.Robots {
 ```ts
 // app/sitemap.ts
 import type { MetadataRoute } from "next";
-import { getPayload } from "@/lib/payload";
+import { getCmsClient } from "@/lib/cms";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const payload = await getPayload();
+  const cms = await getCmsClient();
 
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
@@ -515,7 +513,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Dynamic product pages from CMS
-  const products = await payload.find({ collection: "products", limit: 1000 });
+  const products = await cms.find({ collection: "products", limit: 1000 });
   const productPages: MetadataRoute.Sitemap = products.docs.map((p) => ({
     url: `${SITE_URL}/products/${p.slug}`,
     lastModified: new Date(p.updatedAt),
@@ -541,8 +539,8 @@ function escapeXml(str: string): string {
 }
 
 export async function GET() {
-  const posts = await getPayload().then((p) =>
-    p.find({
+  const posts = await getCmsClient().then((cms) =>
+    cms.find({
       collection: "blog-posts",
       where: { status: { equals: "published" } },
     }),
@@ -595,13 +593,37 @@ export async function GET() {
 
 ### Step 7: Analytics + Web Vitals
 
+Keep application code behind a provider-agnostic analytics wrapper. Your analytics provider (e.g. GA4/Plausible) can sit behind this abstraction, but React components should not call vendor globals directly.
+
+```ts
+// lib/analytics.ts
+export type AnalyticsEvent = {
+  name: string;
+  properties?: Record<string, unknown>;
+};
+
+export function trackAnalyticsEvent(event: AnalyticsEvent) {
+  if (typeof window === "undefined") return;
+
+  window.dispatchEvent(new CustomEvent("analytics:event", { detail: event }));
+}
+
+export function trackPageView(path: string) {
+  trackAnalyticsEvent({ name: "page_view", properties: { path } });
+}
+```
+
 ```tsx
 // components/analytics/AnalyticsProvider.tsx
 "use client";
 
+import { trackPageView } from "@/lib/analytics";
+import { reportWebVitals } from "@/lib/web-vitals";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+
 export function AnalyticsProvider() {
   const pathname = usePathname();
-  const ga4Id = process.env.NEXT_PUBLIC_GA4_ID;
 
   useEffect(() => {
     trackPageView(pathname);
@@ -612,16 +634,7 @@ export function AnalyticsProvider() {
     reportWebVitals();
   }, []);
 
-  return (
-    <>
-      {ga4Id && (
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${ga4Id}`}
-          strategy="afterInteractive"
-        />
-      )}
-    </>
-  );
+  return null;
 }
 ```
 
@@ -668,7 +681,7 @@ export default function HomePage() {
 
 1. **FAQ mismatch**: JSON-LD questions MUST match visible HTML exactly. Google can penalize mismatches.
 2. **Missing canonical URLs**: Every page needs `alternates.canonical`. Duplicate content without canonicals hurts ranking.
-3. **Price format in JSON-LD**: Use dollars with 2 decimal places (`"24.99"`), not cents. Stripe uses cents, schema.org uses dollars.
+3. **Price format in JSON-LD**: Use dollars with 2 decimal places (`"24.99"`), not cents. Payment processors often use cents; schema.org uses dollars.
 4. **robots.txt blocking AI bots**: Many default configs block GPTBot/PerplexityBot. If you want AEO, explicitly allow them.
 5. **Sitemap without dynamic pages**: Static sitemaps miss product pages. Query your CMS for complete coverage.
 6. **Missing OG images**: Social sharing without OG images looks unprofessional. Always provide a 1200x630 default.

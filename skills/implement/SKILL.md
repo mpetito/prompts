@@ -1,8 +1,7 @@
 ---
 name: implement
-description: Implement a spec end-to-end from specs/{NNN-slug}/ — apply clarifications, create or review the plan, then execute all phases
+description: "Execute a spec end-to-end from `specs/{NNN-slug}/`: locate spec, apply clarifications, create or review the plan, then build all phases. Use when implementing a spec by number, running an existing spec plan, or completing all phases from `specs/`."
 ---
-
 # Implement
 
 Execute a spec from `specs/{NNN-slug}/` end-to-end.
@@ -33,7 +32,7 @@ If any **blocking** Open Questions remain unresolved, stop and surface them. Do 
 
 Check for `plan.md` in the spec folder.
 
-- **No plan exists** → follow the `spec-planning` skill (Phase 6) to create `plan.md` from `spec.md`
+- **No plan exists** → follow the `spec` skill (Phase 6) to create `plan.md` from `spec.md`
 - **Plan exists** → review it for consistency with the (possibly updated) spec:
   - Every requirement and acceptance criterion maps to at least one step
   - No steps reference removed or contradicted requirements
@@ -59,11 +58,3 @@ After all phases complete:
 5. Any deferred items or follow-ups
 
 Suggest `/review` for an independent quality pass or `/commit` to commit and open a PR.
-
-## User Input
-
-Provide the spec reference and any clarifications below.
-
-```text
-$ARGUMENTS
-```

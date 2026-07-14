@@ -406,6 +406,33 @@ None
 
 ---
 
+## Output Format
+
+```markdown
+## Upgrade Summary
+
+### Upgraded
+
+| Package | From | To  | Type | Notes |
+| ------- | ---- | --- | ---- | ----- |
+
+### Deferred
+
+| Package | From | To  | Reason |
+| ------- | ---- | --- | ------ |
+
+### Validation
+
+- [ ] Tests passing
+- [ ] Linting passing
+- [ ] Build succeeds
+- [ ] No new vulnerabilities
+```
+
+Suggest `/commit` to commit changes and create/update a pull request.
+
+---
+
 ## Story Points / Complexity Guidelines
 
 Estimate upgrade effort based on scope and risk:

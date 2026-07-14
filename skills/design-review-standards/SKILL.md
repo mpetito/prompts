@@ -1,9 +1,6 @@
 ---
 name: design-review-standards
 description: Conduct design and UI/UX reviews for web applications. Covers brand consistency, typography hierarchy, color token usage, dark mode, accessibility (WCAG AA), component patterns, responsive design, loading states, micro-interactions, and conversion optimization. Use when reviewing UI implementations, auditing design quality, or establishing design standards for a project.
-metadata:
-  author: probably-printing
-  version: '1.0'
 ---
 
 # Design Review and UI/UX Standards
@@ -47,7 +44,7 @@ Evaluate every design review across these 10 dimensions. Score each 1-5, priorit
 - Semantic color usage: muted for secondary text, border for dividers, surface for backgrounds
 - Accessible contrast ratios: 4.5:1 for body text, 3:1 for large text
 - No rogue colors that aren't in the design system
-- Accessible red variant (`#C50202` instead of pure `#E40303`) for text on light backgrounds
+- Sufficiently dark variants of saturated brand colors for text on light backgrounds, meeting WCAG AA (e.g., darken a vivid red until it passes 4.5:1)
 
 **Red flags:**
 - Hardcoded hex values scattered across components
@@ -154,8 +151,8 @@ Evaluate every design review across these 10 dimensions. Score each 1-5, priorit
 - `font-display: swap` to prevent FOIT
 - Image optimization: AVIF/WebP, responsive sizes, lazy loading
 - Critical font preloading
-- DNS prefetch for external domains (Stripe, analytics)
-- Heavy dependencies loaded on demand (Three.js via dynamic import)
+- DNS prefetch for external domains (payment provider, analytics)
+- Heavy dependencies loaded on demand (3D viewer library via dynamic import)
 
 **Red flags:**
 - Content pop-in without skeletons

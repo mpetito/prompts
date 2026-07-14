@@ -1,9 +1,6 @@
 ---
 name: ecommerce-patterns
-description: E-commerce patterns for Next.js applications including cart management with React Context/useReducer, checkout flow with validation, Stripe Payment Intents, order lifecycle management, price handling in cents, gift cards, wishlists, analytics tracking, and trust/conversion components. Use when building shopping cart, checkout, payment, or order management features.
-metadata:
-  author: probably-printing
-  version: "1.0"
+description: E-commerce implementation patterns for React/Next.js apps: cart state with Context + useReducer, multi-step checkout with validation, payment integration, order lifecycle, integer-cents money handling, gift cards, analytics events, and conversion components. Use when building cart, checkout, payment, or order-management features.
 ---
 
 # E-Commerce Patterns
@@ -15,7 +12,7 @@ Use when:
 - Building a shopping cart system
 - Implementing checkout with payment processing
 - Designing order management and lifecycle
-- Integrating Stripe payments
+- Integrating payment provider SDKs
 - Adding gift cards, wishlists, or reviews
 - Implementing e-commerce analytics
 - Building trust and conversion components
@@ -54,7 +51,7 @@ export function formatPrice(cents: number): string {
 - Order.subtotal/shipping/tax/total: cents
 - GiftCard.amount/balance: cents
 - CartItem.price: cents
-- Stripe amounts: cents (Stripe's native format)
+- Payment provider amounts: cents (many providers expect cents natively)
 
 ## Cart System
 
@@ -71,7 +68,7 @@ import React, {
   useState,
 } from "react";
 
-const CART_STORAGE_KEY = "my-cart";
+const CART_STORAGE_KEY = "cart"; // Namespace per app if needed
 
 export interface CartItem {
   id: string; // Unique cart line ID (crypto.randomUUID())
@@ -214,7 +211,7 @@ useEffect(() => {
 </div>
 ```
 
-Update `liveMessage` on add/remove: "Added Rainbow Pride Brick to cart"
+Update `liveMessage` on add/remove: "Added Sample Product to cart"
 
 **4. Analytics on Cart Events**
 
@@ -281,8 +278,8 @@ function updateField(field: keyof ShippingAddress, value: string) {
 <label
   className={`flex items-center gap-4 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
     selected
-      ? "border-brand-black bg-brand-surface"
-      : "border-brand-border hover:border-brand-border"
+      ? "border-token-foreground bg-token-surface"
+      : "border-token-border hover:border-token-foreground"
   }`}
 >
   <input
@@ -291,40 +288,46 @@ function updateField(field: keyof ShippingAddress, value: string) {
     value="standard"
     className="sr-only"
   />
-  <Icon className="h-5 w-5 text-brand-muted flex-shrink-0" />
+  <Icon className="h-5 w-5 text-token-muted flex-shrink-0" />
   <div className="flex-1">
     <p className="text-sm font-medium">Standard Shipping</p>
-    <p className="text-xs text-brand-muted">5-7 business days</p>
+    <p className="text-xs text-token-muted">5-7 business days</p>
   </div>
   <span className="text-sm font-semibold">$5.99</span>
 </label>
 ```
 
-### Stripe Payment Integration
+### Payment Provider Integration
 
-**Server: Create Payment Intent**
+**Server: Create Payment Intent / Charge**
 
 ```ts
 // app/api/create-payment-intent/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+const paymentProvider = createPaymentProviderClient(
+  process.env.PAYMENT_PROVIDER_SECRET_KEY!,
+);
 
 export async function POST(req: NextRequest) {
   try {
     const { amount } = await req.json();
 
-    if (typeof amount !== "number" || amount < 100 || amount > 10000000) {
+    if (
+      typeof amount !== "number" ||
+      !Number.isInteger(amount) ||
+      amount < 100 ||
+      amount > 10000000
+    ) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount, // Already in cents
+    const paymentIntent = await paymentProvider.createPaymentIntent({
+      amount, // Already in cents; many providers expect cents natively
       currency: "usd",
     });
 
-    return NextResponse.json({ clientSecret: paymentIntent.client_secret });
+    return NextResponse.json({ clientSecret: paymentIntent.clientSecret });
   } catch {
     return NextResponse.json(
       { error: "Failed to create payment intent" },
@@ -337,13 +340,16 @@ export async function POST(req: NextRequest) {
 **Client: Performance hints**
 
 ```html
-<link rel="dns-prefetch" href="https://js.stripe.com" />
-<link rel="preconnect" href="https://js.stripe.com" />
+<!-- Replace with your payment provider's hosted JS origin. -->
+<link rel="dns-prefetch" href="https://js.payment-provider.example" />
+<link rel="preconnect" href="https://js.payment-provider.example" />
 ```
 
 ### Order Number Generation
 
 ```ts
+const ORDER_PREFIX = "ORD"; // Configure per app
+
 export function generateOrderNumber(): string {
   const date = new Date();
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
@@ -353,9 +359,9 @@ export function generateOrderNumber(): string {
   const rand = Array.from(randomBytes)
     .map((b) => chars[b % chars.length])
     .join("");
-  return `PP-${dateStr}-${rand}`;
+  return `${ORDER_PREFIX}-${dateStr}-${rand}`;
 }
-// PP-20260326-A7K2
+// ORD-20260326-A7K2
 ```
 
 **Design decisions:**
@@ -370,9 +376,9 @@ export function generateOrderNumber(): string {
 ### Status State Machine
 
 ```
-pending → confirmed → printing → printed → shipped → delivered
-                                                   ↘ cancelled
-                                                   ↘ refunded
+pending → confirmed → processing → fulfilled → shipped → delivered
+                                                        ↘ cancelled
+                                                        ↘ refunded
 ```
 
 ### Status Configuration
@@ -381,8 +387,8 @@ pending → confirmed → printing → printed → shipped → delivered
 export const ORDER_STATUSES = {
   pending: { label: "Order Placed", color: "bg-gray-400" },
   confirmed: { label: "Confirmed", color: "bg-blue-500" },
-  printing: { label: "Printing", color: "bg-yellow-500" },
-  printed: { label: "Printed", color: "bg-green-400" },
+  processing: { label: "Processing", color: "bg-yellow-500" },
+  fulfilled: { label: "Fulfilled", color: "bg-green-400" },
   shipped: { label: "Shipped", color: "bg-purple-500" },
   delivered: { label: "Delivered", color: "bg-green-600" },
   cancelled: { label: "Cancelled", color: "bg-red-500" },
@@ -390,7 +396,7 @@ export const ORDER_STATUSES = {
 } as const;
 ```
 
-### Order Schema Design (Payload CMS)
+### Order Schema Design (CMS or Database)
 
 Key fields:
 
@@ -401,7 +407,7 @@ Key fields:
 - `status`: select with 8 options, sidebar position
 - `shippingAddress`: group with full address fields
 - `tracking`: group with carrier, trackingNumber, shippedAt, estimatedDelivery
-- `stripePaymentIntentId`: read-only, sidebar
+- `payment`: group with provider, intentId/transactionId, status; read-only, sidebar
 - `notes`: internal admin notes
 
 **Critical: Snapshot product data at purchase time.** Store `productName` and `unitPrice` on order items — product prices can change after purchase.
@@ -432,7 +438,9 @@ const res = await fetch("/api/gift-cards/redeem", {
 
 ## E-Commerce Analytics
 
-### Dual-Provider Pattern (GA4 + Plausible)
+### Analytics Provider Abstraction
+
+Use a single `trackEcommerceEvent(event, data)` wrapper and adapt the adapter to your analytics provider (for example, GA4, Plausible, or Segment).
 
 ```ts
 type EcommerceEvent =
@@ -453,6 +461,16 @@ interface EcommerceData {
   value?: number; // cents — overrides price * quantity when provided
 }
 
+interface AnalyticsAdapter {
+  track: (event: EcommerceEvent, payload: Record<string, unknown>) => void;
+}
+
+const analyticsAdapter: AnalyticsAdapter = {
+  track(event, payload) {
+    // Forward to your analytics provider here.
+  },
+};
+
 export function trackEcommerceEvent(
   event: EcommerceEvent,
   data: EcommerceData,
@@ -462,28 +480,19 @@ export function trackEcommerceEvent(
   const currency = data.currency ?? "USD";
   const value = data.value ?? data.price * data.quantity;
 
-  // GA4 — full e-commerce schema
-  if (window.gtag) {
-    window.gtag("event", event, {
-      currency,
-      value: value / 100, // GA4 expects dollars
-      items: [
-        {
-          item_id: data.item_id,
-          item_name: data.item_name,
-          price: data.price / 100,
-          quantity: data.quantity,
-        },
-      ],
-    });
-  }
-
-  // Plausible — custom events
-  if (window.plausible) {
-    window.plausible(event, {
-      props: { item_id: data.item_id, price: data.price },
-    });
-  }
+  analyticsAdapter.track(event, {
+    currency,
+    value: value / 100, // Convert cents to currency units for dashboards
+    items: [
+      {
+        item_id: data.item_id,
+        item_name: data.item_name,
+        price: data.price / 100,
+        quantity: data.quantity,
+      },
+    ],
+    raw: { priceCents: data.price, valueCents: value },
+  });
 }
 ```
 
@@ -543,5 +552,5 @@ export function reportWebVitals() {
 3. **Missing product snapshots**: Store product name/price on order items — products change after purchase.
 4. **No quantity floor**: Always enforce `Math.max(1, quantity)` — zero or negative quantities break totals.
 5. **Missing ARIA on cart changes**: Screen readers need live regions to announce cart updates.
-6. **Stripe amount confusion**: Stripe uses cents natively — pass your cents value directly, don't multiply by 100 again.
+6. **Payment-provider amount confusion**: Many providers expect cents natively — pass your cents value directly unless your chosen SDK documents otherwise.
 7. **Gift card race conditions**: Validate balance server-side at payment time, not just at code entry.
