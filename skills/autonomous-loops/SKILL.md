@@ -129,7 +129,7 @@ Always produce a final summary: objective, final metric vs. target, iterations u
 
 ### B. Working Through Copilot PR Feedback
 
-See also: [pr-management](../pr-management/SKILL.md) for the underlying thread tooling, and `/pr-feedback` and `/pr-resolve` prompts.
+See also: [pr-feedback](../pr-feedback/SKILL.md) and [pr-resolve](../pr-resolve/SKILL.md) for the underlying thread tooling.
 
 - **Objective**: All Copilot review threads resolved and PR checks green
 - **Evaluation**: `get_pull_request_threads` (unresolved count) **and** `gh pr checks` (status)
@@ -211,6 +211,6 @@ Poll with backoff (e.g. 30s, 60s, 120s) and a hard cap (e.g. 5 attempts) before 
 
 ## See Also
 
-- [pr-management](../pr-management/SKILL.md) — review thread tooling used by the Copilot-feedback loop
+- [pr-feedback](../pr-feedback/SKILL.md) and [pr-resolve](../pr-resolve/SKILL.md) — review thread tooling used by the Copilot-feedback loop
 - `/pr-feedback`, `/pr-resolve` prompts — single-pass building blocks used inside loops
 - [agent-authoring](../agent-authoring/SKILL.md) — how this skill is structured

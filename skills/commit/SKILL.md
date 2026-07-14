@@ -1,6 +1,10 @@
 ---
 name: commit
-description: Commit changes with conventional messages and create/update pull request
+description: |
+  Validate, commit with conventional messages, push, and open/update a PR.
+  Use when committing changes, creating or updating a pull request, or finalizing work.
+  Covers branch naming (including Envative `users/<user>/…` conventions), conventional commit format,
+  ADO `AB#` work-item linking, and time logging.
 ---
 
 # Commit & PR
@@ -16,7 +20,7 @@ Validate, commit with conventional messages, and submit pull requests.
 ### 1. Assess State
 
 - Run `git branch --show-current` and `git status`
-- Review `#changes` for the complete diff
+- Review the working-tree diff (`git diff`; `#changes` in VS Code) and staged diff (`git diff --staged`) for the complete changeset
 - Note staged vs unstaged files
 - Check if on protected branch
 
@@ -30,7 +34,7 @@ Discover available commands (`npm run` to list scripts), then execute:
 - **Testing**: `test`
 - **Building**: `build`
 
-Check `#problems` for IDE-reported issues. **Stop and report if validation fails.**
+Check IDE diagnostics (`#problems` in VS Code) for reported issues. **Stop and report if validation fails.**
 
 ### 3. Ensure Feature Branch
 
@@ -97,7 +101,7 @@ git push -u origin <branch-name>
 
 ### 6. Create/Update PR
 
-When authoring or updating a PR description, follow the [`pr-authoring`](../skills/pr-authoring/SKILL.md) skill — concise summary with motivation, grouped by area not file, concrete validation, work item references in the body.
+When authoring or updating a PR description, follow the [`pr-authoring`](../pr-authoring/SKILL.md) skill — concise summary with motivation, grouped by area not file, concrete validation, work item references in the body.
 
 **If no PR exists:**
 
@@ -115,7 +119,7 @@ When authoring or updating a PR description, follow the [`pr-authoring`](../skil
 
 ### 7. Log Time (follow-up, non-blocking)
 
-After the PR is created or updated, invoke the [`time-tracking`](../skills/time-tracking/SKILL.md) skill, passing the changeset, branch name, commit subject(s), and PR title/number as context. It resolves the ADO work item and logs estimated time (`log_time`, never timers; create or update, never delete). Do not block the commit/PR on time logging.
+After the PR is created or updated, invoke the [`tt`](../tt/SKILL.md) skill, passing the changeset, branch name, commit subject(s), and PR title/number as context. It resolves the ADO work item and logs estimated time (`log_time`, never timers; create or update, never delete). Do not block the commit/PR on time logging.
 
 ## Commit Examples
 
@@ -135,9 +139,3 @@ Provide confirmation:
 - **Work Item Links** (if applicable): List `AB#<id>` references included
   - Verify: `AB#<id>` appears as hyperlink in PR description
   - Links appear in work item's Development section after creation
-
-## User Input
-
-```text
-$ARGUMENTS
-```

@@ -11,16 +11,15 @@ Procedural knowledge for executing implementation tasks: from spec/plan to valid
 
 - A user asks to implement, build, or add a feature
 - A `specs/{NNN-slug}/plan.md` exists and needs to be executed
-- A refined prompt from `/refine` or a spec from `/spec` is ready to be built
+- A spec from `/spec` is ready to be built
 - Any multi-step code change beyond a trivial tweak
 
-For very small surgical changes (rename, typo, single-line fix), use `/tweak` instead.
+For very small surgical changes (rename, typo, single-line fix), just make the minimal edit directly rather than running the full protocol below.
 
 ## Context Sources (priority order)
 
 1. **Spec + Plan**: If `specs/{NNN-slug}/spec.md` and `plan.md` exist, follow the plan step-by-step
-2. **Refined Prompt**: Output from `/refine` immediately preceding
-3. **Direct user input**: The current request
+2. **Direct user input**: The current request
 
 ## Execution Protocol
 

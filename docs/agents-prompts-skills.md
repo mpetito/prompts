@@ -1,7 +1,8 @@
-# VS Code Copilot: Agents, Prompts, and Skills Research
+# VS Code Copilot: Agents and Skills Research
 
 **Date**: 2025-01-19  
-**Purpose**: Evaluate recategorization of current agent files to better utilize prompts and skills
+**Status update**: 2026-07-13 — this repository has consolidated prompt files into skills. Skills are now the single reusable workflow unit: they can auto-load when relevant and VS Code exposes each skill as a `/name` command.  
+**Purpose**: Record the concepts and repository direction for agents and skills.
 
 ## Concepts Overview
 
@@ -19,33 +20,26 @@
 
 **Best for**: Mode-switching workflows where you need a distinct persona with specific capabilities.
 
-### Prompts (`.prompt.md`)
-
-**Definition**: Reusable task templates for common development tasks that you run on-demand in chat.
-
-**Key characteristics**:
-
-- Stored in `.github/prompts/` (workspace) or user profile
-- Invoked via **`/promptname`** in chat or Command Palette
-- Can specify an **agent** to run with (inherits that agent's tools)
-- Can specify **tools** available for the prompt
-- Support **variables** like `${selection}`, `${file}`, `${input:variableName}`
-
-**Best for**: Standardized, repeatable tasks that can be invoked from within any agent session.
-
 ### Skills (`SKILL.md`)
 
-**Definition**: Folders of instructions, scripts, and resources that Copilot loads automatically when relevant.
+**Definition**: Folders of instructions, scripts, and resources that Copilot loads automatically when relevant. In this repository, skills also preserve the former slash-command entry points, so each skill can be invoked explicitly via **`/skill-name`** in VS Code.
 
 **Key characteristics**:
 
 - Stored in `.github/skills/<skill-name>/` (workspace) or `~/.copilot/skills/<skill-name>/` (user)
 - Defined via `SKILL.md` with YAML frontmatter (`name` + `description` required)
 - **Automatically discovered** based on prompt relevance (progressive disclosure)
+- **Explicitly invocable** by slash command in VS Code using the skill name
 - Can include supporting scripts, examples, and reference files
 - Portable across VS Code, GitHub Copilot CLI, and GitHub Copilot coding agent
 
-**Best for**: Bounded procedures with supporting resources that should auto-load when relevant.
+**Best for**: Bounded procedures with supporting resources that should auto-load when relevant while remaining callable on demand.
+
+### Legacy Prompt Files (`.prompt.md`)
+
+**Definition**: VS Code supports reusable prompt files for common development tasks, invoked on demand in chat.
+
+**Repository status**: This repository no longer keeps prompt files as a separate workflow layer. Former prompt tasks such as `implement`, `review`, and `commit` have been converted to skills with the same slash-command slugs.
 
 ### Custom Instructions (`.instructions.md`)
 
@@ -62,154 +56,101 @@
 
 ## Comparison Table
 
-| Feature                   | Agents                  | Prompts                 | Skills                       | Instructions            |
-| ------------------------- | ----------------------- | ----------------------- | ---------------------------- | ----------------------- |
-| **Primary Purpose**       | Specialized AI personas | Reusable task templates | Auto-discovered procedures   | Coding standards        |
-| **File Extension**        | `.agent.md`             | `.prompt.md`            | `SKILL.md`                   | `.instructions.md`      |
-| **Tool Access**           | ✅ Explicit tool list   | ✅ Can specify tools    | ❌ No direct tool access     | ❌ No                   |
-| **Model Selection**       | ✅ Yes                  | ✅ Yes                  | ❌ No                        | ❌ No                   |
-| **Invocation**            | Switch via agent picker | Type `/name` in chat    | Automatic (on-demand)        | Automatic (via glob)    |
-| **Discovery**             | Manual selection        | Manual (`/`) invocation | Auto-discovered by relevance | Auto-applied by context |
-| **Can Include Resources** | ❌ Instructions only    | ❌ Instructions only    | ✅ Scripts, examples, docs   | ❌ Instructions only    |
-| **Handoffs**              | ✅ Yes                  | ❌ No                   | ❌ No                        | ❌ No                   |
-| **Portability**           | VS Code only            | VS Code & GitHub.com    | Open standard (cross-agent)  | VS Code & GitHub.com    |
+| Feature | Agents | Skills | Legacy Prompt Files | Instructions |
+| --- | --- | --- | --- | --- |
+| **Primary Purpose** | Specialized AI personas | Auto-discovered procedures and `/name` task entry points | Reusable task templates | Coding standards |
+| **File Extension** | `.agent.md` | `SKILL.md` | `.prompt.md` | `.instructions.md` |
+| **Tool Access** | ✅ Explicit tool list | ❌ No direct tool access | ✅ Can specify tools | ❌ No |
+| **Model Selection** | ✅ Yes | ❌ No | ✅ Yes | ❌ No |
+| **Invocation** | Switch via agent picker | Automatic or `/skill-name` in VS Code | Type `/name` in chat | Automatic (via glob) |
+| **Discovery** | Manual selection | Auto-discovered by relevance; visible as slash commands | Manual (`/`) invocation | Auto-applied by context |
+| **Can Include Resources** | ❌ Instructions only | ✅ Scripts, examples, docs | ❌ Instructions only | ❌ Instructions only |
+| **Handoffs** | ✅ Yes | ❌ No | ❌ No | ❌ No |
+| **Portability** | VS Code only | Open standard (cross-agent) | VS Code & GitHub.com | VS Code & GitHub.com |
 
 ## Decision Framework
 
-| Use **Agent** when...               | Use **Prompt** when...                   | Use **Skill** when...                     |
-| ----------------------------------- | ---------------------------------------- | ----------------------------------------- |
-| Need a specialized **persona/mode** | Need a **repeatable task template**      | Need **auto-discovery** by relevance      |
-| Need specific **tool restrictions** | Task runs **on-demand** via `/name`      | Procedure includes **supporting files**   |
-| Need **model selection**            | Want to **standardize** common workflows | Task is **bounded** with clear completion |
-| Need **handoffs** between modes     | Flexibility to run **within any agent**  | Want **portability** across tools         |
+| Use **Agent** when... | Use **Skill** when... | Use **Instructions** when... |
+| --- | --- | --- |
+| Need a specialized **persona/mode** | Need a **repeatable task template** invocable by `/name` | Need project-wide standards |
+| Need specific **tool restrictions** | Need **auto-discovery** by relevance | Need file-pattern based guidance |
+| Need **model selection** | Procedure includes **supporting files** | Guidance should apply quietly |
+| Need **handoffs** between modes | Want **portability** across tools | No slash command is needed |
 
-## Recommendations for Current Agents
+## Current Repository Direction
 
-### Keep as Agents ✅
+### Consolidated as Skills ✅
 
-These need persona switching, specific tools, handoffs, or model selection:
+Former prompt-style entry points are now skills so the slug is preserved while the procedure can also auto-load:
 
-| Agent              | Rationale                                                                           |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| **exec**           | Core implementation coordinator—needs full tool access, handoffs to review/commit   |
-| **plan**           | Architectural planning requires specific tools (perplexity, docs), handoffs to exec |
-| **research**       | Deep research mode with specific tools, handoffs to plan/exec                       |
-| **review**         | Review persona with restricted tools, handoffs to commit/tweak                      |
-| **commit**         | Git workflow persona with GitHub tools, handoffs to pr-feedback                     |
-| **pr-feedback**    | PR workflow requiring GitHub PR tools, handoffs to pr-resolve/commit                |
-| **pr-resolve**     | PR thread resolution requiring GitHub PR tools                                      |
-| **pr-consolidate** | Complex git operations requiring specific tools                                     |
-| **upgrade**        | Dependency management mode with validation tools                                    |
+| Skill | Rationale |
+| --- | --- |
+| `implement` | End-to-end implementation can be invoked explicitly or triggered by implementation requests. |
+| `review` | Code review methodology is reusable as `/review` and as a review-triggered skill. |
+| `commit` | Git/PR authoring workflow remains `/commit` while sharing supporting skill context. |
+| `story`, `spec`, `tt` | Renamed skills preserve the existing `/story`, `/spec`, and `/tt` slugs. |
 
-### Convert to Prompts 📝
+### PR Workflow Split ✅
 
-These are task-oriented and would work well as `/name` invocations within any agent:
+The former broad PR-management procedure has been split into focused skills:
 
-| Current Agent | → Prompt              | Rationale                                                                          |
-| ------------- | --------------------- | ---------------------------------------------------------------------------------- |
-| **refine**    | `refine.prompt.md`    | Task-oriented clarification. `/refine` usable within any agent session.            |
-| **tweak**     | `tweak.prompt.md`     | Simple task template for small changes. `/tweak` from within exec or other agents. |
-| **story**     | `story.prompt.md`     | Work item creation is a discrete task. `/story` to create items from any context.  |
-| **summarize** | `summarize.prompt.md` | Conversation summarization utility. `/summarize` at end of any session.            |
+| Skill | Scope |
+| --- | --- |
+| `pr-feedback` | Address review, CI, and code-analysis feedback. |
+| `pr-resolve` | Reply to and resolve review threads. |
+| `pr-consolidate` | Consolidate multiple PRs or branches. |
 
-### Convert to Skills 🔧
+### Existing Skills Kept ✅
 
-This is a perfect skill candidate with supporting resources:
-
-| Current Agent | → Skill                      | Rationale                                                                                                                                            |
-| ------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **agents**    | `agents-md-creator/SKILL.md` | Bounded procedure for creating AGENTS.md/SKILL.md. Auto-discovered when user mentions "create AGENTS.md". Can include templates as supporting files. |
+Research, PR review/authorship, upgrades, authoring guidance, autonomous loops, quality/design standards, e-commerce patterns, Playwright, and SEO/AEO structured-data workflows remain skills.
 
 ## Folder Structure
 
-Given the symbolic link setup in this repository, we need flat folder structures:
+The repository setup now links only skills:
 
 ```
-prompts/                              # Symlinked to VS Code user profile
-├── exec.agent.md                     # Agents (personas)
-├── plan.agent.md
-├── research.agent.md
-├── review.agent.md
-├── commit.agent.md
-├── pr-feedback.agent.md
-├── pr-resolve.agent.md
-├── pr-consolidate.agent.md
-├── upgrade.agent.md
-├── refine.prompt.md                  # Prompts (task templates)
-├── tweak.prompt.md
-├── story.prompt.md
-├── summarize.prompt.md
-└── mcp.toolsets.jsonc
-
 skills/                               # Symlinked to ~/.copilot/skills/
-└── agents-md-creator/
+└── <skill-name>/
     ├── SKILL.md
-    └── templates/
-        ├── agents-md-template.md
-        └── skill-md-template.md
+    └── supporting files as needed
+
+fragments/                            # Reusable fragments such as snyk-upgrade-review
 ```
 
-**Note**: The PowerShell setup script will need to be updated to:
+The PowerShell setup script is `setup-skills-link.ps1` and maps `skills/` to `~/.copilot/skills/`. Cross-tool setup can map `skills/` to `~/.agents/skills/` where supported.
 
-1. Map `skills/` folder contents to `~/.copilot/skills/` (outside VS Code user folder, inside Windows profile home)
-2. Enable the `chat.useAgentSkills` setting if using skills (currently Preview)
+## Skill Authoring Notes
 
-## Prompt Conversion Notes
-
-When converting agents to prompts:
-
-1. **Rename** from `.agent.md` to `.prompt.md`
-2. **Update frontmatter**:
-   ```yaml
-   ---
-   name: refine
-   description: Refine and clarify user input into a comprehensive prompt
-   agent: agent # Optional: specify agent for tool access
-   tools: ["search", "read"] # Optional: tool restrictions
-   ---
-   ```
-3. **Remove** `handoffs` (prompts don't support them)
-4. **Remove** `model` (prompts inherit from current agent)
-5. **Add "Next Steps" guidance** in output section to replace handoff functionality
-
-## Skill Conversion Notes
-
-When converting to a skill:
+When adding or converting a workflow, create or rename a skill instead of adding a prompt file:
 
 1. **Create folder** in `skills/<skill-name>/`
 2. **Create SKILL.md** with trigger-clear description:
    ```yaml
    ---
-   name: agents-md-creator
+   name: agent-authoring
    description: |
-     Guide for creating AGENTS.md and SKILL.md files. Use when the user asks to 
-     create agent configuration files, improve agentic coding experience, or 
-     set up AGENTS.md for a repository.
+     Use when creating AGENTS.md files, writing SKILL.md files, or improving
+     agentic coding developer experience.
    ---
    ```
-3. **Extract templates** into supporting files in the skill folder
-4. **Reference supporting files** from SKILL.md body
+3. **Preserve the slug** by matching the skill folder/name to the intended `/name` command
+4. **Extract templates or references** into supporting files in the skill folder
+5. **Reference supporting files** from the SKILL.md body
 
 ## Trade-offs
 
-| Change                                   | Benefit                                 | Cost                                           |
-| ---------------------------------------- | --------------------------------------- | ---------------------------------------------- |
-| Prompts for refine/tweak/story/summarize | Usable **within** any agent via `/name` | Lose handoffs (must manually invoke next step) |
-| Skill for agents-md-creator              | Auto-discovery when relevant, portable  | Requires preview setting, script update        |
-| Fewer agents                             | Cleaner agent picker, clearer purpose   | More manual navigation                         |
-
-## Open Questions
-
-1. **Prompt tool access**: Should prompts specify `agent: exec` to get implementation tools, or remain tool-agnostic? Remain agnostic.
-2. **Skill preview**: Comfortable enabling `chat.useAgentSkills` preview setting? Already enabled.
-3. **Handoff replacement**: For converted prompts, add "Next Steps" section to guide users, or trust they know the workflow? Trust.
+| Change | Benefit | Cost |
+| --- | --- | --- |
+| Consolidate prompts into skills | One source of truth; auto-load plus `/name` invocation; better cross-tool reuse | Skill names must preserve user-facing slash-command slugs |
+| Split PR management into focused skills | Smaller procedures with clearer triggers and commands | More skill folders to maintain |
+| Keep fragments separate | Lightweight reuse for specialized snippets | Fragments are not full procedures |
 
 ## References
 
-| Document              | URL                                                                          |
-| --------------------- | ---------------------------------------------------------------------------- |
-| Custom agents         | https://code.visualstudio.com/docs/copilot/customization/custom-agents       |
-| Prompt files          | https://code.visualstudio.com/docs/copilot/customization/prompt-files        |
-| Agent Skills          | https://code.visualstudio.com/docs/copilot/customization/agent-skills        |
-| Custom instructions   | https://code.visualstudio.com/docs/copilot/customization/custom-instructions |
-| Agent Skills Standard | https://agentskills.io/                                                      |
+| Document | URL |
+| --- | --- |
+| Custom agents | https://code.visualstudio.com/docs/copilot/customization/custom-agents |
+| Prompt files | https://code.visualstudio.com/docs/copilot/customization/prompt-files |
+| Agent Skills | https://code.visualstudio.com/docs/copilot/customization/agent-skills |
+| Custom instructions | https://code.visualstudio.com/docs/copilot/customization/custom-instructions |
+| Agent Skills Standard | https://agentskills.io/ |

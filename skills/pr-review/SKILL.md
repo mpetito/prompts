@@ -13,7 +13,7 @@ Procedural knowledge for reviewing another author's pull request and posting rev
 - The user wants help drafting or posting GitHub review comments
 - An external PR needs evaluation against personal and project standards
 
-For reviewing **your own** staged/local changes, use the `code-review` skill instead.
+For reviewing **your own** staged/local changes, use the `review` skill instead.
 
 ## Core Principles
 
@@ -118,7 +118,7 @@ pull_request_review_write({
 
 - Default event is `COMMENT`; only use `APPROVE` or `REQUEST_CHANGES` when the user explicitly chooses it
 - For a standalone PR-level comment (no inline notes), use `add_issue_comment` instead
-- To reply within existing threads, use `reply_to_pull_request_comment` (see the `pr-management` skill)
+- To reply within existing threads, use `reply_to_pull_request_comment` (see the `pr-resolve` skill)
 - After posting, confirm what was published and link the review
 
 ## Output Format (Draft for User)

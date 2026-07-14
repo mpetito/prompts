@@ -1,5 +1,5 @@
 ---
-name: story-writing
+name: story
 description: "Guidelines for creating well-structured Azure DevOps work items including User Stories, Issues, and Bugs with proper formatting, story points, and acceptance criteria. Use when creating user stories, writing acceptance criteria, formatting work items for Azure DevOps, or estimating story points."
 ---
 
@@ -240,6 +240,18 @@ Related items or references.
 
 ---
 
+## Azure DevOps Creation Workflow
+
+When the user wants the work item created in Azure DevOps:
+
+1. **Gather context**: Use available `azure-devops/*` MCP tools to identify the project, team, and current sprint/iteration.
+2. **Analyze the request**: Select User Story, Issue, or Bug; draft the title, fields, estimate, and acceptance criteria using this skill.
+3. **Create the work item**: Call `azure-devops/wit_create_work_item` with the appropriate Azure DevOps fields and Markdown-formatted rich text.
+4. **Add design context when useful**: Call `azure-devops/wit_add_work_item_comment` for architectural notes, design constraints, dependencies, or implementation context that should not live in the main description.
+5. **Return a concise summary** using the output format below.
+
+---
+
 ## Example Field Specifications
 
 ### User Story Example
@@ -335,6 +347,14 @@ Related items or references.
 
 ## Clarification Checklist
 
+### Clarification First Gate
+
+Ask clarifying questions before creating or finalizing a work item when any required detail is unclear:
+
+- For stories: user type/persona, benefit or purpose, scope, or acceptance criteria cannot be inferred.
+- For issues: technical purpose, scope boundaries, or definition of done is unclear.
+- For bugs: expected-vs-actual behavior is missing, reproduction steps are missing or unclear, environment details are unavailable, or severity cannot be assessed.
+
 Before creating a work item, verify you have:
 
 ### For User Stories
@@ -361,6 +381,16 @@ Before creating a work item, verify you have:
 - [ ] Definition of done determinable
 
 ---
+
+## Output Summary Format
+
+After creating or drafting a work item, return:
+
+- Work Item ID and Title
+- Type and Sprint
+- Story Points, or Severity/Priority for bugs
+- Brief summary of the description and acceptance criteria
+- Link to the work item, if available
 
 ## Quick Reference Card
 

@@ -1,5 +1,5 @@
 ---
-name: spec-planning
+name: spec
 description: "Methodology for producing a `spec.md` (what + why) and `plan.md` (how) for a feature or change, using research and codebase analysis. Use when creating an implementation plan, writing a spec, breaking down a complex feature into phases, or scoping work before coding begins."
 ---
 
@@ -9,16 +9,14 @@ Procedural knowledge for turning a request into an actionable spec + plan pair u
 
 ## When to Use
 
-- A user asks for a plan, spec, design, breakdown, or roadmap for a non-trivial feature
-- A `/refine`-d prompt is ready to be turned into a buildable spec
+- The user asks for a plan, spec, design, breakdown, or roadmap for a non-trivial feature
 - Work spans multiple files, components, or systems and benefits from upfront design
 
 For small, obvious changes go straight to implementation (no spec needed).
 
 ## Context Sources (priority order)
 
-1. **Refined prompt**: Output of `/refine` immediately preceding
-2. **Direct user input**
+1. **Direct user input**
 
 ## Process
 
