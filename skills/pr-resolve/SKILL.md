@@ -15,71 +15,39 @@ Use this skill after changes have been committed and pushed, or when the user as
 - Changes that claim to fix review feedback are committed and pushed.
 - The user has confirmed which items were addressed when there is any ambiguity.
 
-## Core MCP Tools
+## Tooling
 
-### Thread Discovery
+Use the PowerShell scripts in `../pr-scripts/` (sibling folder within the skills tree; resolve the path relative to this skill's folder). They wrap `gh api graphql` and require only an authenticated `gh` CLI. All scripts auto-resolve `owner/repo` and PR number from the current branch when omitted.
 
-```javascript
-// Get all review threads for a PR
-get_pull_request_threads({
-  owner: "org-name",
-  repo: "repo-name",
-  pull_number: 123,
-});
+```powershell
+# List all review threads (thread IDs, resolution state, file/line, full comments)
+../pr-scripts/Get-PrThreads.ps1 -Pr 123 [-Repo owner/name] [-Unresolved]
+
+# Reply to a thread (by thread ID — no comment-ID lookup needed)
+../pr-scripts/Send-PrThreadReply.ps1 -ThreadId PRRT_... -Body "Fixed in commit 186e28a."
+
+# Reply and resolve in one call (omit -Body to resolve only)
+../pr-scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body "Fixed in commit 186e28a."
+
+# Verify: exit 0 when all threads resolved, otherwise prints remaining threads
+../pr-scripts/Test-PrThreadsResolved.ps1 -Pr 123
 ```
 
-Returns thread IDs, status, file paths, line numbers, comment IDs, and comment content.
+Thread IDs start with `PRRT_`. Replies target threads directly.
 
-### Replying to Comments
-
-```javascript
-// Reply to a specific comment in a thread
-reply_to_pull_request_comment({
-  owner: "org-name",
-  repo: "repo-name",
-  pull_number: 123,
-  comment_id: "PRRC_kwDOP3aAEM5knHc7",
-  body: "Fixed in commit 186e28a. Replaced setTimeout with requestAnimationFrame.",
-});
-```
-
-Use the comment ID from the thread, not the thread ID. Reply to the latest comment in a thread to maintain conversation flow.
-
-### Resolving Threads
-
-```javascript
-// Resolve a thread after addressing feedback
-resolve_pull_request_review_thread({
-  thread_id: "PRRT_kwDOP3aAEM5knHc7",
-});
-```
-
-Thread IDs typically start with `PRRT_`; comment IDs typically start with `PRRC_`.
-
-### Checking Resolution Status
-
-```javascript
-// Verify thread resolution status
-check_pull_request_review_resolution({
-  owner: "org-name",
-  repo: "repo-name",
-  pull_number: 123,
-});
-```
-
-Use after batch resolutions to confirm all intended threads were resolved.
+Fallback: if the scripts are unavailable (e.g., non-Windows agent), use GitHub MCP PR tools if configured (`pull_request_read`, `reply_to_pull_request_comment` or its consolidated successor, `resolve_pull_request_review_thread`), or issue the same GraphQL via `gh api graphql` directly.
 
 ## Process
 
 1. Identify owner, repo, and PR number from explicit input, PR URL, VS Code PR context, current branch, or `gh pr view`.
-2. Fetch all review threads with `get_pull_request_threads`.
+2. Fetch all review threads with `Get-PrThreads.ps1`.
 3. Skip already-resolved threads unless the user asks to audit them.
 4. For each unresolved thread, verify the feedback was addressed by checking the diff, commit history, and relevant test results.
 5. Craft a concise reply with a commit reference when available.
-6. Post the reply with `reply_to_pull_request_comment`.
+6. For threads being resolved, use `Resolve-PrThread.ps1 -ThreadId ... -Body "..."` (reply + resolve in one call); for reply-only threads, use `Send-PrThreadReply.ps1`.
 7. Resolve only threads that meet the resolution rules below.
 8. Optionally add a PR summary comment or update the PR description when the user requested a broader summary.
-9. Verify final state with `check_pull_request_review_resolution`.
+9. Verify final state with `Test-PrThreadsResolved.ps1`.
 
 ## Resolution Decision Matrix
 
@@ -98,52 +66,28 @@ Use after batch resolutions to confirm all intended threads were resolved.
 FOR each unresolved thread:
     1. Verify the feedback was addressed by checking code, commits, and tests.
     2. Craft an appropriate reply with a commit SHA when possible.
-    3. Post the reply via reply_to_pull_request_comment.
-    4. IF the thread is fixed, answered, or outdated:
-           resolve via resolve_pull_request_review_thread.
-    5. IF it is a design discussion, deferred work, or disagreement:
-           leave open for the reviewer.
+    3. IF the thread is fixed, answered, or outdated:
+           Resolve-PrThread.ps1 -ThreadId {id} -Body {reply}   # reply + resolve
+    4. IF it is a design discussion, deferred work, or disagreement:
+           Send-PrThreadReply.ps1 -ThreadId {id} -Body {reply}  # leave open for the reviewer
 ```
 
 ## Batch Resolution Example
 
-```javascript
-// 1. Get threads
-const threads = await get_pull_request_threads({
-  owner: "myorg",
-  repo: "myrepo",
-  pull_number: 42,
-});
+```powershell
+# 1. Get unresolved threads
+../pr-scripts/Get-PrThreads.ps1 -Pr 42 -Unresolved
 
-// 2. Reply to fixed thread
-await reply_to_pull_request_comment({
-  owner: "myorg",
-  repo: "myrepo",
-  pull_number: 42,
-  comment_id: "PRRC_kwDOP3aAEM5knHc7",
-  body: "Fixed in commit 186e28a. Replaced setTimeout with requestAnimationFrame.",
-});
+# 2. Reply and resolve a fixed thread in one call
+../pr-scripts/Resolve-PrThread.ps1 -ThreadId PRRT_kwDOP3aAEM5knHc7 `
+  -Body "Fixed in commit 186e28a. Replaced setTimeout with requestAnimationFrame."
 
-// 3. Resolve the thread
-await resolve_pull_request_review_thread({
-  thread_id: "PRRT_kwDOP3aAEM5knHc7",
-});
+# 3. Reply to a design question without resolving
+../pr-scripts/Send-PrThreadReply.ps1 -ThreadId PRRT_kwDOP3aAEM5knHco `
+  -Body "The current approach optimizes by checking sort_order before updating. A batch API would require interface changes beyond this PR's scope."
 
-// 4. Reply to design question without resolving
-await reply_to_pull_request_comment({
-  owner: "myorg",
-  repo: "myrepo",
-  pull_number: 42,
-  comment_id: "PRRC_kwDOP3aAEM5knHco",
-  body: "The current approach optimizes by checking sort_order before updating. A batch API would require interface changes beyond this PR's scope.",
-});
-
-// 5. Verify all resolutions
-await check_pull_request_review_resolution({
-  owner: "myorg",
-  repo: "myrepo",
-  pull_number: 42,
-});
+# 4. Verify all resolutions
+../pr-scripts/Test-PrThreadsResolved.ps1 -Pr 42
 ```
 
 ## Reply Templates
@@ -204,16 +148,15 @@ If further changes were pushed, suggest `/commit` to update the PR.
 - Resolve only when fixed, answered, or obsolete.
 - Leave design discussions, deferred work, and disagreements open for the reviewer.
 - Keep replies concise, professional, and traceable to commit SHAs.
-- Reply to the latest comment in a thread.
 - Batch related replies to avoid notification spam.
-- Use `check_pull_request_review_resolution` after batch updates.
+- Run `Test-PrThreadsResolved.ps1` after batch updates.
 
 ## Common Issues
 
 | Problem | Fix |
 | --- | --- |
-| `Thread not found` | Verify the thread ID starts with `PRRT_`, refresh with `get_pull_request_threads`, and check whether it was deleted or already resolved. |
-| `Comment not found` | Use the comment ID (`PRRC_`), not the thread ID; pending comments may not have IDs yet. |
+| `Could not resolve to a node` | Verify the thread ID starts with `PRRT_`, refresh with `Get-PrThreads.ps1`, and check whether it was deleted or already resolved. |
+| `gh: Not Found` | Check `-Repo`/`-Pr` values; auto-resolution requires the current branch to have an open PR. |
 | `Cannot resolve thread` | Check permissions; some repos require reviewers to resolve their own threads. |
 
 ## User Input
