@@ -22,7 +22,7 @@ Review what is currently staged or what was just implemented. Use `#changes` for
 Before starting, detect open PR context:
 
 1. Use `#activePullRequest` / `#openPullRequest` to identify if changes belong to a PR
-2. If the changes belong to an open PR, fetch existing review threads (`get_pull_request_threads`) and incorporate outstanding comments into the review scope
+2. If the changes belong to an open PR, fetch existing review threads (`skills/pr-scripts/Get-PrThreads.ps1`) and incorporate outstanding comments into the review scope
 3. Reference the `pr-feedback` and `pr-resolve` skills for detailed PR feedback and thread tooling
 
 ## Review Dimensions

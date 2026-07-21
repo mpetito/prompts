@@ -27,9 +27,9 @@ For reviewing **your own** staged/local changes, use the `review` skill instead.
 ### Step 1: Resolve PR Context
 
 1. Determine `owner`/`repo` from the workspace git remote, or from the PR URL/user input if the PR is in another repository
-2. Fetch PR metadata, description, and diff via `pull_request_read` (methods: `get`, `get_diff`, `get_files`)
-3. Fetch existing reviews and threads (`get_pull_request_threads`, `pull_request_read` with `get_reviews`) — do not duplicate feedback already given
-4. Check CI status; note failures as context, not as findings to repeat
+2. Run `../pr-scripts/Get-PrContext.ps1 -Pr {n} -Repo {owner}/{repo}` (sibling folder within the skills tree) — one call returns metadata, description, changed files, existing reviews, review threads, and CI status. Fetch the diff itself with `gh pr diff {n}`.
+3. From the returned reviews/threads, note feedback already given — do not duplicate it
+4. Treat CI failures in the returned checks as context, not as findings to repeat
 
 ### Step 2: Learn Project Standards
 
@@ -91,35 +91,19 @@ Iterate until the user explicitly says to post. **Never call any posting tool be
 
 ### Step 6: Post (After Approval Only)
 
-For inline code comments, use a pending review so everything lands as one coherent review:
+Submit the summary and all approved inline comments atomically with `../pr-scripts/Submit-PrReview.ps1` (sibling folder within the skills tree). Write the inline comments to a JSON file first:
 
-```javascript
-// 1. Create a pending review
-pull_request_review_write({ method: "create", owner, repo, pullNumber });
-
-// 2. Add each approved inline comment
-add_comment_to_pending_review({
-  owner, repo, pullNumber,
-  path: "src/services/order.ts",
-  line: 42,            // use startLine + line for multi-line comments
-  side: "RIGHT",
-  subjectType: "LINE",
-  body: "Comment text...",
-});
-
-// 3. Submit with the user-chosen event
-pull_request_review_write({
-  method: "submit_pending",
-  owner, repo, pullNumber,
-  event: "COMMENT",     // or "APPROVE" / "REQUEST_CHANGES" — only as directed
-  body: "Review summary...",
-});
+```powershell
+# review-comments.json: [{ "path": "src/services/order.ts", "line": 42, "body": "Comment text...",
+#                          "side": "RIGHT" (default), "start_line": 40 (optional, multi-line) }]
+../pr-scripts/Submit-PrReview.ps1 -Pr 123 -Event COMMENT `
+  -Body "Review summary..." -CommentsFile review-comments.json
 ```
 
 - Default event is `COMMENT`; only use `APPROVE` or `REQUEST_CHANGES` when the user explicitly chooses it
-- For a standalone PR-level comment (no inline notes), use `add_issue_comment` instead
-- To reply within existing threads, use `reply_to_pull_request_comment` (see the `pr-resolve` skill)
-- After posting, confirm what was published and link the review
+- For a standalone PR-level comment (no inline notes), use `gh pr comment {n} --body-file ...` instead
+- To reply within existing threads, use `../pr-scripts/Send-PrThreadReply.ps1` (see the `pr-resolve` skill)
+- After posting, confirm what was published and link the review (the script outputs `html_url`)
 
 ## Output Format (Draft for User)
 

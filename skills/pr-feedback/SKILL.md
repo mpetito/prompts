@@ -15,69 +15,38 @@ Use this skill to resolve pull request feedback systematically before posting re
 - In VS Code, `#activePullRequest` or `#openPullRequest` may provide PR context; in other tools, infer context from the current branch, `gh pr status`, `gh pr view`, or user-provided arguments.
 - Collect review threads, CI failures, code-analysis findings, and any user instructions before changing code.
 
-## Core MCP Tools
+## Tooling
 
-### Thread Discovery
+Use the PowerShell scripts in `../pr-scripts/` (sibling folder within the skills tree; resolve the path relative to this skill's folder). They wrap `gh api graphql` and require only an authenticated `gh` CLI. All scripts auto-resolve `owner/repo` and PR number from the current branch when omitted.
 
-```javascript
-// Get all review threads for a PR
-get_pull_request_threads({
-  owner: "org-name",
-  repo: "repo-name",
-  pull_number: 123,
-});
+```powershell
+# One-shot feedback collection: unresolved threads + failing CI (with log excerpts) + code-scanning alerts
+../pr-scripts/Get-PrFeedback.ps1 -Pr 123 [-Repo owner/name]
+
+# List all review threads (thread IDs, resolution state, file/line, full comments)
+../pr-scripts/Get-PrThreads.ps1 -Pr 123 [-Repo owner/name] [-Unresolved]
+
+# Reply to a thread (by thread ID — no comment-ID lookup needed)
+../pr-scripts/Send-PrThreadReply.ps1 -ThreadId PRRT_... -Body "Fixed in commit abc1234."
+
+# Reply and resolve in one call (omit -Body to resolve only)
+../pr-scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body "Fixed in commit abc1234."
+
+# Verify: exit 0 when all threads resolved, otherwise prints remaining threads
+../pr-scripts/Test-PrThreadsResolved.ps1 -Pr 123
 ```
 
-Returns thread IDs, status, file paths, line numbers, comment IDs, and comment content.
+Thread IDs start with `PRRT_`. Replies target threads directly.
 
-### Replying to Comments
-
-```javascript
-// Reply to a specific comment in a thread
-reply_to_pull_request_comment({
-  owner: "org-name",
-  repo: "repo-name",
-  pull_number: 123,
-  comment_id: "PRRC_kwDOP3aAEM5knHc7",
-  body: "Fixed in commit abc1234. Replaced the nested callback with async/await.",
-});
-```
-
-Use the comment ID from the thread, not the thread ID. Reply to the latest comment in a thread to maintain conversation flow.
-
-### Resolving Threads
-
-```javascript
-// Resolve a thread after addressing feedback
-resolve_pull_request_review_thread({
-  thread_id: "PRRT_kwDOP3aAEM5knHc7",
-});
-```
-
-Thread IDs typically start with `PRRT_`; comment IDs typically start with `PRRC_`.
-
-### Checking Resolution Status
-
-```javascript
-// Verify thread resolution status
-check_pull_request_review_resolution({
-  owner: "org-name",
-  repo: "repo-name",
-  pull_number: 123,
-});
-```
-
-Use after batch resolutions to confirm all intended threads were resolved.
+Fallback: if the scripts are unavailable (e.g., non-Windows agent), use GitHub MCP PR tools if configured (`pull_request_read`, `reply_to_pull_request_comment` or its consolidated successor, `resolve_pull_request_review_thread`), or issue the same GraphQL via `gh api graphql` directly.
 
 ## Process
 
 ### 1. Collect All Feedback
 
 1. Identify the PR from explicit input, VS Code PR context, current branch, or `gh pr view`.
-2. Use `get_pull_request_threads` to fetch all review threads.
-3. Check CI status for build and test failures.
-4. Review CodeQL, security scan, and code-analysis findings if present.
-5. Note pending comments that have not been submitted yet.
+2. Run `Get-PrFeedback.ps1` — one call returns unresolved review threads, failing CI checks with log excerpts, and open code-scanning alerts.
+3. Note pending comments that have not been submitted yet.
 
 ### 2. Categorize Feedback
 
@@ -150,10 +119,10 @@ Before committing, pushing, replying, or resolving threads, present the planned 
 After the user confirms:
 
 1. Commit and push all fixes together.
-2. Reply to each addressed thread using `reply_to_pull_request_comment`.
-3. Resolve fixed, answered, or outdated threads using `resolve_pull_request_review_thread`.
+2. For fixed, answered, or outdated threads, reply and resolve in one step with `Resolve-PrThread.ps1 -ThreadId ... -Body "..."`.
+3. For threads that should stay open (design discussion, deferred work), reply only with `Send-PrThreadReply.ps1`.
 4. Leave design disagreements or deferred work open for the reviewer unless explicitly told otherwise.
-5. Verify resolution state with `check_pull_request_review_resolution`.
+5. Verify resolution state with `Test-PrThreadsResolved.ps1`.
 6. Suggest next steps:
    - `/pr-resolve` — reply to and resolve remaining PR review threads.
    - `/commit` — commit, push, and update the PR.
@@ -216,7 +185,6 @@ I want to make sure I address your concern correctly. Are you suggesting {interp
 - Wait for user approval before committing, pushing, replying, or resolving.
 - Be respectful; accept good suggestions and justify disagreements professionally.
 - Reference commit SHAs for traceability after commits exist.
-- Reply to the latest comment in each thread.
 - Batch related replies to avoid notification spam.
 - Never resolve without replying first.
 
@@ -224,8 +192,8 @@ I want to make sure I address your concern correctly. Are you suggesting {interp
 
 | Problem | Fix |
 | --- | --- |
-| `Thread not found` | Verify the thread ID starts with `PRRT_`, refresh with `get_pull_request_threads`, and check whether it was deleted or already resolved. |
-| `Comment not found` | Use the comment ID (`PRRC_`), not the thread ID; pending comments may not have IDs yet. |
+| `Could not resolve to a node` | Verify the thread ID starts with `PRRT_`, refresh with `Get-PrThreads.ps1`, and check whether it was deleted or already resolved. |
+| `gh: Not Found` | Check `-Repo`/`-Pr` values; auto-resolution requires the current branch to have an open PR. |
 | `Cannot resolve thread` | Check permissions; some repos require reviewers to resolve their own threads. |
 
 ## User Input

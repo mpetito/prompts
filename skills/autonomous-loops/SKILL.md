@@ -132,7 +132,7 @@ Always produce a final summary: objective, final metric vs. target, iterations u
 See also: [pr-feedback](../pr-feedback/SKILL.md) and [pr-resolve](../pr-resolve/SKILL.md) for the underlying thread tooling.
 
 - **Objective**: All Copilot review threads resolved and PR checks green
-- **Evaluation**: `get_pull_request_threads` (unresolved count) **and** `gh pr checks` (status)
+- **Evaluation**: `skills/pr-scripts/Test-PrThreadsResolved.ps1` (unresolved threads) **and** `gh pr checks` (status); on failures, `skills/pr-scripts/Get-PrCheckFailures.ps1` returns the failing checks with log excerpts
 - **Success**: 0 unresolved threads **and** all checks green on the latest commit
 - **Budget**: 4 iterations (Copilot rarely adds new comments after that)
 - **Steps**:

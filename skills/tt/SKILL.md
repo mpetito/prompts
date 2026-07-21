@@ -128,13 +128,21 @@ no trailing punctuation, ≤ 80 chars.
 
 ### 6. Create or update (never delete)
 
+**Multiple entries per day for the same work item are normal and preferred.** Distinct
+work sessions (e.g. morning implementation, afternoon PR feedback) each get their own
+entry. Never merge different work into one entry by appending to its note — that produces
+long trailing notes that break the note conventions above.
+
 1. List today's entries for the same project with
    `list_time_entries` (`from`/`to` = today, `project_id` = resolved project).
-2. **If an entry already exists today for the same project + task and same work**
-   (matching `#<id>` or descriptive area): prefer `update_time_entry` — increase `hours`
-   (existing + new, re-rounded up) and/or refine `notes`.
-3. **Otherwise:** `log_time` a new entry with `project_id`, `task_id`, `hours`, `spent_at`
-   (default today), and `notes`.
+2. **Update an existing entry only when it is the _same work session_ continuing** — same
+   project + task + work item, and the existing note already describes the work without
+   modification. In that case `update_time_entry` to increase `hours` (existing + new,
+   re-rounded up). The note stays as-is (or is corrected to conform to conventions);
+   never append additional description to it.
+3. **In every other case — including new/different work on the same work item —**
+   `log_time` a new entry with `project_id`, `task_id`, `hours`, `spent_at`
+   (default today), and its own one-line note. When in doubt, create a new entry.
 
 ### 7. Report
 
@@ -146,6 +154,8 @@ State the entry id, project, task, hours, and final note back to the user.
 - ❌ Never invent a work item id; cite only ids verified in ADO.
 - ❌ Never use `start_timer` / `stop_timer` — this workflow logs estimated, rounded hours.
 - ❌ Never write verbose changelogs in notes — one summary line, ≤ 80 chars.
+- ❌ Never append to an existing entry's note to cover new work — create a new entry;
+  multiple entries per day against the same work item are expected.
 - ✅ Keep estimates honest; prefer asking over guessing wildly.
 - ✅ Keep the repo→project mapping in repo memory current; append, don't overwrite.
 
