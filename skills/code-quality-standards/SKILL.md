@@ -1,6 +1,6 @@
 ---
 name: code-quality-standards
-description: Code review and quality standards for Next.js + React + TypeScript projects. Covers security validation (input sanitization, API route hardening, regex safety), DRY patterns (shared utilities, constant extraction), correctness (type safety, boundary conditions, error handling), performance (React memoization, lazy loading), and accessibility (ARIA, semantic HTML, keyboard navigation). Use when conducting code reviews, auditing code quality, or establishing coding standards.
+description: Use when conducting code reviews, auditing code quality, or establishing coding standards for Next.js + React + TypeScript projects.
 ---
 
 # Code Quality and Security Standards

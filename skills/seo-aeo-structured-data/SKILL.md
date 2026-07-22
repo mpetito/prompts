@@ -1,7 +1,7 @@
 ---
 name: seo-aeo-structured-data
 description: |
-  Implement SEO, AEO (Answer Engine Optimization), and structured data for React/Next.js sites: JSON-LD generators (Product, FAQ, HowTo, Organization, Breadcrumb, Speakable), metadata utilities, robots.txt with AI-bot rules, XML sitemaps, RSS feeds, Open Graph and Twitter cards, and Core Web Vitals. Use when optimizing for search engines, AI answer engines (ChatGPT, Perplexity, Google AI Overviews), or adding structured data.
+  Use when optimizing for search engines or AI answer engines (ChatGPT, Perplexity, Google AI Overviews), or adding structured data / JSON-LD to a React/Next.js site.
 ---
 
 # SEO, AEO, and Structured Data
