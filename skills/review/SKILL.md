@@ -41,7 +41,9 @@ Cover each relevant dimension. Skip those that do not apply to the diff (e.g. no
 | **Documentation**   | API docs, README, inline comments where the **why** is non-obvious                   |
 | **Observability**   | Logging coverage and levels, structured fields, traceability                         |
 
-For complex diffs, delegate independent dimensions to subagents in parallel (e.g. `Explore` for pattern compliance, a dedicated subagent per high-cost dimension) and synthesize the findings.
+For React/Next.js/TypeScript diffs, additionally apply the `code-quality-standards` skill checklist (security, DRY, correctness, performance, accessibility).
+
+For complex diffs, delegate independent dimensions to subagents in parallel (e.g. `Explore` for pattern compliance, a dedicated subagent per high-cost dimension) and synthesize the findings. Subagents are stateless and do not auto-load skills — embed the relevant dimension's checklist and coding standards directly in each subagent prompt.
 
 ## Protocol
 
@@ -57,6 +59,8 @@ For complex diffs, delegate independent dimensions to subagents in parallel (e.g
 
 ## Coding Standards (verify against)
 
+Condensed from the canonical standards in the `code-authoring` skill.
+
 - **Naming** descriptive; short only for iterators
 - **Functions** small; guard clauses / early returns
 - **Error Handling** fail fast; result objects when recoverable
@@ -65,6 +69,7 @@ For complex diffs, delegate independent dimensions to subagents in parallel (e.g
 - **Control Flow** functional for transforms; loops for side effects
 - **Tests** describe behavior, cover edge cases
 - **Comments** explain the **why**, not the **what**
+- **Logging** structured via the framework's idiom (.NET message templates, JS field objects); consistent field names
 
 ## Output Format
 

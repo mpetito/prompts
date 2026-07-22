@@ -52,6 +52,7 @@ If the scope is large or the codebase unfamiliar, delegate analysis to a read-on
 ### 4. Self-Review
 
 - Re-read every file you changed
+- For React/Next.js/TypeScript changes, also apply the `code-quality-standards` skill checklist (security, DRY, correctness, performance, accessibility)
 - Confirm DRY: no duplicated logic that an existing utility would have served
 - Remove deprecated or dead code outright — do not just mark it
 - Verify no `any`, non-null assertions, or unsafe casts were introduced
@@ -75,10 +76,13 @@ When useful, fan out independent, read-only work to subagents:
 | Multi-file reads in parallel    | Multiple `Explore` agents in the same turn                       |
 | Deep library/API research       | Reference the `research` skill                                   |
 | Standalone documentation lookup | Subagent with `docs-context7` / web tools                        |
+| Parallel implementation         | Write subagents over **disjoint file sets** (see below)          |
 
-Do not delegate writes. Authoring stays with the primary agent so changes remain coherent.
+Writes may be delegated when partitioned to disjoint files. Subagents are stateless and do not auto-load skills, so each write subagent's prompt must embed complete context: the relevant spec/plan excerpt, established patterns to follow, and the Coding Standards below. Never assign two subagents overlapping files. The primary agent still performs Self-Review and Validate across all delegated changes.
 
 ## Coding Standards
+
+This section is the canonical copy of the personal coding standards. Other skills (e.g. `review`) carry condensed excerpts; when standards change, update here first.
 
 ### Naming & Readability
 
@@ -111,6 +115,7 @@ Do not delegate writes. Authoring stays with the primary agent so changes remain
 - Protect inputs and shared state (immutability); local mutation is fine
 - Optional chaining + nullish coalescing for null handling
 - Name constants for non-obvious values; `0`, `1`, `2` are fine in self-evident contexts
+- TypeScript: `interface` for object shapes; `type` for unions, intersections, and utilities
 
 ### Parameters & APIs
 
@@ -128,7 +133,11 @@ Do not delegate writes. Authoring stays with the primary agent so changes remain
 
 - Constructor injection for explicit, testable dependencies
 - Group by feature for APIs; group by type (layer) for UIs
-- Tolerate duplication until 3+ occurrences before extracting an abstraction
+- Tolerate duplication at 2 occurrences; extract when a 3rd appears or when more occurrences are clearly expected near-term
+
+### Modules & Files
+
+- Export style (named vs default) and file naming follow established project or framework conventions; consistency within the project is what matters
 
 ### Classes vs Functions
 
@@ -138,6 +147,11 @@ Do not delegate writes. Authoring stays with the primary agent so changes remain
 
 - `describe` blocks group by unit; keep test names concise
 - Test names describe behavior in plain language within their group context
+
+### Logging
+
+- Prefer structured logging via the framework's idiom: message templates in .NET (`logger.LogInformation("Order {OrderId} created", orderId)`), field objects in JS (`logger.info('order created', { orderId })`)
+- Never concatenate raw values into log message strings; keep field names consistent across the codebase
 
 ### Version Control
 
