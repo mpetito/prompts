@@ -1,6 +1,6 @@
 ---
 name: playwright-e2e-monorepo
-description: Set up and write Playwright end-to-end tests in an npm-workspaces monorepo using the Page Object Model (POM). Covers playwright.config.ts with a webServer for the monorepo dev server, Desktop + Mobile projects, POM architecture with data-testid selectors, localStorage/state handling, example app flows, and CI configuration. Use when writing e2e tests, setting up Playwright in a monorepo, or applying the Page Object Model.
+description: Use when writing Playwright end-to-end tests, setting up Playwright in an npm-workspaces monorepo, or applying the Page Object Model.
 ---
 
 # Playwright E2E Testing in Monorepo

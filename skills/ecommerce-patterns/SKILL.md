@@ -1,6 +1,6 @@
 ---
 name: ecommerce-patterns
-description: E-commerce implementation patterns for React/Next.js apps: cart state with Context + useReducer, multi-step checkout with validation, payment integration, order lifecycle, integer-cents money handling, gift cards, analytics events, and conversion components. Use when building cart, checkout, payment, or order-management features.
+description: Use when building cart, checkout, payment, or order-management features.
 ---
 
 # E-Commerce Patterns

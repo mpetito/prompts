@@ -1,6 +1,6 @@
 ---
 name: design-review-standards
-description: Conduct design and UI/UX reviews for web applications. Covers brand consistency, typography hierarchy, color token usage, dark mode, accessibility (WCAG AA), component patterns, responsive design, loading states, micro-interactions, and conversion optimization. Use when reviewing UI implementations, auditing design quality, or establishing design standards for a project.
+description: Use when reviewing UI/UX implementations, auditing design quality or accessibility, or establishing design standards for a web application.
 ---
 
 # Design Review and UI/UX Standards
