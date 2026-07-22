@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     // Safe to use amount
   } catch {
-    return NextResponse.json({ error: "Invalid request" }, { status: 500 });
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }
 ```
@@ -425,23 +425,18 @@ setLiveMessage(`Added ${item.name} to cart`);
 
 #### File Structure Convention
 
+Group components by feature/domain, with dedicated folders for primitives and cross-cutting concerns:
+
 ```
 components/
-├── layout/          # Header, Footer, Navigation, CartDrawer
-├── products/        # ProductCard, ProductGallery, ProductFilters
-├── configurator/    # ProductConfigurator, ProductModel, ProductScene
-├── cart/            # CartProvider, CartItem, CartSummary
-├── checkout/        # CheckoutForm, PaymentForm, OrderConfirmation
-├── account/         # OrderHistory, OrderDetail, AddressBook
-├── ui/              # Button, Input, Badge, Skeleton, Toast, ThemeToggle
-├── shared/          # Logo, ErrorBoundary, OptimizedImage, NewsletterSignup
-├── conversion/      # SocialProof, TrustBadges
-├── seo/             # JsonLd, FAQ
-├── analytics/       # AnalyticsProvider
-├── community/       # StoryCard, StoryModal
-├── reviews/         # ReviewForm, ReviewList, StarRatingInput
-└── search/          # SearchBar
+├── layout/          # App shell: header, footer, navigation
+├── {feature}/       # One folder per feature/domain (e.g. products/, cart/, checkout/)
+├── ui/              # Reusable primitives: Button, Input, Badge, Skeleton, Toast
+└── shared/          # Cross-cutting: ErrorBoundary, Logo, OptimizedImage
 ```
+
+- A component belongs in `{feature}/` when it encodes domain logic; in `ui/` when it is generic and reusable; in `shared/` when it is app-specific but used across features
+- Follow the target project's existing structure when one is established
 
 #### 'use client' Discipline
 
