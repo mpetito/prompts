@@ -33,6 +33,13 @@
 - Can include supporting scripts, examples, and reference files
 - Portable across VS Code, GitHub Copilot CLI, and GitHub Copilot coding agent
 
+**Correction (2026-07-26)**: an earlier revision of this document stated that skills cannot
+select a model or restrict tools. That is no longer accurate for Claude Code, which accepts
+`model`, `effort`, `allowed-tools`, `disable-model-invocation`, `argument-hint`, `context`, and
+`agent` in `SKILL.md` frontmatter. Other hosts ignore unknown keys, so these are additive rather
+than portability-breaking — but they only take effect in Claude Code. See the `skill-authoring`
+skill for the full list and selection guidance.
+
 **Best for**: Bounded procedures with supporting resources that should auto-load when relevant while remaining callable on demand.
 
 ### Legacy Prompt Files (`.prompt.md`)
@@ -60,8 +67,8 @@
 | --- | --- | --- | --- | --- |
 | **Primary Purpose** | Specialized AI personas | Auto-discovered procedures and `/name` task entry points | Reusable task templates | Coding standards |
 | **File Extension** | `.agent.md` | `SKILL.md` | `.prompt.md` | `.instructions.md` |
-| **Tool Access** | ✅ Explicit tool list | ❌ No direct tool access | ✅ Can specify tools | ❌ No |
-| **Model Selection** | ✅ Yes | ❌ No | ✅ Yes | ❌ No |
+| **Tool Access** | ✅ Explicit tool list | ⚠️ `allowed-tools` in Claude Code; not portable | ✅ Can specify tools | ❌ No |
+| **Model Selection** | ✅ Yes | ⚠️ `model` / `effort` in Claude Code; not portable | ✅ Yes | ❌ No |
 | **Invocation** | Switch via agent picker | Automatic or `/skill-name` in VS Code | Type `/name` in chat | Automatic (via glob) |
 | **Discovery** | Manual selection | Auto-discovered by relevance; visible as slash commands | Manual (`/`) invocation | Auto-applied by context |
 | **Can Include Resources** | ❌ Instructions only | ✅ Scripts, examples, docs | ❌ Instructions only | ❌ Instructions only |
@@ -104,6 +111,18 @@ The former broad PR-management procedure has been split into focused skills:
 
 Research, PR review/authorship, upgrades, authoring guidance, autonomous loops, quality/design standards, e-commerce patterns, Playwright, and SEO/AEO structured-data workflows remain skills.
 
+### Authoring Skills Split ✅ (2026-07-26)
+
+`agent-authoring` covered two audiences with two template sets and two checklists. It is now:
+
+| Skill                | Scope                                                      |
+| -------------------- | ---------------------------------------------------------- |
+| `agents-md-authoring`| AGENTS.md / CLAUDE.md always-loaded project context        |
+| `skill-authoring`    | SKILL.md on-demand procedures, frontmatter, and splitting  |
+
+`playwright-e2e-monorepo` was renamed `playwright-e2e`: monorepo wiring is one section of a
+skill that is otherwise stack-agnostic.
+
 ## Folder Structure
 
 The repository setup now links only skills:
@@ -111,8 +130,10 @@ The repository setup now links only skills:
 ```
 skills/                               # Symlinked into each tool's user-level skills folder
 └── <skill-name>/
-    ├── SKILL.md
-    └── supporting files as needed
+    ├── SKILL.md                      # Workflow, decisions, pitfalls — kept under 500 lines
+    ├── references/                   # Loaded on demand: code libraries, command tables, examples
+    ├── scripts/                      # Executable helpers (see skills/pr-scripts/)
+    └── assets/                       # Files used in output rather than read into context
 
 fragments/                            # Reusable fragments such as snyk-upgrade-review
 ```

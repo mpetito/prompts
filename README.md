@@ -22,12 +22,13 @@ Skills are the single unit of reusable workflow guidance in this repository: the
 | `pr-authoring` | `/pr-authoring` | Write concise, motivation-led pull request descriptions |
 | `upgrade` | `/upgrade` | Safely upgrade dependencies with research, risk assessment, and validation |
 | `code-authoring` | `/code-authoring` | Implementation methodology: prepare, implement, test, self-review, and validate |
-| `agent-authoring` | `/agent-authoring` | Author AGENTS.md files, SKILL.md files, and agentic coding instructions |
+| `agents-md-authoring` | `/agents-md-authoring` | Author AGENTS.md / CLAUDE.md project-wide context files |
+| `skill-authoring` | `/skill-authoring` | Author, split, and tune SKILL.md files and skill folders |
 | `autonomous-loops` | `/autonomous-loops` | Run iterative loops against asynchronous external evaluators such as CI or deploys |
 | `code-quality-standards` | `/code-quality-standards` | Detailed Next.js, React, and TypeScript code quality review standards |
-| `design-review-standards` | `/design-review-standards` | UI/UX review standards for brand, accessibility, responsive design, and conversion |
+| `design-review-standards` | `/design-review-standards` | UI/UX and accessibility review standards for brand, responsive design, and conversion |
 | `ecommerce-patterns` | `/ecommerce-patterns` | Cart, checkout, payments, orders, and conversion patterns for React/Next.js apps |
-| `playwright-e2e-monorepo` | `/playwright-e2e-monorepo` | Playwright end-to-end setup with Page Object Models in an npm monorepo |
+| `playwright-e2e` | `/playwright-e2e` | Playwright end-to-end testing: Page Object Models, locators, and monorepo setup |
 | `seo-aeo-structured-data` | `/seo-aeo-structured-data` | SEO, AEO, structured data, metadata, sitemap, and Core Web Vitals guidance |
 
 When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, describe the work directly or invoke `/implement`.
@@ -105,10 +106,33 @@ The script is idempotent and never replaces anything without asking: a link alre
 
 Skills here target the lowest common denominator so they work everywhere:
 
-- Frontmatter is limited to `name` and `description` (no host-specific keys)
+- `name` and `description` are the only required and universally-honored frontmatter keys
 - Directory names match the frontmatter `name`
 - Tool references are described as capabilities (e.g. "Context7 docs", "IDE diagnostics") rather than literal tool IDs, which differ per host
-- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill; skills reference it as `../pr-scripts/` relative to their own folder
+- Cross-references are **skill-relative** (`../other-skill/SKILL.md`), never repo-root-relative — the tree is symlinked into user-level folders where no repo root exists
+- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
+
+### Progressive Disclosure
+
+Large skills keep `SKILL.md` lean and push detail into a `references/` subfolder, which loads
+only when `SKILL.md` points at it. `SKILL.md` carries the workflow, decisions, and pitfalls;
+`references/` carries code libraries, command tables, and long worked examples. Currently used
+by `ecommerce-patterns`, `seo-aeo-structured-data`, `story`, and `upgrade`.
+
+### Host-Specific Frontmatter
+
+Claude Code accepts extra frontmatter keys; other hosts ignore unknown keys, so using them does
+not break portability. Several skills set them:
+
+| Key                        | Used for                                                       |
+| -------------------------- | -------------------------------------------------------------- |
+| `model`                    | Pinning a cheaper tier on mechanical skills (`commit`, `tt`, `story`, `pr-resolve`, `pr-authoring`) |
+| `effort`                   | Tuning reasoning depth without changing model tier             |
+| `disable-model-invocation` | User-typed `/name` only (`pr-consolidate`, whose merges are destructive) |
+
+Skills that are *consumed inside another task* rather than invoked directly — the standards and
+pattern skills — deliberately set no `model`, so they inherit whatever the calling workflow uses.
+See the `skill-authoring` skill for the full key list and selection guidance.
 
 ## Customization
 
