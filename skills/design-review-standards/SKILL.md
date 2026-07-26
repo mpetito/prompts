@@ -136,6 +136,72 @@ Evaluate every design review across these 10 dimensions. Score each 1-5, priorit
 - Cart changes not announced to screen readers
 - Tab order doesn't match visual order
 
+**Implementation patterns.** This skill is the canonical home for accessibility guidance; code-level reviews reach it from `code-quality-standards`.
+
+Semantic HTML over div soup:
+
+```tsx
+// WRONG — div soup
+<div className="nav">
+  <div className="nav-item">...</div>
+</div>
+
+// RIGHT — semantic elements
+<nav aria-label="Main navigation">
+  <a href="/products">Shop</a>
+</nav>
+```
+
+Icon-only buttons need an accessible name:
+
+```tsx
+// WRONG — icon without label
+<button><SearchIcon /></button>
+
+// RIGHT
+<button aria-label="Search products">
+  <SearchIcon className="w-5 h-5" />
+</button>
+```
+
+Skip navigation — the first focusable element on the page:
+
+```tsx
+<a
+  href="#main-content"
+  className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
+>
+  Skip to main content
+</a>
+```
+
+Announce dynamic changes to screen readers:
+
+```tsx
+<div role="status" aria-live="polite" className="sr-only">
+  {liveMessage}
+</div>;
+
+// Update on actions
+setLiveMessage(`Added ${item.name} to cart`);
+```
+
+Toggles need programmatic state, not just a visual one:
+
+```tsx
+// WRONG — no programmatic state
+<button onClick={toggle}>Dark Mode</button>
+
+// RIGHT — aria-pressed for toggles
+<button
+  onClick={toggle}
+  aria-pressed={theme === 'dark'}
+  aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+>
+  {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+</button>
+```
+
 ### 7. Responsive Design
 
 **Check for:**

@@ -3,6 +3,9 @@
 Shared PowerShell wrappers over `gh api` / `gh api graphql` used by the `pr-feedback`,
 `pr-resolve`, and `pr-review` skills. Not a skill itself (no SKILL.md).
 
+Agent-facing usage — invocation patterns, the resolution decision matrix, reply templates, and
+troubleshooting — is in [`REFERENCE.md`](REFERENCE.md). This file is the script inventory.
+
 Requires an authenticated `gh` CLI. All scripts auto-resolve `owner/repo` and the PR number
 from the current branch when `-Repo` / `-Pr` are omitted.
 

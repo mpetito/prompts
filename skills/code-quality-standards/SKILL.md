@@ -78,34 +78,30 @@ if (/^\d{5}(-\d{4})?$/.test(zip.trim())) { ... }
 
 #### localStorage Validation
 
-**Never trust data from localStorage:**
+**Never trust data from localStorage.** It can hold stale data from an older schema, corrupted
+JSON, or values a user edited by hand.
 
 ```ts
 // WRONG — direct parse and use
-const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+const items = JSON.parse(localStorage.getItem("items") || "[]");
 
-// RIGHT — validate structure and types
-try {
-  const stored = localStorage.getItem("cart");
-  if (stored) {
-    const parsed = JSON.parse(stored);
-    if (Array.isArray(parsed) && parsed.length <= 100) {
-      const valid = parsed.filter(
-        (item): item is CartItem =>
-          typeof item === "object" &&
-          item !== null &&
-          typeof item.id === "string" &&
-          typeof item.price === "number" &&
-          typeof item.quantity === "number",
-      );
-      return valid;
-    }
+// RIGHT — parse defensively, then narrow with a type guard
+function readStored<T>(key: string, isValid: (v: unknown) => v is T, max = 100): T[] {
+  try {
+    const stored = localStorage.getItem(key);
+    if (!stored) return [];
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed) || parsed.length > max) return [];
+    return parsed.filter(isValid);
+  } catch {
+    return []; // Invalid JSON
   }
-} catch {
-  // Invalid JSON — return empty array
 }
-return [];
 ```
+
+Three things must always be present: a `try`/`catch` around `JSON.parse`, an upper bound on
+collection size, and a per-item type guard. A worked cart example is in the
+[`ecommerce-patterns`](../ecommerce-patterns/SKILL.md) skill.
 
 #### Content Security
 
@@ -355,71 +351,13 @@ images: {
 
 ### 5. Accessibility
 
-#### Semantic HTML
+Accessibility standards and their implementation patterns live in the
+[`design-review-standards`](../design-review-standards/SKILL.md) skill (§6, WCAG AA) — semantic
+HTML, icon-button labels, skip navigation, `aria-live` announcements, and toggle state. Load
+that skill when a diff touches markup or interactive elements.
 
-```tsx
-// WRONG — div soup
-<div className="nav">
-  <div className="nav-item">...</div>
-</div>
-
-// RIGHT — semantic elements
-<nav aria-label="Main navigation">
-  <a href="/products">Shop</a>
-</nav>
-```
-
-#### Icon Buttons
-
-```tsx
-// WRONG — icon without label
-<button><SearchIcon /></button>
-
-// RIGHT — accessible icon button
-<button aria-label="Search products">
-  <SearchIcon className="w-5 h-5" />
-</button>
-```
-
-#### Skip Navigation
-
-```tsx
-// First focusable element in the page
-<a
-  href="#main-content"
-  className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
->
-  Skip to main content
-</a>
-```
-
-#### Dynamic Content Announcements
-
-```tsx
-// Announce cart changes to screen readers
-<div role="status" aria-live="polite" className="sr-only">
-  {liveMessage}
-</div>;
-
-// Update on actions
-setLiveMessage(`Added ${item.name} to cart`);
-```
-
-#### Toggle State
-
-```tsx
-// WRONG — no programmatic state
-<button onClick={toggle}>Dark Mode</button>
-
-// RIGHT — aria-pressed for toggles
-<button
-  onClick={toggle}
-  aria-pressed={theme === 'dark'}
-  aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
->
-  {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-</button>
-```
+The checklist below carries the minimum a code review must confirm; anything deeper belongs to
+that skill.
 
 ### 6. Code Organization
 

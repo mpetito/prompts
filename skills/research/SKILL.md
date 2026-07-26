@@ -9,39 +9,17 @@ Procedural knowledge for conducting comprehensive technical research using docum
 
 ## Core Research Tools
 
-| Tool                   | Purpose                            | When to Use                                     |
-| ---------------------- | ---------------------------------- | ----------------------------------------------- |
-| `docs-context7/*`      | Official library documentation     | API reference, usage examples, best practices   |
-| `perplexity/search`    | Quick factual lookups              | Version info, simple comparisons, definitions   |
-| `perplexity/reason`    | Complex analysis and reasoning     | Trade-offs, architecture decisions, debugging   |
-| `perplexity/deep`      | Comprehensive research reports     | Major decisions, unfamiliar domains, deep dives |
-| `github/search_issues` | Bug reports and workarounds        | Known issues, community solutions, edge cases   |
-| `github/search_code`   | Real-world implementation patterns | Usage examples, integration patterns            |
-| `web`                  | Blogs, tutorials, release notes    | Recent updates, tutorials, opinions             |
+| Capability             | Purpose                            | Use for                                         | Query style               |
+| ---------------------- | ---------------------------------- | ----------------------------------------------- | ------------------------- |
+| `docs-context7/*`      | Official library documentation     | API reference, usage examples, best practices   | Library ID + topic        |
+| `perplexity/search`    | Quick factual lookups              | Version info, simple comparisons, definitions   | Specific, factual         |
+| `perplexity/reason`    | Complex analysis and reasoning     | Trade-offs, architecture decisions, debugging   | Comparative, contextual   |
+| `perplexity/deep`      | Comprehensive research reports     | Major decisions, unfamiliar domains, deep dives | Broad topic + focus_areas |
+| `github/search_issues` | Bug reports and workarounds        | Known issues, community solutions, edge cases   | Error message + repo      |
+| `github/search_code`   | Real-world implementation patterns | Usage examples, integration patterns            | Pattern + language        |
+| `web`                  | Blogs, tutorials, release notes    | Recent updates, tutorials, opinions             | URL fetch or search terms |
 
 The names above are **capabilities, not literal tool IDs** — actual IDs differ per host (e.g. Context7 is `mcp_docs-context7_*` in Copilot and `mcp__plugin_context7_context7__*` in Claude Code; `web` is `WebSearch`/`WebFetch` in Claude Code; GitHub queries can fall back to `gh api`). Map each capability to whatever is configured in the current session, and skip the ones that are unavailable rather than failing the research.
-
-### Tool Selection Guide
-
-```
-IF need quick fact or version check:
-    → perplexity/search
-
-IF need to understand trade-offs or debug complex issue:
-    → perplexity/reason
-
-IF need comprehensive analysis of unfamiliar domain:
-    → perplexity/deep
-
-IF need official API reference or examples:
-    → docs-context7/*
-
-IF investigating bugs or looking for workarounds:
-    → github/search_issues
-
-IF looking for real-world usage patterns:
-    → github/search_code
-```
 
 ---
 
@@ -70,74 +48,31 @@ IF looking for real-world usage patterns:
 
 **Goal**: Collect authoritative information from multiple sources.
 
-#### Documentation Research
+Call each capability with the arguments its host exposes. Illustrative invocations:
 
-```javascript
-// Get official docs for a library
-resolve - library - id({ libraryName: "react" });
-get -
-  library -
-  docs({
-    context7CompatibleLibraryID: "/facebook/react",
-    topic: "hooks",
-    mode: "code", // or "info" for conceptual content
-  });
-```
+```text
+# Official docs — resolve the library, then pull a topic
+resolve-library-id(libraryName: "react")
+get-library-docs(id: "/facebook/react", topic: "hooks", mode: "code")
 
-#### Quick Search
+# Quick fact, version, or comparison
+perplexity/search(query: "React 18 vs React 19 concurrent features comparison")
 
-```javascript
-// Fast lookup for facts, versions, comparisons
-perplexity /
-  search({
-    query: "React 18 vs React 19 concurrent features comparison",
-  });
-```
+# Trade-off analysis with context
+perplexity/reason(query: "Compare Redux Toolkit vs Zustand vs Jotai for a large-scale
+  React app with complex state dependencies, considering bundle size, learning curve,
+  and TypeScript support")
 
-#### Deep Analysis
+# Comprehensive investigation of unfamiliar territory
+perplexity/deep(
+  query: "WebSocket vs Server-Sent Events vs HTTP/2 push for real-time data streaming",
+  focus_areas: ["latency", "reconnection handling", "browser support", "scalability"])
 
-```javascript
-// Complex reasoning about trade-offs
-perplexity /
-  reason({
-    query:
-      "Compare Redux Toolkit vs Zustand vs Jotai for large-scale React app with complex state dependencies, considering bundle size, learning curve, and TypeScript support",
-  });
-```
+# Known issues and workarounds
+github/search_issues(query: "memory leak useEffect cleanup", repo: "facebook/react")
 
-#### Comprehensive Research
-
-```javascript
-// In-depth investigation of unfamiliar territory
-perplexity /
-  deep({
-    query:
-      "WebSocket vs Server-Sent Events vs HTTP/2 push for real-time financial data streaming",
-    focus_areas: [
-      "latency",
-      "reconnection handling",
-      "browser support",
-      "server scalability",
-    ],
-  });
-```
-
-#### GitHub Investigation
-
-```javascript
-// Find known issues and workarounds
-github /
-  search_issues({
-    query: "memory leak useEffect cleanup",
-    repo: "facebook/react",
-  });
-
-// Find real-world usage patterns
-github /
-  search_code({
-    query: "useReducer middleware pattern",
-    language: "typescript",
-  });
+# Real-world usage patterns
+github/search_code(query: "useReducer middleware pattern", language: "typescript")
 ```
 
 ### Phase 3: Synthesis
@@ -161,6 +96,33 @@ github /
 
 ---
 
+## Query Formulation
+
+Query quality determines result quality more than tool choice does.
+
+| Capability             | Good                                                                                                             | Avoid                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `perplexity/search`    | "What is the minimum Node.js version required for Next.js 14?"                                                   | "What's the best state management library?"       |
+| `perplexity/reason`    | "Compare Prisma vs Drizzle for a TypeScript project with PostgreSQL, considering type safety and migrations"     | "What is Prisma?" (simple factual question)       |
+| `perplexity/deep`      | "Authentication strategies for a multi-tenant SaaS with SSO, considering OAuth 2.0, SAML, and JWT" + focus_areas | Narrow questions a single search would answer     |
+| `github/search_issues` | "ECONNRESET during long-running requests" + `repo:`                                                              | Generic topics without an error string or repo    |
+
+---
+
+## Common Research Patterns
+
+| Pattern                  | Scenario                              | Sequence                                                                                                                                    |
+| ------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Library evaluation**   | Choosing between competing libraries  | Define criteria → `perplexity/search` for recent comparisons → `docs-context7` per candidate → `github/search_issues` → `perplexity/reason` |
+| **Bug investigation**    | Debugging an issue with a dependency  | Search codebase for workarounds → `github/search_issues` in the library repo → `perplexity/search` the error → check newer versions          |
+| **API integration**      | Integrating a new external API        | `docs-context7` or `web` for official docs → `github/search_code` for examples → `github/search_issues` for rate limits → auth patterns      |
+| **Architecture decision**| Making a significant technical choice | Define criteria → `perplexity/deep` for best practices → `github/search_code` for prior art → `perplexity/reason` for trade-offs             |
+| **Version compatibility**| Upgrading or checking compatibility   | Check current version → `docs-context7` changelog → `perplexity/search` breaking changes → identify affected code paths                     |
+
+For version compatibility specifically, the [`upgrade`](../upgrade/SKILL.md) skill owns the full protocol — use this pattern only for the research portion.
+
+---
+
 ## Output Format Template
 
 ```markdown
@@ -174,7 +136,6 @@ github /
 - [Finding 1 — most important discovery]
 - [Finding 2 — second most important]
 - [Finding 3 — third most important]
-- [Additional findings as needed]
 
 ## Current Codebase Context
 
@@ -189,20 +150,12 @@ github /
 | Pros          | Cons             |
 | ------------- | ---------------- |
 | [Advantage 1] | [Disadvantage 1] |
-| [Advantage 2] | [Disadvantage 2] |
 
 **Best For**: [When to choose this option]
 
 ### Option 2: [Name]
 
-**Description**: [What this approach entails]
-
-| Pros          | Cons             |
-| ------------- | ---------------- |
-| [Advantage 1] | [Disadvantage 1] |
-| [Advantage 2] | [Disadvantage 2] |
-
-**Best For**: [When to choose this option]
+(Same shape as Option 1.)
 
 ## Recommendation
 
@@ -223,8 +176,6 @@ github /
 | Source                 | Type         | Date       | Notes               |
 | ---------------------- | ------------ | ---------- | ------------------- |
 | [URL or doc reference] | Official     | YYYY-MM-DD | [Why it's relevant] |
-| [URL or doc reference] | Blog/Article | YYYY-MM-DD | [Why it's relevant] |
-| [URL or doc reference] | GitHub Issue | YYYY-MM-DD | [Why it's relevant] |
 
 ## Open Questions
 
@@ -236,13 +187,13 @@ github /
 
 ## Research Quality Checklist
 
-### Before Starting
+**Before starting**
 
 - [ ] Understand the specific question or decision to inform
 - [ ] Check codebase context before external research
 - [ ] Identify what "good enough" research looks like
 
-### During Research
+**During research**
 
 - [ ] Use official documentation as primary source
 - [ ] Verify information is current (check dates, versions)
@@ -250,7 +201,7 @@ github /
 - [ ] Check GitHub issues for known problems
 - [ ] Note version compatibility requirements
 
-### Before Finalizing
+**Before finalizing**
 
 - [ ] Findings are adapted to codebase context
 - [ ] Recommendations are actionable, not just informational
@@ -260,126 +211,9 @@ github /
 
 ---
 
-## Common Research Patterns
-
-### Pattern 1: Library Evaluation
-
-**Scenario**: Choosing between competing libraries
-
-```
-1. Define evaluation criteria (bundle size, API ergonomics, maintenance, etc.)
-2. Quick search for recent comparisons: perplexity/search
-3. Check official docs for each: docs-context7
-4. Search GitHub for issue patterns: github/search_issues
-5. Deep analysis of trade-offs: perplexity/reason
-6. Synthesize into comparison matrix
-```
-
-### Pattern 2: Bug Investigation
-
-**Scenario**: Debugging an issue with a dependency
-
-```
-1. Search codebase for similar issues/workarounds
-2. Search GitHub issues in the library repo
-3. Search for error messages: perplexity/search
-4. Check if fixed in newer versions: docs-context7
-5. Look for workarounds in code: github/search_code
-6. Document workaround or upgrade path
-```
-
-### Pattern 3: API Integration
-
-**Scenario**: Integrating with a new external API
-
-```
-1. Get official API documentation: docs-context7 or web
-2. Search for integration examples: github/search_code
-3. Check for known issues/rate limits: github/search_issues
-4. Research authentication patterns: perplexity/search
-5. Look for SDK or client libraries
-6. Document integration approach with examples
-```
-
-### Pattern 4: Architecture Decision
-
-**Scenario**: Making a significant technical decision
-
-```
-1. Define decision criteria and constraints
-2. Research current best practices: perplexity/deep
-3. Check how similar projects solved it: github/search_code
-4. Analyze codebase constraints and patterns
-5. Model options with trade-off analysis: perplexity/reason
-6. Recommend with clear rationale and migration path
-```
-
-### Pattern 5: Version Compatibility
-
-**Scenario**: Upgrading a dependency or checking compatibility
-
-```
-1. Check current version in codebase
-2. Get changelog/migration guide: docs-context7
-3. Search for breaking changes: perplexity/search
-4. Check GitHub issues for upgrade problems
-5. Identify affected code paths in codebase
-6. Document upgrade steps and risks
-```
-
----
-
-## Query Formulation Tips
-
-### For perplexity/search (Quick Facts)
-
-```
-# Good: Specific, factual
-"What is the minimum Node.js version required for Next.js 14?"
-"React 18 automatic batching behavior changes"
-
-# Avoid: Vague, opinion-seeking
-"What's the best state management library?"
-```
-
-### For perplexity/reason (Analysis)
-
-```
-# Good: Complex trade-offs with context
-"Compare Prisma vs Drizzle ORM for a TypeScript project with PostgreSQL,
-considering type safety, query performance, and migration tooling"
-
-# Avoid: Simple factual questions
-"What is Prisma?"
-```
-
-### For perplexity/deep (Comprehensive)
-
-```
-# Good: Multi-faceted topics needing depth
-"Authentication strategies for a multi-tenant SaaS application with
-SSO requirements, considering OAuth 2.0, SAML, and JWT patterns"
-
-# Include focus_areas for guidance:
-focus_areas: ["security considerations", "implementation complexity", "scalability"]
-```
-
-### For github/search_issues
-
-```
-# Good: Specific error messages or behaviors
-"ECONNRESET during long-running requests"
-"useEffect cleanup not called on unmount"
-
-# Include repo for focused results:
-repo: "vercel/next.js"
-```
-
----
-
 ## Delegation for Complex Research
 
-For large research topics, break into focused sub-tasks:
+For large research topics, break into focused sub-tasks and run them in parallel:
 
 | Sub-Task                  | Focus Area                             |
 | ------------------------- | -------------------------------------- |
@@ -389,43 +223,31 @@ For large research topics, break into focused sub-tasks:
 | Version Compatibility     | Compatibility matrix, migration needs  |
 | Research Synthesis        | Cross-reference, recommendations       |
 
-**Handoff Pattern**: Write findings to `specs/{topic}/research-findings.md` for complex research that will inform implementation planning.
+Subagents are stateless and do not auto-load skills — embed the relevant portion of this skill in each subagent prompt.
+
+**Handoff Pattern**: Write findings to `specs/{topic}/research-findings.md` for complex research that will inform implementation planning (see the [`spec`](../spec/SKILL.md) skill's Supporting Documents convention).
 
 ---
 
 ## Best Practices
 
-### Source Quality
+**Source quality**
 
 - **Prefer official docs** over blog posts for API details
 - **Check dates** — technology moves fast, stale info misleads
 - **Verify with code** — if possible, test claims in actual code
 - **Note uncertainty** — if sources conflict, say so explicitly
 
-### Research Efficiency
+**Efficiency**
 
 - **Start narrow, then expand** — specific questions first
 - **Don't over-research** — know when "good enough" is reached
 - **Batch related queries** — group similar questions together
 - **Cache findings** — write to files for reuse across sessions
 
-### Actionable Output
+**Actionable output**
 
 - **Always contextualize** — generic advice is less useful
 - **Include code examples** — adapted to the current codebase style
 - **Specify next steps** — what should happen after reading the research
 - **Flag blockers** — what decisions or clarifications are needed
-
----
-
-## Quick Reference
-
-| Task                 | Tool                   | Query Style               |
-| -------------------- | ---------------------- | ------------------------- |
-| Version/fact lookup  | `perplexity/search`    | Specific, factual         |
-| Trade-off analysis   | `perplexity/reason`    | Comparative, contextual   |
-| Deep domain research | `perplexity/deep`      | Broad topic + focus_areas |
-| API documentation    | `docs-context7`        | Library ID + topic        |
-| Bug investigation    | `github/search_issues` | Error message + repo      |
-| Usage patterns       | `github/search_code`   | Pattern + language        |
-| Tutorials/guides     | `web`                  | URL fetch                 |

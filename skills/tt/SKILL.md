@@ -1,6 +1,9 @@
 ---
 name: tt
 description: "Log or update a Harvest time entry for work performed, with best-effort linkage to an Azure DevOps work item. Use when logging time, recording hours, tracking time, updating a timesheet, after authoring or updating a pull request, or when invoked via /tt. Triggers: log time, track time, harvest entry, timesheet, record hours, /tt."
+# Claude Code only; other hosts ignore these keys.
+model: sonnet
+effort: low
 ---
 
 # Time Tracking (Harvest + Azure DevOps)
@@ -41,21 +44,28 @@ Examples: `/tt 62196 1.5`, `/tt 1.5`, `/tt mount compatibility`, `/tt` (infer ev
 
 ### 1. Resolve the repo → Harvest project + task
 
-Repo→project mappings live in **repository memory** (not a checked-in file), because
-Harvest projects change over time and the mapping benefits other sessions and developers
-in the same workspace.
+Repo→project mappings live in **agent memory** (not a checked-in file), because Harvest
+projects change over time and the mapping benefits other sessions in the same workspace.
 
-1. Read `/memories/repo/harvest-time-tracking.md` (memory tool, `view`). It holds a table
-   keyed by **git remote URL** (fallback: repo folder name) → `project_id`, project name,
-   default `task_id`.
+Store the mapping in a file named `harvest-time-tracking.md` inside whatever persistent
+memory location the host exposes, and resolve that location before reading or writing:
+
+| Host                          | Location                                                    |
+| ----------------------------- | ----------------------------------------------------------- |
+| Claude Code                   | the memory directory named in the session's system prompt   |
+| Hosts with a memory tool      | `/memories/repo/harvest-time-tracking.md` via `view`/`create` |
+| No memory available           | skip the cache; resolve the project fresh each time          |
+
+1. Read `harvest-time-tracking.md` from that location. It holds a table keyed by **git
+   remote URL** (fallback: repo folder name) → `project_id`, project name, default `task_id`.
 2. **On a hit**, use its `project_id` + default `task_id`.
 3. **On a miss**, identify the project:
    - Derive search terms from the git remote / repo / client name.
    - Search Harvest with `list_projects` (`search` = prefix of those terms, `is_active: true`).
    - If exactly one strong match, propose it; otherwise ask with the question tool.
-   - After the user confirms, **append** the mapping to
-     `/memories/repo/harvest-time-tracking.md` (create the file with the table header if it
-     does not exist). Never overwrite existing rows — add a new one.
+   - After the user confirms, **append** the mapping to `harvest-time-tracking.md` (create
+     the file with the table header if it does not exist). Never overwrite existing
+     rows — add a new one.
 
 ### 2. Choose the task
 
@@ -157,11 +167,11 @@ State the entry id, project, task, hours, and final note back to the user.
 - ❌ Never append to an existing entry's note to cover new work — create a new entry;
   multiple entries per day against the same work item are expected.
 - ✅ Keep estimates honest; prefer asking over guessing wildly.
-- ✅ Keep the repo→project mapping in repo memory current; append, don't overwrite.
+- ✅ Keep the repo→project mapping in agent memory current; append, don't overwrite.
 
 ## Repo memory format
 
-`/memories/repo/harvest-time-tracking.md`:
+`harvest-time-tracking.md` (in the host's memory location — see step 1):
 
 ```markdown
 # Harvest project mappings

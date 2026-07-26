@@ -47,7 +47,15 @@ Every autonomous loop has the same five elements. Define them **explicitly befor
 - **Escalate when**: <ambiguous failure, repeated same error, budget exhausted>
 ```
 
-Write this to `/memories/session/loop-<name>.md` at the start. Update the iteration log there after every run.
+Persist this as `loop-<name>.md` at the start, and update the iteration log there after
+every run. Write it to whichever location the host provides, in this order of preference:
+
+1. The session's persistent memory directory, when the host names one (Claude Code).
+2. `/memories/session/loop-<name>.md`, on hosts exposing a memory tool.
+3. The session scratchpad or a `.gitignore`d working file, when neither exists.
+
+The point is survival across context compaction — any location the agent can re-read at
+the top of each iteration works. Never commit the loop log to the repository.
 
 ---
 
@@ -132,7 +140,7 @@ Always produce a final summary: objective, final metric vs. target, iterations u
 See also: [pr-feedback](../pr-feedback/SKILL.md) and [pr-resolve](../pr-resolve/SKILL.md) for the underlying thread tooling.
 
 - **Objective**: All Copilot review threads resolved and PR checks green
-- **Evaluation**: `skills/pr-scripts/Test-PrThreadsResolved.ps1` (unresolved threads) **and** `gh pr checks` (status); on failures, `skills/pr-scripts/Get-PrCheckFailures.ps1` returns the failing checks with log excerpts
+- **Evaluation**: `../pr-scripts/Test-PrThreadsResolved.ps1` (unresolved threads) **and** `gh pr checks` (status); on failures, `../pr-scripts/Get-PrCheckFailures.ps1` returns the failing checks with log excerpts
 - **Success**: 0 unresolved threads **and** all checks green on the latest commit
 - **Budget**: 4 iterations (Copilot rarely adds new comments after that)
 - **Steps**:
@@ -190,7 +198,7 @@ Poll with backoff (e.g. 30s, 60s, 120s) and a hard cap (e.g. 5 attempts) before 
 | Evaluation passes locally but fails in the deployed env       | Always evaluate against the **deployed** artifact, not the local build. Verify the deploy SHA before re-evaluating.                                                     |
 | Same fix tried repeatedly with the same failure               | Stop after the second identical failure. Re-read the error, change strategy, or escalate.                                                                               |
 | Loop "succeeds" but on stale data (cached PSI, old PR view)   | Re-fetch evaluation inputs each iteration. For PSI, run twice and require both above target.                                                                            |
-| Context compaction loses the loop definition                  | Persist objective, evaluation, and iteration log to `/memories/session/loop-<name>.md`; re-read at the top of each loop.                                                |
+| Context compaction loses the loop definition                  | Persist objective, evaluation, and iteration log to `loop-<name>.md` in the host's memory location (see **Loop Anatomy**); re-read at the top of each loop.              |
 | Copilot adds new threads after a push, agent thinks it's done | After resolving threads + push, **always** wait for the next review pass before declaring success.                                                                      |
 | Merging the PR breaks the deploy                              | Ask the user before merging. Treat merge + deploy as one atomic step in the loop, not two independent ones.                                                             |
 | Budget exhausted with partial progress                        | Stop. Report metric delta, what was tried, and the recommended next direction. Do not silently keep iterating.                                                          |
@@ -213,4 +221,4 @@ Poll with backoff (e.g. 30s, 60s, 120s) and a hard cap (e.g. 5 attempts) before 
 
 - [pr-feedback](../pr-feedback/SKILL.md) and [pr-resolve](../pr-resolve/SKILL.md) — review thread tooling used by the Copilot-feedback loop
 - `/pr-feedback`, `/pr-resolve` prompts — single-pass building blocks used inside loops
-- [agent-authoring](../agent-authoring/SKILL.md) — how this skill is structured
+- [skill-authoring](../skill-authoring/SKILL.md) — how this skill is structured

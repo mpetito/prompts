@@ -3,6 +3,9 @@ name: pr-resolve
 description: |
   Reply to and resolve pull request review threads after changes are pushed.
   Use when responding to PR review comments, resolving review threads, closing out addressed feedback, or verifying thread resolution status after commits are available.
+# Claude Code only; other hosts ignore these keys.
+model: sonnet
+effort: medium
 ---
 
 # PR Resolve
@@ -17,25 +20,11 @@ Use this skill after changes have been committed and pushed, or when the user as
 
 ## Tooling
 
-Use the PowerShell scripts in `../pr-scripts/` (sibling folder within the skills tree; resolve the path relative to this skill's folder). They wrap `gh api graphql` and require only an authenticated `gh` CLI. All scripts auto-resolve `owner/repo` and PR number from the current branch when omitted.
+Script invocation, the fallback path when the scripts are unavailable, and the reply templates
+are in [`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md). Read it before the first call.
 
-```powershell
-# List all review threads (thread IDs, resolution state, file/line, full comments)
-../pr-scripts/Get-PrThreads.ps1 -Pr 123 [-Repo owner/name] [-Unresolved]
-
-# Reply to a thread (by thread ID — no comment-ID lookup needed)
-../pr-scripts/Send-PrThreadReply.ps1 -ThreadId PRRT_... -Body "Fixed in commit 186e28a."
-
-# Reply and resolve in one call (omit -Body to resolve only)
-../pr-scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body "Fixed in commit 186e28a."
-
-# Verify: exit 0 when all threads resolved, otherwise prints remaining threads
-../pr-scripts/Test-PrThreadsResolved.ps1 -Pr 123
-```
-
-Thread IDs start with `PRRT_`. Replies target threads directly.
-
-Fallback: if the scripts are unavailable (e.g., non-Windows agent), use GitHub MCP PR tools if configured (`pull_request_read`, `reply_to_pull_request_comment` or its consolidated successor, `resolve_pull_request_review_thread`), or issue the same GraphQL via `gh api graphql` directly.
+The four scripts this skill uses: `Get-PrThreads.ps1`, `Send-PrThreadReply.ps1`,
+`Resolve-PrThread.ps1`, `Test-PrThreadsResolved.ps1`.
 
 ## Process
 
@@ -51,14 +40,8 @@ Fallback: if the scripts are unavailable (e.g., non-Windows agent), use GitHub M
 
 ## Resolution Decision Matrix
 
-| Thread Type | Action |
-| --- | --- |
-| Code fixed | ✅ Reply then resolve |
-| Question answered | ✅ Reply then resolve when no reviewer action is needed |
-| Design explained | 💬 Reply only; reviewer closes |
-| Deferred to issue | 💬 Reply only |
-| Disagreement | 💬 Reply only; discuss further |
-| Outdated code removed/refactored | ✅ Reply then resolve |
+See [`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md) — resolve when fixed, answered,
+or outdated; reply-only for design discussion, deferrals, and disagreements.
 
 ## Resolution Procedure
 
@@ -92,33 +75,8 @@ FOR each unresolved thread:
 
 ## Reply Templates
 
-| Type | Template |
-| --- | --- |
-| Fixed | `Fixed in commit {sha} — {brief description}.` |
-| Explained | `This is intentional because {reason}.` |
-| Deferred | `Created issue #{num} to track this. Out of scope for this PR.` |
-| Outdated | `This code was removed/refactored in {commit}.` |
-| Declined | `I respectfully disagree with this suggestion because {reason}. {tradeoff}.` |
-
-### Longer Replies
-
-```text
-Fixed in commit {sha}.
-
-{Brief description of the change made to address the feedback.}
-```
-
-```text
-Good point. This is out of scope for this PR, but I've created #{issue_number} to track it.
-
-We can address this in a follow-up.
-```
-
-```text
-Could you clarify what you mean by "{quote from feedback}"?
-
-I want to make sure I address your concern correctly. Are you suggesting {interpretation A} or {interpretation B}?
-```
+Short and long forms for fixed / explained / deferred / declined / outdated / clarification
+replies are in [`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md).
 
 ## Output Format
 
@@ -153,14 +111,5 @@ If further changes were pushed, suggest `/commit` to update the PR.
 
 ## Common Issues
 
-| Problem | Fix |
-| --- | --- |
-| `Could not resolve to a node` | Verify the thread ID starts with `PRRT_`, refresh with `Get-PrThreads.ps1`, and check whether it was deleted or already resolved. |
-| `gh: Not Found` | Check `-Repo`/`-Pr` values; auto-resolution requires the current branch to have an open PR. |
-| `Cannot resolve thread` | Check permissions; some repos require reviewers to resolve their own threads. |
-
-## User Input
-
-```text
-$ARGUMENTS
-```
+See [`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md) for `Could not resolve to a node`,
+`gh: Not Found`, `Cannot resolve thread`, and the script-unavailable fallback.
