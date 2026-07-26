@@ -139,7 +139,7 @@ Research each non-trivial upgrade to identify breaking changes, migration steps,
 
 1. **Official changelog/release notes** (GitHub releases, CHANGELOG.md)
 2. **Migration guides** (official docs)
-3. **Context7 docs** (`mcp_docs-context7_get-library-docs`)
+3. **Context7 docs** (whichever Context7 MCP tool the host exposes — see the [`research`](../research/SKILL.md) skill)
 4. **npm/NuGet package page** (release history)
 5. **GitHub issues** (known problems with version)
 

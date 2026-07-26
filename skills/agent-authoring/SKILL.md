@@ -94,7 +94,15 @@ SKILL.md files capture domain-specific, bounded procedures with reusable capabil
 
 ### Location
 
-Always place in `.github/skills/{skill-name}/SKILL.md`:
+The layout is always `{skills-root}/{skill-name}/SKILL.md`; only the root differs per tool:
+
+| Tool                | Project-level skills root | User-level skills root |
+| ------------------- | ------------------------- | ---------------------- |
+| GitHub Copilot      | `.github/skills/`         | `~/.copilot/skills/`   |
+| Claude Code         | `.claude/skills/`         | `~/.claude/skills/`    |
+| opencode and others | —                         | `~/.agents/skills/`    |
+
+For a repo-committed skill, default to `.github/skills/` and add `.claude/skills/` (or a symlink) when the repo is also worked on with Claude Code. Either way the directory name must match the `name` in the frontmatter.
 
 ```
 repo/
@@ -118,12 +126,15 @@ repo/
 
 ### Format Requirements
 
-| Requirement    | Specification                                   |
-| -------------- | ----------------------------------------------- |
-| Frontmatter    | YAML with `name` and `description` **required** |
-| Maximum Length | <500 lines                                      |
-| Description    | Must include "Use when..." with trigger phrases |
-| Structure      | SKILL.md + optional scripts and reference files |
+| Requirement    | Specification                                                             |
+| -------------- | ------------------------------------------------------------------------- |
+| Frontmatter    | YAML with `name` and `description` **required**                           |
+| Name           | Lowercase letters, digits, hyphens; ≤64 chars; must match the folder name |
+| Description    | Must include "Use when..." with trigger phrases; ≤1024 chars              |
+| Maximum Length | <500 lines                                                                |
+| Structure      | SKILL.md + optional scripts and reference files                           |
+
+Keep frontmatter to `name` and `description` for portability. Tool-specific keys (Claude Code's `allowed-tools`, `model`, `disable-model-invocation`) are ignored by other hosts, so only add them when the skill is Claude-Code-only.
 
 ### YAML Frontmatter
 

@@ -1,8 +1,8 @@
 # Agentic Coding Toolkit
 
-A collection of Copilot skills for reliable agentic coding workflows.
+A collection of agent skills for reliable agentic coding workflows, shared across GitHub Copilot (VS Code + Copilot CLI) and Claude Code.
 
-Skills are the single unit of reusable workflow guidance in this repository: they auto-load when relevant and VS Code exposes each skill as an explicit `/name` entry point. There is no separate `prompts/` concept; former prompt slugs are preserved as skill names.
+Skills are the single unit of reusable workflow guidance in this repository: they auto-load when relevant, and both VS Code and Claude Code expose each skill as an explicit `/name` entry point. There is no separate `prompts/` concept; former prompt slugs are preserved as skill names.
 
 ## Skills
 
@@ -87,18 +87,28 @@ Repeat until approved.
 
 ## Setup
 
-### VS Code + GitHub Copilot (Windows)
+Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` symlinks every one of them back to this repository's `skills/` directory, so a single edit here reaches all tools.
 
-1. Ensure VS Code 1.106+ with GitHub Copilot
-2. Run `setup-skills-link.ps1` (as Admin or with Developer Mode enabled) to symlink `skills/` → `~/.copilot/skills/`
+| Tool                          | User-level skills folder |
+| ----------------------------- | ------------------------ |
+| GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/`     |
+| Claude Code                   | `~/.claude/skills/`      |
+| opencode and similar          | `~/.agents/skills/`      |
+
+1. Ensure VS Code 1.106+ with GitHub Copilot, and/or Claude Code
+2. Run `setup-skills-link.ps1` (as Admin or with Developer Mode enabled)
 3. Skills auto-load when relevant and can be invoked explicitly via `/name` in chat
 
-### Cross-Tool Skills (WSL / Linux / macOS)
+The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
 
-For tools that support the generalized `~/.agents/skills/` convention (e.g., opencode, Claude Code):
+### Cross-Tool Authoring Notes
 
-1. Run `./setup-opencode.sh` to symlink `skills/` → `~/.agents/skills/`
-2. Skills are auto-discovered by any compatible tool
+Skills here target the lowest common denominator so they work everywhere:
+
+- Frontmatter is limited to `name` and `description` (no host-specific keys)
+- Directory names match the frontmatter `name`
+- Tool references are described as capabilities (e.g. "Context7 docs", "IDE diagnostics") rather than literal tool IDs, which differ per host
+- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill; skills reference it as `../pr-scripts/` relative to their own folder
 
 ## Customization
 
@@ -112,5 +122,6 @@ Skills auto-load based on their `description` frontmatter. To make a skill trigg
 
 ## Requirements
 
-- VS Code 1.106+ with GitHub Copilot
+- VS Code 1.106+ with GitHub Copilot, and/or Claude Code
+- `gh` CLI (authenticated) and PowerShell for the PR workflows
 - Optional: MCP servers (Context7, Perplexity, GitHub) for richer research and PR workflows

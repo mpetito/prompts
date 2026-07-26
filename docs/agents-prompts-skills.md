@@ -109,7 +109,7 @@ Research, PR review/authorship, upgrades, authoring guidance, autonomous loops, 
 The repository setup now links only skills:
 
 ```
-skills/                               # Symlinked to ~/.copilot/skills/
+skills/                               # Symlinked into each tool's user-level skills folder
 └── <skill-name>/
     ├── SKILL.md
     └── supporting files as needed
@@ -117,7 +117,7 @@ skills/                               # Symlinked to ~/.copilot/skills/
 fragments/                            # Reusable fragments such as snyk-upgrade-review
 ```
 
-The PowerShell setup script is `setup-skills-link.ps1` and maps `skills/` to `~/.copilot/skills/`. Cross-tool setup can map `skills/` to `~/.agents/skills/` where supported.
+The PowerShell setup script is `setup-skills-link.ps1`. It maps `skills/` to `~/.copilot/skills/` (Copilot), `~/.claude/skills/` (Claude Code), and `~/.agents/skills/` (opencode and other tools using that convention).
 
 ## Skill Authoring Notes
 

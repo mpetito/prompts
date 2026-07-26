@@ -61,7 +61,7 @@ If the scope is large or the codebase unfamiliar, delegate analysis to a read-on
 ### 5. Validate
 
 - Run linters and type-checks: `npm run lint`, `npx tsc --noEmit`, `dotnet format --verify-no-changes`, etc.
-- Check the `#problems` panel and resolve all errors/warnings introduced by the change
+- Check IDE diagnostics if available (`#problems` in VS Code, the `LSP` tool in Claude Code) and resolve all errors/warnings introduced by the change
 - Remove any debug code, console logs, or temporary scaffolding
 
 Repeat for the next phase, or proceed to Output.

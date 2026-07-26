@@ -20,7 +20,7 @@ Validate, commit with conventional messages, and submit pull requests.
 ### 1. Assess State
 
 - Run `git branch --show-current` and `git status`
-- Review the working-tree diff (`git diff`; `#changes` in VS Code) and staged diff (`git diff --staged`) for the complete changeset
+- Review the working-tree diff (`git diff`) and staged diff (`git diff --staged`) for the complete changeset — in VS Code, `#changes` gives the same view
 - Note staged vs unstaged files
 - Check if on protected branch
 
@@ -34,7 +34,7 @@ Discover available commands (`npm run` to list scripts), then execute:
 - **Testing**: `test`
 - **Building**: `build`
 
-Check IDE diagnostics (`#problems` in VS Code) for reported issues. **Stop and report if validation fails.**
+Check IDE diagnostics if available (`#problems` in VS Code, the `LSP` tool in Claude Code) for issues the scripts above do not surface. **Stop and report if validation fails.**
 
 ### 3. Ensure Feature Branch
 

@@ -19,6 +19,8 @@ Procedural knowledge for conducting comprehensive technical research using docum
 | `github/search_code`   | Real-world implementation patterns | Usage examples, integration patterns            |
 | `web`                  | Blogs, tutorials, release notes    | Recent updates, tutorials, opinions             |
 
+The names above are **capabilities, not literal tool IDs** — actual IDs differ per host (e.g. Context7 is `mcp_docs-context7_*` in Copilot and `mcp__plugin_context7_context7__*` in Claude Code; `web` is `WebSearch`/`WebFetch` in Claude Code; GitHub queries can fall back to `gh api`). Map each capability to whatever is configured in the current session, and skip the ones that are unavailable rather than failing the research.
+
 ### Tool Selection Guide
 
 ```
