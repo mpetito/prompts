@@ -16,7 +16,10 @@ For small, obvious changes go straight to implementation (no spec needed).
 
 ## Context Sources (priority order)
 
-1. **Direct user input**
+1. **Direct user input**: the current request, including any constraints or decisions stated outright
+2. **Existing specs**: sibling folders under `specs/` — match their structure, numbering, and depth
+3. **Codebase**: established patterns, abstractions, and integration points (see Phase 2)
+4. **External research**: official docs and library constraints, via the `research` skill
 
 ## Process
 

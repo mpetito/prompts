@@ -27,7 +27,7 @@ For reviewing **your own** staged/local changes, use the `review` skill instead.
 ### Step 1: Resolve PR Context
 
 1. Determine `owner`/`repo` from the workspace git remote, or from the PR URL/user input if the PR is in another repository
-2. Run `../pr-scripts/Get-PrContext.ps1 -Pr {n} -Repo {owner}/{repo}` (sibling folder within the skills tree) — one call returns metadata, description, changed files, existing reviews, review threads, and CI status. Fetch the diff itself with `gh pr diff {n}`.
+2. Run `../pr-scripts/Get-PrContext.ps1 -Pr {n} -Repo {owner}/{repo}` — one call returns metadata, description, changed files, existing reviews, review threads, and CI status. Fetch the diff itself with `gh pr diff {n}`. Script invocation conventions and the non-Windows fallback are in [`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md).
 3. From the returned reviews/threads, note feedback already given — do not duplicate it
 4. Treat CI failures in the returned checks as context, not as findings to repeat
 

@@ -3,6 +3,9 @@ name: pr-feedback
 description: |
   Address pull request feedback from reviews, CI, and code-analysis tools: collect threads, categorize, fix locally, present for review, then commit/reply/resolve.
   Use when resolving PR review feedback, addressing reviewer comments, fixing CI or CodeQL feedback on a PR, or preparing responses before updating a pull request.
+# Claude Code only; other hosts ignore this key. Model inherits — categorizing and fixing
+# reviewer feedback is reasoning work.
+effort: high
 ---
 
 # PR Feedback
@@ -17,28 +20,13 @@ Use this skill to resolve pull request feedback systematically before posting re
 
 ## Tooling
 
-Use the PowerShell scripts in `../pr-scripts/` (sibling folder within the skills tree; resolve the path relative to this skill's folder). They wrap `gh api graphql` and require only an authenticated `gh` CLI. All scripts auto-resolve `owner/repo` and PR number from the current branch when omitted.
+Script invocation, the fallback path when the scripts are unavailable, the resolution decision
+matrix, and the reply templates are in
+[`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md). Read it before the first call.
 
-```powershell
-# One-shot feedback collection: unresolved threads + failing CI (with log excerpts) + code-scanning alerts
-../pr-scripts/Get-PrFeedback.ps1 -Pr 123 [-Repo owner/name]
-
-# List all review threads (thread IDs, resolution state, file/line, full comments)
-../pr-scripts/Get-PrThreads.ps1 -Pr 123 [-Repo owner/name] [-Unresolved]
-
-# Reply to a thread (by thread ID — no comment-ID lookup needed)
-../pr-scripts/Send-PrThreadReply.ps1 -ThreadId PRRT_... -Body "Fixed in commit abc1234."
-
-# Reply and resolve in one call (omit -Body to resolve only)
-../pr-scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body "Fixed in commit abc1234."
-
-# Verify: exit 0 when all threads resolved, otherwise prints remaining threads
-../pr-scripts/Test-PrThreadsResolved.ps1 -Pr 123
-```
-
-Thread IDs start with `PRRT_`. Replies target threads directly.
-
-Fallback: if the scripts are unavailable (e.g., non-Windows agent), use GitHub MCP PR tools if configured (`pull_request_read`, `reply_to_pull_request_comment` or its consolidated successor, `resolve_pull_request_review_thread`), or issue the same GraphQL via `gh api graphql` directly.
+This skill leans on `Get-PrFeedback.ps1` (one-shot collection), then the thread scripts
+(`Get-PrThreads.ps1`, `Send-PrThreadReply.ps1`, `Resolve-PrThread.ps1`,
+`Test-PrThreadsResolved.ps1`).
 
 ## Process
 
@@ -71,17 +59,9 @@ For each blocking, improvement, accepted suggestion, CI failure, or analysis fin
 
 ### 4. Prepare Responses
 
-Draft replies for every thread before posting anything. Match the response type:
-
-| Situation | Reply Template |
-| --- | --- |
-| Fixed | `Fixed in commit {sha} — {brief description}.` |
-| Explained | `This is intentional because {reason}. {justification}.` |
-| Deferred | `Created issue #{num} to track this. Out of scope for this PR.` |
-| Declined | `Respectfully declining because {reason}. Happy to discuss.` |
-| Outdated | `This code was removed/refactored in {commit}.` |
-
-Use the detailed templates below when more context is useful.
+Draft replies for every thread before posting anything. Match the response type to the situation
+using the templates in [`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md) — fixed,
+explained, deferred, declined, outdated, or a clarification request.
 
 ### 5. Present for Review Before Committing
 
@@ -127,58 +107,6 @@ After the user confirms:
    - `/pr-resolve` — reply to and resolve remaining PR review threads.
    - `/commit` — commit, push, and update the PR.
 
-## Reply Templates
-
-### Fixed Code
-
-```text
-Fixed in commit {sha}.
-
-{Brief description of the change made to address the feedback.}
-```
-
-### Explained Design Decision
-
-```text
-This is intentional because {reason}.
-
-{Details about why the current approach was chosen.}
-{Optional: reference to design doc or prior discussion.}
-```
-
-### Deferred to Issue
-
-```text
-Good point. This is out of scope for this PR, but I've created #{issue_number} to track it.
-
-We can address this in a follow-up.
-```
-
-### Declined with Rationale
-
-```text
-I respectfully disagree with this suggestion because {reason}.
-
-{Explanation of tradeoffs considered.}
-{Offer to discuss further if needed.}
-```
-
-### Acknowledging Suggestion
-
-```text
-Great suggestion! Implemented in commit {sha}.
-
-{Brief note on how it improved the code.}
-```
-
-### Clarification Request
-
-```text
-Could you clarify what you mean by "{quote from feedback}"?
-
-I want to make sure I address your concern correctly. Are you suggesting {interpretation A} or {interpretation B}?
-```
-
 ## Guidelines
 
 - Ask first, code second: clarify ambiguous feedback before implementing.
@@ -190,14 +118,5 @@ I want to make sure I address your concern correctly. Are you suggesting {interp
 
 ## Common Issues
 
-| Problem | Fix |
-| --- | --- |
-| `Could not resolve to a node` | Verify the thread ID starts with `PRRT_`, refresh with `Get-PrThreads.ps1`, and check whether it was deleted or already resolved. |
-| `gh: Not Found` | Check `-Repo`/`-Pr` values; auto-resolution requires the current branch to have an open PR. |
-| `Cannot resolve thread` | Check permissions; some repos require reviewers to resolve their own threads. |
-
-## User Input
-
-```text
-$ARGUMENTS
-```
+See [`../pr-scripts/REFERENCE.md`](../pr-scripts/REFERENCE.md) for `Could not resolve to a node`,
+`gh: Not Found`, `Cannot resolve thread`, and the script-unavailable fallback.

@@ -1,22 +1,32 @@
 ---
-name: playwright-e2e-monorepo
-description: Use when writing Playwright end-to-end tests, setting up Playwright in an npm-workspaces monorepo, or applying the Page Object Model.
+name: playwright-e2e
+description: |
+  Use when writing Playwright end-to-end tests, applying the Page Object Model, choosing
+  locators, establishing a data-testid convention, or setting up Playwright in a project
+  (including npm-workspaces monorepos) and its CI.
 ---
 
-# Playwright E2E Testing in Monorepo
+# Playwright E2E Testing
 
 ## When to Use This Skill
 
 Use when:
 
-- Setting up Playwright in an npm workspaces monorepo
 - Writing end-to-end tests with the Page Object Model pattern
-- Testing example app flows such as e-commerce cart, checkout, product, and application-specific interactive flows
+- Choosing between `getByTestId` / `getByRole` / `getByText` locators
+- Establishing a `data-testid` naming convention across an app
+- Handling localStorage-dependent or otherwise persisted state in tests
 - Configuring multi-device testing (desktop + mobile)
-- Handling localStorage-dependent state in tests
+- Setting up Playwright in an npm workspaces monorepo
 - Setting up CI for Playwright tests
 
-## Project Structure
+**Monorepo Wiring** covers project setup; **Test Authoring** onward is stack-agnostic and applies to any Playwright suite. The examples use a storefront (cart, checkout, product customizer) as the worked domain — substitute your own.
+
+## Monorepo Wiring
+
+Skip this section for a single-package project; `testDir`, `projects`, and `webServer.command` still apply, only `cwd` becomes unnecessary.
+
+### Project Structure
 
 ```
 project-root/
@@ -44,9 +54,7 @@ project-root/
             └── auth.spec.ts
 ```
 
-## Instructions
-
-### Step 1: Package Configuration
+### Package Configuration
 
 ```json
 // packages/e2e/package.json
@@ -77,7 +85,7 @@ project-root/
 }
 ```
 
-### Step 2: Playwright Configuration for Monorepo
+### Playwright Configuration
 
 ```ts
 // packages/e2e/playwright.config.ts
@@ -126,7 +134,11 @@ export default defineConfig({
 - `workers: 1` in CI — prevent resource contention
 - Two projects: Desktop + Mobile ensures responsive testing
 
-### Step 3: Page Object Model (POM) Pattern
+## Test Authoring
+
+The rest of this skill is stack-agnostic.
+
+### Page Object Model (POM) Pattern
 
 **POM encapsulates page selectors and actions.** Tests read like user stories, selectors stay in one place.
 
@@ -281,7 +293,7 @@ export class ProductCustomizerPage {
 }
 ```
 
-### Step 4: Test Patterns
+### Test Patterns
 
 **localStorage cleanup for cart isolation:**
 
@@ -360,7 +372,7 @@ test("should clear error when user starts typing", async ({ page }) => {
 });
 ```
 
-### Step 5: data-testid Convention
+### data-testid Convention
 
 Every interactive or meaningful element gets a `data-testid`:
 
@@ -387,7 +399,7 @@ Component containers: {component-name}
 <details data-testid={`faq-item-${i}`}>...</details>
 ```
 
-### Step 6: Selector Priority
+### Selector Priority
 
 Use this hierarchy in POM locators:
 
@@ -398,7 +410,7 @@ Use this hierarchy in POM locators:
 
 **Avoid:** IDs, class names, tag hierarchies — all too brittle.
 
-### Step 7: Cart Persistence Test
+### Persisted-State Test (localStorage)
 
 ```ts
 test("should persist cart across page reloads", async ({ page }) => {

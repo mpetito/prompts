@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Methodology for reviewing code changes across correctness, maintainability, DRY, error handling, tests, security, performance, documentation, and observability. Use when reviewing a diff, evaluating an open PR, auditing implementation quality, or producing a structured code-review verdict."
+description: "Methodology for reviewing your own local or staged code changes across correctness, maintainability, DRY, error handling, tests, security, performance, documentation, and observability. Use when reviewing a working-tree or staged diff, auditing changes you just implemented, or producing a structured code-review verdict before committing. To review someone else's PR by number and post comments on GitHub, use `pr-review` instead."
 ---
 
 # Code Review Skill
@@ -22,7 +22,7 @@ Review what is currently staged or what was just implemented. Use `#changes` for
 Before starting, detect open PR context:
 
 1. Use `#activePullRequest` / `#openPullRequest` to identify if changes belong to a PR
-2. If the changes belong to an open PR, fetch existing review threads (`skills/pr-scripts/Get-PrThreads.ps1`) and incorporate outstanding comments into the review scope
+2. If the changes belong to an open PR, fetch existing review threads (`../pr-scripts/Get-PrThreads.ps1`, resolved relative to this skill's folder) and incorporate outstanding comments into the review scope
 3. Reference the `pr-feedback` and `pr-resolve` skills for detailed PR feedback and thread tooling
 
 ## Review Dimensions

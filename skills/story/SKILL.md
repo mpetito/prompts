@@ -1,6 +1,9 @@
 ---
 name: story
 description: "Guidelines for creating well-structured Azure DevOps work items including User Stories, Issues, and Bugs with proper formatting, story points, and acceptance criteria. Use when creating user stories, writing acceptance criteria, formatting work items for Azure DevOps, or estimating story points."
+# Claude Code only; other hosts ignore these keys.
+model: sonnet
+effort: low
 ---
 
 # Story Writing Skill
@@ -254,94 +257,10 @@ When the user wants the work item created in Azure DevOps:
 
 ## Example Field Specifications
 
-### User Story Example
-
-```json
-{
-  "fields": [
-    {
-      "name": "System.Title",
-      "value": "Allow users to upload profile pictures"
-    },
-    {
-      "name": "System.Description",
-      "value": "As a registered user, I want to upload a profile picture so that other users can identify me.\n\n#### Additional Context\n\n- Support common image formats\n- Implement size restrictions for storage optimization",
-      "format": "Markdown"
-    },
-    {
-      "name": "Microsoft.VSTS.Scheduling.StoryPoints",
-      "value": 5
-    },
-    {
-      "name": "Microsoft.VSTS.Common.AcceptanceCriteria",
-      "value": "### 1. Upload Functionality\n\n- [ ] User can select image from device\n- [ ] Upload accepts JPG, PNG, and GIF up to 10MB\n\n### 2. Validation\n\n- [ ] Error displays for unsupported formats\n- [ ] Error displays when file exceeds 10MB\n\n### 3. Display\n\n- [ ] Thumbnail generates at 150x150 pixels\n- [ ] Image displays on user profile",
-      "format": "Markdown"
-    },
-    {
-      "name": "System.IterationPath",
-      "value": "ProjectName\\Sprint 1"
-    }
-  ]
-}
-```
-
-### Bug Example
-
-```json
-{
-  "fields": [
-    {
-      "name": "System.Title",
-      "value": "Login button unresponsive on mobile Safari"
-    },
-    {
-      "name": "Microsoft.VSTS.TCM.ReproSteps",
-      "value": "### Steps to Reproduce\n\n1. Open application on iOS Safari\n2. Enter valid credentials\n3. Tap Login button\n4. Observe button does not respond\n\n### Expected Behavior\n\nUser is authenticated and redirected to dashboard.\n\n### Actual Behavior\n\nButton tap is not registered; no action occurs.",
-      "format": "Markdown"
-    },
-    {
-      "name": "Microsoft.VSTS.TCM.SystemInfo",
-      "value": "- Device: iPhone 14 Pro\n- OS: iOS 17.2\n- Browser: Safari 17.2\n- App Version: 2.3.1",
-      "format": "Markdown"
-    },
-    {
-      "name": "Microsoft.VSTS.Common.Severity",
-      "value": "2 - High"
-    },
-    {
-      "name": "Microsoft.VSTS.Common.Priority",
-      "value": "1"
-    }
-  ]
-}
-```
-
-### Issue (Technical) Example
-
-```json
-{
-  "fields": [
-    {
-      "name": "System.Title",
-      "value": "Implement caching layer for API responses"
-    },
-    {
-      "name": "System.Description",
-      "value": "We need a Redis caching layer to reduce database load and improve response times.\n\n#### Additional Context\n\n- Current avg response time: 800ms\n- Target response time: 200ms\n- Expected cache hit ratio: 70%",
-      "format": "Markdown"
-    },
-    {
-      "name": "Microsoft.VSTS.Scheduling.StoryPoints",
-      "value": 8
-    },
-    {
-      "name": "Microsoft.VSTS.Common.AcceptanceCriteria",
-      "value": "### 1. Implementation\n\n- [ ] Redis cache configured and connected\n- [ ] Frequently accessed endpoints use cache\n\n### 2. Performance\n\n- [ ] Cached responses return in under 100ms\n- [ ] Cache invalidation works correctly\n\n### 3. Monitoring\n\n- [ ] Cache hit/miss metrics available in dashboard",
-      "format": "Markdown"
-    }
-  ]
-}
-```
+Concrete `wit_create_work_item` payloads for User Story, Bug, and Issue — including the
+Azure DevOps field reference names and Markdown escaping rules — are in
+[`references/ado-field-examples.md`](references/ado-field-examples.md). Read that file
+before composing a create call.
 
 ---
 

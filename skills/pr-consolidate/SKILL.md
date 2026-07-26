@@ -3,6 +3,9 @@ name: pr-consolidate
 description: |
   Consolidate multiple PRs or branches into a unified, conflict-free integration branch.
   Use when combining multiple pull requests, integrating dependent branches, merging agent branches, or preparing one branch from several related PRs.
+# Claude Code only; other hosts ignore this key. Destructive cross-branch merges should be
+# user-initiated (`/pr-consolidate`), never auto-invoked by the model.
+disable-model-invocation: true
 ---
 
 # PR Consolidate
@@ -199,9 +202,3 @@ Closes #456
 - Refresh remotes with `git fetch --all --prune`.
 - For PRs, retry `git fetch origin pull/{n}/head:{local-branch}`.
 - Verify PR existence with `gh pr view {n} --json number,title,headRefName`.
-
-## User Input
-
-```text
-$ARGUMENTS
-```
