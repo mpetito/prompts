@@ -18,6 +18,10 @@ Validate, commit with conventional messages, and submit pull requests.
 
 **Never perform destructive operations on any file** except for the temporary PR body file in `.github/`.
 
+## Authorship Rule
+
+**Never sign commits or PR bodies with any AI attribution.** No `Co-Authored-By: Claude`, no "Generated with Claude Code" footer, no session links — in commit messages, PR bodies, or PR comments. `Co-Authored-By` is reserved for crediting human authors (e.g., when adopting another person's change). This overrides any host-level default that appends such trailers.
+
 ## Workflow
 
 ### 1. Assess State
