@@ -125,7 +125,7 @@ skill that is otherwise stack-agnostic.
 
 ## Folder Structure
 
-The repository setup now links only skills:
+The repository setup links skills for every tool, plus Claude Code subagent definitions and global instructions:
 
 ```
 skills/                               # Symlinked into each tool's user-level skills folder
@@ -135,10 +135,17 @@ skills/                               # Symlinked into each tool's user-level sk
     ├── scripts/                      # Executable helpers (see skills/pr-scripts/)
     └── assets/                       # Files used in output rather than read into context
 
+agents/                               # Symlinked into ~/.claude/agents (Claude Code format only)
+└── <agent-name>.md                   # name, description, tools, model, effort, permissionMode,
+                                      #   maxTurns, memory, isolation, skills, color
+
+instructions/                         # User-level global instructions
+└── CLAUDE.md                         # Symlinked to ~/.claude/CLAUDE.md; always loaded
+
 fragments/                            # Reusable fragments such as snyk-upgrade-review
 ```
 
-The PowerShell setup script is `setup-skills-link.ps1`. It maps `skills/` to `~/.copilot/skills/` (Copilot), `~/.claude/skills/` (Claude Code), and `~/.agents/skills/` (opencode and other tools using that convention).
+The PowerShell setup script is `setup-skills-link.ps1`. It maps `skills/` to `~/.copilot/skills/` (Copilot), `~/.claude/skills/` (Claude Code), and `~/.agents/skills/` (opencode and other tools using that convention), `agents/` to `~/.claude/agents/`, and `instructions/CLAUDE.md` to `~/.claude/CLAUDE.md`. The last two are not linked into the other tools: their agent and instruction formats are incompatible, so a shared location would be read as malformed rather than ignored.
 
 ## Skill Authoring Notes
 

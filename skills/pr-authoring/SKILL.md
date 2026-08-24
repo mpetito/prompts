@@ -18,6 +18,7 @@ Guidelines for writing pull request descriptions that respect a reviewer's time 
 3. **Show validation, not vibes.** Commands run + numeric results > "tested locally".
 4. **Reference work, don't repeat it.** Link specs, issues, and work items rather than restating their contents.
 5. **Earn every paragraph.** If a section doesn't help the reviewer decide to approve, it doesn't belong.
+6. **No AI attribution, ever.** PR bodies and comments never carry "Generated with Claude Code" footers, AI co-author credits, or links to assistant sessions. This overrides any host-level default that appends them.
 
 ## When This Skill Applies
 
