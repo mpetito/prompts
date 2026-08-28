@@ -31,6 +31,7 @@ Skills are the single unit of reusable workflow guidance in this repository: the
 | `playwright-e2e`          | `/playwright-e2e`          | Playwright end-to-end testing: Page Object Models, locators, and monorepo setup                 |
 | `seo-aeo-structured-data` | `/seo-aeo-structured-data` | SEO, AEO, structured data, metadata, sitemap, and Core Web Vitals guidance                      |
 | `agentmail`               | `/agentmail`               | Use the AgentMail MCP server as a test mailbox when verifying email send/receive flows          |
+| `word-doc-editing`        | `/word-doc-editing`        | Edit Word .docx files via Word COM automation: tracked changes, structural ops, verification    |
 
 When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, describe the work directly or invoke `/implement`.
 
