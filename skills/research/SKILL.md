@@ -12,6 +12,7 @@ Procedural knowledge for conducting comprehensive technical research using docum
 | Capability             | Purpose                            | Use for                                         | Query style               |
 | ---------------------- | ---------------------------------- | ----------------------------------------------- | ------------------------- |
 | `docs-context7/*`      | Official library documentation     | API reference, usage examples, best practices   | Library ID + topic        |
+| `firecrawl/developer`  | Coding-agent index of issues, merged PRs, READMEs, curated docs | Bug reports and their fixes, error messages, API contract changes, library behavior | Natural-language question, error string verbatim |
 | `perplexity/search`    | Quick factual lookups              | Version info, simple comparisons, definitions   | Specific, factual         |
 | `perplexity/reason`    | Complex analysis and reasoning     | Trade-offs, architecture decisions, debugging   | Comparative, contextual   |
 | `perplexity/deep`      | Comprehensive research reports     | Major decisions, unfamiliar domains, deep dives | Broad topic + focus_areas |
@@ -20,6 +21,8 @@ Procedural knowledge for conducting comprehensive technical research using docum
 | `web`                  | Blogs, tutorials, release notes    | Recent updates, tutorials, opinions             | URL fetch or search terms |
 
 The names above are **capabilities, not literal tool IDs** — actual IDs differ per host (e.g. Context7 is `mcp_docs-context7_*` in Copilot and `mcp__plugin_context7_context7__*` in Claude Code; `web` is `WebSearch`/`WebFetch` in Claude Code; GitHub queries can fall back to `gh api`). Map each capability to whatever is configured in the current session, and skip the ones that are unavailable rather than failing the research.
+
+`firecrawl/developer` is the [Firecrawl Developer Index](https://www.firecrawl.dev/developer-index) — 70M+ issues, merged pull requests, READMEs, and curated documentation sites, refreshed daily, returning the **matched passages** rather than a link. It reaches the discussion behind the code, which is precisely what general web search surfaces worst. Prefer it over `github/search_issues` when you don't already know the repository, and over `web` for anything error-message- or bug-shaped. It needs no API key. The [`firecrawl`](../firecrawl/SKILL.md) skill owns the full surface — including scrape, crawl, map, and the scientific paper index — and [`../firecrawl/references/developer-index.md`](../firecrawl/references/developer-index.md) covers filters, result shape, and query technique.
 
 ---
 
@@ -68,7 +71,12 @@ perplexity/deep(
   query: "WebSocket vs Server-Sent Events vs HTTP/2 push for real-time data streaming",
   focus_areas: ["latency", "reconnection handling", "browser support", "scalability"])
 
-# Known issues and workarounds
+# Primary sources for a bug, error string, or API change — passages, not links
+firecrawl/developer(query: "why is my retry backoff not firing on 429", limit: 10)
+firecrawl/developer(query: "ECONNRESET during long-running requests in undici",
+  types: ["issue", "pull_request"])
+
+# Known issues and workarounds in a repo you can already name
 github/search_issues(query: "memory leak useEffect cleanup", repo: "facebook/react")
 
 # Real-world usage patterns
@@ -106,6 +114,7 @@ Query quality determines result quality more than tool choice does.
 | `perplexity/reason`    | "Compare Prisma vs Drizzle for a TypeScript project with PostgreSQL, considering type safety and migrations"     | "What is Prisma?" (simple factual question)       |
 | `perplexity/deep`      | "Authentication strategies for a multi-tenant SaaS with SSO, considering OAuth 2.0, SAML, and JWT" + focus_areas | Narrow questions a single search would answer     |
 | `github/search_issues` | "ECONNRESET during long-running requests" + `repo:`                                                              | Generic topics without an error string or repo    |
+| `firecrawl/developer`  | "why is my retry backoff not firing on 429" — the question as you'd ask a maintainer, error string verbatim      | Bare keywords ("retries"); repo filters without a `sources` scope, which drop all doc results |
 
 ---
 
@@ -114,7 +123,7 @@ Query quality determines result quality more than tool choice does.
 | Pattern                  | Scenario                              | Sequence                                                                                                                                    |
 | ------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Library evaluation**   | Choosing between competing libraries  | Define criteria → `perplexity/search` for recent comparisons → `docs-context7` per candidate → `github/search_issues` → `perplexity/reason` |
-| **Bug investigation**    | Debugging an issue with a dependency  | Search codebase for workarounds → `github/search_issues` in the library repo → `perplexity/search` the error → check newer versions          |
+| **Bug investigation**    | Debugging an issue with a dependency  | Search codebase for workarounds → `firecrawl/developer` with the error string verbatim → `github/search_issues` in the library repo → check newer versions |
 | **API integration**      | Integrating a new external API        | `docs-context7` or `web` for official docs → `github/search_code` for examples → `github/search_issues` for rate limits → auth patterns      |
 | **Architecture decision**| Making a significant technical choice | Define criteria → `perplexity/deep` for best practices → `github/search_code` for prior art → `perplexity/reason` for trade-offs             |
 | **Version compatibility**| Upgrading or checking compatibility   | Check current version → `docs-context7` changelog → `perplexity/search` breaking changes → identify affected code paths                     |
