@@ -32,6 +32,7 @@ Skills are the single unit of reusable workflow guidance in this repository: the
 | `seo-aeo-structured-data` | `/seo-aeo-structured-data` | SEO, AEO, structured data, metadata, sitemap, and Core Web Vitals guidance                      |
 | `agentmail`               | `/agentmail`               | Use the AgentMail MCP server as a test mailbox when verifying email send/receive flows          |
 | `word-doc-editing`        | `/word-doc-editing`        | Edit Word .docx files via Word COM automation: tracked changes, structural ops, verification    |
+| `firecrawl`               | `/firecrawl`               | Search, scrape, crawl, map, and extract from the live web; developer and research indexes       |
 
 When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, describe the work directly or invoke `/implement`.
 
@@ -153,7 +154,7 @@ Skills here target the lowest common denominator so they work everywhere:
 Large skills keep `SKILL.md` lean and push detail into a `references/` subfolder, which loads
 only when `SKILL.md` points at it. `SKILL.md` carries the workflow, decisions, and pitfalls;
 `references/` carries code libraries, command tables, and long worked examples. Currently used
-by `ecommerce-patterns`, `seo-aeo-structured-data`, `story`, and `upgrade`.
+by `ecommerce-patterns`, `firecrawl`, `seo-aeo-structured-data`, `story`, and `upgrade`.
 
 ### Host-Specific Frontmatter
 
@@ -163,11 +164,14 @@ not break portability. Several skills set them:
 | Key                        | Used for                                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
 | `model`                    | Pinning a cheaper tier on mechanical skills (`commit`, `tt`, `story`, `pr-resolve`, `pr-authoring`) |
-| `effort`                   | Tuning reasoning depth without changing model tier                                                  |
+| `effort`                   | Tuning reasoning depth without changing model tier (`firecrawl` runs `sonnet` at `high`)            |
 | `disable-model-invocation` | User-typed `/name` only (`pr-consolidate`, whose merges are destructive)                            |
 
 Skills that are _consumed inside another task_ rather than invoked directly — the standards and
 pattern skills — deliberately set no `model`, so they inherit whatever the calling workflow uses.
+`firecrawl` is the exception: it is tool-driving work, so it pins `sonnet` to stay cheap under an
+Opus session while keeping `effort: high`, because choosing the right rung of the search/scrape/crawl
+ladder and writing a good query is where its judgment actually goes.
 See the `skill-authoring` skill for the full key list and selection guidance.
 
 ## Customization
