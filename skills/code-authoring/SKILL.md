@@ -95,11 +95,24 @@ This section is the canonical copy of the personal coding standards. Other skill
 - Comment the **why**, not the **what** — explain reasoning, not mechanics
 - Doc comments on public APIs (param/return)
 - Let good names and types document internal code; do not add narration
+- **Reach for clearer code before a longer comment.** A rationale that needs a paragraph is
+  usually naming an extraction, a better name, or a type that has not been written yet.
+  Rewrite the code first; keep the comment only for what the code genuinely cannot say
+- **Keep a comment proportionate to what it explains.** More comment than code is a smell, and
+  a multi-paragraph block above a short statement almost always belongs somewhere else
+- **One home per rationale.** If the reasoning already lives in AGENTS.md, a spec, or a runbook,
+  link to it rather than restating it — two copies drift, and the copy in the source goes stale
+  first because it is the one nobody re-reads
+- Incident history, review discussion, and changelog narrative belong in commits, PRs, and
+  AGENTS.md — not in the source
 
 ### Functions & Structure
 
 - Small, single-purpose functions for clear high-level workflow
 - Avoid over-fragmenting into single-use helpers that just shuffle parameters
+- A callback longer than a screen is a function that has not been named yet — extract it, even
+  when it has one caller. Error handling you cannot see without scrolling is error handling
+  nobody reviews
 - Guard clauses + early returns for edge cases; ternaries for simple remaining logic
 - Omit braces only for early-return guards; use braces for logic blocks
 

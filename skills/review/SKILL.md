@@ -68,7 +68,8 @@ Condensed from the canonical standards in the `code-authoring` skill.
 - **Params** positional for few args; options objects for many or easily-confused
 - **Control Flow** functional for transforms; loops for side effects
 - **Tests** describe behavior, cover edge cases
-- **Comments** explain the **why**, not the **what**
+- **Comments** explain the **why**, not the **what**; proportionate to the code they explain,
+  and never a second copy of rationale that already lives in AGENTS.md or a spec
 - **Logging** structured via the framework's idiom (.NET message templates, JS field objects); consistent field names
 
 ## Output Format
