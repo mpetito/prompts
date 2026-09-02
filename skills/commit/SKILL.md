@@ -108,7 +108,9 @@ git push -u origin <branch-name>
 
 ### 6. Create/Update PR
 
-When authoring or updating a PR description, follow the [`pr-authoring`](../pr-authoring/SKILL.md) skill — concise summary with motivation, grouped by area not file, concrete validation, work item references in the body.
+**Invoke the [`pr-authoring`](../pr-authoring/SKILL.md) skill (Skill tool) before writing the body**, then author against it. It owns the section menu, the length targets, and the reference placement — never write a PR description from memory.
+
+No summary of its rules appears here on purpose: a summary reads as self-contained and gets used *instead of* the skill.
 
 **If no PR exists:**
 
