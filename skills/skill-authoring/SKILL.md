@@ -66,9 +66,12 @@ The layout is always `{skills-root}/{skill-name}/SKILL.md`; only the root differ
 | ------------------- | ------------------------- | ---------------------- |
 | GitHub Copilot      | `.github/skills/`         | `~/.copilot/skills/`   |
 | Claude Code         | `.claude/skills/`         | `~/.claude/skills/`    |
+| Codex               | `.agents/skills/`         | `~/.agents/skills/`    |
 | opencode and others | —                         | `~/.agents/skills/`    |
 
 For a repo-committed skill, default to `.github/skills/` and add `.claude/skills/` (or a symlink) when the repo is also worked on with Claude Code. Either way the directory name must match the `name` in the frontmatter.
+
+In this shared prompt repository, also rerun `setup-skills-link.ps1` after adding or renaming a top-level directory under `skills/`. The installer creates per-child links in `~/.codex/skills/` without replacing Codex's managed `.system` directory. Edits inside an existing linked skill propagate immediately.
 
 **Cross-skill references** must be relative to the skill's own folder (`../other-skill/SKILL.md`, `../pr-scripts/Script.ps1`), never relative to a repository root. A skills folder is frequently symlinked into a user-level location where no repo root exists.
 
