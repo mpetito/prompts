@@ -13,11 +13,17 @@ on every render, so it has to be fast and it has to exit — both are load-beari
 
 ## Setup
 
-`setup-skills-link.ps1` in the repository root links this file to `~/.claude/statusline.js`, the
-same single-file link it already makes for `instructions/CLAUDE.md`.
+Three steps, none of which the others imply. The link alone shows nothing; the `settings.json`
+entry without the font shows a row of boxes.
 
-The link is only half of it — Claude Code does not pick the script up until `~/.claude/settings.json`
-points at it:
+### 1. Link the script
+
+`setup-skills-link.ps1` in the repository root links this file to `~/.claude/statusline.js`, the
+same single-file link it already makes for `instructions/CLAUDE.md`. Nothing else to do here.
+
+### 2. Point `settings.json` at it
+
+Claude Code does not run the script until `~/.claude/settings.json` names it:
 
 ```json
 {
@@ -29,16 +35,88 @@ points at it:
 }
 ```
 
-`settings.json` is deliberately **not** tracked here: it holds machine-specific paths and secrets
-(API tokens, OTLP headers). Only the script is shared.
-
 `padding: 0` lets the line start at the left edge. `type: "command"` is the only documented type.
 
-### Font
+`settings.json` is deliberately **not** tracked here: it holds machine-specific paths and secrets
+(API tokens, OTLP headers). Only the script is shared, so this entry is a manual step on each
+new machine.
 
-Every icon is a [Nerd Font](https://www.nerdfonts.com/) glyph, so the terminal font must be a
-Nerd Font patched build or the line renders as a row of boxes. Cascadia Code NF installs per-user
-with no admin rights; point Windows Terminal at it under `profiles.defaults.font.face`.
+### 3. Install a Nerd Font and point the terminal at it
+
+Every icon is a [Nerd Font](https://www.nerdfonts.com/) glyph. Without one the line renders as a
+row of empty boxes — the script is working, the font simply has no glyph at those codepoints.
+
+Microsoft's own Cascadia Code release ships the patched `NF` variants, so no third-party build is
+needed. It installs **per-user with no admin rights**: fonts go in `%LOCALAPPDATA%\Microsoft\Windows\Fonts`
+and register under `HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts`.
+
+```powershell
+# Download the current release (v2407.24 at time of writing) and install Cascadia *NF per-user.
+$rel   = Invoke-RestMethod https://api.github.com/repos/microsoft/cascadia-code/releases/latest
+$asset = $rel.assets | Where-Object { $_.name -like 'CascadiaCode-*.zip' }
+$zip   = Join-Path $env:TEMP $asset.name
+Invoke-WebRequest $asset.browser_download_url -OutFile $zip
+
+$dest = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+$reg  = 'HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts'
+New-Item -ItemType Directory -Force -Path $dest | Out-Null
+if (-not (Test-Path $reg)) { New-Item -Path $reg -Force | Out-Null }
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$z = [System.IO.Compression.ZipFile]::OpenRead($zip)
+foreach ($e in $z.Entries | Where-Object { $_.FullName -match '^ttf/static/Cascadia(Code|Mono)NF-.*\.ttf$' }) {
+    $file = Split-Path $e.FullName -Leaf
+    $out  = Join-Path $dest $file
+    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($e, $out, $true)
+    # "CascadiaCodeNF-SemiBoldItalic.ttf" -> "Cascadia Code NF Semi Bold Italic (TrueType)"
+    $fam, $sty = [IO.Path]::GetFileNameWithoutExtension($file) -split '-', 2
+    $fam = $fam -replace 'Cascadia(Code|Mono)NF', 'Cascadia $1 NF'
+    $sty = $sty -creplace '([a-z])([A-Z])', '$1 $2'
+    New-ItemProperty -Path $reg -Name "$fam $sty (TrueType)" -Value $out -PropertyType String -Force | Out-Null
+}
+$z.Dispose()
+```
+
+That installs 24 faces — `Cascadia Code NF` (with ligatures) and `Cascadia Mono NF` (without).
+Either works; pick `Mono` if you dislike `!=` and `=>` being drawn as single glyphs.
+
+**Windows Terminal.** Set it as the default for every profile, in
+`%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json`:
+
+```json
+"profiles": {
+    "defaults": {
+        "font": {
+            "face": "Cascadia Code NF"
+        }
+    },
+    "list": [ ... ]
+}
+```
+
+Editing `profiles.defaults` rather than an individual entry in `profiles.list` means every
+profile — PowerShell, WSL, Git Bash — picks it up. The GUI equivalent is
+**Settings → Profiles → Defaults → Appearance → Font face**.
+
+**VS Code's integrated terminal** reads its own setting and ignores the Windows Terminal one:
+
+```json
+"terminal.integrated.fontFamily": "Cascadia Code NF"
+```
+
+**Restart the terminal afterwards.** Windows Terminal enumerates fonts at startup, so until it is
+fully closed and reopened the icons keep rendering as boxes even though everything is configured
+correctly. Verify with:
+
+```powershell
+'{}' | node "$env:USERPROFILE\.claude\statusline.js"
+```
+
+(PowerShell has no `<` input redirection — piping is how you hand it stdin.) That prints the cwd
+and git segments with no session data. If the glyphs are boxes but the text and colours are right,
+it is the font; if nothing prints, it is step 1 or 2.
+
+### Choosing new glyphs
 
 The glyphs were each checked against the font's `cmap` table rather than trusted from a codepoint
 chart. Three that a chart would offer are **not in Cascadia Code NF** — `U+2387` (the conventional

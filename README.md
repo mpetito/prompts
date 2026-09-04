@@ -71,8 +71,9 @@ Keeping it here rather than in `~/.claude` puts it under version control alongsi
 showing the working directory, repository, branch with a coloured git-state badge, model and
 reasoning effort, and context-window usage. Claude Code runs it on every render, so it must be
 fast and it must exit; both constraints are documented in
-[`statusline/README.md`](statusline/README.md) along with the Nerd Font it needs and the
-`settings.json` entry that activates it.
+[`statusline/README.md`](statusline/README.md), along with the three-step initial setup — the
+symlink, the `settings.json` entry that activates it, and the Nerd Font plus terminal font-face
+setting the icons depend on.
 
 It lives here for the same reason `instructions/CLAUDE.md` does: it is user-level Claude Code
 configuration, and version control is the only thing that makes a hand-tuned script recoverable.
@@ -150,7 +151,7 @@ Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` s
 3. Skills auto-load when relevant and can be invoked explicitly via `/name` in chat
 4. Agents become available to Claude Code as subagent types for delegated work
 5. Global instructions load into every Claude Code session, in every project
-6. The status line needs one extra step the link cannot do — see [`statusline/README.md`](statusline/README.md) for the `settings.json` entry and the Nerd Font it requires
+6. The status line needs two further steps the link cannot do — a `statusLine` entry in `~/.claude/settings.json`, and a Nerd Font installed and selected as the terminal's font face. Both are in [`statusline/README.md`](statusline/README.md), with copy-pasteable commands
 
 The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. Codex receives per-skill links so its managed `~/.codex/skills/.system/` directory remains intact. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
 
