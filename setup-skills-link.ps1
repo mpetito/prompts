@@ -9,16 +9,18 @@
 #   ~/.agents/skills   - cross-tool convention (opencode and others that scan it)
 #   ~/.claude/agents   - Claude Code subagent definitions (Claude Code format only)
 #   ~/.claude/CLAUDE.md - Claude Code user-level global instructions (a file, not a folder)
+#   ~/.claude/statusline.js - Claude Code custom status line script (a file, not a folder)
 
 # Get the script's directory (repository root)
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sourceSkills = Join-Path $repoRoot "skills"
 $sourceAgents = Join-Path $repoRoot "agents"
 $sourceGlobalMd = Join-Path $repoRoot "instructions\CLAUDE.md"
+$sourceStatusLine = Join-Path $repoRoot "statusline\statusline.js"
 
 # User-level targets, keyed by the tool that reads them. Skills are an open format every
-# tool reads; subagent definitions and global instructions are Claude Code's own formats,
-# so only it gets those links.
+# tool reads; subagent definitions, global instructions, and the status line script are
+# Claude Code's own formats, so only it gets those links.
 $targets = @(
     @{ Description = "Copilot skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".copilot\skills"; Kind = "Directory" }
     @{ Description = "Claude Code skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".claude\skills"; Kind = "Directory" }
@@ -26,6 +28,7 @@ $targets = @(
     @{ Description = "Cross-tool agent skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".agents\skills"; Kind = "Directory" }
     @{ Description = "Claude Code subagents"; Source = $sourceAgents; Path = Join-Path $env:USERPROFILE ".claude\agents"; Kind = "Directory" }
     @{ Description = "Claude Code global instructions"; Source = $sourceGlobalMd; Path = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"; Kind = "File" }
+    @{ Description = "Claude Code status line"; Source = $sourceStatusLine; Path = Join-Path $env:USERPROFILE ".claude\statusline.js"; Kind = "File" }
 )
 
 # Function to create a symbolic link

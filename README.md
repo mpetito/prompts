@@ -65,6 +65,19 @@ Each agent defines a strict output contract. That is what makes a cheaper tier r
 
 Keeping it here rather than in `~/.claude` puts it under version control alongside the agents it routes to, so the routing table and the agent definitions cannot drift apart.
 
+## Status Line
+
+`statusline/statusline.js` is Claude Code's custom status line — the line under the input box
+showing the working directory, repository, branch with a coloured git-state badge, model and
+reasoning effort, and context-window usage. Claude Code runs it on every render, so it must be
+fast and it must exit; both constraints are documented in
+[`statusline/README.md`](statusline/README.md) along with the Nerd Font it needs and the
+`settings.json` entry that activates it.
+
+It lives here for the same reason `instructions/CLAUDE.md` does: it is user-level Claude Code
+configuration, and version control is the only thing that makes a hand-tuned script recoverable.
+`settings.json` itself is **not** tracked — it holds machine paths and secrets.
+
 ## Fragments
 
 Reusable prompt fragments for specialized workflows.
@@ -120,22 +133,24 @@ Repeat until approved.
 
 ## Setup
 
-Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` symlinks every one of them back to this repository's `skills/` directory, and links Claude Code's subagent folder to `agents/` and its user-level `CLAUDE.md` to `instructions/CLAUDE.md`, so a single edit here reaches every tool.
+Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` symlinks every one of them back to this repository's `skills/` directory, and links Claude Code's subagent folder to `agents/`, its user-level `CLAUDE.md` to `instructions/CLAUDE.md`, and its status line script to `statusline/statusline.js`, so a single edit here reaches every tool.
 
-| Repository folder | Tool                          | User-level folder     |
-| ----------------- | ----------------------------- | --------------------- |
-| `skills/`         | GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/`  |
-| `skills/`         | Claude Code                   | `~/.claude/skills/`   |
-| `skills/`         | Codex, opencode, and similar  | `~/.agents/skills/`   |
-| `skills/*`        | Codex compatibility mirror    | `~/.codex/skills/*`   |
-| `agents/`         | Claude Code                   | `~/.claude/agents/`   |
-| `instructions/`   | Claude Code                   | `~/.claude/CLAUDE.md` |
+| Repository folder | Tool                          | User-level folder         |
+| ----------------- | ----------------------------- | ------------------------- |
+| `skills/`         | GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/`      |
+| `skills/`         | Claude Code                   | `~/.claude/skills/`       |
+| `skills/`         | Codex, opencode, and similar  | `~/.agents/skills/`       |
+| `skills/*`        | Codex compatibility mirror    | `~/.codex/skills/*`       |
+| `agents/`         | Claude Code                   | `~/.claude/agents/`       |
+| `instructions/`   | Claude Code                   | `~/.claude/CLAUDE.md`     |
+| `statusline/`     | Claude Code                   | `~/.claude/statusline.js` |
 
 1. Ensure VS Code 1.106+ with GitHub Copilot, Claude Code, and/or Codex
 2. Run `setup-skills-link.ps1` (as Admin or with Developer Mode enabled)
 3. Skills auto-load when relevant and can be invoked explicitly via `/name` in chat
 4. Agents become available to Claude Code as subagent types for delegated work
 5. Global instructions load into every Claude Code session, in every project
+6. The status line needs one extra step the link cannot do — see [`statusline/README.md`](statusline/README.md) for the `settings.json` entry and the Nerd Font it requires
 
 The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. Codex receives per-skill links so its managed `~/.codex/skills/.system/` directory remains intact. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
 
