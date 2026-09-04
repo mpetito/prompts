@@ -1,6 +1,6 @@
 # Agentic Coding Toolkit
 
-A collection of agent skills for reliable agentic coding workflows, shared across GitHub Copilot (VS Code + Copilot CLI) and Claude Code.
+A collection of agent skills for reliable agentic coding workflows, shared across GitHub Copilot (VS Code + Copilot CLI), Claude Code, and Codex.
 
 Skills are the single unit of reusable workflow guidance in this repository: they auto-load when relevant, and both VS Code and Claude Code expose each skill as an explicit `/name` entry point. There is no separate `prompts/` concept; former prompt slugs are preserved as skill names.
 
@@ -126,17 +126,20 @@ Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` s
 | ----------------- | ----------------------------- | --------------------- |
 | `skills/`         | GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/`  |
 | `skills/`         | Claude Code                   | `~/.claude/skills/`   |
-| `skills/`         | opencode and similar          | `~/.agents/skills/`   |
+| `skills/`         | Codex, opencode, and similar  | `~/.agents/skills/`   |
+| `skills/*`        | Codex compatibility mirror    | `~/.codex/skills/*`   |
 | `agents/`         | Claude Code                   | `~/.claude/agents/`   |
 | `instructions/`   | Claude Code                   | `~/.claude/CLAUDE.md` |
 
-1. Ensure VS Code 1.106+ with GitHub Copilot, and/or Claude Code
+1. Ensure VS Code 1.106+ with GitHub Copilot, Claude Code, and/or Codex
 2. Run `setup-skills-link.ps1` (as Admin or with Developer Mode enabled)
 3. Skills auto-load when relevant and can be invoked explicitly via `/name` in chat
 4. Agents become available to Claude Code as subagent types for delegated work
 5. Global instructions load into every Claude Code session, in every project
 
-The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
+The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. Codex receives per-skill links so its managed `~/.codex/skills/.system/` directory remains intact. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
+
+After adding a new top-level directory under `skills/`, rerun `setup-skills-link.ps1` so the corresponding Codex child link is created. Changes inside an already-linked skill are visible to every tool immediately and do not require another setup run. Restart a client if its current session does not refresh the skill list.
 
 ### Cross-Tool Authoring Notes
 
@@ -146,9 +149,11 @@ Skills here target the lowest common denominator so they work everywhere:
 - Directory names match the frontmatter `name`
 - Tool references are described as capabilities (e.g. "Context7 docs", "IDE diagnostics") rather than literal tool IDs, which differ per host
 - Cross-references are **skill-relative** (`../other-skill/SKILL.md`), never repo-root-relative — the tree is symlinked into user-level folders where no repo root exists
-- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
+- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. It is also linked into Codex because sibling-relative references from PR skills depend on it. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
 - `instructions/CLAUDE.md` is the user-level global instruction file, linked only into Claude Code for the same reason. It loads into every session in every project, so keep it short and keep every line load-bearing
 - `agents/` is Claude Code's subagent format and is deliberately **not** cross-tool — other hosts use incompatible agent formats, so the setup script links it into Claude Code only. Keep agent bodies host-generic and project-agnostic (no employer, stack, or repository specifics) so they behave the same in every project. Agents may depend on `skills/` two ways — a relative path such as `../skills/pr-scripts/…`, which resolves in both the repository and `~/.claude/`, and a `skills:` frontmatter entry naming a skill to preload. `researcher` also names specific documentation MCP servers in its `tools` list; adjust that line on a machine where those servers are not configured
+
+Codex custom agents use standalone TOML files under `~/.codex/agents/` (or `.codex/agents/` for one repository), so the Claude Markdown files in `agents/` cannot be linked there directly. If Codex equivalents are added later, keep them in a separate source folder and link those TOML files into `~/.codex/agents/`; share behavioral instructions deliberately, but translate model, reasoning, sandbox, MCP, and skill settings to Codex's schema.
 
 ### Progressive Disclosure
 
@@ -175,6 +180,8 @@ Opus session while keeping `effort: high`, because choosing the right rung of th
 ladder and writing a good query is where its judgment actually goes.
 See the `skill-authoring` skill for the full key list and selection guidance.
 
+Codex ignores Claude-only skill keys such as `model: sonnet`, `effort`, and `disable-model-invocation`; they do not select an Anthropic model or prevent the skill from loading. When a Claude-only key carries behavior that must also hold in Codex, add the Codex equivalent in the skill's optional `agents/openai.yaml`. In particular, Codex's equivalent of `disable-model-invocation: true` is `policy.allow_implicit_invocation: false`.
+
 ## Customization
 
 ### Tools
@@ -187,6 +194,6 @@ Skills auto-load based on their `description` frontmatter. To make a skill trigg
 
 ## Requirements
 
-- VS Code 1.106+ with GitHub Copilot, and/or Claude Code
+- VS Code 1.106+ with GitHub Copilot, Claude Code, and/or Codex
 - `gh` CLI (authenticated) and PowerShell for the PR workflows
 - Optional: MCP servers (Context7, Perplexity, GitHub) for richer research and PR workflows

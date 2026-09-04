@@ -5,6 +5,7 @@
 # Targets:
 #   ~/.copilot/skills  - GitHub Copilot (VS Code + Copilot CLI)
 #   ~/.claude/skills   - Claude Code (CLI, desktop, IDE extensions)
+#   ~/.codex/skills/*  - Codex CLI (per-child links preserve Codex-managed .system skills)
 #   ~/.agents/skills   - cross-tool convention (opencode and others that scan it)
 #   ~/.claude/agents   - Claude Code subagent definitions (Claude Code format only)
 #   ~/.claude/CLAUDE.md - Claude Code user-level global instructions (a file, not a folder)
@@ -21,6 +22,7 @@ $sourceGlobalMd = Join-Path $repoRoot "instructions\CLAUDE.md"
 $targets = @(
     @{ Description = "Copilot skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".copilot\skills"; Kind = "Directory" }
     @{ Description = "Claude Code skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".claude\skills"; Kind = "Directory" }
+    @{ Description = "Codex skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".codex\skills"; Kind = "DirectoryChildren" }
     @{ Description = "Cross-tool agent skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".agents\skills"; Kind = "Directory" }
     @{ Description = "Claude Code subagents"; Source = $sourceAgents; Path = Join-Path $env:USERPROFILE ".claude\agents"; Kind = "Directory" }
     @{ Description = "Claude Code global instructions"; Source = $sourceGlobalMd; Path = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"; Kind = "File" }
@@ -135,13 +137,48 @@ function New-SymLink {
     }
 }
 
+function New-ChildSymLinks {
+    param (
+        [string]$SourcePath,
+        [string]$TargetPath,
+        [string]$Description
+    )
+
+    if (-not (Test-Path -LiteralPath $TargetPath)) {
+        New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
+    }
+
+    $target = Get-Item -LiteralPath $TargetPath -Force
+    if (-not $target.PSIsContainer -or ($target.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+        Write-Host "$Description target must be a real directory so Codex-managed entries remain available: $TargetPath" -ForegroundColor Red
+        return "Failed"
+    }
+
+    $statuses = foreach ($sourceChild in Get-ChildItem -LiteralPath $SourcePath -Directory) {
+        New-SymLink `
+            -SourcePath $sourceChild.FullName `
+            -TargetPath (Join-Path $TargetPath $sourceChild.Name) `
+            -Description "$Description ($($sourceChild.Name))"
+    }
+
+    if ($statuses -contains "Failed") { return "Failed" }
+    if ($statuses -contains "Skipped") { return "Skipped" }
+    return "Linked"
+}
+
 Write-Host "Setting up agent skills and subagents..." -ForegroundColor Cyan
 Write-Host ""
 
 $results = @()
 foreach ($target in $targets) {
-    $status = New-SymLink -SourcePath $target.Source -TargetPath $target.Path -Description $target.Description -Kind $target.Kind
-    $results += @{ Description = $target.Description; Source = $target.Source; Path = $target.Path; Status = $status }
+    $status = if ($target.Kind -eq "DirectoryChildren") {
+        New-ChildSymLinks -SourcePath $target.Source -TargetPath $target.Path -Description $target.Description
+    } else {
+        New-SymLink -SourcePath $target.Source -TargetPath $target.Path -Description $target.Description -Kind $target.Kind
+    }
+    $summarySource = if ($target.Kind -eq "DirectoryChildren") { Join-Path $target.Source "*" } else { $target.Source }
+    $summaryPath = if ($target.Kind -eq "DirectoryChildren") { Join-Path $target.Path "*" } else { $target.Path }
+    $results += @{ Description = $target.Description; Source = $summarySource; Path = $summaryPath; Status = $status }
     Write-Host ""
 }
 
