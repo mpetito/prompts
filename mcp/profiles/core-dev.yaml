@@ -1,0 +1,78 @@
+version: 1
+id: core-dev
+name: core-dev
+servers:
+  - type: image
+    secrets: default
+    image: mcp/aws-documentation@sha256:07888232dde9d7fe4acf8df23da4f28015f194c4eb6aa327e836fdb30dbc5e8e
+    snapshot:
+      server:
+        name: aws-documentation
+        type: server
+        description: Search and read official AWS documentation.
+        image: mcp/aws-documentation@sha256:07888232dde9d7fe4acf8df23da4f28015f194c4eb6aa327e836fdb30dbc5e8e
+        remote: {}
+  - type: remote
+    secrets: default
+    endpoint: https://learn.microsoft.com/api/mcp
+    snapshot:
+      server:
+        name: docs-microsoft
+        type: remote
+        description: Search and read official Microsoft Learn documentation.
+        remote:
+          url: https://learn.microsoft.com/api/mcp
+          transport_type: streamable-http
+  - type: remote
+    secrets: default
+    endpoint: https://mcp.context7.com/mcp
+    snapshot:
+      server:
+        name: context7
+        type: remote
+        description: Retrieve current, version-specific library documentation and examples.
+        remote:
+          url: https://mcp.context7.com/mcp
+          transport_type: streamable-http
+  - type: image
+    secrets: default
+    image: local/mcp-material-ui:0.1.4
+    snapshot:
+      server:
+        name: material-ui
+        type: server
+        description: Search Material UI documentation and component APIs.
+        image: local/mcp-material-ui:0.1.4
+        remote: {}
+  - type: remote
+    secrets: default
+    endpoint: https://mcp.agentmail.to/mcp
+    snapshot:
+      server:
+        name: agent-mail
+        type: remote
+        description: Use AgentMail test inboxes to verify application email flows.
+        remote:
+          url: https://mcp.agentmail.to/mcp
+          transport_type: streamable-http
+          headers:
+            x-api-key: ${AGENTMAIL_API_KEY}
+        secrets:
+          - name: agentmail.api_key
+            env: AGENTMAIL_API_KEY
+  - type: image
+    secrets: default
+    image: mcp/firecrawl@sha256:28e677a10704596526b1fbeb8105d1930cc7500648433216ce6937e03b20516c
+    snapshot:
+      server:
+        name: firecrawl
+        type: server
+        description: Search, scrape, crawl, and extract structured data from the web.
+        image: mcp/firecrawl@sha256:28e677a10704596526b1fbeb8105d1930cc7500648433216ce6937e03b20516c
+        remote: {}
+        secrets:
+          - name: firecrawl.api_key
+            env: FIRECRAWL_API_KEY
+secrets:
+  default:
+    provider: docker-desktop-store
