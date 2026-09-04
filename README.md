@@ -33,6 +33,7 @@ Skills are the single unit of reusable workflow guidance in this repository: the
 | `agentmail`               | `/agentmail`               | Use the AgentMail MCP server as a test mailbox when verifying email send/receive flows          |
 | `word-doc-editing`        | `/word-doc-editing`        | Edit Word .docx files via Word COM automation: tracked changes, structural ops, verification    |
 | `firecrawl`               | `/firecrawl`               | Search, scrape, crawl, map, and extract from the live web; developer and research indexes       |
+| `herdr-delegation`        | `/herdr-delegation`        | Coordinate agents across Herdr panes: cross-harness delegation, worktrees, blocked peers        |
 
 When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, describe the work directly or invoke `/implement`.
 
