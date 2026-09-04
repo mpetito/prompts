@@ -1,0 +1,69 @@
+version: 1
+id: envative
+name: envative
+servers:
+  - type: image
+    secrets: default
+    image: local/mcp-azure-devops:2.9.0
+    snapshot:
+      server:
+        name: azure-devops
+        type: server
+        description: Work with Envative Azure DevOps projects, work items, repositories, and search.
+        image: local/mcp-azure-devops:2.9.0
+        remote: {}
+        secrets:
+          - name: azure-devops.pat
+            env: ADO_MCP_AUTH_TOKEN
+  - type: remote
+    secrets: default
+    endpoint: https://api.harvestapp.com/mcp
+    snapshot:
+      server:
+        name: harvest-time
+        type: remote
+        description: Read and manage Envative Harvest time entries.
+        remote:
+          url: https://api.harvestapp.com/mcp
+          transport_type: streamable-http
+  - type: remote
+    secrets: default
+    endpoint: https://estimator.devenvative.com/api/mcp
+    snapshot:
+      server:
+        name: estimator
+        type: remote
+        description: Access the Envative estimator service through its hosted MCP endpoint.
+        remote:
+          url: https://estimator.devenvative.com/api/mcp
+          transport_type: streamable-http
+  - type: image
+    secrets: default
+    image: local/mcp-envative-kb:1.6.0
+    snapshot:
+      server:
+        name: envative-kb
+        type: server
+        description: Query the Envative knowledge base through AWS Bedrock AgentCore.
+        image: local/mcp-envative-kb:1.6.0
+        remote: {}
+        secrets:
+          - name: envative-kb.aws_access_key_id
+            env: AWS_ACCESS_KEY_ID
+          - name: envative-kb.aws_secret_access_key
+            env: AWS_SECRET_ACCESS_KEY
+        env:
+          - name: AWS_REGION
+            value: "{{envative-kb.aws_region}}"
+        config:
+          - name: envative-kb
+            description: Configure the Envative knowledge-base proxy
+            type: object
+            properties:
+              aws_region:
+                type: string
+            required:
+              - aws_region
+secrets:
+  default:
+    provider: docker-desktop-store
