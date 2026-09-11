@@ -20,6 +20,11 @@ Single-shot edits do not need this skill. Use it when the path to "done" is iter
 
 If the task is "edit file X" or "fix this error", do not wrap it in a loop — just do it.
 
+When a loop delegates work or generates a dynamic workflow, apply
+[agent model selection](../skill-authoring/references/agent-model-selection.md) before launch.
+Record explicit models per worker/stage alongside the iteration budget, including evaluators
+and retries. Waiting and collecting output do not need the coordinator's premium model.
+
 ---
 
 ## Loop Anatomy
@@ -137,20 +142,24 @@ Always produce a final summary: objective, final metric vs. target, iterations u
 
 ### B. Working Through Copilot PR Feedback
 
-See also: [pr-feedback](../pr-feedback/SKILL.md) and [pr-resolve](../pr-resolve/SKILL.md) for the underlying thread tooling.
+Load [pr-feedback](../pr-feedback/SKILL.md) for collection and evidence-based triage, and
+[pr-resolve](../pr-resolve/SKILL.md) for authorized thread actions.
 
-- **Objective**: All Copilot review threads resolved and PR checks green
+- **Objective**: All Copilot findings triaged, accepted fixes verified, and PR checks green
 - **Evaluation**: `../pr-scripts/Test-PrThreadsResolved.ps1` (unresolved threads) **and** `gh pr checks` (status); on failures, `../pr-scripts/Get-PrCheckFailures.ps1` returns the failing checks with log excerpts
-- **Success**: 0 unresolved threads **and** all checks green on the latest commit
+- **Success**: All visible and suppressed findings have evidence-backed dispositions, accepted
+  fixes pass checks on the latest commit, and threads are resolved where authorized. Report
+  intentionally open disagreements/deferred work; do not claim all threads are resolved
 - **Budget**: 4 iterations (Copilot rarely adds new comments after that)
 - **Steps**:
-  1. Fetch current unresolved review threads.
-  2. Group by file; address each with the smallest correct change.
+  1. Fetch unresolved threads and full review bodies, including suppressed sections.
+  2. Verify each claim with `pr-feedback`; change only accepted findings, using the smallest
+     correct fix. Retain evidence for false positives, unnecessary complexity, and deferrals.
   3. `/commit` and push.
   4. **Wait**: `gh pr checks <pr> --watch --fail-fast`.
   5. **Wait** for Copilot's re-review (if one is going to run) by polling the PR state — see [Polling Copilot re-review](#polling-copilot-re-review) below.
   6. Reply to addressed threads (cite the commit SHA), resolve them.
-  7. Re-fetch threads; if new ones appeared, goto 2.
+  7. Re-fetch threads and review bodies; if new claims appeared, goto 2.
 - **Escalate when**: Copilot repeatedly flags the same line after two attempts (likely a disagreement, not a defect) — surface it to the user with both perspectives.
 
 #### Polling Copilot re-review

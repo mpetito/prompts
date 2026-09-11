@@ -19,6 +19,12 @@ of a skill — a summary is there to help you recognise which skill applies, not
 `code-authoring` holds the canonical coding standards. Load it before writing code — for a bug
 fix, a refactor, or an infra change, not only a feature.
 
+- For React, Next.js, or TypeScript work, also load `code-quality-standards` before editing.
+- Before reporting implementation complete, load `review` and review the final diff. For
+  someone else's PR, use `pr-review`; for incoming feedback, use `pr-feedback`.
+- Follow the target project's conventions first. Keep comments concise; explain only what
+  names, types, and code cannot. These checks also apply to delegated implementation.
+
 ## Third-party behaviour
 
 For how a library, framework, or SDK behaves, **read its documentation before its source.**
@@ -37,8 +43,8 @@ asserting a contract — from source-reading alone.
 
 ## Delegation
 
-Delegate by default. The main session is for judgment; a subagent runs in its own context,
-so its tool output never lands here, and on its own model tier rather than this session's.
+Delegate bounded work when the independent result justifies another agent. Select its model
+explicitly before launch; a separate context does not imply a cheaper model.
 
 | Work                                              | Send it to    |
 | ------------------------------------------------- | ------------- |
@@ -57,11 +63,20 @@ A subagent's report is evidence to weigh, not a conclusion to relay unexamined.
 
 ## Model tiers
 
-Match the model to the task, not to whatever tier this session happens to run on.
+Before any subagent, team, dynamic workflow, or background agent launch, read and apply
+`references/agent-model-selection.md` from the installed `skill-authoring` skill folder.
+Default to explicit `opus`. A weaker model needs a task-specific justification based on bounded
+work and verifiable results. This applies to every workflow stage and retry,
+including generated agents that do not use the named definitions above.
+Preserve existing named-agent model pins as deliberate role-specific choices; apply the
+default when selecting an otherwise unspecified worker model.
 
-- **`sonnet` + `low` effort** — deterministic, script-driven, or log-heavy work with a clear output contract
-- **`sonnet` + `medium`/`high` effort** — search, analysis, and writing that needs judgment but not deliberation
-- **`inherit`** — architecture, adversarial review, ambiguity, anything where being wrong is costly
+When Copilot feedback remains materially ambiguous after checking the code and docs, use
+`model-council` for independent evidence-based perspectives, preferably Claude and Codex.
 
-Prefer lowering `effort` over dropping a model tier when a task needs capability but not
-deliberation: it cuts thinking tokens while preserving judgment.
+## Do Not
+
+- Do not omit a worker model or choose `inherit` merely because this session uses Fable or Opus.
+- Do not assume `Explore`, `Plan`, forks, or generated workflow agents are inexpensive.
+- Do not launch a wide fan-out until the configured model selection is explicit; inspect the
+  actual model when the host exposes it and correct unexpected expensive substitutions.

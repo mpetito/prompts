@@ -1,6 +1,6 @@
 ---
 name: skill-authoring
-description: "Use when creating, reviewing, splitting, or improving SKILL.md files and skill folders. Triggers include write SKILL.md, create a skill, skill frontmatter, skill description tuning, skill is too large, progressive disclosure, references folder, and choosing a model or effort for a skill. For project-wide AGENTS.md context files, use the `agents-md-authoring` skill instead."
+description: "Use when creating, reviewing, splitting, or improving SKILL.md files and skill folders; fixing missed skill triggers; or choosing model and effort settings for skills, subagents, or dynamic workflow stages. Triggers include write SKILL.md, skill frontmatter, skill description tuning, progressive disclosure, references folder, and preventing expensive model inheritance. For project-wide AGENTS.md context files, use agents-md-authoring instead."
 ---
 
 # Skill Authoring
@@ -104,7 +104,7 @@ Claude Code accepts additional frontmatter keys. Other hosts ignore unknown keys
 
 | Key                        | Values                                        | Use for                                                       |
 | -------------------------- | --------------------------------------------- | ------------------------------------------------------------- |
-| `model`                    | `inherit`, `haiku`, `sonnet`, `opus`, model id | Pinning a cheaper tier on mechanical skills                    |
+| `model`                    | `inherit`, `haiku`, `sonnet`, `opus`, model id | Skill-level model selection; independent of worker defaults   |
 | `effort`                   | `low`, `medium`, `high`, `xhigh`, `max`       | Tuning reasoning depth without changing model tier             |
 | `allowed-tools`            | tool list                                     | Restricting a skill to read-only or a narrow tool set          |
 | `disable-model-invocation` | `true`                                        | User-typed `/name` only — never auto-invoked by the model      |
@@ -118,12 +118,20 @@ Claude Code accepts additional frontmatter keys. Other hosts ignore unknown keys
 | ---------------------------------------------------------------------- | ---------------------------------- |
 | Mechanical: templating, script-driven, deterministic steps             | `model: sonnet` + `effort: low`    |
 | Writing-heavy but not reasoning-heavy (summaries, descriptions)        | `model: sonnet` + `effort: high`   |
-| Architecture, adversarial review, ambiguity gating, conflict resolution | Leave `model` unset; inherit       |
+| Routine implementation, analysis, review, conflict resolution          | `model: sonnet` + medium/high effort |
+| Hard reasoning beyond the skill's selected tier                        | Explicit stronger available model, justified per task |
 | Destructive or outward-facing operations                               | Consider `disable-model-invocation`|
 
 **Do not set `model` on reference skills** — ones consumed *inside* another task rather than invoked directly. Pinning a model there fights whatever workflow loaded them.
 
 Prefer `effort` over dropping a model tier when the skill needs capability but not deliberation: it cuts thinking tokens while preserving judgment.
+
+For delegated work or generated workflows, apply
+[agent model selection](references/agent-model-selection.md) before launch. A skill's model
+does not automatically select models for its workers. Set each worker/stage explicitly;
+reserve inheritance for a deliberate user requirement, not a default for difficult tasks.
+The Opus default in that policy applies to subagents and workflow agents, not to skill-level
+model settings or the main session. A Sonnet skill can therefore dispatch an Opus worker.
 
 ---
 
