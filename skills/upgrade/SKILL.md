@@ -318,9 +318,10 @@ docs/upgrades/
 └── README.md                # Upgrade history index
 ```
 
-Later phases read the earlier files rather than re-deriving them. When delegating phases to
-subagents, note that subagents are stateless and do not auto-load skills — embed the relevant
-phase of this skill in each prompt.
+Later phases read the earlier files rather than re-deriving them. When delegating phases,
+apply [agent model selection](../skill-authoring/references/agent-model-selection.md) and set
+each worker's model explicitly. Preload or provide the relevant phase instructions and
+project conventions; do not assume workers inherit loaded skills.
 
 ---
 

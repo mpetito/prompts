@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Methodology for reviewing your own local or staged code changes across correctness, maintainability, DRY, error handling, tests, security, performance, documentation, and observability. Use when reviewing a working-tree or staged diff, auditing changes you just implemented, or producing a structured code-review verdict before committing. To review someone else's PR by number and post comments on GitHub, use `pr-review` instead."
+description: "Use when reviewing code, checking a diff, auditing local or staged changes, checking coding standards, simplifying overengineered code or verbose comments, and before reporting a bug fix, refactor, or implementation complete. This is code-authoring's required self-review step; scale depth to risk. Check project convention reuse and evidence for findings. For someone else's GitHub PR use pr-review; for incoming reviewer or Copilot feedback use pr-feedback."
 ---
 
 # Code Review Skill
@@ -10,12 +10,18 @@ Procedural knowledge for performing structured, multi-dimensional code reviews o
 ## When to Use
 
 - A user asks to review changes, a PR, or a diff
-- After implementation completes and an independent quality pass is wanted
+- Before reporting implementation complete, as the self-review step of code-authoring
 - Before merging, to produce an APPROVE / REQUEST CHANGES / NEEDS DISCUSSION verdict
 
 ## Review Scope
 
-Review what is currently staged or what was just implemented. Use `#changes` for the diff.
+Review what is currently staged or what was just implemented. Use `#changes` where available,
+otherwise `git diff`, `git diff --cached`, and the relevant untracked files. Separate the task's
+changes from pre-existing user work.
+
+Read applicable project instructions, configuration, and comparable neighboring code before
+judging style. Read the Coding Standards section of [code-authoring](../code-authoring/SKILL.md)
+as reference; do not recursively run its implementation workflow. Project conventions win.
 
 ### PR Context Check
 
@@ -43,12 +49,17 @@ Cover each relevant dimension. Skip those that do not apply to the diff (e.g. no
 
 For React/Next.js/TypeScript diffs, additionally apply the `code-quality-standards` skill checklist (security, DRY, correctness, performance, accessibility).
 
-For complex diffs, delegate independent dimensions to subagents in parallel (e.g. `Explore` for pattern compliance, a dedicated subagent per high-cost dimension) and synthesize the findings. Subagents are stateless and do not auto-load skills — embed the relevant dimension's checklist and coding standards directly in each subagent prompt.
+For complex diffs, delegate independent dimensions only when useful and synthesize findings.
+Apply [agent model selection](../skill-authoring/references/agent-model-selection.md) to each
+worker. Provide the relevant checklist and project conventions; do not assume loaded skills
+are inherited. Start on explicit Opus (or a high-capability model in another host); a weaker
+reviewer needs a task-specific justification under the selection policy.
 
 ## Protocol
 
 1. **Inventory the diff**: read every changed file; do not rely on summaries
-2. **Run automated checks**: `npm run lint`, `npx tsc --noEmit`, `dotnet format --verify-no-changes`, full test suite; inspect `#problems`
+2. **Check validation evidence**: use the project's relevant lint, typecheck, and test commands.
+   Reuse results for the same code state; rerun when changes, failures, or coverage gaps warrant it.
 3. **Analyze each applicable dimension** against the diff
 4. **Record findings** by severity:
    - 🔴 **Critical** — must fix; blocks approval
@@ -59,18 +70,11 @@ For complex diffs, delegate independent dimensions to subagents in parallel (e.g
 
 ## Coding Standards (verify against)
 
-Condensed from the canonical standards in the `code-authoring` skill.
-
-- **Naming** descriptive; short only for iterators
-- **Functions** small; guard clauses / early returns
-- **Error Handling** fail fast; result objects when recoverable
-- **Types** annotated; no `any`, no non-null assertions, no unsafe casts
-- **Params** positional for few args; options objects for many or easily-confused
-- **Control Flow** functional for transforms; loops for side effects
-- **Tests** describe behavior, cover edge cases
-- **Comments** explain the **why**, not the **what**; proportionate to the code they explain,
-  and never a second copy of rationale that already lives in AGENTS.md or a spec
-- **Logging** structured via the framework's idiom (.NET message templates, JS field objects); consistent field names
+Apply the canonical standards linked above. In particular, check that the change reuses
+existing project patterns and helpers, avoids speculative abstractions and redundant guards,
+and keeps comments proportionate and useful. Preserve comments about real contracts and
+constraints; remove narration and duplicated rationale. Require a concrete code path or
+maintenance problem for each finding, not a preference presented as a defect.
 
 ## Output Format
 

@@ -224,6 +224,10 @@ For version compatibility specifically, the [`upgrade`](../upgrade/SKILL.md) ski
 
 For large research topics, break into focused sub-tasks and run them in parallel:
 
+Apply [agent model selection](../skill-authoring/references/agent-model-selection.md) before
+launch. Select each worker and workflow stage explicitly; a research label does not justify
+inheriting a premium coordinator model.
+
 | Sub-Task                  | Focus Area                             |
 | ------------------------- | -------------------------------------- |
 | Codebase Context Analysis | Existing usage, patterns, constraints  |
@@ -232,7 +236,8 @@ For large research topics, break into focused sub-tasks and run them in parallel
 | Version Compatibility     | Compatibility matrix, migration needs  |
 | Research Synthesis        | Cross-reference, recommendations       |
 
-Subagents are stateless and do not auto-load skills — embed the relevant portion of this skill in each subagent prompt.
+Do not assume workers inherit loaded skills. Preload or provide the relevant instructions,
+source requirements, and model policy in each worker's context.
 
 **Handoff Pattern**: Write findings to `specs/{topic}/research-findings.md` for complex research that will inform implementation planning (see the [`spec`](../spec/SKILL.md) skill's Supporting Documents convention).
 

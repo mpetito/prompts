@@ -11,6 +11,7 @@ Skills are the single unit of reusable workflow guidance in this repository: the
 | `commit`                  | `/commit`                  | Validate changes, create conventional commits, push branches, and open or update pull requests  |
 | `implement`               | `/implement`               | Execute a spec or clear request end-to-end, from planning through implementation and validation |
 | `pr-feedback`             | `/pr-feedback`             | Address PR feedback from reviews, CI, and code analysis tools                                   |
+| `model-council`           | `/model-council`           | Resolve uncertain technical decisions with independent Claude/Codex perspectives and cited evidence |
 | `pr-resolve`              | `/pr-resolve`              | Reply to and resolve PR review threads                                                          |
 | `pr-consolidate`          | `/pr-consolidate`          | Consolidate multiple PRs or branches into a unified integration branch                          |
 | `review`                  | `/review`                  | Run a structured code review of staged or recently implemented changes                          |
@@ -39,7 +40,10 @@ When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` t
 
 ## Agents
 
-Subagent definitions for delegated work. Each runs in its own context with its own model, so verbose output — test logs, CI logs, fetched documentation, wide code reads — never reaches the calling session, and mechanical work runs on a cheaper tier than the session orchestrating it.
+Subagent definitions for delegated work. Each runs in its own context with an explicitly
+selected model and returns a compact result instead of bringing all intermediate output into
+the calling session. Ad hoc subagents default to Opus; named agents retain the role-specific
+model settings below, and new weaker-model choices require a task-specific reason.
 
 | Agent         | Model / effort      | Use for                                                                                 |
 | ------------- | ------------------- | --------------------------------------------------------------------------------------- |
@@ -48,22 +52,41 @@ Subagent definitions for delegated work. Each runs in its own context with its o
 | `analyst`     | `sonnet` / `medium` | Explain how a subsystem, flow, or symbol actually works, with `file:line` citations     |
 | `researcher`  | `sonnet` / `high`   | Investigate libraries, APIs, and external docs; return a sourced synthesis, not pages   |
 | `debugger`    | `sonnet` / `xhigh`  | Reproduce a failure, isolate its root cause, propose a minimal fix with evidence        |
-| `verifier`    | `inherit` / `high`  | Adversarially check one claim, diff, or fix; return CONFIRMED, REFUTED, or UNPROVEN     |
+| `verifier`    | `opus` / `high`   | Adversarially check one claim, diff, or fix; return CONFIRMED, REFUTED, or UNPROVEN     |
 | `migrator`    | `sonnet` / `medium` | Apply one mechanical transformation across many files, in an isolated git worktree      |
 
 Only `migrator` can edit files, and it works in a temporary git worktree so its changes cannot disturb the caller's working tree. The other six are granted neither `Edit` nor `Write`. Note that a `Bash` grant is not a read-only guarantee — `analyst`, `verifier`, and `debugger` are restricted to inspection by their instructions, not by their tool list.
 
 **When to delegate.** Send deterministic, log-heavy work to `test-runner` and `pr-watch` by default. Send reading that spans many files to `analyst`, and anything answered by external documentation to `researcher`. Send a failure to `debugger`, a conclusion that is expensive to get wrong to `verifier`, and a repetitive change across many files to `migrator`. Keep work in the main session when it needs the conversation's full context or is a trivial single-file change.
 
-**Why the model tiers.** `verifier` inherits the calling session's model on purpose: it is used exactly where being wrong costs more than the tokens. The rest pin `sonnet`, so they stay cheap whether the calling session is on Opus or Fable. `effort` is the finer lever — `debugger` runs at `xhigh` because root-cause analysis rewards thinking far more than it rewards a larger model.
+**Why the model tiers.** Named agents retain their explicit role-specific models; `verifier`
+pins Opus instead of inheriting. Ad hoc subagents and dynamic workflow agents start on explicit
+Opus; a new weaker-model choice needs a concrete reason
+based on bounded work and verifiable output. This does not change skill-level model settings
+or the main session's model. The canonical policy, including runtime checks and escalation, is
+[agent model selection](skills/skill-authoring/references/agent-model-selection.md).
 
-Each agent defines a strict output contract. That is what makes a cheaper tier reliable: the agent reports evidence in a fixed shape rather than deciding for itself how much to say. Beyond `model` and `effort`, they set `permissionMode: auto` so background work does not stall on a prompt, `maxTurns` as a runaway guard, and `memory: project` where a project-specific fact is worth carrying between sessions — the test command, a repository's CI shape, a recurring failure mode. `analyst` and `verifier` deliberately keep no memory: both must answer from the code as it is now, and a remembered claim invites a stale one.
+Each agent defines a strict output contract so the caller can assess its evidence. Beyond `model` and `effort`, they set `permissionMode: auto` so background work does not stall on a prompt, `maxTurns` as a runaway guard, and `memory: project` where a project-specific fact is worth carrying between sessions — the test command, a repository's CI shape, a recurring failure mode. `analyst` and `verifier` deliberately keep no memory: both must answer from the code as it is now, and a remembered claim invites a stale one.
 
 ## Instructions
 
 `instructions/CLAUDE.md` is the user-level global instruction file, symlinked to `~/.claude/CLAUDE.md`. Unlike skills and agents, it is **always loaded**, in every session and every project — so it holds only what must apply everywhere: attribution rules, the delegation routing table, and model-tier guidance. Anything narrower belongs in a skill, which loads on demand.
 
 Keeping it here rather than in `~/.claude` puts it under version control alongside the agents it routes to, so the routing table and the agent definitions cannot drift apart.
+
+The coding path is `code-authoring` → applicable `code-quality-standards` → `review`, including
+bug fixes and refactors without a spec. Project conventions take precedence over personal
+style; concise comments and reuse are checked during implementation and review. `pr-feedback`
+collects full review bodies as well as threads and verifies visible and suppressed Copilot
+claims before accepting changes. These routes are explicit in skill bodies for other hosts,
+which do not load this Claude-only global file.
+
+When actionability remains unclear, `pr-feedback` invokes
+[model-council](skills/model-council/SKILL.md): two independent reviews focused on correctness
+and maintenance cost, preferably Claude plus Codex, followed by evidence-based synthesis.
+A third reviewer is reserved for a specific unresolved question. The council can use native
+delegation, Herdr peers, or authenticated CLIs; it reports recommendations without posting or
+editing code itself. Skill-level model settings remain independent of council worker models.
 
 ## Status Line
 

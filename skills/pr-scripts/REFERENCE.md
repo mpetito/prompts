@@ -15,7 +15,7 @@ omitted. Resolve the path relative to the calling skill's own folder (`../pr-scr
 relative to a repository root — the skills tree is often symlinked into a user-level location.
 
 ```powershell
-# One-shot feedback collection: unresolved threads + failing CI (with log excerpts) + code-scanning alerts
+# Feedback: unresolved threads + full review bodies + failing CI + code-scanning alerts
 ../pr-scripts/Get-PrFeedback.ps1 -Pr 123 [-Repo owner/name]
 
 # One-shot review context: metadata, description, changed files, reviews, threads, CI status
@@ -41,6 +41,25 @@ relative to a repository root — the skills tree is often symlinked into a user
 ```
 
 Thread IDs start with `PRRT_`. Replies target threads directly.
+
+`Get-PrFeedback.ps1` returns `reviews` with full unmodified bodies and review provenance.
+Inspect collapsed `<details>` and suppressed/low-confidence sections in those bodies; these
+findings may have no thread ID. An empty `unresolvedThreads` array does not establish that
+all feedback was inspected. Collection fails if review bodies cannot be fetched.
+
+For the raw review-body fallback, resolve the repository and PR first, then run:
+
+```powershell
+$repo = gh repo view --json nameWithOwner -q .nameWithOwner
+$pr = gh pr view --json number -q .number
+gh api "repos/$repo/pulls/$pr/reviews" --paginate --slurp
+```
+
+The [GitHub reviews API](https://docs.github.com/en/rest/pulls/reviews#list-reviews-for-a-pull-request)
+provides review bodies, IDs, commit IDs, and URLs. Preserve the bodies instead of relying on
+a heading-specific parser. If a suppressed section is only available in the UI, inspect it
+there or disclose the gap. Use the evidence and complexity triage in
+[pr-feedback](../pr-feedback/SKILL.md) for both visible and suppressed claims.
 
 **Fallback**: if the scripts are unavailable (e.g. a non-Windows agent), use GitHub MCP PR tools
 if configured (`pull_request_read`, `reply_to_pull_request_comment` or its consolidated

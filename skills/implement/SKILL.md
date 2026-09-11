@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Execute a spec end-to-end from `specs/{NNN-slug}/`: locate spec, apply clarifications, create or review the plan, then build all phases. Use when implementing a spec by number, running an existing spec plan, or completing all phases from `specs/`."
+description: "Use when implementing a numbered spec, executing specs/{NNN-slug}/plan.md, continuing a partially implemented spec, or completing all phases of a spec. Locate the spec, apply clarifications, review the plan, then invoke code-authoring and its standards/self-review steps. For general coding, bug fixes, or refactors without a numbered spec, use code-authoring directly."
 ---
 # Implement
 
@@ -41,7 +41,10 @@ Check for `plan.md` in the spec folder.
 
 ### 4. Implement All Phases
 
-Follow the `code-authoring` skill, looping through every phase of `plan.md`:
+Load [code-authoring](../code-authoring/SKILL.md), including its standards and required
+self-review steps, and loop through every phase of `plan.md`. When delegating phases or
+generating a workflow, apply [agent model selection](../skill-authoring/references/agent-model-selection.md)
+before launch; set a model for every worker/stage.
 
 For each phase: **Prepare → Implement → Test → Self-Review → Validate**, then check off the phase's steps in `plan.md` as they complete.
 

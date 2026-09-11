@@ -11,7 +11,7 @@ from the current branch when `-Repo` / `-Pr` are omitted.
 
 | Script | Purpose |
 | --- | --- |
-| `Get-PrFeedback.ps1` | One-shot feedback aggregation: unresolved threads + failing checks (with log excerpts) + open code-scanning alerts. |
+| `Get-PrFeedback.ps1` | One-shot feedback aggregation: unresolved threads + full paginated review bodies (including embedded suppressed sections) + failing checks (with log excerpts) + open code-scanning alerts. |
 | `Get-PrContext.ps1` | One-shot review context: PR metadata, changed files, reviews, threads, CI status. |
 | `Get-PrThreads.ps1` | List review threads (file, line, comments, resolution state) as JSON. `-Unresolved` to filter. |
 | `Get-PrCheckFailures.ps1` | Failing CI checks with trimmed failure-log excerpts (`-LogTailLines`, default 50). |
@@ -21,3 +21,6 @@ from the current branch when `-Repo` / `-Pr` are omitted.
 | `Submit-PrReview.ps1` | Submit a full review (summary + inline comments from a JSON file) in one atomic REST call. |
 
 IDs: thread IDs start with `PRRT_`. Replies target threads directly — no comment IDs needed.
+
+Run the collector's offline regression checks with
+`pwsh -NoProfile -File skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1` from the repository root.

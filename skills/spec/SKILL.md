@@ -42,7 +42,9 @@ Investigate in parallel as needed:
 - **API / library research**: official docs and constraints (reference the `research` skill)
 - **Impact assessment**: affected files, migrations, backwards-compat concerns
 
-Delegate independent research tasks to subagents (e.g. `Explore` for codebase mapping, a research-capable subagent for docs) to preserve planning context.
+When useful, delegate independent research tasks with bounded outputs. Before launch, apply
+[agent model selection](../skill-authoring/references/agent-model-selection.md); explicitly
+select each worker's model rather than relying on `Explore` or `Plan` defaults.
 
 ### Phase 3: Clarify Blocking Ambiguities
 

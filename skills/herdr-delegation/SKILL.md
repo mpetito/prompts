@@ -46,6 +46,12 @@ A peer costs roughly 5s of startup plus a terminal, and its whole context is a s
 
 ## Delegating to a Peer
 
+Before creating a peer, apply
+[agent model selection](../skill-authoring/references/agent-model-selection.md). Check
+`herdr --skill` and the target harness's installed help for supported model configuration;
+select and verify the peer's model before sending work. The startup example below identifies
+the harness only, not a model tier. Include the policy when a peer may delegate further.
+
 1. **Split a pane.** The new pane inherits the caller's working directory.
 
    ```bash

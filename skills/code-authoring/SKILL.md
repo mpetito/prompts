@@ -1,6 +1,6 @@
 ---
 name: code-authoring
-description: "Methodology for implementing features end-to-end: decomposing work, writing code that follows project conventions, validating with tests and linters, and producing a coherent change set. Use when implementing a feature, executing a plan, building something new, completing a non-trivial change, or following a spec from `specs/`."
+description: "Use when writing or changing code: implementing features, fixing bugs, debugging with code changes, refactoring, simplifying code, changing scripts or infrastructure, adding tests, or executing a plan. Applies even without a spec and to small fixes; scale the workflow to the change. Defines convention reuse and concise-comment standards. Load code-quality-standards for React/Next.js/TypeScript work and review for the final self-review. Use implement to orchestrate a numbered specs/ plan."
 ---
 
 # Code Authoring Skill
@@ -12,14 +12,16 @@ Procedural knowledge for executing implementation tasks: from spec/plan to valid
 - A user asks to implement, build, or add a feature
 - A `specs/{NNN-slug}/plan.md` exists and needs to be executed
 - A spec from `/spec` is ready to be built
-- Any multi-step code change beyond a trivial tweak
+- A bug fix, refactor, script, infrastructure change, or test update
 
-For very small surgical changes (rename, typo, single-line fix), just make the minimal edit directly rather than running the full protocol below.
+For very small surgical changes (rename, typo, single-line fix), load the standards and use a
+proportionate edit/check/review pass; no formal plan or new test is needed without behavior to verify.
 
 ## Context Sources (priority order)
 
-1. **Spec + Plan**: If `specs/{NNN-slug}/spec.md` and `plan.md` exist, follow the plan step-by-step
-2. **Direct user input**: The current request
+1. **Direct user input**: The current request and accepted clarifications
+2. **Project instructions and conventions**: applicable instruction files, tooling, and nearby code
+3. **Spec + Plan**: If `specs/{NNN-slug}/spec.md` and `plan.md` exist, follow them within the current scope
 
 ## Execution Protocol
 
@@ -27,12 +29,16 @@ Run the loop below once for a single-phase change, or once per phase for a multi
 
 ### 1. Prepare
 
-- Re-read the spec objective and the current phase's goals
+- Re-read the request and, when present, the spec objective and current phase's goals
 - List affected files; read them before modifying
-- Identify existing patterns to follow (similar features, utilities, types)
+- Read applicable project instructions and lint/format configuration. Inspect representative
+  neighboring code and a similar feature/test; identify existing utilities, types, dependencies,
+  naming, error handling, and test patterns to reuse before introducing anything new
+- Load [code-quality-standards](../code-quality-standards/SKILL.md) before React/Next.js/TypeScript edits
 - Note dependencies and integration points
 
-If the scope is large or the codebase unfamiliar, delegate analysis to a read-only subagent (e.g. the `Explore` agent) rather than burning primary context on file reads.
+If independent codebase analysis warrants delegation, use the model selection policy below;
+`Explore` is not an implicit choice of a cheap model.
 
 ### 2. Implement
 
@@ -51,12 +57,14 @@ If the scope is large or the codebase unfamiliar, delegate analysis to a read-on
 
 ### 4. Self-Review
 
-- Re-read every file you changed
-- For React/Next.js/TypeScript changes, also apply the `code-quality-standards` skill checklist (security, DRY, correctness, performance, accessibility)
+- Load [review](../review/SKILL.md) and apply it to the final diff, scaled to the change;
+  do not defer self-review to an optional follow-up command
+- Re-read changed code with its surrounding context and compare it to the patterns found in Prepare
 - Confirm DRY: no duplicated logic that an existing utility would have served
 - Remove deprecated or dead code outright — do not just mark it
 - Verify no `any`, non-null assertions, or unsafe casts were introduced
 - Confirm every checklist item for the phase is complete
+- Remove comments that narrate obvious code, duplicate rationale, or document the review conversation
 
 ### 5. Validate
 
@@ -70,6 +78,9 @@ Repeat for the next phase, or proceed to Output.
 
 When useful, fan out independent, read-only work to subagents:
 
+First apply [agent model selection](../skill-authoring/references/agent-model-selection.md).
+Set each worker's model explicitly, including generated workflow stages and retries.
+
 | Use For                         | Pattern                                                          |
 | ------------------------------- | ---------------------------------------------------------------- |
 | Codebase pattern discovery      | `Explore` agent, "find all usages of X with thoroughness medium" |
@@ -78,11 +89,24 @@ When useful, fan out independent, read-only work to subagents:
 | Standalone documentation lookup | Subagent with `docs-context7` / web tools                        |
 | Parallel implementation         | Write subagents over **disjoint file sets** (see below)          |
 
-Writes may be delegated when partitioned to disjoint files. Subagents are stateless and do not auto-load skills, so each write subagent's prompt must embed complete context: the relevant spec/plan excerpt, established patterns to follow, and the Coding Standards below. Never assign two subagents overlapping files. The primary agent still performs Self-Review and Validate across all delegated changes.
+Writes may be delegated over disjoint files. Do not assume workers inherit loaded skills:
+preload the relevant skills where supported, or provide their applicable instructions with
+the task, spec/plan excerpt, and concrete project examples. Include convention precedence,
+concise comments, verification, and explicit model selection for further delegation.
+Never assign overlapping files. The primary agent reviews and validates the combined diff.
 
 ## Coding Standards
 
-This section is the canonical copy of the personal coding standards. Other skills (e.g. `review`) carry condensed excerpts; when standards change, update here first.
+This section is the canonical copy of the personal coding standards; other skills link here.
+
+### Project Conventions First
+
+- Explicit user requirements and applicable project instructions take precedence. Follow the
+  target module's established conventions; these personal standards fill gaps, not override them
+- Reuse existing helpers, types, validation, logging, and dependencies when they fit. Do not add
+  parallel abstractions or restyle nearby code to satisfy a personal preference
+- Where patterns conflict, prefer the relevant maintained code and explain material deviations.
+  Do not copy a demonstrated correctness or security defect merely for consistency
 
 ### Naming & Readability
 
@@ -93,7 +117,8 @@ This section is the canonical copy of the personal coding standards. Other skill
 ### Comments & Documentation
 
 - Comment the **why**, not the **what** — explain reasoning, not mechanics
-- Doc comments on public APIs (param/return)
+- Add public API docs when required by project conventions or needed to explain a non-obvious
+  contract; omit boilerplate param/return prose that merely repeats names and types
 - Let good names and types document internal code; do not add narration
 - **Reach for clearer code before a longer comment.** A rationale that needs a paragraph is
   usually naming an extraction, a better name, or a type that has not been written yet.

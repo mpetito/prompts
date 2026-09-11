@@ -41,6 +41,13 @@ Before judging anything, understand how **this project** does things:
 
 Project conventions override personal preferences. Never flag code for differing from personal style when it matches the surrounding codebase.
 
+Read the Coding Standards section of [code-authoring](../code-authoring/SKILL.md) as reference,
+including reuse and concise comments. For React/Next.js/TypeScript diffs, load
+[code-quality-standards](../code-quality-standards/SKILL.md). Require a concrete benefit for
+suggestions that introduce abstractions or more commentary; avoid speculative complexity.
+If delegating a review dimension, apply
+[agent model selection](../skill-authoring/references/agent-model-selection.md).
+
 ### Step 3: Review the Diff
 
 Read every changed file — do not rely on the diff summary alone. Pull surrounding file content (`get_file_contents` or local checkout) when the diff lacks context.
