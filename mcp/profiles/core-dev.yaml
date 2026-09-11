@@ -73,6 +73,49 @@ servers:
         secrets:
           - name: firecrawl.api_key
             env: FIRECRAWL_API_KEY
+  - type: remote
+    secrets: default
+    endpoint: https://mcp-docs.docker.com/mcp
+    snapshot:
+      server:
+        name: docker-docs
+        type: remote
+        description: Search and retrieve official Docker documentation.
+        remote:
+          url: https://mcp-docs.docker.com/mcp
+          transport_type: streamable-http
+  - type: image
+    secrets: default
+    image: mcp/playwright@sha256:8771dc4666e7c11440bfc6a0c6b00480e9a15b8891b45f29a52d7d995f8d1492
+    snapshot:
+      server:
+        name: playwright
+        type: server
+        description: Automate browser interactions with Playwright.
+        image: mcp/playwright@sha256:8771dc4666e7c11440bfc6a0c6b00480e9a15b8891b45f29a52d7d995f8d1492
+        remote: {}
+  - type: image
+    secrets: default
+    image: ghcr.io/github/github-mcp-server@sha256:46cdbbd810faf6f7aed1745ea04057443f5cb9fcadc15c7308add18cf9a83e33
+    snapshot:
+      server:
+        name: github-official
+        type: server
+        description: Use GitHub's official catalog-default MCP toolset for repositories, issues, pull requests, and reviews.
+        image: ghcr.io/github/github-mcp-server@sha256:46cdbbd810faf6f7aed1745ea04057443f5cb9fcadc15c7308add18cf9a83e33
+        remote: {}
+        oauth:
+          providers:
+            - provider: github
+              secret: github.personal_access_token
+              env: GITHUB_PERSONAL_ACCESS_TOKEN
+        secrets:
+          - name: github.personal_access_token
+            env: GITHUB_PERSONAL_ACCESS_TOKEN
+        allowHosts:
+          - api.github.com:443
+          - github.com:443
+          - raw.githubusercontent.com:443
 secrets:
   default:
     provider: docker-desktop-store

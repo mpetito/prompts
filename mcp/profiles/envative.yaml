@@ -64,6 +64,33 @@ servers:
                 type: string
             required:
               - aws_region
+  - type: image
+    secrets: default
+    image: local/mcp-aws-mcp:1.6.4
+    snapshot:
+      server:
+        name: aws-mcp
+        type: server
+        description: Access AWS documentation, skills, and APIs through the managed AWS MCP Server using approved host profiles.
+        image: local/mcp-aws-mcp:1.6.4
+        remote: {}
+        volumes:
+          - "{{aws-mcp.aws_config_dir}}:/root/.aws:ro"
+        env:
+          - name: AWS_MCP_PROXY_PROFILES
+            value: "{{aws-mcp.aws_profiles}}"
+        config:
+          - name: aws-mcp
+            description: Configure AWS MCP access through host AWS CLI profiles
+            type: object
+            properties:
+              aws_config_dir:
+                type: string
+              aws_profiles:
+                type: string
+            required:
+              - aws_config_dir
+              - aws_profiles
 secrets:
   default:
     provider: docker-desktop-store
