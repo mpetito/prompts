@@ -22,7 +22,7 @@ AgentMail currently uses its existing API key through Docker's secret store beca
 
 The Envative KB uses a dedicated IAM access key stored as `envative-kb.aws_access_key_id` and `envative-kb.aws_secret_access_key` in Docker Desktop's secret store. Its policy permits only `bedrock-agentcore:InvokeGateway` against the estimator gateway. The access key is machine-local and is never committed.
 
-The managed AWS MCP Server uses SigV4 through `mcp-proxy-for-aws`. The installer requires an explicit list of AWS CLI profiles, mounts the host AWS configuration directory read-only into the proxy container, and allows the agent to select only those profiles. Run `aws sso login --profile <name>` on the host before using an SSO-backed profile. The first profile is the default for calls that do not specify one, and each profile supplies its own default AWS Region.
+No general-purpose AWS tooling server runs in either profile. Docker Gateway refuses to bind-mount any host path containing an `.aws` segment, so a containerized AWS server cannot reach the host's SSO profiles. The `deploy-on-aws` plugin for Claude Code covers this instead: it supplies AWS documentation through the hosted `knowledge-mcp.global.api.aws` endpoint, plus IaC and pricing servers that run on the host and read the AWS CLI profiles directly. Codex has no plugin equivalent and therefore no AWS tooling through this registry.
 
 Azure DevOps uses the local server's headless `envvar` authentication mode. The installer copies `AZURE_DEVOPS_PAT` into Docker's secret store as `azure-devops.pat` and injects it into the container as `ADO_MCP_AUTH_TOKEN`; the PAT itself is never committed.
 
@@ -31,9 +31,7 @@ The Azure DevOps remote server is preferred, but Microsoft Entra currently rejec
 Machine-specific values can be supplied to the installer:
 
 ```powershell
-.\bootstrap\install.ps1 `
-    -AwsProfiles envative-dev,envative-prod-readonly `
-    -AwsRegion us-east-1
+.\bootstrap\install.ps1 -AwsRegion us-east-1
 ```
 
 Playwright runs inside Docker. Use `host.docker.internal` instead of `localhost` when it needs to reach a development server running on the host.

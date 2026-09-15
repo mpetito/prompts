@@ -2,16 +2,6 @@ version: 1
 id: core-dev
 name: core-dev
 servers:
-  - type: image
-    secrets: default
-    image: mcp/aws-documentation@sha256:07888232dde9d7fe4acf8df23da4f28015f194c4eb6aa327e836fdb30dbc5e8e
-    snapshot:
-      server:
-        name: aws-documentation
-        type: server
-        description: Search and read official AWS documentation.
-        image: mcp/aws-documentation@sha256:07888232dde9d7fe4acf8df23da4f28015f194c4eb6aa327e836fdb30dbc5e8e
-        remote: {}
   - type: remote
     secrets: default
     endpoint: https://learn.microsoft.com/api/mcp

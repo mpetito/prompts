@@ -1,44 +1,11 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
-    [string[]]$AwsProfiles,
     [string]$AwsRegion = "us-east-1",
-    [string]$AwsConfigDirectory = (Join-Path $env:USERPROFILE ".aws"),
     [switch]$SkipCredentialMigration
 )
 
 $ErrorActionPreference = "Stop"
 $mcpRoot = Split-Path -Parent $PSScriptRoot
-
-if (-not (Test-Path -LiteralPath $AwsConfigDirectory -PathType Container)) {
-    throw "AWS configuration directory does not exist: $AwsConfigDirectory"
-}
-
-$AwsConfigDirectory = (Resolve-Path -LiteralPath $AwsConfigDirectory).Path
-$originalAwsConfigFile = $env:AWS_CONFIG_FILE
-$originalAwsCredentialsFile = $env:AWS_SHARED_CREDENTIALS_FILE
-try {
-    $env:AWS_CONFIG_FILE = Join-Path $AwsConfigDirectory "config"
-    $env:AWS_SHARED_CREDENTIALS_FILE = Join-Path $AwsConfigDirectory "credentials"
-    $configuredAwsProfiles = @(aws configure list-profiles)
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to list AWS CLI profiles. Ensure AWS CLI v2 is installed."
-    }
-} finally {
-    $env:AWS_CONFIG_FILE = $originalAwsConfigFile
-    $env:AWS_SHARED_CREDENTIALS_FILE = $originalAwsCredentialsFile
-}
-
-foreach ($profile in $AwsProfiles) {
-    if ([string]::IsNullOrWhiteSpace($profile) -or $profile -match '\s') {
-        throw "AWS profile names must be non-empty and cannot contain whitespace: '$profile'"
-    }
-    if ($profile -cnotin $configuredAwsProfiles) {
-        throw "AWS profile is not configured on this machine: $profile"
-    }
-}
-
-$awsProfileList = $AwsProfiles -join " "
 
 function Set-DockerMcpSecret {
     param(
@@ -89,16 +56,13 @@ function Set-CodexMcpStartupTimeout {
 docker build --tag local/mcp-azure-devops:2.9.0 (Join-Path $mcpRoot "images\azure-devops")
 docker build --tag local/mcp-material-ui:0.1.4 (Join-Path $mcpRoot "images\material-ui")
 docker build --tag local/mcp-envative-kb:1.6.0 (Join-Path $mcpRoot "images\envative-kb")
-docker build --tag local/mcp-aws-mcp:1.6.4 (Join-Path $mcpRoot "images\aws-mcp")
 
 docker mcp feature disable dynamic-tools
 docker mcp feature enable tool-name-prefix
 docker mcp profile import (Join-Path $mcpRoot "profiles\core-dev.yaml")
 docker mcp profile import (Join-Path $mcpRoot "profiles\envative.yaml")
 docker mcp profile config envative `
-    --set "envative-kb.aws_region=$AwsRegion" `
-    --set "aws-mcp.aws_config_dir=$AwsConfigDirectory" `
-    --set "aws-mcp.aws_profiles=$awsProfileList"
+    --set "envative-kb.aws_region=$AwsRegion"
 docker mcp catalog remove local/core-dev:latest 2>$null
 docker mcp catalog remove local/envative:latest 2>$null
 docker mcp catalog create local/core-dev:latest --from-profile core-dev --title core-dev
