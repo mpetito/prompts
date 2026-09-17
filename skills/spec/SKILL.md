@@ -1,6 +1,6 @@
 ---
 name: spec
-description: "Methodology for producing a `spec.md` (what + why) and `plan.md` (how) for a feature or change, using research and codebase analysis. Use when creating an implementation plan, writing a spec, breaking down a complex feature into phases, or scoping work before coding begins."
+description: "Write a spec.md (what + why) and plan.md (how) under specs/{NNN-slug}/, grounded in codebase and docs research. Use when creating an implementation plan, writing a spec, designing a breakdown or roadmap, or phasing and scoping a non-trivial feature before coding begins."
 ---
 
 # Spec & Plan Authoring Skill

@@ -1,6 +1,6 @@
 ---
 name: pr-authoring
-description: "Procedural knowledge for writing concise, useful pull request descriptions that lead with motivation and outcomes rather than file-level changelogs. Use when creating a new pull request, updating an existing PR description, or when the commit prompt produces a PR body. After a PR is created or updated, logs estimated time via the tt skill."
+description: "Write pull request titles and bodies that lead with motivation, grouped changes, and concrete validation, not file-level changelogs. Use when creating a PR, updating an existing PR description, drafting a body for staged or pushed work, or when the commit skill needs a PR body."
 # Claude Code only; other hosts ignore these keys.
 # Writing-heavy but not reasoning-heavy: cheaper tier, high effort.
 model: sonnet

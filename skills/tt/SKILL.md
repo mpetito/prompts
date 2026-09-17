@@ -1,6 +1,6 @@
 ---
 name: tt
-description: "Log or update a Harvest time entry for work performed, with best-effort linkage to an Azure DevOps work item. Use when logging time, recording hours, tracking time, updating a timesheet, after authoring or updating a pull request, or when invoked via /tt. Triggers: log time, track time, harvest entry, timesheet, record hours, /tt."
+description: "Log or update an estimated Harvest time entry for work just performed, linked best-effort to an Azure DevOps work item. Use when logging time, recording hours, tracking time, updating a timesheet, after a pull request is created or updated, or when invoked via /tt."
 # Claude Code only; other hosts ignore these keys.
 model: sonnet
 effort: low

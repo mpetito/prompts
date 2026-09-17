@@ -1,12 +1,6 @@
 ---
 name: word-doc-editing
-description: |
-  Review and revise Microsoft Word (.docx) documents by driving Word itself through COM
-  automation — genuine tracked changes, formatting preserved by construction, every edit
-  verified and logged. Use when editing or restructuring a .docx, when applying reviewable
-  tracked changes to a Word document, when auditing a document for stale terms or
-  cross-references, when accepting/rejecting revisions or refreshing TOC fields, or when
-  exporting a .docx to PDF. Requires Windows with Microsoft Word installed.
+description: "Edit .docx files by driving Microsoft Word via COM — tracked changes, formatting preserved. Use when revising or restructuring one, auditing stale terms or cross-references, accepting/rejecting revisions, refreshing TOC fields, or exporting to PDF. Requires Windows with Word."
 ---
 
 # Word Document Editing (COM Automation)

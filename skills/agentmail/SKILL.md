@@ -1,6 +1,6 @@
 ---
 name: agentmail
-description: "Use the AgentMail MCP server as a TEST mailbox when building or verifying systems that send or receive email. Use when checking whether an app's outbound email actually arrived, inspecting a delivered message's subject/body/headers/attachments, creating a throwaway inbox as a test fixture, seeding inbound mail to exercise a webhook or receive handler, or debugging a broken email flow end-to-end."
+description: "Use the AgentMail MCP server as a TEST mailbox for systems that send or receive email. Use when verifying outbound mail arrived, inspecting its subject/body/headers/attachments, creating a throwaway inbox, seeding mail to a webhook or receive handler, or debugging an email flow."
 ---
 
 # AgentMail (MCP) — Test Mailbox

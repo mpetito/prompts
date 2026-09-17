@@ -3,11 +3,11 @@
 # This allows user profile skills and subagents across all projects to redirect here.
 #
 # Targets:
-#   ~/.copilot/skills  - GitHub Copilot (VS Code + Copilot CLI)
-#   ~/.claude/skills   - Claude Code (CLI, desktop, IDE extensions)
-#   ~/.codex/skills/*  - Codex CLI (per-child links preserve Codex-managed .system skills)
-#   ~/.agents/skills   - cross-tool convention (opencode and others that scan it)
-#   ~/.claude/agents   - Claude Code subagent definitions (Claude Code format only)
+#   ~/.copilot/skills/* - GitHub Copilot (VS Code + Copilot CLI)
+#   ~/.claude/skills/*  - Claude Code (CLI, desktop, IDE extensions)
+#   ~/.codex/skills/*   - Codex CLI
+#   ~/.agents/skills/*  - cross-tool convention (opencode and others that scan it)
+#   ~/.claude/agents    - Claude Code subagent definitions (Claude Code format only)
 #   ~/.claude/CLAUDE.md - Claude Code user-level global instructions (a file, not a folder)
 #   ~/.claude/statusline.js - Claude Code custom status line script (a file, not a folder)
 
@@ -21,11 +21,15 @@ $sourceStatusLine = Join-Path $repoRoot "statusline\statusline.js"
 # User-level targets, keyed by the tool that reads them. Skills are an open format every
 # tool reads; subagent definitions, global instructions, and the status line script are
 # Claude Code's own formats, so only it gets those links.
+#
+# Skills are linked per child so each target folder stays real: what a tool writes there itself
+# (Codex's .system skills, Claude Code's synced bundles) stays with that tool rather than
+# landing in this repository, where the other tools would pick it up as skills of their own.
 $targets = @(
-    @{ Description = "Copilot skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".copilot\skills"; Kind = "Directory" }
-    @{ Description = "Claude Code skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".claude\skills"; Kind = "Directory" }
+    @{ Description = "Copilot skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".copilot\skills"; Kind = "DirectoryChildren" }
+    @{ Description = "Claude Code skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".claude\skills"; Kind = "DirectoryChildren" }
     @{ Description = "Codex skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".codex\skills"; Kind = "DirectoryChildren" }
-    @{ Description = "Cross-tool agent skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".agents\skills"; Kind = "Directory" }
+    @{ Description = "Cross-tool agent skills"; Source = $sourceSkills; Path = Join-Path $env:USERPROFILE ".agents\skills"; Kind = "DirectoryChildren" }
     @{ Description = "Claude Code subagents"; Source = $sourceAgents; Path = Join-Path $env:USERPROFILE ".claude\agents"; Kind = "Directory" }
     @{ Description = "Claude Code global instructions"; Source = $sourceGlobalMd; Path = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"; Kind = "File" }
     @{ Description = "Claude Code status line"; Source = $sourceStatusLine; Path = Join-Path $env:USERPROFILE ".claude\statusline.js"; Kind = "File" }
@@ -140,6 +144,32 @@ function New-SymLink {
     }
 }
 
+function Remove-StaleChildLinks {
+    param (
+        [string]$SourcePath,
+        [string]$TargetPath,
+        [string]$Description
+    )
+
+    $sourceRoot = [System.IO.Path]::TrimEndingDirectorySeparator((Resolve-Path $SourcePath).Path)
+    $sourcePrefix = $sourceRoot + [System.IO.Path]::DirectorySeparatorChar
+
+    foreach ($child in Get-ChildItem -LiteralPath $TargetPath -Force) {
+        if (-not ($child.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { continue }
+
+        $linkTarget = $child.Target
+        if (-not $linkTarget -or (Test-Path -LiteralPath $linkTarget)) { continue }
+
+        # Only prune what this script would have created. A dangling link to anywhere else
+        # belongs to another installer, which may well restore what it points at.
+        $fullTarget = [System.IO.Path]::GetFullPath($linkTarget)
+        if (-not $fullTarget.StartsWith($sourcePrefix, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+
+        Remove-Item -LiteralPath $child.FullName -Force
+        Write-Host "Removed stale $Description link for a skill no longer in this repository: $($child.Name)" -ForegroundColor Yellow
+    }
+}
+
 function New-ChildSymLinks {
     param (
         [string]$SourcePath,
@@ -147,13 +177,38 @@ function New-ChildSymLinks {
         [string]$Description
     )
 
+    # An earlier setup linked the whole folder, which also exposed whatever the tool wrote into
+    # its own skills folder. Replace that with a real directory holding per-skill links.
+    $existing = if (Test-Path -LiteralPath $TargetPath) { Get-Item -LiteralPath $TargetPath -Force } else { $null }
+    if ($existing -and $existing.PSIsContainer -and ($existing.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
+        $currentTarget = $existing.Target
+        $linksToSource = $currentTarget -and ((Resolve-Path $currentTarget).Path -eq (Resolve-Path $SourcePath).Path)
+
+        if (-not $linksToSource) {
+            Write-Host "Existing $Description folder link points elsewhere: $currentTarget" -ForegroundColor Yellow
+            $response = Read-Host "Replace it with per-skill links into this repository? (y/N)"
+            if ($response -ne 'y' -and $response -ne 'Y') {
+                Write-Host "Skipping $Description." -ForegroundColor Yellow
+                return "Skipped"
+            }
+        }
+        else {
+            # Which entries under the source are the tool's own is not knowable here, so name
+            # the move rather than guessing at it.
+            Write-Host "Replacing the folder-wide $Description link with per-skill links." -ForegroundColor Yellow
+            Write-Host "  Anything $Description wrote through the old link now sits under $SourcePath; move it into $TargetPath." -ForegroundColor Yellow
+        }
+
+        Remove-Item -LiteralPath $TargetPath -Force
+    }
+
     if (-not (Test-Path -LiteralPath $TargetPath)) {
         New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
     }
 
     $target = Get-Item -LiteralPath $TargetPath -Force
     if (-not $target.PSIsContainer -or ($target.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) {
-        Write-Host "$Description target must be a real directory so Codex-managed entries remain available: $TargetPath" -ForegroundColor Red
+        Write-Host "$Description target must be a real directory so entries the tool manages itself remain available: $TargetPath" -ForegroundColor Red
         return "Failed"
     }
 
@@ -163,6 +218,8 @@ function New-ChildSymLinks {
             -TargetPath (Join-Path $TargetPath $sourceChild.Name) `
             -Description "$Description ($($sourceChild.Name))"
     }
+
+    Remove-StaleChildLinks -SourcePath $SourcePath -TargetPath $TargetPath -Description $Description
 
     if ($statuses -contains "Failed") { return "Failed" }
     if ($statuses -contains "Skipped") { return "Skipped" }

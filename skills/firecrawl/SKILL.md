@@ -2,7 +2,7 @@
 name: firecrawl
 model: sonnet
 effort: high
-description: "Use Firecrawl to browse, search, scrape, crawl, and extract structured data from the live web. Use when fetching a URL as clean markdown, scraping one or many pages, crawling a website or documentation set, mapping a site's URLs, extracting structured fields from pages with a JSON schema, searching the web for current information, reading a page that needs JS rendering or clicks or a login, or converting a local PDF/DOCX to markdown. For synthesizing a sourced answer across many sources, use the `research` skill, which uses this one to fetch. For driving a browser interactively or testing your own app's UI, use the Playwright tools instead."
+description: "Scrape, crawl, map, search, and extract structured data from the live web with Firecrawl. Use when fetching URLs as markdown, crawling a site or docs set, extracting fields by JSON schema, searching current info, reading JS/login-gated pages, or converting local PDF/DOCX."
 ---
 
 # Firecrawl — Live Web Search, Scrape, and Crawl

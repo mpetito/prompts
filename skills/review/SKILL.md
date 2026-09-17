@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Use when reviewing code, checking a diff, auditing local or staged changes, checking coding standards, simplifying overengineered code or verbose comments, and before reporting a bug fix, refactor, or implementation complete. This is code-authoring's required self-review step; scale depth to risk. Check project convention reuse and evidence for findings. For someone else's GitHub PR use pr-review; for incoming reviewer or Copilot feedback use pr-feedback."
+description: "Review a diff, report findings by severity, and give a merge verdict. Use when reviewing code, auditing local or staged changes, checking coding standards, simplifying overengineered code or verbose comments, or before reporting a fix, refactor, or implementation complete."
 ---
 
 # Code Review Skill
@@ -12,6 +12,10 @@ Procedural knowledge for performing structured, multi-dimensional code reviews o
 - A user asks to review changes, a PR, or a diff
 - Before reporting implementation complete, as the self-review step of code-authoring
 - Before merging, to produce an APPROVE / REQUEST CHANGES / NEEDS DISCUSSION verdict
+
+Scale review depth to the risk of the change. Check that findings cite project convention reuse
+and concrete evidence. For someone else's GitHub PR use `pr-review`; for incoming reviewer or
+Copilot feedback on your own PR use `pr-feedback`.
 
 ## Review Scope
 

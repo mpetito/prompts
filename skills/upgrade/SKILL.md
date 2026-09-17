@@ -1,6 +1,6 @@
 ---
 name: upgrade
-description: "Procedural knowledge for safely upgrading dependencies across ecosystems with proper research, risk assessment, and validation. Use when upgrading dependencies, updating packages, reviewing outdated libraries, or resolving security vulnerabilities."
+description: "Upgrade dependencies across npm and .NET, with breaking-change research, lockfile sync, and validation. Use when upgrading dependencies, updating or bumping packages, reviewing outdated libraries, resolving CVEs or security vulnerabilities, or planning a major-version upgrade."
 ---
 
 # Dependency Upgrade Skill

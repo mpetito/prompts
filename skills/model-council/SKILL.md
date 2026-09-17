@@ -1,6 +1,6 @@
 ---
 name: model-council
-description: "Use when the user requests a model council, Claude/Codex second opinions, or independent model perspectives on a bounded technical decision. Also use when Copilot feedback remains materially unclear after checking code and docs: possible false positives, conflicting contracts, or a fix whose benefit may not justify its complexity. Select explicit worker models, assign independent perspectives, compare evidence, and return an actionable disposition. Use pr-feedback for feedback collection and implementation; herdr-delegation handles peer transport."
+description: "Resolve one bounded technical decision with independent Claude and Codex reviews. Use when asked for a model council or second opinions, when reviewers disagree on a contract or tradeoff, or when a Copilot claim stays unclear after local checks: false positive or overcomplex fix."
 ---
 
 # Model Council
@@ -19,6 +19,9 @@ an automatic code change or a majority vote. This skill does not change the coor
 Skip the council for an obvious defect, a readily verifiable false positive, or a missing fact
 that one lookup/test can settle. Models cannot resolve missing product intent, credentials, or
 user authorization. Collect available evidence first; ask the user only for an essential decision.
+
+Related skills: [pr-feedback](../pr-feedback/SKILL.md) owns PR feedback collection and
+implementation; [herdr-delegation](../herdr-delegation/SKILL.md) handles peer transport.
 
 ## 1. Frame the Decision
 

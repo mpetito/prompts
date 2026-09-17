@@ -1,6 +1,6 @@
 ---
 name: story
-description: "Guidelines for creating well-structured Azure DevOps work items including User Stories, Issues, and Bugs with proper formatting, story points, and acceptance criteria. Use when creating user stories, writing acceptance criteria, formatting work items for Azure DevOps, or estimating story points."
+description: "Create Azure DevOps User Stories, Issues, and Bugs with the right type, fields, story points, and acceptance criteria. Use when writing a user story, filing a bug with repro steps and severity, estimating story points, drafting acceptance criteria, or formatting ADO work items."
 # Claude Code only; other hosts ignore these keys.
 model: sonnet
 effort: low

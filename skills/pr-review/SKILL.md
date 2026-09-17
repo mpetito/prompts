@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: "Methodology for reviewing someone else's GitHub pull request by number: gathering PR context, learning project standards, drafting high-level review feedback, and posting review comments only after user approval. Use when asked to review a PR by number, review a teammate's pull request, or post code review comments on GitHub."
+description: "Review someone else's GitHub pull request by number or URL, drafting findings and posting comments only after user approval. Use when asked to review a teammate's PR, post GitHub review comments, or check an external PR against project standards. Not for your own local changes."
 ---
 
 # PR Review Skill

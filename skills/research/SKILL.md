@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Procedural knowledge for conducting comprehensive technical research using documentation tools, search APIs, and GitHub resources. Use when performing deep technical research, evaluating libraries, comparing options, or investigating APIs."
+description: "Research a technical topic in depth across official docs, GitHub, and Firecrawl's developer index, then report sourced options and a recommendation. Use when evaluating libraries, comparing options, investigating APIs, chasing dependency bugs, or weighing architecture decisions."
 ---
 
 # Research Skill

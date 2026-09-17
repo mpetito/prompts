@@ -1,6 +1,6 @@
 ---
 name: code-quality-standards
-description: "Use when writing, modifying, fixing, refactoring, or reviewing React, Next.js, or TypeScript code, including components, hooks, API routes, services, utilities, and tests. Apply during implementation as well as code-quality, security, and performance audits. Complements code-authoring's general conventions and concise-comment rules; review and pr-review provide the review workflow."
+description: "Apply React, Next.js, and TypeScript standards for security, correctness, DRY, performance, and code organization. Use when writing, fixing, refactoring, or reviewing components, hooks, API routes, services, utilities, or tests, or auditing code quality or vulnerabilities."
 ---
 
 # Code Quality and Security Standards
@@ -24,6 +24,12 @@ Use when:
 - Checking for correctness issues (type safety, boundary conditions)
 - Reviewing performance patterns
 - Establishing coding standards for a team
+
+## Related Skills
+
+Complements [code-authoring](../code-authoring/SKILL.md)'s general conventions and
+concise-comment rules; [review](../review/SKILL.md) and [pr-review](../pr-review/SKILL.md)
+provide the review workflow.
 
 ## Review Categories
 

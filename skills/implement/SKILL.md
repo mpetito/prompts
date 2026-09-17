@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Use when implementing a numbered spec, executing specs/{NNN-slug}/plan.md, continuing a partially implemented spec, or completing all phases of a spec. Locate the spec, apply clarifications, review the plan, then invoke code-authoring and its standards/self-review steps. For general coding, bug fixes, or refactors without a numbered spec, use code-authoring directly."
+description: "Execute a numbered spec from specs/{NNN-slug}/ end-to-end, phase by phase. Use when implementing a spec by number, running its plan.md, continuing a partially implemented spec, or completing all remaining phases. Without a numbered spec, use code-authoring instead."
 ---
 # Implement
 

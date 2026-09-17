@@ -1,6 +1,6 @@
 ---
 name: agents-md-authoring
-description: "Use when creating or reviewing AGENTS.md, CLAUDE.md, or copilot-instructions.md files that give AI coding agents project-wide context. Triggers include create AGENTS.md, write CLAUDE.md, agent configuration, project conventions for AI, AI assistant context, agent instructions, and onboarding AI agents to a repository. For authoring SKILL.md files, use the `skill-authoring` skill instead."
+description: "Author or review AGENTS.md, CLAUDE.md, and copilot-instructions.md — always-loaded project context for AI coding agents. Use when writing agent instructions or config, project conventions for AI, nested per-package files, or onboarding agents to a repo. Not SKILL.md (skill-authoring)."
 ---
 
 # AGENTS.md Authoring
