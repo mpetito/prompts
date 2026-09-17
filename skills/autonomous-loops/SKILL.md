@@ -1,6 +1,6 @@
 ---
 name: autonomous-loops
-description: "Procedural knowledge for running autonomous, iterative agent loops against an external evaluation signal. Use when the task is not single-shot — e.g. optimizing Page Speed Insights scores, working through Copilot PR review feedback, watching CI until it goes green, or any workflow that requires waiting on asynchronous external processes (CI, deploys, third-party scans, MCP evaluators) between iterations."
+description: "Run iterative agent loops against an external evaluation signal that arrives asynchronously. Use when a task is not single-shot: raising Page Speed Insights scores, triaging Copilot PR feedback, watching CI until green, or waiting on deploys, scans, or MCP evaluators."
 ---
 
 # Autonomous Loops Skill

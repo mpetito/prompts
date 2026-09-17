@@ -1,13 +1,15 @@
 ---
 name: skill-authoring
-description: "Use when creating, reviewing, splitting, or improving SKILL.md files and skill folders; fixing missed skill triggers; or choosing model and effort settings for skills, subagents, or dynamic workflow stages. Triggers include write SKILL.md, skill frontmatter, skill description tuning, progressive disclosure, references folder, and preventing expensive model inheritance. For project-wide AGENTS.md context files, use agents-md-authoring instead."
+description: "Create, review, split, and improve SKILL.md files and skill folders. Use when writing skill frontmatter, tuning a description, fixing missed triggers, adding references/ for progressive disclosure, or pinning model and effort so a subagent or workflow stage does not inherit one."
 ---
 
 # Skill Authoring
 
 Methodology for authoring SKILL.md files: bounded, on-demand procedures that agents load when their description matches the task.
 
-For **always-loaded project context**, see [`agents-md-authoring`](../agents-md-authoring/SKILL.md).
+## Scope
+
+Covers SKILL.md files and skill folders. For **always-loaded project context** — AGENTS.md, CLAUDE.md, or copilot-instructions.md — use [`agents-md-authoring`](../agents-md-authoring/SKILL.md) instead.
 
 ---
 
@@ -62,16 +64,16 @@ Keep in SKILL.md: the workflow, the decision points, the pitfalls, and the point
 
 The layout is always `{skills-root}/{skill-name}/SKILL.md`; only the root differs per tool.
 
-| Tool                | Project-level skills root | User-level skills root |
-| ------------------- | ------------------------- | ---------------------- |
-| GitHub Copilot      | `.github/skills/`         | `~/.copilot/skills/`   |
-| Claude Code         | `.claude/skills/`         | `~/.claude/skills/`    |
-| Codex               | `.agents/skills/`         | `~/.agents/skills/`    |
-| opencode and others | —                         | `~/.agents/skills/`    |
+| Tool                | Project-level skills root | User-level skills root                     |
+| ------------------- | ------------------------- | ------------------------------------------ |
+| GitHub Copilot      | `.github/skills/`         | `~/.copilot/skills/`                       |
+| Claude Code         | `.claude/skills/`         | `~/.claude/skills/`                        |
+| Codex               | `.agents/skills/`         | `~/.codex/skills/` and `~/.agents/skills/` |
+| opencode and others | —                         | `~/.agents/skills/`                        |
 
 For a repo-committed skill, default to `.github/skills/` and add `.claude/skills/` (or a symlink) when the repo is also worked on with Claude Code. Either way the directory name must match the `name` in the frontmatter.
 
-In this shared prompt repository, also rerun `setup-skills-link.ps1` after adding or renaming a top-level directory under `skills/`. The installer creates per-child links in `~/.codex/skills/` without replacing Codex's managed `.system` directory. Edits inside an existing linked skill propagate immediately.
+In this shared prompt repository, also rerun `setup-skills-link.ps1` after adding or renaming a top-level directory under `skills/`. The installer links each skill individually into every tool's skills folder, so entries a tool manages itself — Codex's `.system` directory, Claude Code's `synced/` bundles — are left in place. Edits inside an existing linked skill propagate immediately.
 
 **Cross-skill references** must be relative to the skill's own folder (`../other-skill/SKILL.md`, `../pr-scripts/Script.ps1`), never relative to a repository root. A skills folder is frequently symlinked into a user-level location where no repo root exists.
 

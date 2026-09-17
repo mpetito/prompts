@@ -157,14 +157,16 @@ Repeat until approved.
 
 ## Setup
 
-Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` symlinks every one of them back to this repository's `skills/` directory, and links Claude Code's subagent folder to `agents/`, its user-level `CLAUDE.md` to `instructions/CLAUDE.md`, and its status line script to `statusline/statusline.js`, so a single edit here reaches every tool.
+Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` symlinks each skill in this repository's `skills/` directory into every one of them, and links Claude Code's subagent folder to `agents/`, its user-level `CLAUDE.md` to `instructions/CLAUDE.md`, and its status line script to `statusline/statusline.js`, so a single edit here reaches every tool.
+
+Skills are linked one directory at a time rather than by linking the whole folder. Each tool's skills folder stays a real directory, so what a tool writes there itself — Codex's `.system` skills, Claude Code's `synced/` bundles — stays with that tool instead of landing in this repository and being republished to every other tool's skill catalog.
 
 | Repository folder | Tool                          | User-level folder         |
 | ----------------- | ----------------------------- | ------------------------- |
-| `skills/`         | GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/`      |
-| `skills/`         | Claude Code                   | `~/.claude/skills/`       |
-| `skills/`         | Codex, opencode, and similar  | `~/.agents/skills/`       |
-| `skills/*`        | Codex compatibility mirror    | `~/.codex/skills/*`       |
+| `skills/*`        | GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/*`     |
+| `skills/*`        | Claude Code                   | `~/.claude/skills/*`      |
+| `skills/*`        | Codex                         | `~/.codex/skills/*`       |
+| `skills/*`        | opencode (also read by Codex) | `~/.agents/skills/*`      |
 | `agents/`         | Claude Code                   | `~/.claude/agents/`       |
 | `instructions/`   | Claude Code                   | `~/.claude/CLAUDE.md`     |
 | `statusline/`     | Claude Code                   | `~/.claude/statusline.js` |
@@ -176,9 +178,9 @@ Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` s
 5. Global instructions load into every Claude Code session, in every project
 6. The status line needs two further steps the link cannot do — a `statusLine` entry in `~/.claude/settings.json`, and a Nerd Font installed and selected as the terminal's font face. Both are in [`statusline/README.md`](statusline/README.md), with copy-pasteable commands
 
-The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. Codex receives per-skill links so its managed `~/.codex/skills/.system/` directory remains intact. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
+The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. A skills folder left whole-linked by an earlier setup is converted to per-skill links; anything the tool wrote through that link stays under `skills/` and has to be moved into the tool's folder by hand, which the script says as it converts. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
 
-After adding a new top-level directory under `skills/`, rerun `setup-skills-link.ps1` so the corresponding Codex child link is created. Changes inside an already-linked skill are visible to every tool immediately and do not require another setup run. Restart a client if its current session does not refresh the skill list.
+After adding a new top-level directory under `skills/`, rerun `setup-skills-link.ps1` so each tool gets the corresponding child link. Changes inside an already-linked skill are visible to every tool immediately and do not require another setup run. Restart a client if its current session does not refresh the skill list.
 
 ### Cross-Tool Authoring Notes
 
@@ -188,7 +190,7 @@ Skills here target the lowest common denominator so they work everywhere:
 - Directory names match the frontmatter `name`
 - Tool references are described as capabilities (e.g. "Context7 docs", "IDE diagnostics") rather than literal tool IDs, which differ per host
 - Cross-references are **skill-relative** (`../other-skill/SKILL.md`), never repo-root-relative — the tree is symlinked into user-level folders where no repo root exists
-- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. It is also linked into Codex because sibling-relative references from PR skills depend on it. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
+- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. It is linked alongside the skills because sibling-relative references from PR skills depend on it; having no `SKILL.md`, it never enters a tool's skill catalog. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
 - `instructions/CLAUDE.md` is the user-level global instruction file, linked only into Claude Code for the same reason. It loads into every session in every project, so keep it short and keep every line load-bearing
 - `agents/` is Claude Code's subagent format and is deliberately **not** cross-tool — other hosts use incompatible agent formats, so the setup script links it into Claude Code only. Keep agent bodies host-generic and project-agnostic (no employer, stack, or repository specifics) so they behave the same in every project. Agents may depend on `skills/` two ways — a relative path such as `../skills/pr-scripts/…`, which resolves in both the repository and `~/.claude/`, and a `skills:` frontmatter entry naming a skill to preload. `researcher` also names specific documentation MCP servers in its `tools` list; adjust that line on a machine where those servers are not configured
 

@@ -1,10 +1,6 @@
 ---
 name: commit
-description: |
-  Validate, commit with conventional messages, push, and open/update a PR.
-  Use when committing changes, creating or updating a pull request, or finalizing work.
-  Covers branch naming (including Envative `users/<user>/…` conventions), conventional commit format,
-  ADO `AB#` work-item linking, and time logging.
+description: "Validate, commit with conventional messages, push, and open or update a PR. Use when committing changes, creating or updating a pull request, or finalizing work; covers lint/test validation, feature-branch naming (Envative `users/<user>/…`), ADO `AB#` linking, and time logging."
 # Claude Code only; other hosts ignore these keys.
 model: sonnet
 effort: low

@@ -1,7 +1,6 @@
 ---
 name: pr-feedback
-description: |
-  Use when addressing PR review feedback, verifying Copilot comments, inspecting suppressed or low-confidence suggestions, rejecting false positives or unnecessary complexity, fixing CI or CodeQL findings, or preparing replies. Collect full review bodies and threads, validate claims against current code, and weigh benefit against complexity. Use model-council for materially uncertain actionability after local checks; pr-review for an independent review of someone else's PR.
+description: "Triage and resolve PR review feedback on your own PR. Use when addressing Copilot or reviewer comments, inspecting suppressed or low-confidence suggestions, rejecting false positives or unnecessary complexity, fixing CI or CodeQL findings, or preparing replies."
 model: sonnet
 effort: high
 ---
@@ -9,6 +8,13 @@ effort: high
 # PR Feedback
 
 Use this skill to resolve pull request feedback systematically before posting replies or resolving threads.
+
+## Related Skills
+
+- [pr-review](../pr-review/SKILL.md) — an independent review of someone else's PR, rather than
+  handling feedback on your own.
+- [model-council](../model-council/SKILL.md) — independent perspectives when actionability stays
+  materially uncertain after the local checks in [Verify and Triage](#2-verify-and-triage-before-editing).
 
 ## Inputs and Context
 

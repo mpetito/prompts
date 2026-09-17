@@ -1,6 +1,6 @@
 ---
 name: herdr-delegation
-description: "Coordinate work across coding agents running in separate Herdr panes, including cross-harness delegation between Claude Code, Codex, and Copilot, result handoff, isolated worktree branches, and recovery from stalled or blocked peers. Use when delegating a task to another agent in a Herdr pane, when a peer agent stalls or sits on an approval dialog, when running agents in parallel on separate git worktrees, or when deciding between a Herdr peer and an in-process subagent. For Herdr CLI syntax, IDs, layout rules, and lifecycle definitions, run `herdr --skill` — this skill covers only the coordination layer on top of it."
+description: "Coordinate coding agents in Herdr panes across harnesses (Claude Code, Codex, Copilot). Use when delegating to a peer pane, collecting its result, a peer stalls on an approval dialog, running parallel agents on git worktrees, or choosing a peer over an in-process subagent."
 ---
 
 # Herdr Delegation

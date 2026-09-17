@@ -1,6 +1,6 @@
 ---
 name: code-authoring
-description: "Use when writing or changing code: implementing features, fixing bugs, debugging with code changes, refactoring, simplifying code, changing scripts or infrastructure, adding tests, or executing a plan. Applies even without a spec and to small fixes; scale the workflow to the change. Defines convention reuse and concise-comment standards. Load code-quality-standards for React/Next.js/TypeScript work and review for the final self-review. Use implement to orchestrate a numbered specs/ plan."
+description: "Write or change code to project conventions, the canonical coding standards. Use when implementing a feature, fixing or debugging a bug, refactoring, simplifying, changing scripts or infrastructure, adding tests, or executing a plan, including small fixes with no spec."
 ---
 
 # Code Authoring Skill
@@ -16,6 +16,11 @@ Procedural knowledge for executing implementation tasks: from spec/plan to valid
 
 For very small surgical changes (rename, typo, single-line fix), load the standards and use a
 proportionate edit/check/review pass; no formal plan or new test is needed without behavior to verify.
+
+Related skills: use [implement](../implement/SKILL.md) to orchestrate a numbered `specs/{NNN-slug}/`
+plan end-to-end; it delegates the per-phase work back to this skill. Load
+[code-quality-standards](../code-quality-standards/SKILL.md) for React/Next.js/TypeScript work and
+[review](../review/SKILL.md) for the final self-review (both are steps in the protocol below).
 
 ## Context Sources (priority order)
 
