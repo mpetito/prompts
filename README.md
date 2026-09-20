@@ -1,6 +1,6 @@
 # Agentic Coding Toolkit
 
-A collection of agent skills for reliable agentic coding workflows, shared across GitHub Copilot (VS Code + Copilot CLI), Claude Code, and Codex.
+A collection of agent skills for reliable agentic coding workflows, shared across GitHub Copilot (VS Code + Copilot CLI), Claude Code, Codex, and OpenCode.
 
 Skills are the single unit of reusable workflow guidance in this repository: they auto-load when relevant, and both VS Code and Claude Code expose each skill as an explicit `/name` entry point. There is no separate `prompts/` concept; former prompt slugs are preserved as skill names.
 
@@ -157,30 +157,91 @@ Repeat until approved.
 
 ## Setup
 
-Each tool reads skills from its own user-level folder. `setup-skills-link.ps1` symlinks each skill in this repository's `skills/` directory into every one of them, and links Claude Code's subagent folder to `agents/`, its user-level `CLAUDE.md` to `instructions/CLAUDE.md`, and its status line script to `statusline/statusline.js`, so a single edit here reaches every tool.
+Use **PowerShell 7.4+ (`pwsh`)** on Windows, Ubuntu, and macOS. Windows PowerShell 5.1
+(`powershell.exe`) is not supported. Install PowerShell using the
+[Microsoft instructions](https://learn.microsoft.com/powershell/scripting/install/installing-powershell).
+Keep a local clone on each machine and sync the source through Git; the installer derives the
+checkout location from its own script, so the clone can live anywhere.
 
-Skills are linked one directory at a time rather than by linking the whole folder. Each tool's skills folder stays a real directory, so what a tool writes there itself — Codex's `.system` skills, Claude Code's `synced/` bundles — stays with that tool instead of landing in this repository and being republished to every other tool's skill catalog.
+From the repository root, these commands work from Bash or PowerShell:
 
-| Repository folder | Tool                          | User-level folder         |
-| ----------------- | ----------------------------- | ------------------------- |
-| `skills/*`        | GitHub Copilot (VS Code, CLI) | `~/.copilot/skills/*`     |
-| `skills/*`        | Claude Code                   | `~/.claude/skills/*`      |
-| `skills/*`        | Codex                         | `~/.codex/skills/*`       |
-| `skills/*`        | opencode (also read by Codex) | `~/.agents/skills/*`      |
-| `agents/`         | Claude Code                   | `~/.claude/agents/`       |
-| `instructions/`   | Claude Code                   | `~/.claude/CLAUDE.md`     |
-| `statusline/`     | Claude Code                   | `~/.claude/statusline.js` |
+```sh
+# Preview setup for clients detected on PATH, then apply and verify it.
+pwsh -NoProfile -File ./setup-skills-link.ps1 -WhatIf
+pwsh -NoProfile -File ./setup-skills-link.ps1
+pwsh -NoProfile -File ./verify-setup.ps1
 
-1. Ensure VS Code 1.106+ with GitHub Copilot, Claude Code, and/or Codex
-2. Run `setup-skills-link.ps1` (as Admin or with Developer Mode enabled)
-3. Skills auto-load when relevant and can be invoked explicitly via `/name` in chat
-4. Agents become available to Claude Code as subagent types for delegated work
-5. Global instructions load into every Claude Code session, in every project
-6. The status line needs two further steps the link cannot do — a `statusLine` entry in `~/.claude/settings.json`, and a Nerd Font installed and selected as the terminal's font face. Both are in [`statusline/README.md`](statusline/README.md), with copy-pasteable commands
+# Select clients explicitly, including clients not installed yet.
+pwsh -NoProfile -File ./setup-skills-link.ps1 -Tools codex,claude,opencode
+pwsh -NoProfile -File ./verify-setup.ps1 -Tools codex,claude,opencode
+```
 
-The script is idempotent and never replaces anything without asking: a link already pointing at this repository is left alone, a link pointing elsewhere prompts before replacement, and a real directory is listed and confirmed before being renamed to `<name>_old`. A skills folder left whole-linked by an earlier setup is converted to per-skill links; anything the tool wrote through that link stays under `skills/` and has to be moved into the tool's folder by hand, which the script says as it converts. Decline any target you don't want — `~/.agents/skills/` in particular may already be managed by another skill installer.
+Automatic detection checks the `codex`, `claude`, `opencode`, and `copilot` commands on PATH.
+For desktop/IDE-only clients, or to prepare files before installing a CLI, use `-Tools`.
+When adding a client, install it and rerun setup. No client authentication or Docker is needed
+for skill linking. Windows symlinks require Developer Mode or an elevated PowerShell session;
+Linux and macOS need no elevation when writing your own home directory. Run as your normal user.
 
-After adding a new top-level directory under `skills/`, rerun `setup-skills-link.ps1` so each tool gets the corresponding child link. Changes inside an already-linked skill are visible to every tool immediately and do not require another setup run. Restart a client if its current session does not refresh the skill list.
+| Repository source | Client | Default destination |
+| --- | --- | --- |
+| `skills/*` | Codex and OpenCode | `~/.agents/skills/*` |
+| `skills/*` | Claude Code | `~/.claude/skills/*` |
+| `skills/*` | GitHub Copilot | `~/.copilot/skills/*` |
+| `agents/` | Claude Code | `~/.claude/agents` |
+| `instructions/CLAUDE.md` | Claude Code | `~/.claude/CLAUDE.md` |
+| `statusline/statusline.js` | Claude Code | `~/.claude/statusline.js` |
+
+[Codex](https://learn.chatgpt.com/docs/build-skills) and
+[OpenCode](https://opencode.ai/docs/skills/) both discover `~/.agents/skills`.
+Skills are linked individually, including the shared `pr-scripts` helper directory, so the
+destination remains a real directory and client-managed entries stay local. Global Claude
+instructions and agents keep their Claude-specific formats.
+
+The installer honors `CLAUDE_CONFIG_DIR` for Claude destinations and `CODEX_HOME` when migrating
+old Codex links. Shared skills remain under the user's `~/.agents/skills`, independent of
+`CODEX_HOME`. `-HomeDirectory <path>` redirects **all skill destinations** to an isolated home
+and ignores these environment overrides; use it for testing, not to configure a client that
+still reads your normal home.
+
+Setup is idempotent. Conflicting files, directories, and foreign links are preserved and reported
+as incomplete setup (nonzero exit). To replace them deliberately, preview with
+`-ReplaceConflicts -WhatIf`, then rerun with `-ReplaceConflicts`. Originals move to a unique
+folder under `~/.prompts-backups`, outside skill discovery. Nothing is silently overwritten.
+Missing source files and link failures are errors, with a Windows privilege hint when applicable.
+
+Existing whole-folder skill links to this checkout are converted to real directories containing
+per-skill links. With Codex selected, old repo-owned links under `~/.codex/skills` are removed
+only after their replacements exist under `~/.agents/skills`; unrelated entries and `.system`
+remain. Broken links are pruned only when their target exactly matches this checkout's expected
+skill path. Tool-managed content previously written through a whole-folder link must still be
+moved out of the repository manually; setup warns when converting it.
+
+After adding or renaming a top-level skill, rerun setup. Edits inside already-linked skills are
+visible immediately after `git pull`; restart clients if they cache their skill lists.
+Claude's status line also needs its machine-local settings entry and a terminal font; see
+[`statusline/README.md`](statusline/README.md).
+
+### Optional dependencies and MCP
+
+- PR helpers use PowerShell 7 and an authenticated `gh` CLI on Windows, Linux, or macOS. From Bash, invoke
+  them with `pwsh -NoProfile -File <script.ps1>`.
+- The Claude status line needs Node.js and Git.
+- Word editing helpers require **Windows and desktop Microsoft Word**. They report that
+  requirement explicitly on Linux and macOS.
+- MCP configuration is a separate opt-in step; see [`mcp/README.md`](mcp/README.md). Docker
+  Engine alone is insufficient: the profiles also require the Docker MCP Toolkit and their
+  configured secret backend. Credentials and generated configuration stay machine-local.
+
+### Validation
+
+```sh
+pwsh -NoProfile -File ./tests/Setup.Tests.ps1
+pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
+```
+
+These offline tests create temporary homes, exercise migration and conflicts, and mock MCP CLI
+commands. The GitHub Actions workflow runs them on Windows and Ubuntu. The same scripts are
+written for macOS, but macOS is not currently in the CI matrix.
 
 ### Cross-Tool Authoring Notes
 

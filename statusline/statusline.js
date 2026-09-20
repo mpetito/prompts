@@ -2,6 +2,7 @@
 // Payload fields used here: cwd, workspace.*, model.*, effort.level, context_window.*, worktree.branch.
 // (The payload also carries session_name, vim, pr, cost, rate_limits -- vim and pr are native.)
 const { execFileSync } = require('child_process');
+const { homedir } = require('os');
 
 // Claude Code spawns us with a stdin pipe, and also spawns MCP servers via cmd.exe
 // that inherit open handles. A grandchild holding the write end means we never see
@@ -97,7 +98,7 @@ const render = () => {
 
   const cwd = d.workspace?.current_dir || d.cwd || process.cwd();
 
-  const home = process.env.USERPROFILE || process.env.HOME || '';
+  const home = homedir();
   let dir = cwd;
   if (home && dir.toLowerCase().startsWith(home.toLowerCase())) dir = '~' + dir.slice(home.length);
   dir = dir.split('\\').join('/');

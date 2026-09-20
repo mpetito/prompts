@@ -9,10 +9,14 @@ lived in two skills and drifted.
 
 ## Invocation
 
-All scripts wrap `gh api` / `gh api graphql` and require only an authenticated `gh` CLI. They
-auto-resolve `owner/repo` and the PR number from the current branch when `-Repo` / `-Pr` are
-omitted. Resolve the path relative to the calling skill's own folder (`../pr-scripts/`), never
-relative to a repository root — the skills tree is often symlinked into a user-level location.
+All scripts wrap `gh api` / `gh api graphql` and require PowerShell 7 and an authenticated `gh`
+CLI on Windows, Linux, or macOS. They auto-resolve `owner/repo` and the PR number from the
+current branch when `-Repo` / `-Pr` are omitted. Resolve the path relative to the calling
+skill's own folder (`../pr-scripts/`), never relative to a repository root — the skills tree
+is often symlinked into a user-level location.
+
+From Bash, run `pwsh -NoProfile -File <path-to-script.ps1> <arguments>`. Inside PowerShell,
+invoke the scripts directly as shown below.
 
 ```powershell
 # Feedback: unresolved threads + full review bodies + failing CI + code-scanning alerts
@@ -61,7 +65,7 @@ a heading-specific parser. If a suppressed section is only available in the UI, 
 there or disclose the gap. Use the evidence and complexity triage in
 [pr-feedback](../pr-feedback/SKILL.md) for both visible and suppressed claims.
 
-**Fallback**: if the scripts are unavailable (e.g. a non-Windows agent), use GitHub MCP PR tools
+**Fallback**: if PowerShell or the scripts are unavailable, use GitHub MCP PR tools
 if configured (`pull_request_read`, `reply_to_pull_request_comment` or its consolidated
 successor, `resolve_pull_request_review_thread`), or issue the same GraphQL via `gh api graphql`
 directly.
