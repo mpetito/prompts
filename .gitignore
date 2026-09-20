@@ -1,2 +1,5 @@
 # Per-project subagent memory written at runtime
 .claude/agent-memory/
+
+# Handoff request/response payloads written at runtime
+.herdr-handoff/
