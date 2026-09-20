@@ -1,6 +1,6 @@
 ---
 name: commit
-description: "Validate, commit with conventional messages, push, and open or update a PR. Use when committing changes, creating or updating a pull request, or finalizing work; covers lint/test validation, feature-branch naming (Envative `users/<user>/…`), ADO `AB#` linking, and time logging."
+description: "Validate, commit with conventional messages, push, and open or update a PR. Use when committing changes, creating or updating a pull request, or finalizing work; honors a project CONTRIBUTING guide when present, and covers lint/test validation, feature-branch naming (Envative `users/<user>/…`), ADO `AB#` linking, and time logging."
 # Claude Code only; other hosts ignore these keys.
 model: sonnet
 effort: low
@@ -20,14 +20,34 @@ Validate, commit with conventional messages, and submit pull requests.
 
 ## Workflow
 
-### 1. Assess State
+### 1. Read Project Conventions
+
+Look for a contributing guide before doing anything else:
+
+```bash
+ls CONTRIBUTING.md .github/CONTRIBUTING.md docs/CONTRIBUTING.md 2>/dev/null
+```
+
+Read the first one found. **A contributing guide outranks every default in this skill**, and
+outranks a memory or a habit from a past session. Where it is silent, the defaults below apply.
+
+| If the guide says                     | Then                                                             |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| commit directly to `main`             | skip step 4 entirely — no branch, no PR (skip step 7 as well)    |
+| a different branch pattern            | use it instead of the table in step 4                            |
+| specific validation commands          | run those in step 3 rather than inferring them                   |
+| no PR, or no draft PR                 | adjust step 7 accordingly                                        |
+
+State which source you followed in the final output, so the choice is visible and correctable.
+
+### 2. Assess State
 
 - Run `git branch --show-current` and `git status`
 - Review the working-tree diff (`git diff`) and staged diff (`git diff --staged`) for the complete changeset — in VS Code, `#changes` gives the same view
 - Note staged vs unstaged files
 - Check if on protected branch
 
-### 2. Discover & Run Validation
+### 3. Discover & Run Validation
 
 Discover available commands (`npm run` to list scripts), then execute:
 
@@ -39,9 +59,10 @@ Discover available commands (`npm run` to list scripts), then execute:
 
 Check IDE diagnostics if available (`#problems` in VS Code, the `LSP` tool in Claude Code) for issues the scripts above do not surface. **Stop and report if validation fails.**
 
-### 3. Ensure Feature Branch
+### 4. Ensure Feature Branch
 
-- Never commit directly to `main`, `master`, `develop`
+- Never commit directly to `main`, `master`, `develop` — **unless** the contributing guide
+  from step 1 says to, in which case skip this step and step 7
 - Branch types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 
 **Branch naming convention:**
@@ -54,7 +75,7 @@ Check IDE diagnostics if available (`#problems` in VS Code, the `LSP` tool in Cl
 
 Detect Envative org via `git remote -v` (look for `envative` or `Envative` in remote URL).
 
-### 4. Stage & Commit
+### 5. Stage & Commit
 
 **Staging strategy:**
 
@@ -70,7 +91,7 @@ Detect Envative org via `git remote -v` (look for `envative` or `Envative` in re
 Types: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`
 Description: lowercase, imperative mood, <72 chars
 
-### 4b. Extract Work Item IDs (Azure DevOps)
+### 5b. Extract Work Item IDs (Azure DevOps)
 
 If Azure DevOps work item IDs are available, collect them for PR linking:
 
@@ -96,13 +117,13 @@ If Azure DevOps work item IDs are available, collect them for PR linking:
 Fixes AB#123, Fixes AB#456
 ```
 
-### 5. Push
+### 6. Push
 
 ```bash
 git push -u origin <branch-name>
 ```
 
-### 6. Create/Update PR
+### 7. Create/Update PR
 
 **Invoke the [`pr-authoring`](../pr-authoring/SKILL.md) skill (Skill tool) before writing the body**, then author against it. It owns the section menu, the length targets, and the reference placement — never write a PR description from memory.
 
@@ -122,9 +143,9 @@ No summary of its rules appears here on purpose: a summary reads as self-contain
 - Update title/body if significant changes
 - Ensure `AB#<id>` references are present in PR body if work items are known
 
-### 7. Log Time (follow-up, non-blocking)
+### 8. Log Time (follow-up, non-blocking)
 
-After the PR is created or updated, invoke the [`tt`](../tt/SKILL.md) skill, passing the changeset, branch name, commit subject(s), and PR title/number as context. It resolves the ADO work item and logs estimated time (`log_time`, never timers; create or update, never delete). Do not block the commit/PR on time logging.
+After the PR is created or updated — or, where the project skips PRs, after the push — invoke the [`tt`](../tt/SKILL.md) skill, passing the changeset, branch name, commit subject(s), and PR title/number as context. It resolves the ADO work item and logs estimated time (`log_time`, never timers; create or update, never delete). Do not block the commit/PR on time logging.
 
 ## Commit Examples
 
@@ -138,6 +159,7 @@ refactor: extract validation logic into shared utility
 
 Provide confirmation:
 
+- **Conventions**: which guide was followed, or "skill defaults" when none was found
 - **Branch**: final branch name
 - **Commit**: message and hash
 - **PR**: URL and status
