@@ -1,0 +1,8 @@
+# Keep scripts and documentation consistent across Windows and Unix checkouts.
+* text=auto
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+*.js text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

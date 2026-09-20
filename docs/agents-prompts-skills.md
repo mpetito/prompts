@@ -145,7 +145,15 @@ instructions/                         # User-level global instructions
 fragments/                            # Reusable fragments such as snyk-upgrade-review
 ```
 
-The PowerShell setup script is `setup-skills-link.ps1`. It links each child of `skills/` into `~/.copilot/skills/` (Copilot), `~/.claude/skills/` (Claude Code), `~/.codex/skills/` (Codex), and the Codex-documented `~/.agents/skills/` cross-tool location. Linking per child rather than the whole folder keeps each target a real directory, so entries a tool manages itself — Codex's `.system` skills, Claude Code's `synced/` bundles — stay in that tool's folder instead of landing in this repository, where every other tool would then publish them in its own skill catalog. Finally, it maps `agents/` to `~/.claude/agents/` and `instructions/CLAUDE.md` to `~/.claude/CLAUDE.md`. The last two are not linked into the other tools: their agent and instruction formats are incompatible, so a shared location would be read as malformed rather than ignored.
+The PowerShell 7.4+ setup script is `setup-skills-link.ps1`, shared across Windows, Ubuntu, and
+macOS. It detects clients on PATH by default; `-Tools codex,claude,opencode,copilot` selects them
+explicitly and can prepare files before their CLIs are installed. It links each child of
+`skills/` into `~/.agents/skills/` for Codex/OpenCode, `~/.claude/skills/` for Claude, and
+`~/.copilot/skills/` for Copilot. Per-child links leave each destination as a real directory,
+so client-managed content stays local. Repo-owned legacy Codex links are migrated only once
+replacement shared links exist. Claude alone receives the agents, global instructions, and
+status-line script. Conflicts are preserved unless explicitly replaced with backups.
+See [setup and verification](../README.md#setup) for previews, environment overrides, and commands.
 
 Codex custom agents are standalone TOML files under `~/.codex/agents/` (or `.codex/agents/` at project scope). Claude Code's `agents/*.md` files cannot be reused there unchanged; Codex equivalents need a separate TOML source tree before they can be symlinked safely.
 

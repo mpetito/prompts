@@ -47,6 +47,9 @@ function New-WordApp {
         # Leave revision marks on for the session. Individual scripts set this per-document.
         [switch]$Visible
     )
+    if (-not $IsWindows) {
+        throw 'Word COM automation requires Windows with desktop Microsoft Word. These helpers cannot run on Linux or macOS.'
+    }
     $word = New-Object -ComObject Word.Application
     $word.Visible = [bool]$Visible
     $word.DisplayAlerts = $script:WdConst.wdAlertsNone

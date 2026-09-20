@@ -18,12 +18,13 @@ entry without the font shows a row of boxes.
 
 ### 1. Link the script
 
-`setup-skills-link.ps1` in the repository root links this file to `~/.claude/statusline.js`, the
-same single-file link it already makes for `instructions/CLAUDE.md`. Nothing else to do here.
+When Claude is selected, `setup-skills-link.ps1` in the repository root links this file to
+`~/.claude/statusline.js`, alongside the link for `instructions/CLAUDE.md`.
 
 ### 2. Point `settings.json` at it
 
-Claude Code does not run the script until `~/.claude/settings.json` names it:
+Install Node.js and Git on the machine. Claude Code does not run the script until
+`~/.claude/settings.json` names it:
 
 ```json
 {
@@ -34,6 +35,15 @@ Claude Code does not run the script until `~/.claude/settings.json` names it:
   }
 }
 ```
+
+On Ubuntu, use the machine's actual path instead:
+
+```json
+"command": "node \"/home/<you>/.claude/statusline.js\""
+```
+
+If `CLAUDE_CONFIG_DIR` is set, use that directory for both `settings.json` and the linked script.
+Keep the path quoted, especially if the home directory contains spaces.
 
 `padding: 0` lets the line start at the left edge. `type: "command"` is the only documented type.
 
@@ -46,8 +56,13 @@ new machine.
 Every icon is a [Nerd Font](https://www.nerdfonts.com/) glyph. Without one the line renders as a
 row of empty boxes — the script is working, the font simply has no glyph at those codepoints.
 
-Microsoft's own Cascadia Code release ships the patched `NF` variants, so no third-party build is
-needed. It installs **per-user with no admin rights**: fonts go in `%LOCALAPPDATA%\Microsoft\Windows\Fonts`
+On Ubuntu, install the Nerd Font's `.ttf` files under `~/.local/share/fonts`, run
+`fc-cache -f`, and select that font in your terminal preferences. For SSH or WSL, configure
+the font in the terminal application displaying the session.
+
+The following font installation commands are **Windows only**. Microsoft's own Cascadia Code
+release ships the patched `NF` variants, so no third-party build is needed. It installs
+**per-user with no admin rights**: fonts go in `%LOCALAPPDATA%\Microsoft\Windows\Fonts`
 and register under `HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts`.
 
 ```powershell
@@ -109,7 +124,7 @@ fully closed and reopened the icons keep rendering as boxes even though everythi
 correctly. Verify with:
 
 ```powershell
-'{}' | node "$env:USERPROFILE\.claude\statusline.js"
+'{}' | node (Join-Path $HOME ".claude/statusline.js")
 ```
 
 (PowerShell has no `<` input redirection — piping is how you hand it stdin.) That prints the cwd

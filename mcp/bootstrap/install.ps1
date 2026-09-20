@@ -1,118 +1,75 @@
-[CmdletBinding()]
+#Requires -Version 7.4
+[CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$AwsRegion = "us-east-1",
-    [switch]$SkipCredentialMigration
+    [string[]]$Tools,
+    [string]$AwsRegion = 'us-east-1',
+    [switch]$SkipCredentialMigration,
+    [switch]$SkipGatewaySetup
 )
-
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot '../../scripts/Setup.Common.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'Mcp.Common.psm1') -Force
+$paths = Get-SetupPaths
 $mcpRoot = Split-Path -Parent $PSScriptRoot
+$selected = @(Select-SetupTools -Tools $Tools -Supported @('codex', 'claude', 'opencode') | Where-Object {
+    if ((Get-Command $_ -ErrorAction SilentlyContinue) -or $WhatIfPreference) { $true }
+    else { Write-Warning "Skipping $_ MCP registration: CLI is not installed."; $false }
+})
+if (-not $selected) { Write-Host 'No installed MCP clients selected. Install a client and rerun setup.'; return }
 
-function Set-DockerMcpSecret {
-    param(
-        [Parameter(Mandatory)] [string]$Name,
-        [Parameter(Mandatory)] [string]$Value
-    )
-
-    $process = [System.Diagnostics.Process]::new()
-    $process.StartInfo = [System.Diagnostics.ProcessStartInfo]@{
-        FileName = "docker"
-        Arguments = "mcp secret set $Name"
-        UseShellExecute = $false
-        RedirectStandardInput = $true
-    }
-    $null = $process.Start()
-    $process.StandardInput.Write($Value)
-    $process.StandardInput.Close()
-    $process.WaitForExit()
-    if ($process.ExitCode -ne 0) {
-        throw "Failed to store Docker MCP secret '$Name'."
+# Validate selected JSON configs before Docker changes, without displaying their contents.
+if ('claude' -in $selected -or -not $SkipCredentialMigration) { $null = Read-McpJson $paths.ClaudeConfig }
+if ('opencode' -in $selected) { Set-OpenCodeMcpConfig -Path $paths.OpenCodeConfig -ValidateOnly }
+if (-not $WhatIfPreference) { Assert-McpPrerequisites }
+if ($SkipGatewaySetup -and -not $WhatIfPreference) {
+    foreach ($profileName in @('core-dev', 'envative')) {
+        Invoke-SetupCommand docker @('mcp', 'profile', 'show', $profileName, '--format', 'yaml') | Out-Null
     }
 }
 
-function Set-CodexMcpStartupTimeout {
-    param(
-        [Parameter(Mandatory)] [string]$ServerName,
-        [Parameter(Mandatory)] [int]$Seconds
-    )
-
-    $configPath = Join-Path $env:USERPROFILE ".codex\config.toml"
-    $config = Get-Content -Raw -LiteralPath $configPath
-    $sectionPattern = "(?ms)(^\[mcp_servers\.$([regex]::Escape($ServerName))\]\s*\r?\n)(.*?)(?=^\[|\z)"
-    $section = [regex]::Match($config, $sectionPattern)
-    if (-not $section.Success) {
-        throw "Codex MCP server '$ServerName' was not written to '$configPath'."
+if (-not $SkipGatewaySetup -and $PSCmdlet.ShouldProcess('Docker MCP', 'Build images and import core-dev and envative profiles')) {
+    foreach ($image in @(@('azure-devops', '2.9.0'), @('material-ui', '0.1.4'), @('envative-kb', '1.6.0'))) {
+        Invoke-SetupCommand docker @('build', '--tag', "local/mcp-$($image[0]):$($image[1])", (Join-Path $mcpRoot "images/$($image[0])"))
     }
-
-    $body = $section.Groups[2].Value
-    if ($body -match "(?m)^startup_timeout_sec\s*=") {
-        $body = [regex]::Replace($body, "(?m)^startup_timeout_sec\s*=.*$", "startup_timeout_sec = $Seconds")
-    } else {
-        $body += "startup_timeout_sec = $Seconds`r`n"
+    Invoke-SetupCommand docker @('mcp', 'feature', 'disable', 'dynamic-tools')
+    Invoke-SetupCommand docker @('mcp', 'feature', 'enable', 'tool-name-prefix')
+    foreach ($profileName in @('core-dev', 'envative')) {
+        Invoke-SetupCommand docker @('mcp', 'profile', 'import', (Join-Path $mcpRoot "profiles/$profileName.yaml"))
     }
-    $config = $config.Remove($section.Groups[2].Index, $section.Groups[2].Length).Insert($section.Groups[2].Index, $body)
-    Set-Content -LiteralPath $configPath -Value $config -NoNewline
+    Invoke-SetupCommand docker @('mcp', 'profile', 'config', 'envative', '--set', "envative-kb.aws_region=$AwsRegion")
+    # 'catalog create' upserts an existing ref in place (Docker MCP Toolkit v0.43.3), so no
+    # remove step is needed. The CLI documents no schema for 'catalog ls'; do not gate on it.
+    foreach ($profileName in @('core-dev', 'envative')) {
+        Invoke-SetupCommand docker @('mcp', 'catalog', 'create', "local/${profileName}:latest", '--from-profile', $profileName, '--title', $profileName)
+    }
 }
-
-docker build --tag local/mcp-azure-devops:2.9.0 (Join-Path $mcpRoot "images\azure-devops")
-docker build --tag local/mcp-material-ui:0.1.4 (Join-Path $mcpRoot "images\material-ui")
-docker build --tag local/mcp-envative-kb:1.6.0 (Join-Path $mcpRoot "images\envative-kb")
-
-docker mcp feature disable dynamic-tools
-docker mcp feature enable tool-name-prefix
-docker mcp profile import (Join-Path $mcpRoot "profiles\core-dev.yaml")
-docker mcp profile import (Join-Path $mcpRoot "profiles\envative.yaml")
-docker mcp profile config envative `
-    --set "envative-kb.aws_region=$AwsRegion"
-docker mcp catalog remove local/core-dev:latest 2>$null
-docker mcp catalog remove local/envative:latest 2>$null
-docker mcp catalog create local/core-dev:latest --from-profile core-dev --title core-dev
-docker mcp catalog create local/envative:latest --from-profile envative --title envative
-
-if (-not $SkipCredentialMigration) {
-    $azureDevOpsPat = $env:AZURE_DEVOPS_PAT
-    if (-not $azureDevOpsPat) {
-        $azureDevOpsPat = [Environment]::GetEnvironmentVariable("AZURE_DEVOPS_PAT", "User")
+if (-not $SkipCredentialMigration -and $PSCmdlet.ShouldProcess('Docker MCP secret store', 'Migrate available PAT, AgentMail, and Firecrawl credentials')) {
+    Copy-McpCredentials -ClaudeConfigPath $paths.ClaudeConfig
+}
+foreach ($tool in $selected) {
+    if ($tool -eq 'opencode') {
+        Set-OpenCodeMcpConfig -Path $paths.OpenCodeConfig -WhatIf:$WhatIfPreference
+        continue
     }
-    if ($azureDevOpsPat) {
-        Set-DockerMcpSecret -Name azure-devops.pat -Value $azureDevOpsPat
-    } else {
-        Write-Warning "AZURE_DEVOPS_PAT is unavailable. Store it with 'docker mcp secret set azure-devops.pat'."
-    }
-
-    $claudeConfigPath = Join-Path $env:USERPROFILE ".claude.json"
-    if (Test-Path -LiteralPath $claudeConfigPath) {
-        $claudeConfig = Get-Content -Raw -LiteralPath $claudeConfigPath | ConvertFrom-Json
-
-        $agentMailUrl = $claudeConfig.mcpServers.'agent-mail'.url
-        if ($agentMailUrl) {
-            $apiKeyPair = ([uri]$agentMailUrl).Query.TrimStart('?').Split('&') |
-                Where-Object { $_.StartsWith('apiKey=') } |
-                Select-Object -First 1
-            if ($apiKeyPair) {
-                $agentMailKey = [uri]::UnescapeDataString($apiKeyPair.Split('=', 2)[1])
-                Set-DockerMcpSecret -Name agentmail.api_key -Value $agentMailKey
+    if (-not $PSCmdlet.ShouldProcess($tool, 'Back up configuration and register both Docker MCP gateways')) { continue }
+    $configPath = if ($tool -eq 'codex') { Join-Path $paths.CodexRoot 'config.toml' } else { $paths.ClaudeConfig }
+    Backup-McpConfig $configPath
+    $claudeConfig = if ($tool -eq 'claude') { Read-McpJson $configPath } else { @{} }
+    foreach ($entry in @(@('MCP_DOCKER_CORE', 'core-dev'), @('MCP_DOCKER_ENVATIVE', 'envative'))) {
+        $name, $profileName = $entry
+        if ($tool -eq 'claude') {
+            if ($claudeConfig.mcpServers -and $claudeConfig.mcpServers.Contains($name)) {
+                Invoke-SetupCommand claude @('mcp', 'remove', '--scope', 'user', $name)
             }
-        }
-
-        $firecrawlAuthorization = $claudeConfig.mcpServers.firecrawl.headers.Authorization
-        if ($firecrawlAuthorization) {
-            $firecrawlKey = $firecrawlAuthorization -replace '^Bearer\s+', ''
-            Set-DockerMcpSecret -Name firecrawl.api_key -Value $firecrawlKey
+            Invoke-SetupCommand claude @('mcp', 'add', '--scope', 'user', $name, '--', 'docker', 'mcp', 'gateway', 'run', '--profile', $profileName)
+        } else {
+            Invoke-SetupCommand codex @('mcp', 'add', $name, '--', 'docker', 'mcp', 'gateway', 'run', '--profile', $profileName)
+            Set-CodexMcpStartupTimeout -ConfigPath $configPath -ServerName $name
         }
     }
-
 }
-
-claude mcp remove --scope user MCP_DOCKER_CORE 2>$null
-claude mcp remove --scope user MCP_DOCKER_ENVATIVE 2>$null
-codex mcp remove MCP_DOCKER_CORE 2>$null
-codex mcp remove MCP_DOCKER_ENVATIVE 2>$null
-claude mcp add --scope user MCP_DOCKER_CORE -- docker mcp gateway run --profile core-dev
-claude mcp add --scope user MCP_DOCKER_ENVATIVE -- docker mcp gateway run --profile envative
-codex mcp add MCP_DOCKER_CORE -- docker mcp gateway run --profile core-dev
-codex mcp add MCP_DOCKER_ENVATIVE -- docker mcp gateway run --profile envative
-Set-CodexMcpStartupTimeout -ServerName MCP_DOCKER_CORE -Seconds 30
-Set-CodexMcpStartupTimeout -ServerName MCP_DOCKER_ENVATIVE -Seconds 30
-
-Write-Host "Installed core-dev and envative profiles for Claude Code and Codex."
-Write-Host "Authorize hosted services with 'docker mcp oauth authorize <server> --open-browser'."
+if ($WhatIfPreference) { Write-Host 'MCP preview complete. No commands were run and no files were changed.' }
+else {
+    Write-Host "Registered Docker MCP gateways for: $($selected -join ', ')."
+    Write-Host "Authorize hosted services with 'docker mcp oauth authorize <server> --open-browser'."
+}

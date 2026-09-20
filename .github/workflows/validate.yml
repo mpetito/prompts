@@ -1,0 +1,39 @@
+name: Validate scripts
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  scripts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PowerShell syntax
+        run: |
+          $errorsFound = @()
+          Get-ChildItem -Recurse -File -Include *.ps1,*.psm1 | ForEach-Object {
+            $parseErrors = $null
+            $null = [Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$parseErrors)
+            $errorsFound += $parseErrors
+          }
+          if ($errorsFound) { $errorsFound | Format-List; throw 'PowerShell syntax errors found.' }
+      - name: Check skill installation and migration
+        run: ./tests/Setup.Tests.ps1
+      - name: Check MCP installation with mocked CLIs
+        run: ./tests/Mcp.Tests.ps1
+      - name: Check existing PR feedback helpers
+        run: ./skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1
+      - name: Check status line
+        run: |
+          node --check statusline/statusline.js
+          if ($LASTEXITCODE -ne 0) { throw 'Status line syntax check failed.' }
+          '{}' | node statusline/statusline.js
+          if ($LASTEXITCODE -ne 0) { throw 'Status line smoke check failed.' }
