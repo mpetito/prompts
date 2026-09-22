@@ -62,10 +62,11 @@ where you use it. See [OpenCode config](https://opencode.ai/docs/config/) and
 
 `CODEX_HOME` and `CLAUDE_CONFIG_DIR` are honored. Skills and MCP share portable path resolution;
 no Windows user-profile paths are embedded in the scripts. Credentials can come from
-`AZURE_DEVOPS_PAT`, `AGENTMAIL_API_KEY`, and `FIRECRAWL_API_KEY` in the process environment.
-Credential migration also checks existing Claude AgentMail/Firecrawl settings and, on Windows
-only, the persisted user-level `AZURE_DEVOPS_PAT`. Secret values are sent through stdin, never
-command-line arguments. AWS credentials and OAuth remain machine-local setup steps.
+`AZURE_DEVOPS_PAT`, `SONAR_TOKEN`, `AGENTMAIL_API_KEY`, and `FIRECRAWL_API_KEY` in the process
+environment. Credential migration also checks existing Claude AgentMail/Firecrawl settings and,
+on Windows only, the persisted user-level `AZURE_DEVOPS_PAT` and `SONAR_TOKEN`. Secret values
+are sent through stdin, never command-line arguments. AWS credentials and OAuth remain
+machine-local setup steps.
 
 After installation, authorize hosted servers as needed:
 
@@ -84,6 +85,16 @@ No general-purpose AWS tooling server runs in either profile. Docker Gateway ref
 Azure DevOps uses the local server's headless `envvar` authentication mode. The installer copies `AZURE_DEVOPS_PAT` into Docker's secret store as `azure-devops.pat` and injects it into the container as `ADO_MCP_AUTH_TOKEN`; the PAT itself is never committed.
 
 The Azure DevOps remote server is preferred, but Microsoft Entra currently rejects Docker Gateway's dynamic client-registration discovery. The pinned local server remains in use until the remote endpoint supports DCR or CIMD for third-party clients.
+
+SonarQube runs the upstream `sonarsource/sonarqube-mcp` image pinned by digest rather than the
+Docker catalog's `mcp/sonarqube`, whose only tag was last pushed months behind the pinned build
+and therefore misses both feature and security releases. It is scoped to
+`SONARQUBE_TOOLSETS=issues`, which exposes five tools instead of eighteen; the `projects`
+toolset is always on because other tools need project keys. The hosted `api.sonarcloud.io/mcp`
+endpoint is a supported alternative but currently serves an older build whose
+`change_sonar_issue_status` takes no `comment` parameter. Issue triage is limited to `accept`,
+`falsepositive`, and `reopen` on one issue per call; assignment, severity changes, and bulk
+edits are not available through MCP and need the SonarQube web API.
 
 Machine-specific values can be supplied to the installer:
 
