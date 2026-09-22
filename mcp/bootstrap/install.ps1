@@ -43,7 +43,7 @@ if (-not $SkipGatewaySetup -and $PSCmdlet.ShouldProcess('Docker MCP', 'Build ima
         Invoke-SetupCommand docker @('mcp', 'catalog', 'create', "local/${profileName}:latest", '--from-profile', $profileName, '--title', $profileName)
     }
 }
-if (-not $SkipCredentialMigration -and $PSCmdlet.ShouldProcess('Docker MCP secret store', 'Migrate available PAT, AgentMail, and Firecrawl credentials')) {
+if (-not $SkipCredentialMigration -and $PSCmdlet.ShouldProcess('Docker MCP secret store', 'Migrate available PAT, SonarQube, AgentMail, and Firecrawl credentials')) {
     Copy-McpCredentials -ClaudeConfigPath $paths.ClaudeConfig
 }
 foreach ($tool in $selected) {

@@ -64,6 +64,28 @@ servers:
                 type: string
             required:
               - aws_region
+  - type: image
+    secrets: default
+    image: sonarsource/sonarqube-mcp@sha256:21bb7bf785a8c9cbe19553f6957d83ef45138926bbb15ca9e1fc4895e5026b6f
+    snapshot:
+      server:
+        name: sonarqube
+        type: server
+        description: Search and triage SonarQube Cloud issues for Envative projects.
+        image: sonarsource/sonarqube-mcp@sha256:21bb7bf785a8c9cbe19553f6957d83ef45138926bbb15ca9e1fc4895e5026b6f
+        remote: {}
+        secrets:
+          - name: sonarqube.token
+            env: SONARQUBE_TOKEN
+        env:
+          - name: SONARQUBE_ORG
+            value: envative-ghe
+          # Both profiles load into every session, so expose only the five triage tools, not all 18.
+          - name: SONARQUBE_TOOLSETS
+            value: issues
+        allowHosts:
+          - sonarcloud.io:443
+          - api.sonarcloud.io:443
 secrets:
   default:
     provider: docker-desktop-store

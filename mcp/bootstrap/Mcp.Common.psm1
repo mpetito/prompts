@@ -105,6 +105,10 @@ function Copy-McpCredentials {
     if (-not $pat -and $IsWindows) { $pat = [Environment]::GetEnvironmentVariable('AZURE_DEVOPS_PAT', 'User') }
     if ($pat) { Set-DockerMcpSecret 'azure-devops.pat' $pat }
     else { Write-Warning "AZURE_DEVOPS_PAT is unavailable. Use 'docker mcp secret set azure-devops.pat'." }
+    $sonarToken = $env:SONAR_TOKEN
+    if (-not $sonarToken -and $IsWindows) { $sonarToken = [Environment]::GetEnvironmentVariable('SONAR_TOKEN', 'User') }
+    if ($sonarToken) { Set-DockerMcpSecret 'sonarqube.token' $sonarToken }
+    else { Write-Warning "SONAR_TOKEN is unavailable. Use 'docker mcp secret set sonarqube.token'." }
     $config = Read-McpJson $ClaudeConfigPath
     $url = $config.mcpServers.'agent-mail'.url
     $agentMailKey = $env:AGENTMAIL_API_KEY
