@@ -84,7 +84,9 @@ function Set-DockerMcpSecret {
     param([string]$Name, [string]$Value)
     # Keep values off command lines and out of error output.
     $process = [Diagnostics.Process]::new()
-    $process.StartInfo.FileName = (Get-Command docker -CommandType Application).Source
+    # Docker Desktop ships both docker.exe and an extension-less docker shim, so this resolves
+    # to more than one command; an array here would silently become a space-joined FileName.
+    $process.StartInfo.FileName = @(Get-Command docker -CommandType Application)[0].Source
     $process.StartInfo.UseShellExecute = $false
     $process.StartInfo.RedirectStandardInput = $true
     foreach ($argument in @('mcp', 'secret', 'set', $Name)) { $process.StartInfo.ArgumentList.Add($argument) }
