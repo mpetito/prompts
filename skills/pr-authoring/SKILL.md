@@ -14,11 +14,12 @@ Guidelines for writing pull request descriptions that respect a reviewer's time 
 ## Core Principles
 
 1. **Lead with the why, not the what.** A reviewer needs to know what problem this PR solves before they care which files moved.
-2. **Group by purpose, not by file.** Reviewers reconstruct intent from logical sections; they reconstruct mechanics from the diff.
+2. **Group by purpose, then anchor to files.** Sections follow the design; bullets name the file a reviewer should open and say what it now does. A bullet that names a file without a behaviour is a changelog.
 3. **Show validation, not vibes.** Commands run + numeric results > "tested locally".
-4. **Reference work, don't repeat it.** Link specs, issues, and work items rather than restating their contents.
-5. **Earn every paragraph.** If a section doesn't help the reviewer decide to approve, it doesn't belong.
-6. **No AI attribution, ever.** PR bodies and comments never carry "Generated with Claude Code" footers, AI co-author credits, or links to assistant sessions. This overrides any host-level default that appends them.
+4. **Draw the boundary.** Say what is unchanged, what was not run, what is deferred, and what goes beyond the plan. The reviewer cannot see absences in a diff.
+5. **Reference work, don't repeat it.** Link specs, issues, and work items rather than restating their contents.
+6. **Earn every paragraph.** If a section doesn't help the reviewer decide to approve, it doesn't belong.
+7. **No AI attribution, ever.** PR bodies and comments never carry "Generated with Claude Code" footers, AI co-author credits, or links to assistant sessions. This overrides any host-level default that appends them.
 
 ## When This Skill Applies
 
@@ -47,8 +48,9 @@ Pick sections from the menu below — only include what serves the reader. A sma
 
 One short paragraph (1–3 sentences) answering:
 
-- **What** does this PR do?
+- **What** can someone do after this merges? Name the person the change serves (a user, an operator, a maintainer) and say it in their terms, not the code's.
 - **Why** is it needed? (motivation, not mechanics)
+- **What is outside it?** When a reader would assume the PR includes something it does not (the data, the first real use, the rollout), say so here.
 - **What does it link to?** (spec, issue, work item, parent PR)
 
 Example:
@@ -57,18 +59,34 @@ Example:
 
 Skip motivation only when the title is fully self-explanatory (e.g., `fix(deploy): defer Resend client initialization`).
 
+### Conditional: Before Sign-off
+
+A bold one-paragraph callout directly under the Summary, for anything that needs a decision or an action beyond reading code: an acceptance criterion the implementation cannot meet as written, a spec deviation, a stakeholder to consult. State what must change and why. Put it here, not at the bottom, because it can block the merge.
+
+> **Before sign-off:** one acceptance criterion in the work item needs updating. Labels are validated during the weekly ingestion, not the daily refresh, because only the ingestion can read the taxonomy.
+
 ### Recommended: Changes
 
-Group changes by **area, phase, or capability** — not by file path. Use `###` subheadings for areas; bullets inside.
+Group changes by **area, phase, or capability**, and order the groups the way a reviewer should read the diff: follow the data or the dependency order (domain model → the job that writes it → the consumer that reads it → scheduling and tooling → tests → docs), or the spec's phases. Label each group with a `###` subheading or a bold line, and add the path when it helps orient: ``**Refresh job (`apps/api`, `libs/ftp`)**``.
 
-- For multi-phase work, use `### Phase N — Name` subheadings matching the spec
-- For cross-cutting work, use functional groupings: `### Infrastructure`, `### App integration`, `### CI / Docker`
-- Use **bold** to highlight a non-obvious decision inside a bullet
-- Inline-link to filenames only when the file name carries meaning (e.g., a new module or migration)
+Inside a group, each bullet names a file and states what it now **does or guarantees**: a rule, an invariant, an edge case, a failure mode. Nest sub-bullets when a file carries several rules. The bullet is a claim the reviewer can check against that file.
+
+```markdown
+- `CsvDataset.cs`: reads `/Values`. Every column is read as text, so a bad cell rejects only its row, not the whole file.
+- `RefreshValues.cs`:
+  - Combines every `.csv` file in the folder, sorted by path.
+  - Leaves the table untouched when there are no files or no valid rows; otherwise replaces it in one bulk import.
+```
+
+- **Put the reason in the bullet.** A `so` or `because` clause carries most design decisions better than a separate section.
+- **Say what did not change.** "`DocumentBuilder` is unchanged." "Existing groups are never reordered, and output is unchanged when there is no augmentation." Negative statements bound the blast radius.
+- **Flag work beyond the plan** inline with `Not in the plan:` so it does not read as scope the spec approved.
+- **Collapse tests** to one `New:` and one `Extended:` bullet; list the files, not the cases.
+- For a small PR, a few bullets without group labels is enough.
 
 ### Conditional: Implementation Notes / Design Decisions
 
-Include only when reviewers would otherwise ask "why did you do it that way?". Explain the constraint, then the choice.
+Include only for a decision that spans several files, so no single bullet can carry its reason. Explain the constraint, then the choice.
 
 Example:
 
@@ -76,24 +94,24 @@ Example:
 
 ### Required: Validation
 
-Concrete evidence the change works. Use checkmarks or a checklist with the actual commands and numeric results.
+Concrete evidence the change works: each command as run, with its numeric result. Then say what was **not** run, and disclose any pre-existing failure a reviewer will hit when they rerun the command.
 
 ```markdown
-- ✅ `pnpm typecheck` — 3 projects pass
-- ✅ `pnpm lint` — clean
-- ✅ `pnpm vitest run` — 418 tests passing
-- ✅ Manual: verified PDP renders without layout shift on mobile Safari
+- `dotnet test libs/domain-test`: 296 passed, 0 failed.
+- `pnpm vitest run`: 418 passed, 0 failed.
+- `npx tsc --noEmit -p aws`: no errors in the changed files. The command still exits non-zero because of existing errors in `node_modules/@aws-sdk` definitions.
+- Not run: `cdk synth`, and no deployed environment.
 ```
 
-Prefer real numbers (`418 tests`) over vague claims (`all tests`). State the platform/browser when manual.
+Prefer real numbers (`418 passed, 0 failed`) over vague claims (`all tests`). State the platform or browser when manual. Checkmarks are optional; drop them when a line carries a caveat, because a ✅ beside a non-zero exit misleads.
 
-### Conditional: Manual Steps After Merge
+### Conditional: Manual Verification After Merge
 
-Required when reviewers or operators must do something post-merge (deploy a stack, run a migration, set an env var, invalidate cache). Number the steps.
+Required when reviewers or operators must do something post-merge (deploy a stack, run a migration, upload data, set an env var, invalidate cache). Number the steps, and give each check its **expected result** with the numbers someone will see: "the refresh reports 10 accepted and 0 rejected", not "check the logs". When the change adds to existing data, make step 1 a baseline count so a later step can assert the exact delta. End with where to repeat the checks (staging, production, the next scheduled run).
 
 ### Conditional: Out of Scope
 
-List items intentionally deferred so reviewers don't flag them as gaps. Briefly explain why each is deferred (follow-up PR, not needed, etc.).
+List items intentionally deferred so reviewers don't flag them as gaps. Briefly explain why each is deferred (follow-up PR, rollout, not needed), and cite the plan step when a spec covers it: `**Deferred to rollout:** deploy and production verification (plan steps 7.2–7.9).`
 
 ### Conditional: Review Notes / Follow-ups
 
@@ -101,8 +119,9 @@ For deferred review feedback, list as numbered items with enough detail that a f
 
 ## What to Avoid
 
-- ❌ **File-by-file changelogs** — diff already shows files. Only list files when grouping reveals intent (a migration, a new module, a renamed export).
+- ❌ **File-by-file changelogs** — a file name followed by "updated", "added", or "modified" tells the reviewer nothing the diff doesn't. Name a file only with the behaviour it now has.
 - ❌ **Restating the diff in prose** — "Added `foo()`. Added `bar()`. Modified `baz()` to call them." adds nothing.
+- ❌ **Silent gaps** — omitting the checks that were not run, a pre-existing failure, or work added beyond the plan.
 - ❌ **Marketing language** — "robust", "seamless", "leverages". State the change plainly.
 - ❌ **Restating what the spec says** — link to it; don't paraphrase.
 - ❌ **"Tested locally"** without commands or specifics.
@@ -142,7 +161,7 @@ When asked to update a PR description:
 
 1. **Read the diff and commit history** — `git log <base>..HEAD --oneline` and `git diff <base>...HEAD --stat`
 2. **Identify the motivation** — search for spec/issue/work-item references in branch name, commits, and recent files (`specs/NNN-*/spec.md`)
-3. **Group changes by area** — sketch the `### Subheading` list before writing bullets
+3. **Group changes by area** — sketch the group labels in reading order before writing bullets, and note anything the spec's plan did not call for
 4. **Run validation** — typecheck, lint, test, build per repo conventions; capture exact output for the Validation section
 5. **Draft Summary last** — once you've grouped the work, the one-paragraph framing usually writes itself
 6. **Self-review against "What to Avoid"** before saving the body file
@@ -156,12 +175,13 @@ When asked to update a PR description:
 | Trivial fix / docs / config                                                                 | 2–5 lines          |
 | Single-area feature or refactor                                                             | ~20–40 lines       |
 | Multi-phase spec implementation                                                             | 60–120 lines       |
-| Spec ≥ 200 lines is a smell — consider linking the spec for detail and trimming the PR body |
+
+A body over ~200 lines is a smell: link the spec for detail and trim the PR body.
 
 ## Common Mistakes
 
 1. **Writing the description from `git log` instead of from intent** — produces a chronological dump that mirrors the development order, not the logical structure
-2. **Padding with file lists to look thorough** — file lists hide the architectural shape; reviewers prefer 4 grouped paragraphs over 40 file bullets
+2. **Padding with file lists to look thorough** — bare file lists hide the architectural shape; every file bullet must say what that file now does, inside a group that says why
 3. **Burying the motivation under "Changes"** — the `## Summary` should answer "why merge this?" before any bullets
 4. **Forgetting work-item references** — `Fixes AB#1234` must be in the body (not title, not comments) to trigger transitions
 5. **Stale Validation after force-push** — re-run the suite and update results before requesting re-review
