@@ -100,7 +100,8 @@ herdr agent prompt "$name" "Read <brief path>. Write your result to <result path
 
 - The timeout is a deadline for your attention, not a failure verdict. When it expires, read the
   pane and re-arm the wait with `herdr agent wait "$name" --timeout <ms>`.
-- On exit, branch on `.result.agent.agent_status` (trap 1 below). `idle` or `done` means the result
+- On exit, branch on `.result.agent.agent_status` (trap 1 below). Claude Code appends an
+  `[exited with code N]` line to the task output, so parse only the first line as JSON. `idle` or `done` means the result
   file is ready to read. `blocked` means read the dialog. An `.error.code` such as
   `agent_prompt_stalled` or `timeout` means inspect before acting (trap 3).
 - **Every prompt gets its own watch**, including follow-ups and fix rounds. The one you forget is the
@@ -263,4 +264,4 @@ Verify with `herdr workspace list` and an `ls` of `~/.herdr/worktrees/`.
 
 Behavior confirmed on Windows 11 with Herdr panes running Claude Code v2.1.x and Codex (`gpt-5.6-sol`). **Copilot, Gemini, and the other supported kinds were not exercised** — treat the harness-specific notes (shell dialect, dialog shapes, ghost text) as verified only for Claude Code and Codex, and re-check them before relying on them for another kind.
 
-*Watching Long Tasks* relies on the documented `--wait` and `agent wait` semantics (`herdr agent prompt --help`). The success output shape and the stderr-only error JSON were checked on Linux with herdr 0.9.1 against a working Codex peer. The run-in-background wake-up is Claude Code's Bash behavior; other hosts need their own background-completion mechanism.
+*Watching Long Tasks* relies on the documented `--wait` and `agent wait` semantics (`herdr agent prompt --help`). Verified end to end on Linux (herdr 0.9.1) with Claude Code coordinating a Codex peer: a prompt sent to an already-working peer woke the coordinator once, with `done`, when both queued tasks finished. The run-in-background wake-up is Claude Code's Bash behavior; other hosts need their own background-completion mechanism.
