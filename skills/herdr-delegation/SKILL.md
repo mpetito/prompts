@@ -72,11 +72,42 @@ the harness only, not a model tier. Include the policy when a peer may delegate 
 4. **Prompt and wait**, then **check the status, not the exit code**:
 
    ```bash
-   herdr agent prompt reviewer "<task>" --wait --timeout 120000 > out.json
+   herdr agent prompt reviewer "<task>" --wait --timeout 120000 > out.json 2>&1
    status=$(jq -r '.result.agent.agent_status // .error.code' out.json)
    ```
 
+   Errors (`timeout`, `agent_prompt_stalled`, `agent_blocked`) are JSON on **stderr** with exit 1,
+   so capture both streams. A task longer than a few minutes belongs in *Watching Long Tasks*.
+
 5. **Collect the result from a file, not the screen.** See *Result Handoff*.
+
+---
+
+## Watching Long Tasks
+
+**A peer never tells you it finished.** An in-process subagent re-invokes its caller on
+completion; a Herdr peer only changes state in its pane. A foreground `--wait` holds your session
+for the whole task and hits the shell tool's timeout, and a prompt sent without one leaves the
+result unread until something makes you look.
+
+Make the wait itself a background task, so its exit wakes you. In Claude Code, run it through
+Bash with `run_in_background: true`. Keep the prompt short and point it at a brief file:
+
+```bash
+herdr agent prompt "$name" "Read <brief path>. Write your result to <result path>, then reply with only that path." \
+  --wait --timeout 5400000 2>&1
+```
+
+- The timeout is a deadline for your attention, not a failure verdict. When it expires, read the
+  pane and re-arm the wait with `herdr agent wait "$name" --timeout <ms>`.
+- On exit, branch on `.result.agent.agent_status` (trap 1 below). `idle` or `done` means the result
+  file is ready to read. `blocked` means read the dialog. An `.error.code` such as
+  `agent_prompt_stalled` or `timeout` means inspect before acting (trap 3).
+- **Every prompt gets its own watch**, including follow-ups and fix rounds. The one you forget is the
+  one that sits finished.
+- **When several agents are running,** sweep every one of them on each wake before replying to the
+  user: the other peers' status, running subagents, and pending result files. Give an idle peer its
+  next queued task.
 
 ---
 
@@ -231,3 +262,5 @@ Verify with `herdr workspace list` and an `ls` of `~/.herdr/worktrees/`.
 ## Verification Status
 
 Behavior confirmed on Windows 11 with Herdr panes running Claude Code v2.1.x and Codex (`gpt-5.6-sol`). **Copilot, Gemini, and the other supported kinds were not exercised** — treat the harness-specific notes (shell dialect, dialog shapes, ghost text) as verified only for Claude Code and Codex, and re-check them before relying on them for another kind.
+
+*Watching Long Tasks* relies on the documented `--wait` and `agent wait` semantics (`herdr agent prompt --help`). The success output shape and the stderr-only error JSON were checked on Linux with herdr 0.9.1 against a working Codex peer. The run-in-background wake-up is Claude Code's Bash behavior; other hosts need their own background-completion mechanism.

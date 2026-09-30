@@ -12,7 +12,9 @@ and return the same [member report](member-prompt.md).
 2. Inside an active Herdr environment, load
    [herdr-delegation](../../herdr-delegation/SKILL.md) and use one Claude peer and one Codex peer.
    Confirm the model on each peer before sending work. Use task-owned peers and file-based
-   results; the `--kind` harness choice alone does not select a model.
+   results; the `--kind` harness choice alone does not select a model. A peer never reports
+   that it finished, so send each member's prompt as a background wait (herdr-delegation,
+   *Watching Long Tasks*). A finished or blocked member then wakes you instead of sitting unread.
 3. Without a suitable native tool or Herdr, use the installed, already-authenticated Claude
    and Codex CLIs in separate processes. Read their installed help before assembling commands:
 
@@ -30,7 +32,8 @@ and return the same [member report](member-prompt.md).
    | Result capture | `--output-format json`; coordinator captures stdout and checks the result/error status | `--output-last-message` for the report; `--json` when event/model metadata is needed |
 
    Pass the prepared packet through stdin or a safely quoted file-based mechanism. Do not
-   interpolate PR text into shell command source. Set a host process deadline, inspect the
+   interpolate PR text into shell command source. Run each member as a host background task so
+   they run in parallel and each exit wakes you. Set a host process deadline, inspect the
    exit status and completion/error result, and keep each output separate. A file existing
    does not prove the review completed. Preserve model metadata when available; otherwise
    distinguish the requested model from an unverified effective model.
