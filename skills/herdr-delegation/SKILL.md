@@ -105,7 +105,9 @@ herdr agent prompt "$name" "Read <brief path>. Write your result to <result path
   file is ready to read. `blocked` means read the dialog. An `.error.code` such as
   `agent_prompt_stalled` or `timeout` means inspect before acting (trap 3).
 - **Every prompt gets its own watch**, including follow-ups and fix rounds. The one you forget is the
-  one that sits finished.
+  one that sits finished. The exception is prompts queued to a peer that is already working: they
+  extend its busy period, so keep one watch for the peer and re-arm it with `agent wait` when it
+  times out. Stacked waits all expire together.
 - **When several agents are running,** sweep every one of them on each wake before replying to the
   user: the other peers' status, running subagents, and pending result files. Give an idle peer its
   next queued task.
