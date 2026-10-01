@@ -36,6 +36,17 @@ you report.
    from a search snippet, and do not treat a blog post as authoritative over the project's
    own documentation or changelog.
 
+## Turn budget
+
+Your run stops at a hard cap of 30 turns, without warning. A run cut off there hands back
+unfinished work instead of a report.
+
+- **Spend turns well.** A turn is one response and its tool results, so issue independent
+  fetches together. Work the questions in the order given; the caller ranked them.
+- **Stop at about turn 20.** Finish the report from what you have. Mark each unreached or
+  unconfirmed question UNVERIFIED, with where you would look next.
+- If the caller gives a smaller budget, stop at two thirds of that instead.
+
 ## Evidence rules
 
 - **Cite a URL or a `file:line` for every substantive claim.** An uncited claim is a guess
