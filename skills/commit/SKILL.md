@@ -12,7 +12,7 @@ Validate, commit with conventional messages, and submit pull requests.
 
 ## Critical Safety Rule
 
-**Never perform destructive operations on any file** except for the temporary PR body file in `.github/`.
+**Never perform destructive operations on any file** except for your own temporary PR body file.
 
 ## Authorship Rule
 
@@ -49,13 +49,31 @@ State which source you followed in the final output, so the choice is visible an
 
 ### 3. Discover & Run Validation
 
-Discover available commands (`npm run` to list scripts), then execute:
+**Build the list from the CI workflow, not from memory.** Read the workflow files
+(`.github/workflows/*.yml`, `azure-pipelines.yml`, or the project's equivalent) and take each
+required job's commands, including:
+
+- **nested packages** with their own manifest or lockfile, which a root `lint` or `test` often
+  skips;
+- **CI's order,** such as a formatter or generator before a check that reads its output, and any
+  cleanup step that runs before a check.
+
+Without a CI config, discover the scripts (`npm run` lists them) and run:
 
 - **Formatting**: `format`, `prettier`, `fmt`
 - **Linting**: `lint`, `eslint`
 - **Type checking**: `typecheck`, `tsc`
 - **Testing**: `test`
 - **Building**: `build`
+
+**Validate exactly what you will commit.** Leave no unrelated edits in files the checks read,
+and stage a formatter's rewrites before committing. If anything changes after validation, run
+the list again.
+
+**Before the first push of a branch,** run each CI job's exact command once in a clean state: a
+fresh clone or worktree at your commit, with dependencies installed the way CI installs them and
+no generated or cached directories carried over. A warm checkout's root dependencies and
+generated files hide failures CI will hit.
 
 Check IDE diagnostics if available (`#problems` in VS Code, the `LSP` tool in Claude Code) for issues the scripts above do not surface. **Stop and report if validation fails.**
 
@@ -90,6 +108,11 @@ Detect Envative org via `git remote -v` (look for `envative` or `Envative` in re
 
 Types: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`
 Description: lowercase, imperative mood, <72 chars
+
+**No closing keywords unless closing is intended.** `close`, `fix` or `resolve` in any form
+before `#N` closes that issue or PR once the commit reaches the default branch: write
+`address review on #175`, not `fix #175's state`. The full rule is in
+[pr-authoring](../pr-authoring/SKILL.md) (*Work Item & Spec References*).
 
 ### 5b. Extract Work Item IDs (Azure DevOps)
 
@@ -131,20 +154,21 @@ No summary of its rules appears here on purpose: a summary reads as self-contain
 
 **If no PR exists:**
 
-- Create `.github/.pr-body.md` with PR description
+- Write the PR description to a body file unique to this branch and agent (pr-authoring's procedure sets the path)
 - **Include `AB#<id>` references** in the body (from branch name, commits, or user input)
 - For completed work: use `Fixes AB#<id>` to auto-transition work item on merge
-- Run: `gh pr create --draft --body-file .github/.pr-body.md`
-- Delete temp file after creation
+- Run: `gh pr create --draft --body-file <body file>`
+- Re-read the live body, then delete the body file
 
 **If PR exists:**
 
 - Append comment with latest changes
-- Update title/body if significant changes
+- Refresh the title and body against the final diff after every push (pr-authoring, *Updating an Existing PR*)
 - Ensure `AB#<id>` references are present in PR body if work items are known
 
 ### 8. Log Time (follow-up, non-blocking)
 
+Only when a time-tracking tool is available in this session; otherwise skip it and say so in the output.
 After the PR is created or updated — or, where the project skips PRs, after the push — invoke the [`tt`](../tt/SKILL.md) skill, passing the changeset, branch name, commit subject(s), and PR title/number as context. It resolves the ADO work item and logs estimated time (`log_time`, never timers; create or update, never delete). Do not block the commit/PR on time logging.
 
 ## Commit Examples
