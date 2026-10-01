@@ -35,6 +35,8 @@ Skills are the single unit of reusable workflow guidance in this repository: the
 | `word-doc-editing`        | `/word-doc-editing`        | Edit Word .docx files via Word COM automation: tracked changes, structural ops, verification    |
 | `firecrawl`               | `/firecrawl`               | Search, scrape, crawl, map, and extract from the live web; developer and research indexes       |
 | `herdr-delegation`        | `/herdr-delegation`        | Coordinate agents across Herdr panes: cross-harness delegation, worktrees, blocked peers        |
+| `agent-orchestration`     | `/agent-orchestration`     | Orchestrate a multi-agent build: lanes, review and merge gates, wake-ups, the human, state       |
+| `agent-briefs`            | `/agent-briefs`            | Write briefs, fix-round notes and reviewer prompts for delegated agents, and their report format |
 
 When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, describe the work directly or invoke `/implement`.
 
@@ -262,7 +264,9 @@ Codex custom agents use standalone TOML files under `~/.codex/agents/` (or `.cod
 Large skills keep `SKILL.md` lean and push detail into a `references/` subfolder, which loads
 only when `SKILL.md` points at it. `SKILL.md` carries the workflow, decisions, and pitfalls;
 `references/` carries code libraries, command tables, and long worked examples. Currently used
-by `ecommerce-patterns`, `firecrawl`, `seo-aeo-structured-data`, `story`, and `upgrade`.
+by `agent-briefs`, `agent-orchestration`, `agentmail`, `ecommerce-patterns`, `firecrawl`,
+`model-council`, `playwright-e2e`, `review`, `seo-aeo-structured-data`, `skill-authoring`,
+`story`, `upgrade`, and `word-doc-editing`.
 
 ### Host-Specific Frontmatter
 
