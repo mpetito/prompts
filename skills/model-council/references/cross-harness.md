@@ -44,6 +44,12 @@ and return the same [member report](member-prompt.md).
    flags or grant broader access to get a council response. Let the coordinator capture output
    files without giving reviewers source-write access.
 
+   `--sandbox read-only` has no network, so `gh`, `git fetch` and web reads fail inside the
+   run. Put the diff, PR text and cited docs in the packet instead. A one-shot review outside a
+   council that must read GitHub or run the test suite may use
+   `--sandbox workspace-write -c sandbox_workspace_write.network_access=true`, with `--cd` on a
+   disposable worktree and an explicit `--add-dir` for each other root it must write.
+
 4. If one provider is unavailable, report the limitation. Use two fresh independent contexts
    on the available high-capability model if that still helps, identifying it as a single-family
    council. Do not label a simulated persona as a Codex/Claude participant. If only one review
@@ -53,7 +59,10 @@ and return the same [member report](member-prompt.md).
 ## Runtime sources and verification
 
 The CLI options above were checked against local `claude --help` and `codex exec --help`.
-They are command-building guidance, not a live cross-provider execution test. Model availability,
+They are command-building guidance, not a live cross-provider execution test. The read-only
+network block was confirmed with `codex sandbox` on Codex CLI 0.157.1 (Linux); the docs cover
+[`network_access`](https://learn.chatgpt.com/docs/config-file/config-advanced) for
+workspace-write but don't state the read-only case. Model availability,
 authentication, and tool access still need checking in the environment where the council runs.
 Do not alter persistent user model settings to select a one-off council worker.
 
