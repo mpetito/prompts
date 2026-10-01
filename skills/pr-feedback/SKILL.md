@@ -57,17 +57,26 @@ Suppression is neither proof of a false positive nor a reason to skip inspection
 For each distinct claim:
 
 1. Read the current implementation, surrounding code, relevant call sites, tests, and project
-   conventions. Establish the reviewed revision and whether the issue still exists.
+   conventions. Establish the reviewed revision and whether the issue still exists. A resolved
+   thread is not a verified fix: when one is in scope, re-check its fix against the source.
 2. Identify the concrete failure or maintenance cost. Check assumptions about framework/API
    behavior against version-appropriate official docs; reproduce or add a focused check when
    useful. Distinguish demonstrated defects from hypothetical paths the code cannot reach.
+   Before changing code or text over a platform-behavior claim, quote the most specific doc
+   section (the one for the product variant in use); push back with the quote when it disagrees.
 3. Weigh the smallest effective fix against added branches, abstractions, dependencies,
    duplication, and maintenance cost. Fix a valid underlying issue without blindly applying
    the reviewer's proposed solution. Reject speculative generalization and redundant internal
    validation when no real contract or boundary requires them.
-4. Record a disposition, evidence (file/function, test, or docs), and a short rationale. A
+   - Check the proposed remedy against the specs, contracts, and decisions that bind the area.
+     Reject one that conflicts, cite the clause, and propose a conforming fix.
+   - Treat a reviewer-supplied patch as a candidate: validate it as you would your own fix, on
+     every project or platform CI runs.
+4. Treat a confirmed defect as a class. Search for the same pattern elsewhere with a grep or a
+   small checker, show the checker fails on the pre-fix state, and fix every instance in scope.
+5. Record a disposition, evidence (file/function, test, or docs), and a short rationale. A
    low-confidence label alone is not a rejection reason; "best practice" alone is not a fix reason.
-5. If a material question remains about actionability or the fix's complexity after these checks,
+6. If a material question remains about actionability or the fix's complexity after these checks,
    load [model-council](../model-council/SKILL.md). Obtain independent correctness and maintenance
    perspectives, preferably from Claude and Codex, and incorporate the evidence-based result.
    Use it for unresolved claims, not every comment. A suppressed label alone does not trigger
@@ -163,6 +172,8 @@ After the user confirms:
 - Be respectful; accept good suggestions and justify disagreements professionally.
 - Reference commit SHAs for traceability after commits exist.
 - Batch related replies to avoid notification spam.
+- Batch deferred low-severity items per area into one follow-up, or into the next PR that
+  touches those files. Re-check each against the current base before queuing it.
 - Never resolve without replying first.
 
 ## Common Issues

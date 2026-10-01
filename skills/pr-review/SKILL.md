@@ -13,7 +13,9 @@ Procedural knowledge for reviewing another author's pull request and posting rev
 - The user wants help drafting or posting GitHub review comments
 - An external PR needs evaluation against personal and project standards
 
-For reviewing **your own** staged/local changes, use the `review` skill instead.
+For reviewing **your own** staged/local changes, use the `review` skill instead. An adversarial
+reviewer delegated by an orchestrator, which reports and never posts, follows the `review`
+skill's Delegated Report-Only Mode, not this workflow.
 
 ## Core Principles
 
