@@ -61,6 +61,9 @@ trivial single-file change, or when the round trip costs more than the work itse
 
 A subagent's report is evidence to weigh, not a conclusion to relay unexamined.
 
+Load `agent-briefs` before writing a brief, review prompt, or fix-round note for another agent.
+When coordinating several agents on one build, load `agent-orchestration` as well.
+
 ## Model tiers
 
 Before any subagent, team, dynamic workflow, or background agent launch, read and apply
