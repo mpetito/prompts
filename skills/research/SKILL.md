@@ -43,9 +43,11 @@ The names above are **capabilities, not literal tool IDs** — actual IDs differ
    - Team conventions or standards
 
 3. **Define scope**
-   - What specific questions need answering?
+   - What specific questions need answering? Order them by priority, decision-critical first.
    - What decisions will this research inform?
    - What are the acceptance criteria for "good enough" research?
+   - What does the current plan assume? List each assumption so the research confirms or refutes
+     it with a URL, or reports "docs silent". Stated assumptions draw the sharpest answers.
 
 ### Phase 2: Information Gathering
 
@@ -91,6 +93,13 @@ github/search_code(query: "useReducer middleware pattern", language: "typescript
    - Verify claims across multiple sources
    - Flag contradictions or outdated information
    - Note consensus vs contested findings
+   - Tag every claim with its provenance: **DOCS** (vendor documentation), **SOURCE** (code,
+     changelog, issue, or an API response), **INFERRED** (your reasoning from tagged claims), or
+     **UNVERIFIED** (memory, a search snippet, or not reached). A partial report stays usable
+     when the reader can see which parts are solid.
+   - Confirm exact values (versions, hashes, prices, limits) from a second source, such as an
+     API response, a registry, a price-list file or `git ls-remote`. Summarising fetch tools and
+     pages that load values late misreport them.
 
 2. **Contextualize findings**
    - How do findings apply to our specific codebase?
@@ -142,9 +151,14 @@ For version compatibility specifically, the [`upgrade`](../upgrade/SKILL.md) ski
 
 ## Key Findings
 
-- [Finding 1 — most important discovery]
-- [Finding 2 — second most important]
-- [Finding 3 — third most important]
+- [DOCS] [Finding 1 — most important discovery] ([URL])
+- [SOURCE] [Finding 2 — second most important] ([URL or file:line])
+- [INFERRED] [Finding 3 — third most important]
+
+## Assumptions Checked
+
+| Assumption | Verdict (confirmed / refuted / docs silent) | Source |
+| ---------- | ------------------------------------------- | ------ |
 
 ## Current Codebase Context
 
@@ -216,6 +230,7 @@ For version compatibility specifically, the [`upgrade`](../upgrade/SKILL.md) ski
 - [ ] Recommendations are actionable, not just informational
 - [ ] Uncertainties and open questions are clearly stated
 - [ ] All sources are cited with dates
+- [ ] Every claim carries a provenance tag; exact values have a second source
 - [ ] Trade-offs are explicit for each option
 
 ---
@@ -239,6 +254,22 @@ inheriting a premium coordinator model.
 Do not assume workers inherit loaded skills. Preload or provide the relevant instructions,
 source requirements, and model policy in each worker's context.
 
+**Size each worker to its turn cap.** Most research and analysis agents stop at a fixed turn
+count (in Claude Code, `maxTurns` in the agent definition), and a worker cut off before it writes
+its report often hands back nothing usable. Read the cap before writing the brief, then:
+
+- give each worker at most about five questions, in priority order, and split a larger audit
+  across parallel workers;
+- require *Stop at two thirds of a turn cap* (under Best Practices), and, when the worker can
+  write files, name an output file and require *Write as you go*;
+- list the assumptions to confirm or refute, and require a provenance tag on every claim.
+
+The brief template lives in [agent-briefs](../agent-briefs/SKILL.md).
+
+**Re-check cheaper workers on what matters.** When a cheaper model did the research, verify the
+two or three claims the decision rests on yourself before acting. Licence, pricing and terms
+claims need a verbatim quote with its URL.
+
 **Handoff Pattern**: Write findings to `specs/{topic}/research-findings.md` for complex research that will inform implementation planning (see the [`spec`](../spec/SKILL.md) skill's Supporting Documents convention).
 
 ---
@@ -256,7 +287,13 @@ source requirements, and model policy in each worker's context.
 
 - **Start narrow, then expand** — specific questions first
 - **Don't over-research** — know when "good enough" is reached
-- **Batch related queries** — group similar questions together
+- **Batch related queries** — group similar questions together. Where the host counts turns per
+  response, as Claude Code does, issue independent fetches in one response.
+- **Write as you go** — when you can write files and were given an output file, put the report
+  skeleton there before the first search and append each finding as it is confirmed, so a
+  cut-off run still hands back its work
+- **Stop at two thirds of a turn cap** — then finish the report, marking unreached questions
+  UNVERIFIED with where you would look next
 - **Cache findings** — write to files for reuse across sessions
 
 **Actionable output**

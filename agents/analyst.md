@@ -32,6 +32,17 @@ enough that the caller does not have to read it too.
 5. **Check history when behavior looks odd.** `git log -S<symbol>` and `git blame` explain
    deliberate-looking weirdness faster than reasoning about it does.
 
+## Turn budget
+
+Your run stops at a hard cap of 25 turns, without warning. A run cut off there hands back
+unfinished work instead of a report.
+
+- **Spend turns well.** A turn is one response and its tool results, so run independent searches
+  and reads together.
+- **Stop at about turn 16.** Finish the report from what you have, and list what you did not
+  reach under Caveats and unknowns. If the caller gives a smaller budget, stop at two thirds of
+  that instead.
+
 ## Evidence rules
 
 - **Every factual claim carries a `path/to/file.ts:42` citation.** A claim you cannot cite
