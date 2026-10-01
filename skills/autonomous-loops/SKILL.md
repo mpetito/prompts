@@ -1,6 +1,6 @@
 ---
 name: autonomous-loops
-description: "Run iterative agent loops against an external evaluation signal that arrives asynchronously. Use when a task is not single-shot: raising Page Speed Insights scores, triaging Copilot PR feedback, watching CI until green, or waiting on deploys, scans, or MCP evaluators."
+description: "Run iterative agent loops against an external evaluation signal that arrives asynchronously. Use when a task is not single-shot: raising Page Speed Insights scores, triaging Copilot PR feedback, watching CI until green, merging and releasing when every merge deploys, or waiting on deploys, scans, or MCP evaluators."
 ---
 
 # Autonomous Loops Skill
@@ -80,11 +80,12 @@ Async waits are the part most likely to go wrong. Pick the right primitive:
 
 | Wait target               | Correct mechanism                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| GitHub CI checks          | `gh pr checks <pr> --watch --fail-fast` (sync terminal — blocks until done)                                       |
+| GitHub CI checks          | `gh pr checks <pr> --watch --fail-fast` (sync terminal — blocks until done). Without `--watch` it exits 8 while checks are pending (`gh pr checks --help`); that is not a failure |
+| Merge-when-green watcher  | Key on the head SHA and the newest run per workflow: `gh run list --commit <sha> --workflow <file> --limit 1` (newest first). Poll until that run exists, then `gh run watch`. Re-arm after a close and reopen |
 | GitHub Actions run        | `gh run watch <run-id> --exit-status`                                                                             |
-| Long-running build/deploy | `mode=async` terminal, then act on the completion notification — prefer this over polling                         |
+| Long build, deploy or local suite | One background command writing a log (`mode=async` terminal or the host's background task), then act on the completion notification once. No interval polling or progress narration |
 | Copilot PR review         | Poll `gh pr view --json reviewRequests,reviews,commits` (see [example B](#b-working-through-copilot-pr-feedback)) |
-| Deployment of `main`      | Watch the deploy workflow run, then verify URL responds with the new build SHA                                    |
+| Deployment of `main`      | Find the run for the merge commit (`gh run list --commit <merge-sha> --workflow <deploy-file>`), watch it, then verify the URL serves the new build SHA. No run after about 2 minutes: see [Common Issues](#common-issues) |
 | Third-party scan / MCP    | Call the evaluation tool directly; if it queues, poll with backoff (≥ 30s)                                        |
 
 **Prefer push-style waits** (blocking watch commands, async-terminal notifications) over polling. Use polling only when the evaluator exposes no completion signal — and when you do, use **backoff** (≥ 30s between checks) and a **hard cap** on attempts. Avoid `Start-Sleep` / `sleep` for fixed delays except as the spacer inside an explicit poll loop with a cap.
@@ -183,19 +184,39 @@ Interpretation:
 
 Poll with backoff (e.g. 30s, 60s, 120s) and a hard cap (e.g. 5 attempts) before giving up and proceeding. Re-requesting Copilot review via API/CLI is not fully supported in all scenarios, but the read path above does reflect re-requested state once it has been triggered.
 
+Reviews have arrived about 8–13 minutes after a push (observed; GitHub documents no latency), so set the deadline at about 15 minutes after the push. A summary verdict such as "Needs a closer look" with no inline comments is informational (observed; undocumented): gate on unresolved threads, and report the verdict and the findings separately.
+
 ### C. Watching CI Until Green
 
 - **Objective**: Latest commit on `<branch>` passes all required checks
-- **Evaluation**: `gh pr checks <pr>` exit status
+- **Evaluation**: `gh pr checks <pr>` exit status (8 means still pending)
 - **Success**: All required checks pass; non-required failures noted but not blocking.
 - **Budget**: 3 fix iterations (flakes excluded)
 - **Steps**:
   1. **Wait**: `gh pr checks <pr> --watch --fail-fast` (sync — blocks until terminal state).
   2. If green, stop.
   3. If failed, fetch logs for the failing job: `gh run view <run-id> --log-failed`.
-  4. Diagnose: real failure vs. flake. **Do not** blindly re-run flakes more than once.
+  4. Diagnose: real failure, flake, or cancelled at the time cap. **Do not** blindly re-run flakes more than once; a re-run tests the same merge commit, so it cannot pick up a fix merged since. Browser-test flakes: [flake triage](../playwright-e2e/references/stability.md#flake-triage).
   5. Apply fix, `/commit`, push, goto 1.
 - **Escalate when**: same job fails twice with different errors (environment issue), or fix requires touching code outside the PR's scope.
+
+### D. Merge and Release When Every Merge Deploys
+
+This is the loop. When to pause, what needs approval and the preflight before the first deploy are policy in [agent-orchestration](../agent-orchestration/SKILL.md).
+
+- **Objective**: each approved PR is merged and verified live before the next one merges
+- **Evaluation**: the deploy run for the merge commit, then a live check of the served build
+- **Success**: the deploy run is green, and production serves the merge SHA with the change working
+- **Budget**: one PR in flight; stop at the first failed or rolled-back release
+- **Steps**:
+  1. Read the head SHA (`gh pr view <pr> --json headRefOid`). Confirm `gh pr checks <pr> --required` passes and the approval is for that SHA.
+  2. Merge pinned to that head: `gh pr merge <pr> --squash --match-head-commit <sha>`.
+  3. Read the merge commit: `gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid`.
+  4. **Wait** for the deploy run: `gh run list --commit <merge-sha> --workflow <deploy-file> --limit 1 --json databaseId,status,conclusion`. No run after about 2 minutes: dispatch it (see [Common Issues](#common-issues)).
+  5. **Wait**: `gh run watch <run-id> --exit-status`.
+  6. Verify live: production serves the merge SHA and the change behaves as intended.
+  7. If the next PR touches the same files or the deploy path, merge the base into it and wait for fresh checks; a re-run would test its old merge commit.
+- **Escalate when**: a release fails or rolls back. Stop merging and follow the release policy in agent-orchestration.
 
 ---
 
@@ -209,8 +230,14 @@ Poll with backoff (e.g. 30s, 60s, 120s) and a hard cap (e.g. 5 attempts) before 
 | Loop "succeeds" but on stale data (cached PSI, old PR view)   | Re-fetch evaluation inputs each iteration. For PSI, run twice and require both above target.                                                                            |
 | Context compaction loses the loop definition                  | Persist objective, evaluation, and iteration log to `loop-<name>.md` in the host's memory location (see **Loop Anatomy**); re-read at the top of each loop.              |
 | Copilot adds new threads after a push, agent thinks it's done | After resolving threads + push, **always** wait for the next review pass before declaring success.                                                                      |
-| Merging the PR breaks the deploy                              | Ask the user before merging. Treat merge + deploy as one atomic step in the loop, not two independent ones.                                                             |
+| Merging the PR breaks the deploy                              | Merge only with the user's go-ahead or a standing approval rule. Treat merge, deploy and live check as one step ([example D](#d-merge-and-release-when-every-merge-deploys)). |
 | Budget exhausted with partial progress                        | Stop. Report metric delta, what was tried, and the recommended next direction. Do not silently keep iterating.                                                          |
+| Re-running a PR's failed job ignores a fix merged since       | A `pull_request` run uses the merge commit on `refs/pull/<N>/merge`, and a re-run reuses the original run's commit and ref (GitHub docs). Merge the base into the branch, or close and reopen the PR. Then confirm the merge ref contains the fix (`git fetch origin refs/pull/<N>/merge`, then `git merge-base --is-ancestor <fix-sha> FETCH_HEAD`). |
+| Watcher acts on a stale run, or exits before the run exists   | Key on (head SHA, newest run per workflow) and poll until the expected run appears. Report why it did not merge: conflict, cancelled at the time cap, real failure, or watcher deadline. |
+| No run appears for a PR                                       | GitHub skips `pull_request` workflows while the PR has a merge conflict. Resolve it, then re-arm the watcher.                                                           |
+| No deploy run appears after a merge                           | Check `gh run list --commit <merge-sha>` after about 2 minutes. Events made with `GITHUB_TOKEN` start no runs (except `workflow_dispatch` and `repository_dispatch`). Dispatch it with `gh workflow run <deploy-file> --ref main`; give deploy workflows a `workflow_dispatch` trigger and make them idempotent. |
+| A CI job "fails" near its time limit                          | GitHub cancels a job at `timeout-minutes` (default 360). Treat cancelled-at-cap as its own state, not a test failure, and track job duration against the cap.             |
+| A stalled install fails a deploy or smoke job and rolls back  | Give dependency and browser installs in deploy and smoke jobs a step-level `timeout-minutes` and a retry loop. The job cap would otherwise trigger the rollback.          |
 
 ---
 
@@ -229,5 +256,7 @@ Poll with backoff (e.g. 30s, 60s, 120s) and a hard cap (e.g. 5 attempts) before 
 ## See Also
 
 - [pr-feedback](../pr-feedback/SKILL.md) and [pr-resolve](../pr-resolve/SKILL.md) — review thread tooling used by the Copilot-feedback loop
+- [agent-orchestration](../agent-orchestration/SKILL.md) — release policy and the multi-lane loop that runs these waits
+- [playwright-e2e stability](../playwright-e2e/references/stability.md) — flake triage and CI artifacts for browser tests
 - `/pr-feedback`, `/pr-resolve` prompts — single-pass building blocks used inside loops
 - [skill-authoring](../skill-authoring/SKILL.md) — how this skill is structured
