@@ -15,7 +15,8 @@ Procedural knowledge for executing implementation tasks: from spec/plan to valid
 - A bug fix, refactor, script, infrastructure change, or test update
 
 For very small surgical changes (rename, typo, single-line fix), load the standards and use a
-proportionate edit/check/review pass; no formal plan or new test is needed without behavior to verify.
+proportionate edit/check/review pass. No formal plan is needed, and no new test unless the
+change fixes a bug or adds a guard (see Test).
 
 Related skills: use [implement](../implement/SKILL.md) to orchestrate a numbered `specs/{NNN-slug}/`
 plan end-to-end; it delegates the per-phase work back to this skill. Load
@@ -57,6 +58,10 @@ If independent codebase analysis warrants delegation, use the model selection po
 ### 3. Test
 
 - Write unit tests for new logic, covering happy paths and meaningful edge cases
+- Prove every new guard, check, limit, timeout, permission check, and bug fix: its test fails
+  without the change (revert it or plant a mutant) and passes with it. Report both results
+- When a build step transforms assets (fonts, images, bundles), add a check that renders or
+  compares the output with the source, not only its size
 - Run the existing test suite; fix any regressions before proceeding
 - For UI changes, validate behavior visually or via e2e when applicable
 
@@ -151,6 +156,9 @@ This section is the canonical copy of the personal coding standards; other skill
 - Fail fast with exceptions for unrecoverable errors
 - Use result objects when callers have meaningful recovery paths
 - Make invalid states unrepresentable via types; validate explicitly at boundaries only
+- For a gate, validator, or parser, write down the property it protects and its threat model.
+  Fail closed: every input in scope matches the grammar or throws, with the grammar, not a list
+  of examples, defining "matches". Add a negative case for each bypass class
 
 ### Data & Types
 
@@ -190,6 +198,8 @@ This section is the canonical copy of the personal coding standards; other skill
 
 - `describe` blocks group by unit; keep test names concise
 - Test names describe behavior in plain language within their group context
+- For stateful logic (deploy, rollback, certification, retries), write a state-by-event table
+  before coding: reruns, cancellations, races, malformed state, partial failure. One test per cell
 
 ### Logging
 
@@ -214,7 +224,7 @@ After completion, report:
 
 1. Brief summary of what was implemented
 2. Files created / modified
-3. Test results (new tests + suite status)
+3. Test results (new tests, suite status, and the without/with result for each guard or fix)
 4. Any follow-ups or deferred items
 
 Suggest next steps:

@@ -50,12 +50,30 @@ select each worker's model rather than relying on `Explore` or `Plan` defaults.
 
 If blocking ambiguities remain after research, ask 3–5 numbered questions, each with the decision it unlocks. Do not write the spec on top of unresolved blocking unknowns.
 
+- **Settle cross-cutting questions first.** When the spec defines an interface, contract, or
+  convention that later work builds on, ask the questions every consumer inherits (for example,
+  how tests locate elements, how time is faked, who owns copy) before writing it. A late answer
+  forces rework in every consumer.
+- **Material claims need the owner's confirmation,** even when the request or a source states
+  them: product facts, safety, legal, and labeling wording. List each under Open Questions with
+  its owner, and keep a bracketed placeholder in the text until it is confirmed.
+
 ### Phase 4: Write the Spec
 
 - Determine the next folder: scan `specs/` for existing numbered folders and pick the next zero-padded prefix + kebab slug (e.g. after `012-x` → `013-new-feature/`)
 - Create `specs/{NNN-slug}/spec.md` from the template below
 - The spec defines **what** and **why** — requirements, constraints, decisions, acceptance criteria
 - Capture every unresolved uncertainty in an **Open Questions** section
+- Make every acceptance criterion checkable by a command or a measurement:
+  - give a subjective request ("feels cramped", "match the mockup") a threshold and name the
+    measure (gap in px, overlap ratio, contrast ratio)
+  - for stateful logic, require a state-by-event table with one test per cell (the events to
+    cover are in the Testing standards of [code-authoring](../code-authoring/SKILL.md))
+  - for a gate, validator, or parser, require the protected property and its threat model
+  - for UI, list the states to verify: JavaScript off, reduced motion, and each target width
+  - for an interface or contract that other work consumes, require its main consumer's review
+    before it merges: can every scenario be written, is every ID and key defined, what regressed
+    since the last version
 - Do **not** include implementation details — those belong in the plan
 - Calibrate depth to the **complexity tier** (see below); a fix spec is short, a greenfield feature is long
 
@@ -198,7 +216,8 @@ Number requirements (FR-1, NFR-1) so acceptance criteria and plan steps can refe
 Each criterion should map to one or more requirements. Reference requirement IDs where possible.
 
 - [ ] [Verifiable criterion] (FR-1, FR-2)
-- [ ] [Verifiable criterion] (NFR-1)
+- [ ] [Measured criterion with its threshold, e.g. "no text overlap at 320, 768 and 1280 px"] (NFR-1)
+- [ ] [Stateful logic: every cell of the state-by-event table has a passing test] (FR-3)
 
 ## Decisions
 
