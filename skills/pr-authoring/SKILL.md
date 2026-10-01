@@ -1,6 +1,6 @@
 ---
 name: pr-authoring
-description: "Write pull request titles and bodies that lead with motivation, grouped changes, and concrete validation, not file-level changelogs. Use when creating a PR, updating an existing PR description, drafting a body for staged or pushed work, or when the commit skill needs a PR body."
+description: "Write pull request titles and bodies that lead with motivation, grouped changes, and concrete validation, not file-level changelogs. Use when creating a PR, updating an existing PR description or refreshing it after a push, drafting a body for staged or pushed work, or when the commit skill needs a PR body."
 # Claude Code only; other hosts ignore these keys.
 # Writing-heavy but not reasoning-heavy: cheaper tier, high effort.
 model: sonnet
@@ -25,6 +25,7 @@ Guidelines for writing pull request descriptions that respect a reviewer's time 
 
 - The `commit` prompt is creating a new PR body file
 - The user asks to update an existing PR description
+- A push to your own open PR may have made its body untrue
 - The user asks to draft a PR for staged or pushed work
 - A subagent is asked to summarize a branch into a PR description
 
@@ -105,6 +106,14 @@ Concrete evidence the change works: each command as run, with its numeric result
 
 Prefer real numbers (`418 passed, 0 failed`) over vague claims (`all tests`). State the platform or browser when manual. Checkmarks are optional; drop them when a line carries a caveat, because a ✅ beside a non-zero exit misleads.
 
+Report runs as they happened:
+
+- **First attempt first.** Give the first run's counts. List reruns separately with their results; a passing rerun never turns a failed run green.
+- **Failures verbatim:** the failing check or test and its error line.
+- **Invalid runs labelled,** with the reason (the server died mid-run, the disk filled), rather than counted as passes or failures.
+- **Causes labelled** `Confirmed` (reproduced, and gone after the fix) or `Hypothesis`. A fix for an unconfirmed cause is a mitigation; say so.
+- **Incident claims limited to what was observed,** with the time of the observation, and what was not checked named. "The live site was never broken" needs evidence for every minute it covers.
+
 ### Conditional: Manual Verification After Merge
 
 Required when reviewers or operators must do something post-merge (deploy a stack, run a migration, upload data, set an env var, invalidate cache). Number the steps, and give each check its **expected result** with the numbers someone will see: "the refresh reports 10 accepted and 0 rejected", not "check the logs". When the change adds to existing data, make step 1 a baseline count so a later step can assert the exact delta. End with where to repeat the checks (staging, production, the next scheduled run).
@@ -143,19 +152,29 @@ If the table just lists every modified file, delete it.
 
 - **Spec link**: `[spec 034 — name](specs/034-name/spec.md)` in the Summary
 - **Azure DevOps work item**: include `Fixes AB#1234` in the body to auto-transition on merge (see the `commit` skill for full syntax)
-- **GitHub issue**: include `Closes #123` to auto-close the issue on merge
+- **GitHub issue**: `Closes #123` only when merging this PR proves the fix, with every done-when item verified. Otherwise write `Refs #123`.
 - **Parent PR / stacked PR**: link with `Builds on #N` near the top
 - Place all references in the **Summary** so they appear in PR list previews
 
+**Closing keywords fire on ordinary prose.** GitHub treats `close`, `closes`, `closed` and the same forms of `fix` and `resolve`, in either case and with or without a colon, before `#N` as a closing link: "That run is what closes #133" closes #133. They act when the PR merges into the default branch, they work in commit messages too, and a keyword before a PR number closes that PR. Before merge, check what the body will close:
+
+```bash
+gh pr view <number> --json closingIssuesReferences --jq '.closingIssuesReferences[].number'
+```
+
+That list omits keywords in commit messages, so scan `git log <base>..HEAD` as well. After the merge, confirm that no other issue closed.
+
 ## Updating an Existing PR
 
-When asked to update a PR description:
+After every push to your own PR, and whenever asked to update a description:
 
-1. Fetch the current body and recent commits since the last description update
+1. Fetch the live body (`gh pr view <number> --json body --jq .body`) and the commits since the last description update
 2. Preserve sections the original author wrote (Implementation Notes, Out of Scope) unless they're now wrong
 3. Append new changes to the existing **Changes** section grouped under the same scheme
-4. Refresh **Validation** with the latest results — replace, don't append, so the section stays a snapshot of "current state"
-5. Add a brief comment on the PR pointing reviewers to the diff since their last review (the description itself shouldn't read like a changelog of the description)
+4. Re-check every factual line against the final head and diff: SHAs, counts, "unchanged" and "not run" claims, decisions, "found, not fixed" notes. Delete what is no longer true.
+5. Refresh **Validation** with the latest results — replace, don't append, so the section stays a snapshot of "current state"
+6. Write the edit through the body file (see the procedure below), then re-read the live body
+7. Add a brief comment on the PR pointing reviewers to the diff since their last review (the description itself shouldn't read like a changelog of the description)
 
 ## Procedure (when authoring from scratch)
 
@@ -165,8 +184,9 @@ When asked to update a PR description:
 4. **Run validation** — typecheck, lint, test, build per repo conventions; capture exact output for the Validation section
 5. **Draft Summary last** — once you've grouped the work, the one-paragraph framing usually writes itself
 6. **Self-review against "What to Avoid"** before saving the body file
-7. **Write body to a temp file** (e.g., `.github/.pr-body.md`) and pass to `gh pr create --body-file` — never inline multi-line bodies as shell args
-8. **Log time (follow-up, non-blocking)** — after the PR is created or updated, invoke the **tt** skill, passing the changeset, branch name, commit subject(s), and PR title/number as context so it can resolve the ADO work item and log estimated time. Do not block the PR on time logging; run it as a follow-up. Never delete entries.
+7. **Write the body to a file only you use** and pass it to `gh pr create --body-file` or `gh pr edit --body-file` — never inline multi-line bodies as shell args. Put it in a gitignored scratch folder or your session's scratch directory, and name it for the branch, plus your task ID when other agents share the machine: `<scratch dir>/pr-body-<branch-slug>-<task-id>.md`. A fixed shared path such as `.github/.pr-body.md` lets a parallel agent's body land on your PR.
+8. **Re-read the live body** after `gh pr create` or `gh pr edit` (`gh pr view <number> --json body --jq .body`) and confirm it describes this branch. Delete the body file afterwards.
+9. **Log time (follow-up, non-blocking)** — only when a time-tracking tool is available in this session; otherwise skip the step and say so. After the PR is created or updated, invoke the **tt** skill, passing the changeset, branch name, commit subject(s), and PR title/number as context so it can resolve the ADO work item and log estimated time. Do not block the PR on time logging; run it as a follow-up. Never delete entries.
 
 ## Length Heuristics
 
@@ -184,6 +204,6 @@ A body over ~200 lines is a smell: link the spec for detail and trim the PR body
 2. **Padding with file lists to look thorough** — bare file lists hide the architectural shape; every file bullet must say what that file now does, inside a group that says why
 3. **Burying the motivation under "Changes"** — the `## Summary` should answer "why merge this?" before any bullets
 4. **Forgetting work-item references** — `Fixes AB#1234` must be in the body (not title, not comments) to trigger transitions
-5. **Stale Validation after force-push** — re-run the suite and update results before requesting re-review
+5. **A stale body after a push** — later rounds change code but not the claims about it. Re-run the suite, refresh the body (*Updating an Existing PR*), and only then request re-review
 6. **Duplicating spec content** — paraphrasing the spec wastes space and goes stale; link it
 7. **Using draft PRs as scratch space** — keep description quality the same for drafts; reviewers may peek early
