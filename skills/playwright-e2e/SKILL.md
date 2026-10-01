@@ -3,7 +3,9 @@ name: playwright-e2e
 description: |
   Use when writing Playwright end-to-end tests, applying the Page Object Model, choosing
   locators, establishing a data-testid convention, or setting up Playwright in a project
-  (including npm-workspaces monorepos) and its CI.
+  (including npm-workspaces monorepos) and its CI. Also use when triaging a flaky or CI-only
+  browser test, quarantining one, gating new tests for stability, landing tests ahead of a
+  feature with test.fixme, or writing smoke tests that gate a rollback.
 ---
 
 # Playwright E2E Testing
@@ -19,6 +21,12 @@ Use when:
 - Configuring multi-device testing (desktop + mobile)
 - Setting up Playwright in an npm workspaces monorepo
 - Setting up CI for Playwright tests
+- Triaging a flaky or CI-only failure, or quarantining and restoring a test
+- Gating new tests for stability, or landing tests ahead of their feature (`test.fixme`)
+- Writing smoke tests whose failure triggers a rollback, or running several suites on one host
+
+Those last three, plus CI artifacts and secrets in test output, are in
+[references/stability.md](references/stability.md).
 
 **Monorepo Wiring** covers project setup; **Test Authoring** onward is stack-agnostic and applies to any Playwright suite. The examples use a storefront (cart, checkout, product customizer) as the worked domain — substitute your own.
 
@@ -91,6 +99,9 @@ project-root/
 // packages/e2e/playwright.config.ts
 import { defineConfig, devices } from "@playwright/test";
 
+const port = Number(process.env.E2E_PORT ?? 3000);
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -100,8 +111,8 @@ export default defineConfig({
   reporter: "html",
 
   use: {
-    baseURL: "http://localhost:3000",
-    trace: "on-first-retry",
+    baseURL,
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
 
@@ -117,8 +128,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: "npm run dev -w apps/web",
-    url: "http://localhost:3000",
+    command: `npm run dev -w apps/web -- --port ${port}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     cwd: "../../", // CRITICAL: relative to packages/e2e/
   },
@@ -130,7 +141,9 @@ export default defineConfig({
 - `cwd: '../../'` — runs the dev server command from the monorepo root
 - `reuseExistingServer: !process.env.CI` — uses running dev server locally, starts fresh in CI
 - `fullyParallel: true` — tests run concurrently for speed
-- `retries: 2` in CI — flaky test mitigation
+- `retries: 2` in CI — a test that passes on retry is reported flaky, not fixed; [triage it](references/stability.md#flake-triage)
+- `trace: "retain-on-failure"` — keeps the trace of every failed attempt, even when a retry passes; `on-first-retry` keeps only the retry's
+- `E2E_PORT` — each checkout or agent on one host gets its own server
 - `workers: 1` in CI — prevent resource contention
 - Two projects: Desktop + Mobile ensures responsive testing
 
@@ -450,11 +463,19 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: packages/e2e/playwright-report/
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: test-results
+          path: packages/e2e/test-results/
 ```
+
+Add both uploads with the first e2e job, before the first flake. Job duration, sharding and
+path scoping are in [references/stability.md](references/stability.md#ci-artifacts-and-duration).
 
 ## Common Pitfalls
 
@@ -465,4 +486,7 @@ jobs:
 5. **Cart drawer timing**: After `addToCart()`, the drawer animates open. Wait for `expect(cart.cartDrawer).toBeVisible()` before interacting.
 6. **Parallel test isolation**: Each test gets a fresh browser context, but the dev server is shared. Avoid server-side state mutations in tests.
 7. **CI memory**: Use `workers: 1` in CI to prevent OOM. Playwright + Next.js dev server is memory-intensive.
-8. **`reuseExistingServer`**: Set to `true` locally (fast), `false` in CI (clean state). The `!process.env.CI` pattern handles this.
+8. **`reuseExistingServer`**: Set to `true` locally (fast), `false` in CI (clean state). The `!process.env.CI` pattern handles this. Locally it reuses whatever listens on the port, which may be another checkout's server: give each its own `E2E_PORT`.
+9. **Vacuous absence checks**: `toBeHidden()` and `not.toBeVisible()` also pass when nothing matches, so a renamed test ID makes them pass forever. Pair each with an existence check (`toBeAttached()`, or the visible state first).
+10. **Un-fixme without proof**: removing `test.fixme` can leave a test skipped by another annotation. See [tests written ahead of features](references/stability.md#tests-written-ahead-of-features).
+11. **Secrets in failure output**: call logs, traces and reports can carry attribute values and network data. See [secrets in artifacts](references/stability.md#secrets-in-artifacts).
