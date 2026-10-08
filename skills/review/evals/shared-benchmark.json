@@ -1,0 +1,212 @@
+{
+  "version": 2,
+  "skill_name": "review",
+  "skill_paths": ["SKILL.md"],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-interactive-discount-review",
+      "split": "tune",
+      "prompt": "Review the staged change described in the input file and give me your review with a merge recommendation. Do not run any commands; everything you need is in the input file.",
+      "files": [
+        "fixtures/discount-code-review.md"
+      ],
+      "expected_behavior": [
+        "Uses the interactive Output Format: Review Summary, Overall Assessment, severity sections, Proofs Run, Questions for Author",
+        "Verdict is REQUEST CHANGES because of the SQL injection and the never-matching usage increment",
+        "Findings cite file plus function, not line numbers",
+        "Names mutants the weak tests would let survive and audits the 14-tests and expiry-covered claims against the log",
+        "Does not ask for new result types against the plain-dict convention; suggests /commit as the next step"
+      ],
+      "assertions": [
+        {
+          "name": "review-summary-heading",
+          "type": "regex",
+          "pattern": "(?m)^#{1,3}\\s*Review Summary"
+        },
+        {
+          "name": "overall-assessment-request-changes",
+          "type": "regex",
+          "pattern": "(?im)^[*_\\s]*Overall Assessment[*_\\s]*:[^\\w\\n]*REQUEST[\\s_-]CHANGES\\b"
+        },
+        {
+          "name": "severity-sections",
+          "type": "contains_all",
+          "values": [
+            "Critical Issues",
+            "Important Issues",
+            "Suggestions"
+          ]
+        },
+        {
+          "name": "proofs-section",
+          "type": "regex",
+          "pattern": "(?im)^#{2,4}\\s*Proofs\\b"
+        },
+        {
+          "name": "names-surviving-mutant",
+          "type": "regex",
+          "pattern": "(?is)\\b(mutants?|mutations?)\\b.{0,150}\\bsurviv(e|es|ed|ing|or|ors)\\b|\\bsurviv(e|es|ed|ing|or|ors)\\b.{0,150}\\b(mutants?|mutations?)\\b"
+        },
+        {
+          "name": "suggests-commit-next",
+          "type": "contains",
+          "value": "/commit"
+        },
+        {
+          "name": "no-line-number-citations",
+          "type": "not_regex",
+          "pattern": "(?i)\\blines?\\s+\\d+|\\bL\\d+\\b|\\.(py|ts):\\d+"
+        },
+        {
+          "name": "no-convention-nitpick",
+          "type": "not_regex",
+          "pattern": "(?i)\\b(use|using|introduce|return(ing)?|switch(ing)? to|consider|define|add)\\b[^.\\n]{0,40}\\b(dataclass(es)?|pydantic|TypedDict|NamedTuple|result (type|class|model))\\b"
+        },
+        {
+          "name": "reviewer-quality",
+          "type": "judge",
+          "rubric": [
+            "The f-string SQL in apply_discount is reported as a critical injection issue with a fix that uses the project's %s placeholder convention",
+            "The review notes that the UPDATE uses the un-normalised code, so lowercase input never increments uses, and that the cap check allows one use past max_uses",
+            "The review contrasts the author's 'All 14 tests pass' and 'expiry is fully covered' claims with the log showing 13 passed and the expiry test skipped",
+            "The review states which mutants (for example wrong discount math or a >= cap) the existing assertions would not catch, and proposes assertions that would"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-delegated-flaky-fix",
+      "split": "tune",
+      "prompt": "An orchestrator agent has delegated the code review described in the input file to you. Write the report you would return to it. Do not run any commands; everything you need is in the input file.",
+      "files": [
+        "fixtures/flaky-drain-delegated.md"
+      ],
+      "expected_behavior": [
+        "Returns the Delegated Report-Only shape: a verdict line bound to head 3f9a2c1d, Blocking, Should fix, Mutants, Claims checked, Not verified, Outside this PR, Long form",
+        "Verdict is changes-required or close: the helper swallows every timeout and the failed-jobs assertion was removed",
+        "Severity is rated on the findings, not lowered because this is round 3",
+        "The root cause and the 50-run and CI-green claims are marked unproven or refuted; the report has no markdown headings"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-line-bound-to-sha",
+          "type": "regex",
+          "pattern": "(?m)^[*_`\\s]*VERDICT\\b(?=[^\\n]*3f9a2c1)(?=[^\\n]*\\b(?i:changes[- ]required|close)\\b)"
+        },
+        {
+          "name": "blocking-id-with-file-line",
+          "type": "regex",
+          "pattern": "(?m)^\\s*[-*]?\\s*\\**B1\\**[:.]?\\s+`?[\\w./-]+\\.ts:\\d+"
+        },
+        {
+          "name": "mutant-rows",
+          "type": "regex",
+          "pattern": "(?m)^\\s*[-*|]?\\s*\\**M\\d+\\b[^\\n|]*\\|[^\\n|]*\\|"
+        },
+        {
+          "name": "report-trailer-fields",
+          "type": "regex",
+          "pattern": "(?ims)(?=.*^[\\s*_-]*Claims checked\\b)(?=.*^[\\s*_-]*Not verified\\b)(?=.*^[\\s*_-]*Outside this PR\\b)"
+        },
+        {
+          "name": "root-cause-unproven",
+          "type": "regex",
+          "pattern": "(?i)\\b(root cause|stated cause|cause|starvation)\\b[^.\\n]{0,80}\\b(unproven|not (been )?(proven|confirmed|demonstrated|reproduced|instrumented)|unconfirmed|unverified|no (instrumented )?probe)|\\b(unproven|unconfirmed|unverified)\\b[^.\\n]{0,40}\\b(root cause|cause|starvation)\\b"
+        },
+        {
+          "name": "long-form-path-from-brief",
+          "type": "regex",
+          "pattern": "(?im)^[\\s*_-]*Long form\\b[^\\n]{0,80}scratch[/\\\\]review-417[/\\\\]"
+        },
+        {
+          "name": "no-markdown-headings",
+          "type": "not_regex",
+          "pattern": "(?m)^#{1,6}\\s"
+        },
+        {
+          "name": "no-round-based-severity",
+          "type": "not_regex",
+          "pattern": "(?i)\\b(given|since|because|as)\\s+(that\\s+)?(this|it)\\s+is\\s+(the\\s+)?(review\\s+)?(round\\s*(3|three)|third\\s+round)\\b"
+        },
+        {
+          "name": "reviewer-quality",
+          "type": "judge",
+          "rubric": [
+            "The report identifies that waitForDrain swallows the final timeout, so the test passes even when the queue never drains, and rates it blocking",
+            "The removed expect(queue.failed) assertion is reported as lost coverage, and severity is not lowered because this is round 3",
+            "The '0 failures in 50 runs' claim and the CI run on main@b71e0a4 (before PR #409 touched src/retryQueue.ts) are marked unverified or refuted",
+            "The report does not claim any mutant or probe was actually run; unrun proofs appear under Not verified"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-review-staged",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my staged changes before I commit them.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-merge-verdict",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Check this diff for bugs and tell me whether it is safe to merge.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-prove-regression-test",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The flaky-test fix is in; review it and prove the new test actually fails if the bug comes back.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-teammate-pr-comments",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my teammate's GitHub PR #212 and post the comments once I approve them.",
+      "expected_behavior": [
+        "The skill should NOT trigger: posting a review on someone else's GitHub PR belongs to pr-review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-address-copilot",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Work through the Copilot review comments on my PR and fix the valid ones.",
+      "expected_behavior": [
+        "The skill should NOT trigger: triaging incoming feedback on your own PR belongs to pr-feedback."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-resolve-threads",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Reply to the review threads on my PR and resolve the ones my last push fixed.",
+      "expected_behavior": [
+        "The skill should NOT trigger: replying to and resolving threads belongs to pr-resolve."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

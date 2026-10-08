@@ -1,0 +1,115 @@
+{
+  "version": 2,
+  "skill_name": "pr-authoring",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "pos-small-feature-body",
+      "split": "tune",
+      "prompt": "Draft the pull request title and body for the branch described in the input file. Output the title on the first line, then a blank line, then the body in GitHub-flavoured markdown. Do not run any commands; everything you need is in the file.",
+      "files": ["fixtures/rate-limit-branch.md"],
+      "expected_behavior": [
+        "Title is a conventional commit subject such as feat(auth): ...",
+        "Summary comes first and explains why (brute-force lockout), linking AB#2210",
+        "Validation quotes the real numbers (12 passed, 0 failed) and names what was not run",
+        "No AI attribution footer"
+      ],
+      "assertions": [
+        {"name": "conventional-title", "type": "regex", "pattern": "(?m)^\\s*#?\\s*(feat|fix|refactor|chore|docs|test)\\([a-z0-9-]+\\): [a-z]"},
+        {"name": "summary-first-heading", "type": "regex", "pattern": "(?m)^#{1,3}\\s*Summary"},
+        {"name": "work-item-reference", "type": "regex", "pattern": "(?i)\\bAB#2210\\b"},
+        {"name": "validation-has-real-numbers", "type": "contains_any", "values": ["12 passed", "Passed: 12", "12 tests"]},
+        {"name": "says-what-was-not-run", "type": "regex", "pattern": "(?i)not run"},
+        {"name": "no-vague-tested-locally", "type": "not_regex", "pattern": "(?i)tested locally"},
+        {"name": "no-ai-attribution", "type": "not_regex", "pattern": "(?i)generated with|co-authored-by|claude code"},
+        {"name": "no-marketing-language", "type": "not_regex", "pattern": "(?i)\\b(robust|seamless|leverages?)\\b"},
+        {"name": "reviewer-quality", "type": "judge", "rubric": [
+          "The summary states what a user or operator can do after merge and why, before any file is named",
+          "Each file bullet states a behaviour or guarantee of that file, not 'added' or 'updated'",
+          "The body states the boundary: what is unchanged, what was not run, what is deferred",
+          "Length is proportionate: roughly 20-40 lines for a single-area feature"
+        ]}
+      ]
+    },
+    {
+      "id": "pos-multi-area-no-changelog",
+      "split": "tune",
+      "prompt": "Write the pull request title and body for the branch described in the input file so a reviewer can approve it confidently. Output the title on the first line, then a blank line, then the body in GitHub-flavoured markdown. Do not run any commands; everything you need is in the file.",
+      "files": ["fixtures/csv-import-branch.md"],
+      "expected_behavior": [
+        "Changes are grouped by area in reading order (domain -> reader -> refresh job -> scheduling -> tests -> docs), not listed file by file",
+        "The unplanned ops runbook is flagged as beyond the spec",
+        "Post-merge operator steps are numbered with expected results",
+        "The spec is linked, not paraphrased"
+      ],
+      "assertions": [
+        {"name": "conventional-title", "type": "regex", "pattern": "(?m)^\\s*#?\\s*(feat|fix|refactor|chore|docs|test)\\([a-z0-9-]+\\): [a-z]"},
+        {"name": "links-spec", "type": "contains", "value": "specs/041-csv-import-refresh"},
+        {"name": "no-file-change-table", "type": "not_regex", "pattern": "(?i)\\|\\s*file\\s*\\|"},
+        {"name": "no-bare-changelog-bullets", "type": "not_regex", "pattern": "(?im)^\\s*[-*]\\s+`[^`]+`\\s*[:\\u2014-]\\s*(added|updated|modified|changed|new file)\\.?\\s*$"},
+        {"name": "flags-unplanned-work", "type": "regex", "pattern": "(?i)not in the (plan|spec)|beyond the (plan|spec)|outside the spec"},
+        {"name": "names-unchanged-component", "type": "regex", "pattern": "(?i)DocumentBuilder[^.\\n]*unchanged"},
+        {"name": "post-merge-steps", "type": "regex", "pattern": "(?im)^#{1,3}\\s*(manual verification|after merge|post-merge)"},
+        {"name": "validation-has-real-numbers", "type": "contains_all", "values": ["296", "31"]},
+        {"name": "no-ai-attribution", "type": "not_regex", "pattern": "(?i)generated with|co-authored-by|claude code"},
+        {"name": "reviewer-quality", "type": "judge", "rubric": [
+          "Changes are grouped under labelled areas in the order a reviewer should read the diff",
+          "Every file bullet carries the rule or guarantee the reviewer can check in that file",
+          "The spec is linked rather than paraphrased",
+          "Post-merge steps give the numbers an operator will see, not 'check the logs'"
+        ]}
+      ]
+    },
+    {
+      "id": "trig-draft-pr-for-branch",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a PR description for my current branch.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-refresh-after-push",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I pushed two more commits to PR #42 since the last review. Update the PR body so it is accurate again.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-summarize-branch-into-pr",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Summarise what changed on this branch into something I can paste into the pull request.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-commit-message",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a commit message for the staged changes.",
+      "expected_behavior": ["The skill should NOT trigger: a commit message is not a PR body."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-pr",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review PR #88 for bugs and leave comments on anything risky.",
+      "expected_behavior": ["The skill should NOT trigger: reviewing a PR is not authoring its description."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-git-question",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Explain the difference between git merge and git rebase.",
+      "expected_behavior": ["The skill should NOT trigger."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

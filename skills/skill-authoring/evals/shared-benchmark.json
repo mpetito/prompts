@@ -1,0 +1,219 @@
+{
+  "version": 2,
+  "skill_name": "skill-authoring",
+  "skill_paths": ["SKILL.md"],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-new-skill-from-request",
+      "split": "tune",
+      "prompt": "Create the agent skill requested in the input file. Output every file of the skill folder: for each one, a level-2 heading giving its full path from the repository root, then the file's raw content, not wrapped in a code fence. After the files, list briefly anything you did differently from the request and why. Do not run any commands; everything you need is in the input file.",
+      "files": [
+        "fixtures/staging-refresh-request.md"
+      ],
+      "expected_behavior": [
+        "The skill folder is lowercase-hyphenated and matches the frontmatter name, not StagingRefresh or Staging DB Refresh",
+        "The description carries Use-when triggers and names prod-restore as the adjacent skill for production restores",
+        "The ~200-row flag table goes to a references/ file; the staging-smoke link is skill-relative (../staging-smoke/SKILL.md)",
+        "The human-start-only refresh sets disable-model-invocation, the requested haiku pin is not applied, and the repo-wide SQL conventions are redirected to AGENTS.md",
+        "The embedded announcement template uses a wider outer fence (or moves to its own template file)"
+      ],
+      "assertions": [
+        {
+          "name": "folder-matches-lowercase-name",
+          "type": "regex",
+          "pattern": "(?ms)skills/([a-z0-9]+(?:-[a-z0-9]+)*)/SKILL\\.md.*?^[ \\t]*name:[ \\t]*[\\\"']?\\1[\\\"']?[ \\t\\r]*$"
+        },
+        {
+          "name": "name-is-lowercase-hyphen",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*name:[ \\t]*(?![\\\"']?[a-z0-9]+(?:-[a-z0-9]+)*[\\\"']?[ \\t\\r]*$)\\S"
+        },
+        {
+          "name": "description-names-adjacent-skill",
+          "type": "regex",
+          "pattern": "(?ims)^[ \\t]*description:(?:(?!\\n[ \\t]*(?:---|[a-z][\\w-]*:[ \\t])).){0,1100}?\\bprod-restore\\b"
+        },
+        {
+          "name": "skill-relative-cross-reference",
+          "type": "contains",
+          "value": "../staging-smoke/SKILL.md"
+        },
+        {
+          "name": "flag-table-in-references",
+          "type": "regex",
+          "pattern": "(?i)\\breferences/[\\w.-]+\\.md\\b"
+        },
+        {
+          "name": "template-fence-wider-or-own-file",
+          "type": "regex",
+          "pattern": "(?im)^[ \\t]*````|\\b(?:assets|references)/[\\w./-]*(?:announce|template)"
+        },
+        {
+          "name": "destructive-not-auto-invoked",
+          "type": "regex",
+          "pattern": "(?im)^[ \\t]*disable-model-invocation:[ \\t]*[\\\"']?true\\b"
+        },
+        {
+          "name": "no-haiku-pin",
+          "type": "not_regex",
+          "pattern": "(?im)^[ \\t]*model:[ \\t]*[\\\"']?haiku"
+        },
+        {
+          "name": "conventions-redirected",
+          "type": "regex",
+          "pattern": "(?is)(?:convention|\\bSQL\\b|snake_case)[^#]{0,250}?AGENTS\\.md|AGENTS\\.md[^#]{0,250}?(?:convention|\\bSQL\\b|snake_case)"
+        },
+        {
+          "name": "author-quality",
+          "type": "judge",
+          "rubric": [
+            "The SKILL.md body is a numbered procedure whose destructive step (pg_restore over staging) is preceded by taking the pre-refresh dump and followed by a rollback section that uses it",
+            "The SQL naming conventions do not appear as rules inside the skill; the output says they belong in always-loaded project context instead",
+            "The output flags the commands it could not verify (for example the larkctl invocations) rather than presenting them as tested",
+            "The SKILL.md stays procedural and points to the reference file instead of reproducing the flag table inline"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-review-draft-skill",
+      "split": "tune",
+      "prompt": "Review the draft skill in the input file before it is merged. List the problems you find, most important first, each with the concrete fix; quote original lines inline in backticks, never as code blocks. Then give the corrected frontmatter block in full. Do not run any commands; everything you need is in the input file.",
+      "files": [
+        "fixtures/release-notes-skill-draft.md"
+      ],
+      "expected_behavior": [
+        "Frontmatter problems come first: name must equal the folder (release-notes) and the description needs Use-when triggers",
+        "The model pin is removed, not swapped for another tier, because the skill is a reference skill read inside ship-release",
+        "The 640-line file is cut under 500 lines by moving the script and command table to references/ (or scripts/)",
+        "The repo-root link becomes ../pr-authoring/SKILL.md, the copied section is replaced by a cross-link, and the nested template fence is widened",
+        "The drafting worker gets an explicit opus model instead of inherit or an unjustified cheaper tier"
+      ],
+      "assertions": [
+        {
+          "name": "corrected-name-matches-folder",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*name:[ \\t]*[\\\"']?release-notes[\\\"']?[ \\t\\r]*$"
+        },
+        {
+          "name": "no-old-name-kept",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*name:[ \\t]*[\\\"']?release-notes-writer"
+        },
+        {
+          "name": "corrected-frontmatter-drops-model",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*name:[ \\t]*[\\\"']?release-notes(?:-writer)?[\\\"']?[ \\t]*\\r?\\n(?:(?![ \\t]*(?:model:|---|```))[^\\n]*\\n)*?[ \\t]*(?:---|```)"
+        },
+        {
+          "name": "description-has-use-when",
+          "type": "regex",
+          "pattern": "(?ims)^[ \\t]*description:(?:(?!\\n[ \\t]*(?:---|```|[a-z][\\w-]*:[ \\t])).){0,1100}?\\buse when\\b"
+        },
+        {
+          "name": "no-cheaper-or-inherited-pin",
+          "type": "not_regex",
+          "pattern": "(?im)^[ \\t]*model:[ \\t]*[\\\"']?(?:haiku|sonnet|inherit)\\b"
+        },
+        {
+          "name": "length-budget-and-references",
+          "type": "regex",
+          "pattern": "(?is)\\b500\\b[^\\n]{0,40}\\blines?\\b[\\s\\S]*?\\breferences/|\\breferences/[\\s\\S]*?\\b500\\b[^\\n]{0,40}\\blines?\\b"
+        },
+        {
+          "name": "skill-relative-cross-reference",
+          "type": "contains",
+          "value": "../pr-authoring/SKILL.md"
+        },
+        {
+          "name": "flags-nested-fence",
+          "type": "regex",
+          "pattern": "(?i)four backticks|`{4}|outer fence|wider (?:outer )?fence|more backticks"
+        },
+        {
+          "name": "worker-model-opus",
+          "type": "regex",
+          "pattern": "(?i)\\b(?:workers?|stages?|draft-sections|subagents?)\\b[^\\n]{0,120}\\bopus\\b|\\bopus\\b[^\\n]{0,120}\\b(?:workers?|stages?|draft-sections|subagents?)\\b|agent:[^\\n]*\\r?\\n[ \\t]*model:[ \\t]*[\\\"']?opus"
+        },
+        {
+          "name": "review-quality",
+          "type": "judge",
+          "rubric": [
+            "Frontmatter findings (name/folder mismatch, missing Use-when triggers) are listed before the length, command and placement findings",
+            "The copied 'Grouping changes' section is flagged as duplication to replace with a cross-link to the canonical skill",
+            "The untested changelog-gen command is flagged as unverified and must be run or removed before merge",
+            "The 'save tokens' rationale for a cheaper drafting model is rejected as insufficient justification on its own"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-runbook-to-skill",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Turn our database migration runbook into a SKILL.md that agents can load on demand.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-fix-missed-trigger",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "My deploy skill never fires when I say 'ship it to staging'; fix its description so it triggers.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-split-oversized-skill",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "This SKILL.md is 700 lines now; split it into a short procedure plus reference files.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-claude-md",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add our new build and test commands to the repo's CLAUDE.md.",
+      "expected_behavior": [
+        "The skill should NOT trigger: always-loaded project context belongs to agents-md-authoring"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-commit-skill-change",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Commit the SKILL.md changes I just made and open a pull request for them.",
+      "expected_behavior": [
+        "The skill should NOT trigger: committing and opening a PR belongs to commit"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-benchmark-skill",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Benchmark my pr-authoring skill against its previous version and report the pass-rate difference.",
+      "expected_behavior": [
+        "The skill should NOT trigger: measuring skill performance belongs to skill-creator, not authoring"
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

@@ -49,6 +49,19 @@ pwsh -NoProfile -File ./verify-setup.ps1
 
 Edits *inside* an already-linked skill need no rerun — they are visible immediately.
 
+## After changing a skill
+
+If the skill has an `evals/` suite, rerun it before and after the edit and compare the paired
+delta and trigger rates (see [Evaluating Skills](README.md#evaluating-skills)):
+
+```sh
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill <name>
+```
+
+A shortened skill should keep its objective pass rate and trigger rate while costing fewer
+tokens. A new case for an extended skill should fail on the old text and pass on the new one.
+A skill whose with-versus-without delta stays near zero across runs is a removal candidate.
+
 ## Authoring standards
 
 Do not write these from memory; the canonical guidance lives in the tree:

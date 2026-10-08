@@ -157,6 +157,34 @@ Repeat until approved.
 /pr-consolidate → /commit
 ```
 
+## Evaluating Skills
+
+A skill can carry an eval suite at `skills/<name>/evals/shared-benchmark.json`, in the
+[skill-eval-harness](https://github.com/adewale/skill-eval-harness) manifest format. The suite
+runs the same prompt with and without the skill mounted, grades the outputs with deterministic
+assertions plus an LLM judge, and measures whether the skill fires on its own for a set of
+should-trigger and should-not-trigger queries. The paired delta is what justifies a skill's
+tokens; shortening, extending or removing a skill is judged by rerunning the same suite.
+
+```sh
+uv tool install skill-eval-harness
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pr-authoring            # one skill
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Runs 3                        # every skill with a suite
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill review -SkipTrigger -SkipJudge
+```
+
+Results land in `.eval-runs/<skill>/<timestamp>/` (gitignored): `benchmark.json`, per-run
+outputs, judge verdicts, `trigger-matrix.json` and a `review.html` page. The script wraps
+Claude so the run sees project-level settings only; the skills, plugins and MCP servers linked
+into this machine's user profile stay out of both arms. Pass `-Agent codex` to run the same
+suite through `codex exec`.
+
+Authoring rules for a suite: each case produces text from a fixture under `evals/fixtures/`,
+because a headless run has no shell or network; every assertion traces to a rule in the skill
+that a model without the skill plausibly breaks, with a trap for it in the fixture; and trigger
+negatives are near-misses from adjacent tasks. `skills/pr-authoring/evals/` is the reference
+suite.
+
 ## Setup
 
 Use **PowerShell 7.4+ (`pwsh`)** on Windows, Ubuntu, and macOS. Windows PowerShell 5.1

@@ -3,3 +3,6 @@
 
 # Handoff request/response payloads written at runtime
 .herdr-handoff/
+
+# Local skill-eval runs written by scripts/run-skill-eval.ps1
+.eval-runs/

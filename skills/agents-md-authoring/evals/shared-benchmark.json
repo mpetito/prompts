@@ -1,0 +1,115 @@
+{
+  "version": 2,
+  "skill_name": "agents-md-authoring",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "pos-root-agents-md",
+      "split": "tune",
+      "prompt": "Write the root agent instructions file for the repository described in the input file. Output only the file's Markdown contents, nothing before or after it. Do not run any commands; everything you need is in the input file.",
+      "files": ["fixtures/ledgerline-repo.md"],
+      "expected_behavior": [
+        "A Do Not section lists specific prohibitions with cross markers, each naming the safe alternative",
+        "A safety section separates what the agent may do from what it must ask about first",
+        "README content (history, roadmap, overview) is linked, not restated, and wiki platitudes are dropped",
+        "Project terms (slip, settlement run, shadow ledger) are defined in their own section",
+        "Commands are the real pnpm scripts, not the stale yarn ones"
+      ],
+      "assertions": [
+        {"name": "do-not-heading", "type": "regex", "pattern": "(?im)^#{1,3}\\s*Do Not\\b"},
+        {"name": "do-not-cross-markers", "type": "regex", "pattern": "(?m)^\\s*(?:[-*+]|\\d+[.)])?\\s*\\u274c"},
+        {"name": "safety-ask-first", "type": "regex", "pattern": "(?i)\\bask first\\b"},
+        {"name": "links-readme", "type": "regex", "pattern": "\\[[^\\]\\n]*\\]\\((?:\\./)?README\\.md(?:#[^)]*)?\\)"},
+        {"name": "defines-project-terms", "type": "regex", "pattern": "(?im)^#{1,4}\\s*(?:glossary|terminology|vocabulary|definitions|terms|concepts|(?:domain|project|key|core)[ -](?:terms|terminology|vocabulary|concepts|language|model))\\b"},
+        {"name": "no-overview-section", "type": "not_regex", "pattern": "(?im)^#{1,4}\\s*(?:(?:project|repo|repository|service|product)\\s+)?overview\\b"},
+        {"name": "no-readme-restatement", "type": "not_regex", "pattern": "(?i)hackathon|spreadsheet-based|month-end close|Payments Platform team|every merchant on the platform|ledger snapshots|multi-currency"},
+        {"name": "no-vague-guidance", "type": "not_regex", "pattern": "(?i)best practices|clean,? maintainable|be careful with"},
+        {"name": "agent-file-quality", "type": "judge", "rubric": [
+          "The file is at most 150 lines long",
+          "Every command shown is a pnpm script that exists in the fixture's package.json, none uses yarn, and the integration-test command says it needs the database container",
+          "Each prohibition in the Do Not section names the safe alternative, such as bigint minor units, a reversing posting, or regenerating with pnpm codegen",
+          "The terms slip, settlement run and shadow ledger are each defined in one line"
+        ]}
+      ]
+    },
+    {
+      "id": "pos-monorepo-hierarchy",
+      "split": "tune",
+      "prompt": "Using the input file, decide which agent instruction files this repository should have and write each one in full. Output one level-2 heading per file that contains only its repo-relative path, followed by the file contents in a fenced code block. After the files, add a short section naming any existing file to delete and any problem you found. Do not run any commands; everything you need is in the input file.",
+      "files": ["fixtures/harborview-monorepo.md"],
+      "expected_behavior": [
+        "The 430-line root file is split: a short root file plus a nested file only for services/scoring, whose conventions differ",
+        "No nested file for packages/web or packages/api, which share root conventions; the existing packages/api file only repeats root rules plus stale npm commands, so it is flagged as an unlabeled conflict and removed",
+        "The nested Python file labels its override of the root file near its top",
+        "packages/sdk/generated (or packages/sdk) gets a do-not-edit file",
+        "Copilot and Claude Code get thin pointer files to AGENTS.md, not copies of its rules"
+      ],
+      "assertions": [
+        {"name": "no-nested-file-for-shared-conventions", "type": "not_regex", "pattern": "(?im)^#{2,3}[ \\t]*`?packages/(?:web|api)/(?:AGENTS|CLAUDE)\\.md`?[ \\t]*$"},
+        {"name": "labels-override-of-root", "type": "regex", "pattern": "(?ims)^#{2,3}[ \\t]*`?services/scoring/(?:AGENTS|CLAUDE)\\.md`?[ \\t]*\\n\\s*(`{3,}|~{3,})[^\\n]*\\n(?:(?!\\1).){0,800}?(?:\\boverrid(?:e|es|ing)\\b[^\\n]{0,60}\\broot\\b|\\broot\\b[^\\n]{0,60}\\boverridden\\b)"},
+        {"name": "generated-dir-file", "type": "regex", "pattern": "(?im)^#{2,3}[ \\t]*`?packages/sdk/(?:generated/)?AGENTS\\.md`?[ \\t]*$"},
+        {"name": "copilot-thin-pointer", "type": "regex", "pattern": "(?ims)^#{2,3}[ \\t]*`?\\.github/copilot-instructions\\.md`?[ \\t]*\\n\\s*(`{3,}|~{3,})[^\\n]*\\n(?:(?!\\1).){0,200}?AGENTS\\.md(?:(?!\\1).){0,300}?\\1"},
+        {"name": "do-not-cross-markers", "type": "regex", "pattern": "(?m)^\\s*(?:[-*+]|\\d+[.)])?\\s*\\u274c"},
+        {"name": "no-vague-guidance", "type": "not_regex", "pattern": "(?im)^\\s*(?:[-*+]|\\d+[.)])?\\s*(?:\\*\\*)?(?:write clean code|follow (?:SOLID|best practices)|use best practices|be thoughtful)"},
+        {"name": "no-overview-section", "type": "not_regex", "pattern": "(?im)^#{1,4}\\s*(?:(?:project|repo|repository|service|product)\\s+)?overview\\b"},
+        {"name": "hierarchy-quality", "type": "judge", "rubric": [
+          "The root file is at most 150 lines and its commands are only the verified pnpm commands, with no npm commands",
+          "The Python conventions and uv commands appear only in the services/scoring file, not in the root file",
+          "The CLAUDE.md and Copilot files are short pointers to AGENTS.md rather than copies of its rules",
+          "The README overview, architecture and deploy guide are referenced by link rather than restated"
+        ]}
+      ]
+    },
+    {
+      "id": "trig-write-agents-md",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write an AGENTS.md for this repo so coding agents stop running the wrong test command.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-trim-claude-md",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our CLAUDE.md has grown to 400 lines; trim it and tell me what should move somewhere else.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-copilot-instructions",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Set up .github/copilot-instructions.md with our project conventions so Copilot follows them.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-skill-md",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a SKILL.md for our release procedure so agents can load it on demand.",
+      "expected_behavior": ["The skill should NOT trigger: an on-demand SKILL.md belongs to skill-authoring."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-readme",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Update the README with setup instructions for new developers joining the team.",
+      "expected_behavior": ["The skill should NOT trigger: a human-facing README is not always-loaded agent context."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-contributing",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a CONTRIBUTING.md that explains our branch naming and pull request review rules.",
+      "expected_behavior": ["The skill should NOT trigger: contributor guidelines for humans are not agent instructions."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
