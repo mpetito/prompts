@@ -1,6 +1,6 @@
 ---
 name: pr-authoring
-description: "Write pull request titles and bodies that lead with motivation, grouped changes, and concrete validation, not file-level changelogs. Use when creating a PR, updating an existing PR description or refreshing it after a push, drafting a body for staged or pushed work, or when the commit skill needs a PR body."
+description: "Write pull request titles and bodies that lead with motivation, grouped changes, and concrete validation, not file-level changelogs. Use when creating a PR, writing or drafting a PR description, title, or body, summarising a branch's commits or diff into text to paste into a pull request, updating, refreshing, or correcting an existing PR body after new commits or pushes, or when the commit skill needs a PR body, even when the user says summary, write-up, or what changed rather than description. Load it before running git to gather the changes. Not for commit messages or pushing (commit), reviewing someone else's PR (pr-review), or addressing review comments (pr-feedback)."
 # Claude Code only; other hosts ignore these keys.
 # Writing-heavy but not reasoning-heavy: cheaper tier, high effort.
 model: sonnet

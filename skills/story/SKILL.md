@@ -1,6 +1,6 @@
 ---
 name: story
-description: "Create Azure DevOps User Stories, Issues, and Bugs with the right type, fields, story points, and acceptance criteria. Use when writing a user story, filing a bug with repro steps and severity, estimating story points, drafting acceptance criteria, or formatting ADO work items."
+description: "Create, refine, and size Azure DevOps User Stories, Issues, and Bugs with the right type, fields, Fibonacci story points, and acceptance criteria. Use when writing a user story, filing or logging a bug with repro steps and severity, estimating or pointing a backlog item or ticket, asking how big or how many points something is, reviewing, tightening, or rewriting acceptance criteria, splitting an oversized story, or formatting ADO work items, even when the item is pasted without naming ADO. Not for PR descriptions (pr-authoring), specs or implementation plans (spec), or logging time (tt)."
 # Claude Code only; other hosts ignore these keys.
 model: sonnet
 effort: low

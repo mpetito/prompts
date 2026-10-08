@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Review a diff, prove its tests and guards can fail, report findings by severity, and give a merge verdict. Use when reviewing code, auditing local or staged changes, checking coding standards, simplifying overengineered code or verbose comments, mutation-testing a test or flake fix, acting as a delegated or adversarial reviewer that reports without editing, or before reporting a fix, refactor, or implementation complete."
+description: "Review a diff, prove its tests and guards can fail, report findings by severity, and give a merge verdict. Use when asked to review, check, or look over code changes: staged, uncommitted, or local changes before a commit, a branch, a pasted diff or patch, hunting for bugs or regressions, asking whether a change is safe to merge or ship, checking coding standards, simplifying overengineered code or verbose comments, mutation-testing a test or flake fix, acting as a delegated or adversarial reviewer that reports without editing, or before reporting a fix, refactor, or implementation complete. Load it before running git or reading the diff. Not for a teammate's GitHub PR (pr-review), addressing review comments on your PR (pr-feedback), or resolving threads (pr-resolve)."
 ---
 
 # Code Review Skill

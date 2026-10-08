@@ -1,6 +1,6 @@
 ---
 name: skill-authoring
-description: "Create, review, split, and improve SKILL.md files and skill folders. Use when writing skill frontmatter, tuning a description, fixing missed triggers, adding references/ for progressive disclosure, or pinning model and effort so a subagent or workflow stage does not inherit one."
+description: "Author and fix agent skills: create, review, split, and improve skill folders and their SKILL.md. Use when turning a runbook, doc, or repeated workflow into a loadable skill; when a skill does not fire, fires on the wrong prompts, or needs its description or trigger phrases rewritten; when a skill file is too long and should become a short procedure plus references/ files; when writing skill frontmatter; or when pinning model and effort so a subagent or workflow stage does not inherit one. Not for AGENTS.md or CLAUDE.md (agents-md-authoring), committing or opening PRs (commit), or running a skill's eval suite (scripts/run-skill-eval.ps1, see Evaluating Skills in the README)."
 ---
 
 # Skill Authoring
