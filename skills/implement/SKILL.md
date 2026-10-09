@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Execute a numbered spec from specs/{NNN-slug}/ end-to-end, phase by phase. Use when implementing a spec by number, running its plan.md, continuing a partially implemented spec, or completing all remaining phases. Without a numbered spec, use code-authoring instead."
+description: "Execute a numbered spec from specs/{NNN-slug}/ end-to-end: apply answers to its open questions, create or review plan.md, then build every phase and check off its steps. Use whenever a request points at a spec folder or number (042, spec 042, 058-some-feature) and asks for the work to be done, even in plain words: implement or build an approved or signed-off design doc, spec, or step list; work through a plan.md, task list, or checklist until every step is done; resume, pick up, or finish a partly done spec or its remaining phases; or answer a spec's open questions and then continue building. Load it first, before searching for or opening the spec folder, even when that folder is not located yet. Not for drafting or writing up a new spec or plan before coding starts: this skill holds no spec.md or plan.md template, so use spec and do not open this skill for its format. Not for reviewing finished spec work before merge (review), or a fix or change with no numbered spec (code-authoring)."
 ---
 # Implement
 
