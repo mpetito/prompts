@@ -2,7 +2,7 @@
 name: firecrawl
 model: sonnet
 effort: high
-description: "Scrape, crawl, map, search, and extract structured data from the live web with Firecrawl. Use when fetching URLs as markdown, crawling a site or docs set, extracting fields by JSON schema, searching current info, reading JS/login-gated pages, or converting local PDF/DOCX."
+description: "Fetch and read live web pages with Firecrawl: scrape, crawl, map, search, and extract structured data. Use whenever a request gives a URL or website and needs what it says now, even in plain words and even when WebFetch looks enough: read or summarize a page, answer a question from a page's current content (pricing, plan limits, docs, changelogs, status), grab a page as clean markdown, pull a list of items or fields (names, prices, availability, dates) from a page into JSON or a table, download or crawl every page under a site or docs path, list a site's URLs, read pages that render with JavaScript or need clicks or a login, search the web for current info, or convert a local PDF or DOCX to markdown. Load it before calling WebFetch or curl on the URL. Not for a sourced comparison or recommendation across many sources (research), testing your own app in a browser or writing Playwright tests (playwright-e2e), or editing a Word document (word-doc-editing)."
 ---
 
 # Firecrawl — Live Web Search, Scrape, and Crawl

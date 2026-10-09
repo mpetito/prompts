@@ -1,6 +1,6 @@
 ---
 name: agent-briefs
-description: "Write the brief, review prompt, fix-round note or research prompt that another agent will execute, and define what it reports back. Use when delegating implementation, review, investigation, research or docs work to a subagent, Herdr peer or `codex exec`; writing a review prompt or fix-round note; relaying review findings to an author; resuming an agent for another round; or deciding what an agent should report. agent-orchestration is the caller; herdr-delegation is the peer transport."
+description: "Write the brief, handoff prompt, review prompt, fix-round note or research prompt that another agent will execute, and define what it reports back. Use whenever the user wants text to give, paste or send to another agent, even in plain words: a handoff to a fresh Claude, Codex or `codex exec` session that has not seen this chat; instructions for a subagent, Herdr peer, worker, reviewer or researcher before launching it; a message passing review or Codex findings back to the agent that made the change, so it fixes them and disputes wrong ones; a note asking a reviewer to re-check new commits; resuming an agent for another round; or the answer format an agent must return, including a turn-capped researcher. Load it first, even when task details are missing: its templates use placeholders. Not for running several agents on one build (agent-orchestration), unsticking or driving a Herdr peer pane (herdr-delegation), reviewing a diff yourself (review), or doing the research yourself (research)."
 ---
 
 # Agent Briefs

@@ -1,6 +1,6 @@
 ---
 name: design-review-standards
-description: Use when reviewing UI/UX implementations, auditing design quality or accessibility, or establishing design standards for a web application.
+description: "Review and score a web app's visual design and UI/UX across typography, color and contrast, spacing, dark mode, components, WCAG AA accessibility, responsive layout, polish, and conversion, then rank fixes by impact. Use whenever a request judges how pages or screens look, feel, or can be used, even in plain words: critique a page's look and feel, say why a site looks cheap, dated, cluttered, or inconsistent and what to fix first, check whether keyboard-only or screen-reader users can get through a flow such as signup or checkout, find text that became hard to read or fails contrast after a theme or dark mode change, check mobile layout, or write a design checklist or standards for signing off new pages. Load it first, before searching for or opening the page files, even when they are not located yet. Not for reviewing a code diff for bugs (review), building cart, checkout, or order features (ecommerce-patterns), or search rankings and JSON-LD (seo-aeo-structured-data)."
 ---
 
 # Design Review and UI/UX Standards

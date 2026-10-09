@@ -1,6 +1,6 @@
 ---
 name: herdr-delegation
-description: "Coordinate coding agents in Herdr panes across harnesses (Claude Code, Codex, Copilot). Use when delegating to a peer pane, starting or queueing work for a long-lived Codex peer, collecting its result, a peer stalls on an approval dialog or question, running parallel agents on git worktrees, or choosing a peer over an in-process subagent."
+description: "Drive coding agents in Herdr terminal panes across harnesses (Claude Code, Codex, Copilot): start them, hand them work, watch them, collect their results, and clean up. Use whenever a request puts an agent in another terminal, pane, or split, even in plain words: launch a Codex or Claude peer beside this session, spin up several coding agents in parallel in separate terminals, each isolated on its own branch or git worktree, queue more work for a long-lived peer, recover what a peer produced when its screen output is lost, unstick a peer waiting on an approval dialog or question, tear down peer worktrees, or choose a Herdr peer over an in-process subagent. Load it before the first herdr or git worktree command, even when the tasks or repository are not given yet. Not for independent Claude and Codex opinions on one decision, which need no panes (model-council); writing the brief a peer follows (agent-briefs); or orchestrating lanes, reviews and merges for a whole build (agent-orchestration)."
 ---
 
 # Herdr Delegation
