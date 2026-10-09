@@ -61,8 +61,14 @@ function Resolve-SkillList {
 function New-ClaudeWrapper {
     param([string]$Directory)
     # A nested `claude -p` refuses to start while CLAUDECODE marks the parent session, so clear it.
+    # Eval cases only read fixtures and write text, so every tool that can act on the machine is
+    # denied outright: managed settings can grant Bash to a headless run, and a sandboxed run that
+    # inherits the Herdr variables will otherwise treat the user's real terminal panes as its own.
     $wrapper = Join-Path $Directory 'claude-eval.cmd'
-    $lines = @('@echo off', 'set CLAUDECODE=', 'claude --setting-sources project --strict-mcp-config %*')
+    $denied = 'Bash,PowerShell,Write,Edit,MultiEdit,NotebookEdit,Agent,WebFetch,WebSearch'
+    $lines = @('@echo off', 'set CLAUDECODE=', 'set HERDR_PANE_ID=', 'set HERDR_TAB_ID=', 'set HERDR_WORKSPACE_ID=',
+        'set HERDR_SOCKET_PATH=', 'set HERDR_BIN_PATH=', 'set HERDR_ENV=', 'set TERM_PROGRAM=',
+        "claude --setting-sources project --strict-mcp-config --disallowedTools `"$denied`" %*")
     Set-Content -LiteralPath $wrapper -Value ($lines -join "`r`n") -Encoding ascii
     $wrapper
 }
