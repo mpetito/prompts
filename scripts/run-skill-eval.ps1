@@ -118,10 +118,6 @@ function Write-Summary {
 
 $names = @(Resolve-SkillList -Requested $Skill)
 if (-not $names) { throw 'No skill has an evals/shared-benchmark.json manifest.' }
-$wrapperDir = Join-Path $OutRoot '.bin'
-$null = New-Item -ItemType Directory -Path $wrapperDir -Force
-$claudeBin = New-ClaudeWrapper -Directory $wrapperDir
-
 $failed = @()
 foreach ($name in $names) {
   try {
@@ -130,6 +126,9 @@ foreach ($name in $names) {
     $out = Join-Path $OutRoot "$name/$stamp"
     $runsDir = Join-Path $out 'runs'
     $null = New-Item -ItemType Directory -Path $out -Force
+    # One wrapper per run directory: concurrent invocations rewriting a shared .cmd made launches
+    # fail with WinError 193, and every failed launch was scored as a miss.
+    $claudeBin = New-ClaudeWrapper -Directory $out
 
     Invoke-Harness @('validate', $manifest, '--strict-leakage')
     if (-not $TriggerOnly) {

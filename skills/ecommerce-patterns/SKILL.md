@@ -1,6 +1,6 @@
 ---
 name: ecommerce-patterns
-description: "Build e-commerce features: shopping cart, checkout, payment, order lifecycle, gift cards, purchase analytics, and conversion components, with all money kept as integer cents. Use when adding or fixing a cart, basket, or slide-out cart drawer, keeping a cart across page refreshes or return visits, wiring checkout or a payment provider SDK, moving orders through confirmed, shipped, cancelled, or refunded states, redeeming gift card balances, or when prices or totals show floating-point rounding errors. Not for product-page SEO, JSON-LD, schema.org markup, or Google rich results, even when they carry price and availability (seo-aeo-structured-data); not for contrast, focus, or visual audits of a storefront (design-review-standards); not for Playwright or end-to-end checkout tests (playwright-e2e)."
+description: Use when building cart, checkout, payment, or order-management features.
 ---
 
 # E-Commerce Patterns
