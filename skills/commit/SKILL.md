@@ -1,6 +1,6 @@
 ---
 name: commit
-description: "Validate, commit with conventional messages, push, and open or update a PR. Use when committing changes, creating or updating a pull request, or finalizing work; honors a project CONTRIBUTING guide when present, and covers lint/test validation, feature-branch naming (Envative `users/<user>/…`), ADO `AB#` linking, and time logging."
+description: "Validate, commit with conventional messages, push, and open or update a pull request. Use whenever a request ends with local work recorded in git or shared through a remote, even when it never says commit or push: turning working-tree edits into a commit, publishing a new or feature branch to GitHub, opening a pull request once a task is done and needs a reviewer, or pushing more commits onto a pull request that is already open. Load it before running git status or any other git command, even for a one-line request. Honors a project CONTRIBUTING guide when present, and covers lint/test validation, feature-branch naming (Envative `users/<user>/…`), ADO `AB#` linking, and time logging. Not for writing or rewriting only a PR title or body (pr-authoring), reviewing changes before committing (review), or triaging review comments (pr-feedback)."
 # Claude Code only; other hosts ignore these keys.
 model: sonnet
 effort: low
