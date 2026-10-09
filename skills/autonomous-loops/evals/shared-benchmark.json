@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "autonomous-loops",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-fix-until-checks-pass",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Keep pushing fixes to PR #17 until every check passes.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-mobile-score-target",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our landing page only gets 62 on the mobile performance audit, so keep making changes and putting them live until it holds above 90.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-vulnerability-rescan",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run the vulnerability checker against staging, wait for its report, fix whatever it flags, and run it again until it comes back clean.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-merge-one-at-a-time-verify-live",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I have three approved PRs and every merge to main ships straight to production, so merge them one at a time and confirm the site is serving each new build before starting the next.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-copilot-rounds-after-push",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Copilot posts a fresh batch of comments on PR #31 after every push, so work through them round after round until it stops finding things and the build passes.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-single-pass-copilot-triage",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Look at the Copilot comments on PR #31 and tell me which ones are false positives.",
+      "expected_behavior": ["The skill should NOT trigger: a single triage pass over review comments on one PR belongs to pr-feedback."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-coordinate-several-agents",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Split this feature into checkout, search and admin lanes, hand each lane to its own subagent, and gate their merges while I'm away this afternoon.",
+      "expected_behavior": ["The skill should NOT trigger: running several agents across lanes on one build belongs to agent-orchestration."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-one-shot-lint-fix",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The lint step on PR #12 fails on an unused import in utils.ts; remove it.",
+      "expected_behavior": ["The skill should NOT trigger: a known single-shot fix belongs to code-authoring, not an iterative loop."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

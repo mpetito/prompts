@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "agentmail",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-did-signup-email-go-out",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Did the staging signup confirmation email actually get delivered?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-receipt-pdf-check",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our checkout service should send a receipt with a PDF invoice attached, and I just placed a staging order addressed to receipts-check@example.test, so look at what landed there and tell me whether the PDF came through.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-disposable-address-reset-flow",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Give me a disposable email address I can point the staging password-reset flow at.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-fake-customer-to-ticket-intake",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Send a fake customer complaint to support@acme-staging.example so I can see whether our ticket parser opens a ticket from it.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-magic-link-raw-html",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The magic-link login emails from staging show raw HTML tags instead of a button; pull up the last one that came in and show me its body and content-type header.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-playwright-signup-banner",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a Playwright test that submits the signup form and asserts the 'check your inbox' banner appears.",
+      "expected_behavior": ["The skill should NOT trigger: writing a browser end-to-end test belongs to playwright-e2e; no mailbox is inspected."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-implement-reset-email",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a password-reset email template to our Node API and the code that sends it through the existing mailer.",
+      "expected_behavior": ["The skill should NOT trigger: implementing the sending code belongs to code-authoring, not to checking delivered mail."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-compare-email-providers",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Compare SendGrid and Postmark for transactional email deliverability and pricing, and recommend one.",
+      "expected_behavior": ["The skill should NOT trigger: evaluating email providers belongs to research."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "word-doc-editing",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "ablations": [],
+  "cases": [
+    {
+      "id": "trig-accept-all-clean-copy",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Accept every tracked change in proposal.docx and save me a clean copy.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-redline-rename-party",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Legal sent back the services agreement for Acme Placeholder Ltd and wants every mention of Supplier changed to Vendor, with each edit showing up as markup they can approve or decline in Word.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-handbook-old-product-name",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Go through our employee handbook file and find every place it still uses the old product name, then fix them so HR can see exactly what was changed before signing off.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-stale-contents-page-numbers",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "After I added a chapter to report.docx the contents page still lists the old page numbers, so please fix that and send me a PDF of it.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-swap-appendix-keep-styles",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Remove appendix B from contract-draft.docx and put a new pricing table in its place without breaking the heading styles or numbering.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-read-docx-as-markdown",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Turn the vendor-terms.docx in my downloads folder into markdown so I can read it here in the chat.",
+      "expected_behavior": ["The skill should NOT trigger; reading a local DOCX as markdown belongs to firecrawl, and nothing in the document is being edited."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-generate-docx-in-app",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add an endpoint to our Node invoicing service that builds a .docx invoice with the docx npm package and returns it as a download.",
+      "expected_behavior": ["The skill should NOT trigger; writing application code that generates documents belongs to code-authoring."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-tighten-acceptance-criteria",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Tighten the acceptance criteria on the user story I pasted below and suggest how many points it is.",
+      "expected_behavior": ["The skill should NOT trigger; revising and sizing a backlog item belongs to story."],
+      "assertions": []
+    }
+  ]
+}

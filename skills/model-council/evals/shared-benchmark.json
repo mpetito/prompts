@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "model-council",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-council",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run a model council on whether we drop the synchronous fallback in the webhook handler.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-copilot-dead-code-unclear",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Copilot says the null check in the invoice mapper is dead code, and after tracing the callers I still can't tell if it's right, so have two different AI models look at it separately and tell me which way the evidence points.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-reviewers-disagree-cache-key",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "My two reviewers are split on whether the cache key needs the tenant id; get a couple of models to weigh in without seeing each other's answers and give me a recommendation.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-fix-worth-the-complexity",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The suggested fix for this race adds a whole locking layer and I'm not convinced it's worth it, can you get Claude and Codex to each judge whether the bug is real and whether a smaller change would do?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-second-opinion-retry",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I want a second opinion from another model before deciding whether to keep the retry wrapper around the export call.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-fix-copilot-comments",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Go through the Copilot comments on my PR, fix the valid ones and draft replies for the rest.",
+      "expected_behavior": ["The skill should NOT trigger: collecting and addressing review feedback on your own PR belongs to pr-feedback."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-hand-off-to-codex-pane",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Hand this refactor to the Codex pane and collect its result when it finishes.",
+      "expected_behavior": ["The skill should NOT trigger: delegating work to a peer agent pane belongs to herdr-delegation."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-compare-libraries",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Compare Redis and Memcached for our session store and recommend one with sources.",
+      "expected_behavior": ["The skill should NOT trigger: evaluating libraries from documentation belongs to research."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

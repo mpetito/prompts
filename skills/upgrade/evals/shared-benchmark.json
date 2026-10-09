@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "upgrade",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-bump-axios",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Bump axios to the latest version.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-react-next-out-of-support",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our app is still on React 17 and Next 12 and both are out of support, so move us onto current versions and fix whatever breaks.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-audit-findings",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "npm audit reports four high-severity findings in transitive packages; make them go away without breaking the build.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-dotnet-6-to-8",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Move this solution from .NET 6 to .NET 8 and bring the Microsoft.Extensions packages along with it.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-behind-releases",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Which packages in this monorepo are several releases behind, and which of them can we take today without code changes?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-compare-validation-libs",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Compare Zod, Valibot and ArkType for validating API payloads and recommend one for a new project.",
+      "expected_behavior": ["The skill should NOT trigger: choosing a library for a new project is evaluation work owned by research, not moving existing dependencies forward."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-commit-lockfile",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Commit the package.json and lockfile changes I already made and open a pull request.",
+      "expected_behavior": ["The skill should NOT trigger: committing finished changes and opening a PR is owned by commit."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-add-date-library",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add date-fns to the project and use it to format the order timestamps on the receipt page.",
+      "expected_behavior": ["The skill should NOT trigger: adding a new dependency as part of feature work is owned by code-authoring."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

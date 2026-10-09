@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "implement",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-number",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Implement spec 042.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-signed-off-design-doc",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The design doc and step list for the audit-log feature were signed off this morning in folder 058-audit-log, so go ahead and build the whole thing.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-finish-half-done-checklist",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We got through about half of the checklist in 031-invoice-export before running out of time yesterday; pick it up and finish the rest.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-answers-then-build",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Answers to the open questions on 064: use Postgres and keep the v1 endpoint, then carry on and build it.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-work-through-plan-steps",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Work through the plan.md for 019-sso-login until every step is checked off.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-write-spec",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write up a spec and a plan for adding CSV export to the reports page before anyone starts coding.",
+      "expected_behavior": ["The skill should NOT trigger: authoring a new spec.md and plan.md is owned by the spec skill."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-small-fix-no-spec",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Fix the off-by-one in the pagination helper; there is no ticket or design doc for it, just make the change.",
+      "expected_behavior": ["The skill should NOT trigger: a small fix with no numbered spec is owned by code-authoring."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-finished-work",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Look over the changes I made for spec 042 and tell me whether they are safe to merge.",
+      "expected_behavior": ["The skill should NOT trigger: checking finished changes before merge is owned by the review skill."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

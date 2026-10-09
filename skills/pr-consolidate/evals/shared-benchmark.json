@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "pr-consolidate",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-combine-prs",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Roll PRs #12, #15 and #19 into one branch.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-two-agents-context-first",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Two agents each built half of the checkout rework on agent-a/cart-totals and agent-b/tax-rules, so put both into a single branch I can test and sort out wherever they collide.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-stacked-prs-plain",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "PR #31 builds on top of #27, so stack them together so reviewers see everything in one place.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-keep-both-sides-plain",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Get feature/search-filters and feature/search-sorting living together without losing anything from either, and tell me where they clashed.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-preview-order-first",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Before you touch anything, show me the order and commands you would use to fold #40, #41 and #44 into a fresh integration branch.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-address-copilot-comments",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Copilot left eight comments on my PR #52; go through them and fix the ones that are real.",
+      "expected_behavior": ["The skill should NOT trigger: addressing review comments on one PR belongs to pr-feedback."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-commit-push-open-pr",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Commit what I have, push it, and open a PR against main.",
+      "expected_behavior": ["The skill should NOT trigger: committing one branch and opening its PR belongs to commit."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-resolve-review-threads",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I pushed the fixes for the review on PR #60, so reply to each thread and mark them resolved.",
+      "expected_behavior": ["The skill should NOT trigger: replying to and resolving review threads belongs to pr-resolve."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

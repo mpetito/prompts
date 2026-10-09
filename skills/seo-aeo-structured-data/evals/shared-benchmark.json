@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "seo-aeo-structured-data",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-link-preview-blank",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "When someone pastes a link to one of our Next.js blog posts into Slack or LinkedIn it shows no picture and the wrong title, so please fix that.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-quoted-by-chatbots",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We want our help-center answers to be the ones an AI chatbot quotes when people ask about our product, so what should we change on our Next.js site?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-sitemap-terse",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a sitemap and robots.txt to the Next.js app.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-stars-and-prices-in-google",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our storefront's product pages show up in Google as plain blue links while competitors get star ratings and prices underneath theirs, so set ours up to do the same.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-faq-schema-markup",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add FAQPage schema markup to the pricing page of our React app so the questions can appear directly in search results.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-checkout-coupon",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a coupon code field to the checkout page and apply the discount to the order total before payment.",
+      "expected_behavior": ["The skill should NOT trigger: checkout and discount logic belongs to ecommerce-patterns, not search or structured-data work."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-pagespeed-loop",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Keep re-running PageSpeed Insights on the homepage and fixing whatever it flags until the mobile performance score is above 90.",
+      "expected_behavior": ["The skill should NOT trigger: iterating against an external PageSpeed score belongs to autonomous-loops."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-scrape-meta-tags",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Crawl example-store.test and pull every product page's title and meta description into a CSV for me.",
+      "expected_behavior": ["The skill should NOT trigger: crawling and extracting data from a live site belongs to firecrawl, not to adding metadata to our own app."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

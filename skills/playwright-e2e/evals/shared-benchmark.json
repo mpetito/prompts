@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "playwright-e2e",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "ablations": [],
+  "cases": [
+    {
+      "id": "trig-terse-login-tests",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add Playwright tests for the login page.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-fails-one-in-five-on-build-server",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The checkout test passes every time on my laptop but fails about one run in five on the build server, so help me work out why and what to do with it meanwhile.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-ui-tests-break-on-css-rename",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our UI tests break every time the designers rename a CSS class, so how should the tests find buttons and fields so that stops happening?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-context-first-workspace-setup",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our repo has a Next.js app under apps/web and no browser automation yet; set up a separate test package that starts the dev server and runs the suite in both desktop and phone viewports.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-post-deploy-checks-decide-rollback",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "After each release I want a few quick checks that click through the homepage and sign-in on the live site and undo the deploy if either is broken.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-accessibility-audit",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Audit the checkout page for colour contrast and keyboard navigation problems and tell me what to fix.",
+      "expected_behavior": ["The skill should NOT trigger: a UI and accessibility audit belongs to design-review-standards."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-build-cart-drawer",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Build the cart drawer with quantity controls and keep its contents in localStorage across reloads.",
+      "expected_behavior": ["The skill should NOT trigger: building cart features belongs to ecommerce-patterns, not writing browser tests for them."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-unit-tests-pure-helper",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write Vitest unit tests for the formatPrice helper in src/utils.",
+      "expected_behavior": ["The skill should NOT trigger: unit tests for a pure function belong to code-authoring, not end-to-end browser testing."],
+      "assertions": []
+    }
+  ]
+}

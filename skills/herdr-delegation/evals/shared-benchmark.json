@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "herdr-delegation",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-start-codex-beside-me",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Start Codex in a Herdr pane next to this one and have it run the test suite.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-stuck-on-yes-no",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The other terminal where you launched that reviewer has been sitting on a yes/no prompt for ten minutes, can you deal with it?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-watchable-second-assistant",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Put a second coding assistant from a different vendor in its own split beside us so I can watch it work on the migration while you carry on here.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-fetch-missed-output",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I have Claude Code and Codex running side by side in Herdr and the Codex one finished an hour ago but its answer scrolled off the screen, so get me what it produced.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-three-agents-separate-checkouts",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Kick off three coding agents at once, each on its own branch checkout in a separate terminal, so their edits never collide.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-write-subagent-brief",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write the brief a subagent will follow to refactor the logging module, including exactly what it should report back.",
+      "expected_behavior": ["The skill should NOT trigger: writing the brief an agent executes belongs to agent-briefs, not to driving a peer pane."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-second-opinions",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Get independent opinions from Claude and Codex on whether optimistic locking is the right call for the order table.",
+      "expected_behavior": ["The skill should NOT trigger: one bounded decision resolved by independent reviews belongs to model-council."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-watch-ci",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Keep checking the CI run on my pull request and fix whatever fails until it goes green.",
+      "expected_behavior": ["The skill should NOT trigger: looping against an asynchronous CI signal belongs to autonomous-loops."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

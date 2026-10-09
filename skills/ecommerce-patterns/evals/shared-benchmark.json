@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "ecommerce-patterns",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-penny-rounding-totals",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "When a shopper buys three of a $24.99 candle our site shows $74.97000000000001, so fix how the shop stores and adds up prices.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-basket-survives-reload",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Shoppers lose the items they picked whenever they refresh or come back to our store the next day; make their basket stick around.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-terse-cart-drawer",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a slide-out cart drawer to the storefront.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-order-status-flow",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our Next.js shop for Acme Candles already takes card payments through the provider SDK, and now I need purchases to move from confirmed through shipped, with cancel and refund paths, plus an admin view of each one's status.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-gift-card-redemption",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Let customers redeem a gift card code before they pay and make sure the same balance can't be spent twice.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-storefront-a11y-audit",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Audit our storefront's product pages for colour contrast, focus order and visual hierarchy problems and list what to fix.",
+      "expected_behavior": ["The skill should NOT trigger: a UI/UX and accessibility audit belongs to design-review-standards."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-product-rich-results",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add Product JSON-LD with price and availability to our shop's product pages so they show rich results in Google.",
+      "expected_behavior": ["The skill should NOT trigger: structured data for search belongs to seo-aeo-structured-data."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-flaky-purchase-test",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our Playwright test that buys an item only fails in CI with a timeout on the confirmation page; figure out why it is flaky and quarantine it.",
+      "expected_behavior": ["The skill should NOT trigger: triaging a flaky end-to-end test belongs to playwright-e2e."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

@@ -42,6 +42,8 @@ $repo = Split-Path -Parent $PSScriptRoot
 if (-not (Get-Command skill-benchmark -ErrorAction SilentlyContinue)) {
     throw 'skill-benchmark is not on PATH. Install it with: uv tool install skill-eval-harness'
 }
+$harnessPython = Join-Path (uv tool dir) 'skill-eval-harness' ($IsWindows ? 'Scripts/python.exe' : 'bin/python')
+if (-not (Test-Path -LiteralPath $harnessPython)) { throw "skill-eval-harness python not found at $harnessPython" }
 # The harness decodes agent output with the console code page unless Python runs in UTF-8 mode;
 # on Windows that silently drops any run whose transcript contains a non-cp1252 byte.
 $env:PYTHONUTF8 = '1'
@@ -149,8 +151,10 @@ foreach ($name in $names) {
         $triggerReport = Join-Path $out 'trigger-matrix.json'
         $trigger = @('--agent', $Agent, '--model', $Model, '--runs-per-query', $TriggerRuns, '--timeout', $TimeoutSeconds, '--trace-runs', (Join-Path $out 'trigger-traces'), '--out', $triggerReport, $manifest)
         if ($Agent -eq 'claude') { $trigger += @('--claude-bin', $claudeBin) }
-        Write-Host "> skill-trigger-matrix $($trigger -join ' ')"
-        & skill-trigger-matrix @trigger
+        # The shim names the mounted skill folder after the skill (see scripts/trigger-matrix-shim.py).
+        $shim = Join-Path $PSScriptRoot 'trigger-matrix-shim.py'
+        Write-Host "> trigger-matrix-shim.py $($trigger -join ' ')"
+        & $harnessPython -X utf8 $shim @trigger
         if ($LASTEXITCODE -ne 0) { throw "skill-trigger-matrix failed with exit code $LASTEXITCODE" }
     }
 

@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "firecrawl",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-page-to-markdown-terse",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Grab https://example.com/blog/release-notes as clean markdown.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-what-does-page-say-now",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "What does https://example.com/pricing say right now about the limits on the team plan?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-client-rendered-status-page",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The vendor status page at https://status.example.com only fills in after its JavaScript runs, so a plain fetch comes back blank; get me the list of incidents from the last week.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-docs-subtree-offline",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Download every page under https://docs.example.com/guides and save the text locally so I can grep it offline.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-catalog-fields-json",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Pull the name, price and stock status of each product listed at https://shop.example.com/catalog into a JSON array.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-library-comparison",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Compare three job-queue libraries for our Node service and recommend one, with sources for each claim.",
+      "expected_behavior": ["The skill should NOT trigger: a sourced comparison and recommendation is owned by the research skill, which fetches through this one."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-playwright-login-test",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a Playwright test that signs in to our staging app and checks the dashboard loads.",
+      "expected_behavior": ["The skill should NOT trigger: testing our own UI in a browser is owned by the playwright-e2e skill."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-docx-tracked-changes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Accept all the tracked changes in proposal-draft.docx and export it to PDF.",
+      "expected_behavior": ["The skill should NOT trigger: editing a Word document and exporting it is owned by the word-doc-editing skill."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "design-review-standards",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-critique-signup",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Critique the look and feel of our signup page.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-pages-look-cheap",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our product pages look cheap and inconsistent next to competitors, so go through them and tell me what to fix first.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-keyboard-screen-reader-checkout",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Can someone using only a keyboard or a screen reader actually get through our checkout page, and what would trip them up?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-dark-theme-hard-to-read",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We just shipped a dark theme on the marketing site and some of the text is hard to read now; go over the pages and rank what needs fixing.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-launch-signoff-checklist",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Put together a checklist the team can use to sign off new pages before launch, covering fonts, colours, spacing and how they behave on phones.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-staged-button-diff",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Look over my staged changes to the Button component for bugs before I commit.",
+      "expected_behavior": ["The skill should NOT trigger: reviewing a local code diff for bugs belongs to the review skill."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-build-cart-route",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Build the add-to-cart API route and the order table for our shop.",
+      "expected_behavior": ["The skill should NOT trigger: implementing cart and order features belongs to the ecommerce-patterns skill."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-product-json-ld",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Audit our product pages for search rankings and add JSON-LD so they show rich results in Google.",
+      "expected_behavior": ["The skill should NOT trigger: search ranking and structured data belong to the seo-aeo-structured-data skill."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

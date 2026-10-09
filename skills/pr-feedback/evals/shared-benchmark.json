@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "pr-feedback",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-copilot-notes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Deal with what Copilot said on PR #17.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-plain-sort-which-are-right",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "A teammate left a pile of notes on my pull request and the security scan went red, so go through them, work out which ones are actually right, and fix only those.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-plain-push-back-on-bot",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The bot flagged six things on pull request #31 and I think half of them are wrong; help me decide what to change and what to push back on.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-context-first-null-checks",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I opened PR #58 yesterday, and since then a reviewer has asked me to add null checks to every service method and the build check is failing, so figure out which of those I should actually act on.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-hidden-collapsed-suggestions",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Some of the suggestions on my PR #9 are hidden in a collapsed section of the review; look at those too and tell me which deserve a fix.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-resolve-after-push",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The fixes for PR #23 are already pushed; reply on each thread and mark them all resolved.",
+      "expected_behavior": ["The skill should NOT trigger: replying to and resolving threads after the fixes are pushed belongs to pr-resolve."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-colleague-pr",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Go through my colleague's pull request #64 and leave comments on anything that looks risky.",
+      "expected_behavior": ["The skill should NOT trigger: reviewing someone else's PR belongs to pr-review."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-check-local-changes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Check my uncommitted changes for bugs before I open the pull request.",
+      "expected_behavior": ["The skill should NOT trigger: reviewing your own local diff before a PR exists belongs to review."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

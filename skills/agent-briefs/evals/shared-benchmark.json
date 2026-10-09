@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "agent-briefs",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "ablations": [],
+  "cases": [
+    {
+      "id": "trig-terse-subagent-brief",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write up the instructions for a subagent to fix the flaky login test.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-hand-off-fresh-session",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I'm handing the CSV export bug to a fresh Claude session that hasn't seen any of this chat, so tell me exactly what to paste in so it gets it right first time and tells me what it changed.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-send-problems-back-to-coder",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Codex flagged four problems in the change the other worker made, so put together the message I send that worker so it fixes them and pushes back on any it thinks are wrong.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-second-review-round",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The reviewer agent asked for changes on round one and the fixes are now pushed to <branch-name>; draft what I should send it so it checks the new head properly.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-capped-researcher-prompt",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Before I launch a researcher with a 20-turn limit to compare three job-queue libraries, write the prompt it gets and the format of the answer it should return.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-coordinate-lanes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run the checkout rebuild across three parallel agents while I'm away tonight and decide which lane merges first.",
+      "expected_behavior": ["The skill should NOT trigger: running a multi-agent build and gating merges belongs to agent-orchestration."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-stuck-peer-pane",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The Codex pane in Herdr has been sitting on an approval dialog for ten minutes, get it moving again.",
+      "expected_behavior": ["The skill should NOT trigger: unsticking a peer pane belongs to herdr-delegation."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-staged",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Look over my staged changes and tell me whether they're safe to merge.",
+      "expected_behavior": ["The skill should NOT trigger: reviewing a local diff belongs to review."],
+      "assertions": []
+    }
+  ]
+}

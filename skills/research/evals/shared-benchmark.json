@@ -1,0 +1,74 @@
+{
+  "version": 2,
+  "skill_name": "research",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "trig-terse-validation-libs",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Zod vs Valibot vs ArkType for our form schemas: which one and why?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-upstream-error-known-issue",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Since we bumped the HTTP client our long requests sometimes die with ECONNRESET after about 30 seconds; is this a known problem upstream, and did a later release fix it?",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-webhook-rules-before-building",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Before I build on the payment provider's webhooks, find out what their retry and signature rules really are and what people commonly trip over, with links.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-repo-layout-decision",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We're a team of four torn between one repo with npm workspaces and a separate repo per service; look at what the docs and real projects say and tell me which you'd pick.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "trig-queue-options-with-sources",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Dig into our options for running background jobs from the Next.js app, a Redis-backed queue versus a managed cloud queue, and come back with the trade-offs and sources.",
+      "expected_behavior": ["The skill should trigger."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-scrape-page",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Scrape https://example.com/pricing and give me the page as markdown.",
+      "expected_behavior": ["The skill should NOT trigger: fetching one page as markdown belongs to firecrawl."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-bump-packages",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Bump all our npm packages to their latest minor versions and fix whatever breaks.",
+      "expected_behavior": ["The skill should NOT trigger: performing a dependency upgrade belongs to upgrade."],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-write-spec",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write the spec and plan for adding CSV export to the reports page.",
+      "expected_behavior": ["The skill should NOT trigger: writing spec.md and plan.md belongs to spec."],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
