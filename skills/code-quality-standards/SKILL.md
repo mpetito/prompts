@@ -1,6 +1,6 @@
 ---
 name: code-quality-standards
-description: "Apply React, Next.js, and TypeScript standards for security, correctness, DRY, performance, and code organization. Use when writing, fixing, refactoring, or reviewing components, hooks, API routes, services, utilities, or tests, or auditing code quality or vulnerabilities."
+description: "Apply React, Next.js, and TypeScript standards for security, input validation, type safety, DRY, performance, and code organization. Use when writing, fixing, refactoring, reviewing, or auditing a .ts or .tsx component, hook, API route handler, service, or utility, even when the request never says quality or standards: validating untrusted input at an API route, defensively parsing persisted client data such as localStorage whose schema may have drifted, memoizing expensive derived values or cutting needless re-renders, consolidating repeated logic, constants, or types into one shared module, or tightening loose typing (unchecked casts, implicit any, unguarded optional values). Load it before opening the file, including for a read-only code-quality or vulnerability audit. Not for writing Playwright or end-to-end tests (playwright-e2e), bumping Next.js, React, or other package versions and fixing the breakage (upgrade), or accessibility and WCAG audits (design-review-standards)."
 ---
 
 # Code Quality and Security Standards

@@ -183,7 +183,8 @@ Authoring rules for a suite: each case produces text from a fixture under `evals
 because a headless run has no shell or network; every assertion traces to a rule in the skill
 that a model without the skill plausibly breaks, with a trap for it in the fixture; and trigger
 negatives are near-misses from adjacent tasks. `skills/pr-authoring/evals/` is the reference
-suite.
+suite. A skill with `disable-model-invocation: true` (such as `pr-consolidate`) never fires on
+its own by design, so it carries no trigger suite.
 
 ## Setup
 
