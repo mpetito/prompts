@@ -1,6 +1,6 @@
 ---
 name: autonomous-loops
-description: "Run iterative agent loops against an external evaluation signal that arrives asynchronously. Use when a task is not single-shot: raising Page Speed Insights scores, triaging Copilot PR feedback, watching CI until green, merging and releasing when every merge deploys, or waiting on deploys, scans, or MCP evaluators."
+description: "Run iterative agent loops against an external evaluation signal that arrives asynchronously: act, wait for the verdict, fix, re-run until a target is met or a budget runs out. Use whenever a request repeats work until an outside system says done, even in plain words: keep fixing and pushing to a PR until its checks or CI go green, re-run a security or vulnerability scan after each fix until it reports no findings, raise a Page Speed Insights or Lighthouse score above a target, work through Copilot review comments round after round, merge and release PRs one at a time when every merge deploys, or wait on deploys, scans, or MCP evaluators. Load it before the first command, even before locating the PR, repo, or tool. Not for a single fix to one failing check (code-authoring), a one-pass triage of review comments (pr-feedback), or coordinating several agents or lanes on one build (agent-orchestration)."
 ---
 
 # Autonomous Loops Skill

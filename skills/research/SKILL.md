@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Research a technical topic in depth across official docs, GitHub, and Firecrawl's developer index, then report sourced options and a recommendation. Use when evaluating libraries, comparing options, investigating APIs, chasing dependency bugs, or weighing architecture decisions."
+description: "Research a technical question across official docs, GitHub issues and PRs, release notes, and Firecrawl's developer index, then report sourced findings with links and a recommendation. Use when choosing between libraries, frameworks, or services (even a terse \"A vs B vs C, which one?\"), weighing trade-offs or an architecture decision, checking how a third-party API, SDK, or vendor service really behaves before building on it (rate limits, retries, auth, signing, pagination, common pitfalls), or asking whether an error or regression after a version bump is a known upstream bug and which release fixed it. Load it before answering from memory or asking which vendor or version is meant: these answers need current, cited sources. Not for fetching or scraping one page (firecrawl), performing a dependency upgrade (upgrade), or writing spec.md and plan.md (spec)."
 ---
 
 # Research Skill

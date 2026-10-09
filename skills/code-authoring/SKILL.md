@@ -1,6 +1,6 @@
 ---
 name: code-authoring
-description: "Write or change code to project conventions, the canonical coding standards. Use when implementing a feature, fixing or debugging a bug, refactoring, simplifying, changing scripts or infrastructure, adding tests, or executing a plan, including small fixes with no spec."
+description: "Write or change code to project conventions, the canonical coding standards. Use for any request to edit code, scripts, config, or jobs: implementing a feature, fixing or debugging a bug or boundary error, adding a step such as cleanup, retention, or validation to an existing script, scheduled or cron job, CLI, or pipeline, refactoring or deduplicating, simplifying, changing infrastructure, or adding tests, including terse one-line fixes with no spec. Load it first, before searching for or opening the files to change, even when the code is not located yet. Not for executing a numbered spec's plan (implement), reviewing a diff (review), or writing a spec or plan before coding (spec)."
 ---
 
 # Code Authoring Skill
