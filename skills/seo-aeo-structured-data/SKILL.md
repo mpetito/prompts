@@ -1,7 +1,6 @@
 ---
 name: seo-aeo-structured-data
-description: |
-  Use when optimizing for search engines or AI answer engines (ChatGPT, Perplexity, Google AI Overviews), or adding structured data / JSON-LD to a React/Next.js site.
+description: "Make a React or Next.js site show up well in Google, social link previews, and AI answer engines (ChatGPT, Perplexity, AI Overviews): metadata, canonical URLs, Open Graph cards, JSON-LD schema.org data (Product, FAQPage, Breadcrumb, HowTo), sitemap.xml, robots.txt with AI crawler rules, and RSS. Use whenever a request is about how pages appear, rank, or get quoted, even in plain words: a link shared in chat or social apps unfurls with no image or a wrong title; make docs or FAQs the source AI assistants cite; add a sitemap, robots.txt, or feed; earn rich results such as review stars, price, or FAQ answers in Google listings; add schema markup. Load it first, before searching for or opening the page files. Not for cart, checkout, coupon, or payment logic (ecommerce-patterns); re-running PageSpeed or Lighthouse until a score target (autonomous-loops); crawling or scraping a site for its titles or meta tags (firecrawl); or visual design audits (design-review-standards)."
 ---
 
 # SEO, AEO, and Structured Data

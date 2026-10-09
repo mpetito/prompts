@@ -1,6 +1,6 @@
 ---
 name: pr-feedback
-description: "Triage and resolve PR review feedback on your own PR. Use when addressing Copilot or reviewer comments, inspecting suppressed or low-confidence suggestions, rejecting false positives or unnecessary complexity, fixing CI or CodeQL findings, or preparing replies."
+description: "Triage review feedback on your own pull request: decide which comments are right, fix only those, and draft replies that push back on the rest. Use whenever someone or something has commented on a PR you opened, even in plain words: work out which reviewer, teammate, or bot notes to act on and which to decline, sort valid suggestions from false positives or needless complexity (blanket null checks, speculative abstractions), handle Copilot or other automated review comments, inspect suggestions hidden in collapsed, suppressed, or low-confidence sections of a review, or fix a failing build, CI check, CodeQL, or security scan reported on the same PR. Load it before fetching the PR or its comments. Not for replying to and resolving threads once fixes are already pushed (pr-resolve), reviewing a teammate's PR (pr-review), checking your own uncommitted changes (review), or looping fix-and-push until checks go green (autonomous-loops)."
 model: sonnet
 effort: high
 ---
