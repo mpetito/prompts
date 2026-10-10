@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Retire a lane's worktree without losing its evidence: archive its scratch directory first, refuse while an
-# agent still runs there, then remove the worktree and delete the local branch.
+# Retire a lane's worktree without losing its evidence: archive its scratch directory and its ignored files
+# (eval runs, logs; not dependency or cache folders) first, refuse while an agent still runs there, then remove
+# the worktree and delete the local branch. Ignored files land under <archive dir>/ignored/ at their own paths.
 #   finish-lane.sh <lane worktree, e.g. ../<repo>-wt-<lane>> <archive dir> [--scratch <relative path, default .orchestration/tmp>] [--keep-branch]
 # Prints one line per step done; refusals go to stderr with exit 1.
 set -euo pipefail
@@ -17,6 +18,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -d "$wt" ] || { echo "no worktree at $wt" >&2; exit 1; }
+archive=$(realpath -m -- "$archive")
 git -C "$wt" rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "not a git worktree: $wt" >&2; exit 1; }
 # Only inside Herdr can a peer agent be running in the worktree; elsewhere there is nothing to ask.
 if command -v herdr >/dev/null && [ "${HERDR_ENV:-}" = 1 ]; then
@@ -28,6 +30,18 @@ if [ -d "$wt/$scratch" ]; then
   cp -a "$wt/$scratch/." "$archive/"
   echo "archived $wt/$scratch to $archive"
 fi
+# git status leaves ignored files out, and the forced removal below deletes them, so archive them first. Dependency
+# and cache folders are rebuilt from the lockfiles and are left behind.
+skip='(^|/)(node_modules|\.venv|venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.terraform|cdk\.out[^/]*|\.next|\.turbo|\.cache|dist|build|target)/?$'
+while IFS= read -r -d '' entry; do
+  [ "${entry:0:3}" = '!! ' ] || continue
+  path=${entry:3}
+  case "$path" in "$scratch"|"$scratch/"*) continue ;; esac
+  [[ $path =~ $skip ]] && continue
+  mkdir -p "$archive/ignored"
+  (cd "$wt" && cp -a --parents -- "${path%/}" "$archive/ignored/")
+  echo "archived ignored $path to $archive/ignored"
+done < <(git -C "$wt" status --porcelain=v1 -z --ignored=matching 2>/dev/null)
 # Untracked output names the first unignored ancestor, so ".orchestration/" may stand for the scratch dir.
 leftover=$(git -C "$wt" status --porcelain | while IFS= read -r line; do
   path=${line:3}

@@ -114,3 +114,35 @@ this repository (base `main`), a brief of probes instead of a build, two follow-
 
 The worktree, branch and both sessions were removed afterwards; the probe evidence was archived
 outside the repository.
+
+## Second live smoke test: addressing, branches, advice
+
+Run at 2026-10-10T15:49Z on Claude Code 2.1.296, after the readmission build showed three faults:
+MAIN's address went stale when MAIN was forked, the write guard refused workers in their own lane
+worktrees, and lane cleanup deleted ignored eval runs. A thread was launched from an unpushed local
+branch, so `thread.sh` chose `landing=local` and recorded MAIN's name and socket in
+`.orchestration/thread.md`.
+
+| Probe | Result |
+| --- | --- |
+| Message to MAIN by the recorded name | delivered, and copied to the outbox |
+| Status message to a stale `uds:` address | refused, naming the recorded name and socket |
+| Thread writes into the owner's checkout | refused |
+| Thread writes outside its worktree, or a hand-typed time | allowed, with the hook's advice beside the result |
+| Worker writes its lane worktree; waits 31 s in the foreground | allowed, no advice |
+| Worker writes into the owner's checkout | refused, with the worker's reason |
+| `land-local.sh` on the approved commit | `--no-ff` merge onto `orchestration/<build>` |
+| `finish-lane.sh` with an ignored `.eval-runs/` | archived under `ignored/`, worktree and branch removed |
+
+Then three moves of MAIN's address, made by editing the record:
+
+- **The name no longer resolves:** the send by name failed ("No agent named …"); the thread read
+  the socket from the record and the message arrived.
+- **Name and socket both stale, as after a restart:** both sends failed and the thread logged it
+  and carried on. MAIN's `thread.sh check` printed `MOVED` and recovered the message from the
+  outbox. After `thread.sh adopt` and a steer, the next message arrived by name.
+- The thread never answered to the `from` address of MAIN's messages.
+
+Hook advice is returned as `additionalContext` with no permission decision. The docs say nothing
+about that pairing for PreToolUse, so it was checked on 2.1.296: the advice reached Claude, and a
+write in default permission mode was still refused for lack of permission.

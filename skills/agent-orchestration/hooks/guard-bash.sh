@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# PreToolUse hook for Bash. Denies the commands that cost the most in past builds, denies waiting in the
-# foreground, and warns when the scratch filesystem is nearly out of inodes. Input: Claude Code's hook JSON
-# on stdin.
+# PreToolUse hook for Bash, in the orchestration thread and the workers it starts. Denies, for both, the
+# commands that destroyed work in past builds. Advises the thread when it waits in the foreground (workers may:
+# their waits deafen no one), and warns when the scratch filesystem is nearly out of inodes. Input: Claude Code's
+# hook JSON on stdin; a worker's carries agent_id.
 # A command is matched only in command position (start of a line, after ; & | ( or $( , or after
 # `sh -c '`), so the same words inside a quoted string, a backtick span or a comment pass.
 set -u
 input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 background=$(printf '%s' "$input" | jq -r '.tool_input.run_in_background // false')
+worker=$(printf '%s' "$input" | jq -r '.agent_id // empty')
 # A foreground wait shorter than this (a retry backoff, letting a port bind) costs less than a message
 # arriving late; anything longer leaves messages from MAIN and lane hand-backs unread while it runs.
 foreground_sleep_limit=30
@@ -22,7 +24,7 @@ if printf '%s' "$cmd" | grep -Eq "${at}(pkill|killall)([[:space:]]|$)"; then
   deny "pkill and killall match by pattern or name across every lane on this machine, and have killed the caller's own shell and another lane's server. Stop a process by PID: find it with 'ss -ltnp' or 'pgrep -a', read its command line, then 'kill <pid>'."
 fi
 if printf '%s' "$cmd" | grep -Eq "${at}git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+worktree[[:space:]]+remove"; then
-  deny "Raw worktree removal has deleted lane evidence before it was archived. Use ~/.claude/skills/agent-orchestration/scripts/finish-lane.sh ../<repo>-wt-<lane> <archive dir>, which archives the scratch directory, refuses while an agent runs there, then removes the worktree."
+  deny "Raw worktree removal has deleted lane evidence before it was archived. Use ~/.claude/skills/agent-orchestration/scripts/finish-lane.sh ../<repo>-wt-<lane> <archive dir>, which archives the scratch directory and ignored files such as .eval-runs, refuses while an agent runs there, then removes the worktree. For a throwaway copy, use a plain directory (git archive or cp -a), not a worktree."
 fi
 # Lane evidence lives in the coordination worktree's .orchestration/briefs and results, a lane worktree keeps its
 # scratch in .orchestration/tmp until finish-lane.sh archives it, and .orchestration/lanes holds evidence from
@@ -30,7 +32,8 @@ fi
 if printf '%s' "$cmd" | grep -Eq "${at}rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^[:space:]]*\.orchestration/(briefs|results|lanes|tmp)([/[:space:]]|$)"; then
   deny "Deleting .orchestration/briefs, results, lanes or tmp removes lane evidence. Archive a lane worktree (../<repo>-wt-<lane>) with finish-lane.sh, or move files aside instead."
 fi
-if [ "$background" != true ]; then
+notes=()
+if [ "$background" != true ] && [ -z "$worker" ]; then
   wait_reason=""
   while IFS= read -r m; do
     [[ $m =~ sleep[[:space:]]+([0-9]+)(\.[0-9]+)?([smhd]?) ]] || continue
@@ -42,15 +45,14 @@ if [ "$background" != true ]; then
     wait_reason="loops on sleep in the foreground"
   fi
   if [ -n "$wait_reason" ]; then
-    deny "This call $wait_reason: until it ends, messages from MAIN and lane hand-backs queue unread. Arm a background timer instead: run ~/.claude/skills/agent-orchestration/scripts/wake-at.sh <UTC|+<N>m> <label> with run_in_background, or watch the condition with Monitor."
+    notes+=("This call $wait_reason: until it ends, messages from MAIN and lane hand-backs queue unread. Next time, arm a background timer: ~/.claude/skills/agent-orchestration/scripts/wake-at.sh <UTC|+<N>m> <label> with run_in_background, or watch the condition with Monitor.")
   fi
 fi
-warn=""
 for fs in /tmp "${TMPDIR:-/tmp}"; do
   use=$(df -iP "$fs" 2>/dev/null | awk 'NR==2 { sub("%", "", $5); print $5 }')
-  if [[ ${use:-} =~ ^[0-9]+$ ]] && [ "$use" -ge "$inode_warn_percent" ]; then warn="$fs is at ${use}% of its inodes; clean cdk.out* and scratch copies or move TMPDIR to disk before launching more lanes."; break; fi
+  if [[ ${use:-} =~ ^[0-9]+$ ]] && [ "$use" -ge "$inode_warn_percent" ]; then notes+=("$fs is at ${use}% of its inodes; clean cdk.out* and scratch copies or move TMPDIR to disk before launching more lanes."); break; fi
 done
-if [ -n "$warn" ]; then
-  jq -n --arg c "$warn" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$c}}'
+if [ ${#notes[@]} -gt 0 ]; then
+  jq -n --arg c "$(printf '%s\n' "${notes[@]}")" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$c}}'
 fi
 exit 0

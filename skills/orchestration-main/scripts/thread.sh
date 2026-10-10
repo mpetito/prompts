@@ -2,14 +2,24 @@
 # Launch, stop, rotate and list orchestration threads: background Claude Code sessions running the orchestrator
 # agent, each in its build's coordination worktree, ../<repo>-orch-<build> beside the main checkout, on branch
 # orchestration/<build>. The thread keeps its files in that worktree's untracked .orchestration/ folder.
-#   thread.sh launch <name> <repo checkout> <brief file> --main <main session name> [--build <build>] [--base <branch>]
+#   thread.sh launch <name> <checkout> <brief file> --main <your session name> [--build <b>] [--base <branch>] [--landing pr|local]
 #   thread.sh stop <name>
-#   thread.sh rotate <name> --main <main session name> [--force]
+#   thread.sh rotate <name> --main <your session name> [--force]
+#   thread.sh adopt <name> --main <your session name>
+#   thread.sh check [--all]
+#   thread.sh integrate <name>
 #   thread.sh list
 #   thread.sh decisions
-# launch, stop and rotate print one line: LAUNCHED <name> <id>, STOPPED <name> <id>, ROTATED <old> -> <new> <id>,
-# or FAILED <reason> with exit 1. list and decisions print one line per thread or item, or NONE.
-# MAIN's list of running threads, across repositories, is $ORCHESTRATION_HOME/threads.tsv (default
+# launch, stop, rotate, adopt and integrate print one line: LAUNCHED <name> <id> base=<branch>@<sha> landing=<mode>,
+# STOPPED <name> <id>, ROTATED <old> -> <new> <id>, ADOPTED <name> main=<name> socket=<address>,
+# INTEGRATED <name> <branch>@<sha> (fast-forward|merge), or FAILED <reason> with exit 1. check prints MOVED and
+# INBOX lines, or OK; list and decisions print one line per thread or item, or NONE.
+# The base defaults to the checkout's current branch. Landing is pr when the base is on origin with nothing
+# unpushed, else local: lanes merge into orchestration/<build>, and integrate brings that branch into the base.
+# Each thread's .orchestration/thread.md records MAIN's name and socket ($CLAUDE_CODE_MESSAGING_SOCKET), the
+# owner's checkout, the base and the landing mode. A session's name can change with its title and its socket
+# with a restart or fork, so MAIN runs check on every wake and adopt when it has moved.
+# MAIN's list of threads, across repositories, is $ORCHESTRATION_HOME/threads.tsv (default
 # ~/.orchestration/threads.tsv), one tab-separated row per thread: name id build repo worktree main launched
 set -euo pipefail
 . "$(dirname "$0")/../../agent-orchestration/scripts/lib.sh"
@@ -19,7 +29,7 @@ resume_max_age_minutes=15
 home=${ORCHESTRATION_HOME:-$HOME/.orchestration}
 reg="$home/threads.tsv"
 fail() { echo "FAILED $*"; exit 1; }
-usage() { sed -n '2,14p' "$0" >&2; exit 1; }
+usage() { sed -n '2,23p' "$0" >&2; exit 1; }
 ensure_registry() {
   mkdir -p "$home"
   [ -f "$reg" ] || printf 'name\tid\tbuild\trepo\tworktree\tmain\tlaunched\n' > "$reg"
@@ -61,10 +71,55 @@ start_session() {
 # brief_text <main> <state> <body>: the header lines, a blank line, then the body. One printf, because a command
 # substitution would strip the blank line that separates them.
 brief_text() { printf 'MAIN: %s\nSTATE: %s\n\n%s' "$1" "$2" "$3"; }
+# This session's own inbox address, as SendMessage takes it; empty where Claude Code exports no socket.
+main_socket() { [ -z "${CLAUDE_CODE_MESSAGING_SOCKET:-}" ] || printf 'uds:%s' "$CLAUDE_CODE_MESSAGING_SOCKET"; }
+write_record() {
+  # write_record <worktree> <main name> <checkout> <base> <base ref> <lane base> <landing>
+  local file="$1/.orchestration/thread.md"
+  mkdir -p "$1/.orchestration"
+  printf '%s\n' "# Thread record, written by MAIN's thread.sh (launch, rotate, adopt). The thread reads it and never edits it." \
+    "MAIN: $2" "MAIN-SOCKET: $(main_socket)" "CHECKOUT: $3" "BASE: $4" "BASE-REF: $5" "LANE-BASE: $6" "LANDING: $7" \
+    "UPDATED: $(utc_now)" > "$file.tmp"
+  mv "$file.tmp" "$file"
+}
+set_main() {
+  # set_main <worktree> <main name> <checkout>: point the record's MAIN fields at this session; a thread started
+  # before records existed gets a record with what the registry knows.
+  local file="$1/.orchestration/thread.md"
+  if [ ! -f "$file" ]; then write_record "$1" "$2" "$3" "" "" "" ""; return 0; fi
+  awk -v m="$2" -v s="$(main_socket)" -v u="$(utc_now)" '
+    /^MAIN:/ { print "MAIN: " m; next } /^MAIN-SOCKET:/ { print "MAIN-SOCKET: " s; next }
+    /^UPDATED:/ { print "UPDATED: " u; next } { print }' "$file" > "$file.tmp"
+  mv "$file.tmp" "$file"
+}
+pick_base() {
+  # pick_base <main checkout> <base branch> <requested landing or empty>: set base_ref and landing. origin/<base>
+  # when the local branch has nothing unpushed (or is absent), else the local branch; landing follows: pr from
+  # origin, local otherwise.
+  local main=$1 base=$2 want=$3 local_ok=0 remote_ok=0 auto
+  if git -C "$main" remote get-url origin >/dev/null 2>&1; then
+    git -C "$main" fetch -q origin 2>/dev/null || echo "warning: git fetch origin failed in $main; using the refs already there" >&2
+  fi
+  git -C "$main" rev-parse --verify -q "refs/heads/$base^{commit}" >/dev/null && local_ok=1
+  git -C "$main" rev-parse --verify -q "refs/remotes/origin/$base^{commit}" >/dev/null && remote_ok=1
+  [ "$local_ok" = 1 ] || [ "$remote_ok" = 1 ] || fail "no branch $base in $main or on origin"
+  if [ "$remote_ok" = 1 ] && { [ "$local_ok" = 0 ] || git -C "$main" merge-base --is-ancestor "refs/heads/$base" "refs/remotes/origin/$base"; }; then
+    base_ref="origin/$base"; auto=pr
+  else
+    base_ref=$base; auto=local
+  fi
+  case $want in
+    "") landing=$auto ;;
+    local) landing=local ;;
+    pr) [ "$auto" = pr ] || fail "--landing pr needs $base on origin with nothing unpushed; push it, or use --landing local"
+        landing=pr ;;
+    *) fail "--landing takes pr or local, got $want" ;;
+  esac
+}
 ensure_worktree() {
-  # ensure_worktree <main checkout> <common git dir> <worktree> <build> <base or empty>: reuse the build's
-  # coordination worktree or create it from origin/<base>; fail with a reason otherwise.
-  local main=$1 common=$2 wt=$3 build=$4 base=$5 branch="orchestration/$4" head
+  # ensure_worktree <main checkout> <common git dir> <worktree> <build> <base ref>: reuse the build's coordination
+  # worktree or create it from <base ref>; fail with a reason otherwise.
+  local main=$1 common=$2 wt=$3 build=$4 base_ref=$5 branch="orchestration/$4"
   if [ -e "$wt" ]; then
     local its_common its_top
     its_common=$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
@@ -75,20 +130,28 @@ ensure_worktree() {
     fi
     fail "$wt exists and is not the coordination worktree for build $build (branch $branch of $main); move it aside or pick another --build"
   fi
-  git -C "$main" fetch -q origin 2>/dev/null || fail "git fetch origin failed in $main"
-  if [ -z "$base" ]; then
-    head=$(git -C "$main" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)
-    [ -n "$head" ] || { git -C "$main" remote set-head origin --auto >/dev/null 2>&1 || true; head=$(git -C "$main" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true); }
-    [ -n "$head" ] || fail "cannot tell origin's default branch in $main; pass --base <branch>"
-    base=${head#origin/}
-  fi
-  git -C "$main" rev-parse --verify -q "origin/$base^{commit}" >/dev/null || fail "no branch origin/$base in $main"
   if git -C "$main" rev-parse --verify -q "refs/heads/$branch" >/dev/null; then
     git -C "$main" worktree add -q "$wt" "$branch" >/dev/null 2>&1 || fail "git worktree add $wt $branch failed"
   else
     # --no-track: the coordination branch must never push to, or pull from, the base by accident.
-    git -C "$main" worktree add -q --no-track -b "$branch" "$wt" "origin/$base" >/dev/null 2>&1 || fail "git worktree add $wt from origin/$base failed"
+    git -C "$main" worktree add -q --no-track -b "$branch" "$wt" "$base_ref" >/dev/null 2>&1 || fail "git worktree add $wt from $base_ref failed"
   fi
+}
+inbox() {
+  # inbox <worktree> <thread name>: print the thread's outbox entries not shown before, then remember the count.
+  # The thread's message hook copies every message to MAIN there, so one that never arrived is still read.
+  local file="$1/.orchestration/outbox.md" mark seen total
+  [ -f "$file" ] || return 0
+  mkdir -p "$home/seen"
+  mark="$home/seen/$(printf '%s' "$1" | md5sum | cut -c1-16)"
+  seen=$(cat "$mark" 2>/dev/null || echo 0)
+  total=$(grep -c '^=== ' "$file" || true)
+  [ "$total" -ge "$seen" ] || seen=0
+  [ "$total" -gt "$seen" ] || return 0
+  awk -v skip="$seen" -v t="$2" '
+    /^=== / { n++; on = (n > skip); if (on) { sub(/^=== /, ""); sub(/ #[0-9a-f]+$/, ""); print "INBOX " t " " $0 } next }
+    on && NF { print "  " $0 }' "$file"
+  echo "$total" > "$mark"
 }
 
 cmd=${1:-}; [ $# -gt 0 ] && shift
@@ -96,12 +159,13 @@ case "$cmd" in
   launch)
     [ $# -ge 3 ] || usage
     name=$1; repo=$2; brief=$3; shift 3
-    main_name=""; build=""; base=""
+    main_name=""; build=""; base=""; want=""
     while [ $# -gt 0 ]; do
       case $1 in
         --main) need_value "$1" $#; main_name=$2; shift 2 ;;
         --build) need_value "$1" $#; build=$2; shift 2 ;;
         --base) need_value "$1" $#; base=$2; shift 2 ;;
+        --landing) need_value "$1" $#; want=$2; shift 2 ;;
         *) usage ;;
       esac
     done
@@ -113,16 +177,23 @@ case "$cmd" in
     [ -s "$brief" ] || fail "no brief at $brief"
     common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || fail "$repo is not a git checkout"
     common=$(realpath -m "$common")
+    checkout=$(realpath -m "$(git -C "$repo" rev-parse --show-toplevel)")
     # The main checkout holds the common git dir, so a linked worktree passed here still names the main one.
     main=$(dirname "$common")
     wt="$(dirname "$main")/$(basename "$main")-orch-$build"
+    if [ -z "$base" ]; then
+      base=$(git -C "$repo" symbolic-ref --quiet --short HEAD 2>/dev/null) || fail "$repo is on a detached HEAD; pass --base <branch>"
+    fi
     ensure_registry
     [ -z "$(row_by 1 "$name")" ] || fail "a thread named $name is already registered; stop it or pick another name"
     taken=$(row_by 5 "$wt" | cut -f1 | head -1)
     [ -z "$taken" ] || fail "$wt already hosts thread $taken; one running thread per coordination worktree, so stop it or pick another --build"
-    ensure_worktree "$main" "$common" "$wt" "$build" "$base"
+    pick_base "$main" "$base" "$want"
+    ensure_worktree "$main" "$common" "$wt" "$build" "$base_ref"
     mkdir -p "$common/info"
     grep -qxF '.orchestration/' "$common/info/exclude" 2>/dev/null || printf '.orchestration/\n' >> "$common/info/exclude"
+    if [ "$landing" = pr ]; then lane_base=$base_ref; else lane_base="orchestration/$build"; fi
+    write_record "$wt" "$main_name" "$checkout" "$base" "$base_ref" "$lane_base" "$landing"
     state="$wt/.orchestration/state.md"
     # The row exists before the session starts, so a failed start can be cleaned up by name.
     put_row "$name" "$(row "$name" pending "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
@@ -131,7 +202,7 @@ case "$cmd" in
     fi
     rm -f "$reg.err"
     put_row "$name" "$(row "$name" "$id" "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
-    echo "LAUNCHED $name $id" ;;
+    echo "LAUNCHED $name $id base=$base@$(git -C "$main" rev-parse --short "$base_ref") landing=$landing" ;;
   stop)
     [ $# -eq 1 ] || usage
     found=$(row_by 1 "$1"); [ -n "$found" ] || fail "no thread named $1 in $reg"
@@ -164,6 +235,7 @@ case "$cmd" in
     if [[ $old =~ ^(.+)-r([0-9]+)$ ]]; then new="${BASH_REMATCH[1]}-r$(( BASH_REMATCH[2] + 1 ))"; else new="$old-r1"; fi
     [ -z "$(row_by 1 "$new")" ] || fail "a thread named $new is already registered; stop it before rotating $old"
     out=$(claude_env claude stop "$id" 2>&1) || fail "claude stop $id: $(printf '%s\n' "$out" | grep -m1 . || echo 'no output')"
+    set_main "$wt" "$main_name" "$main"
     put_row "$old" "$(row "$new" pending "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
     brief=$(brief_text "$main_name" "$state" "Resume: read STATE first and continue from its RESUME section without redoing finished work.")
     if ! newid=$(start_session "$new" "$wt" "$brief" 2>"$reg.err"); then
@@ -173,6 +245,61 @@ case "$cmd" in
     rm -f "$reg.err"
     put_row "$new" "$(row "$new" "$newid" "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
     echo "ROTATED $old -> $new $newid" ;;
+  adopt)
+    [ $# -ge 1 ] || usage
+    t=$1; shift; main_name=""
+    while [ $# -gt 0 ]; do
+      case $1 in --main) need_value "$1" $#; main_name=$2; shift 2 ;; *) usage ;; esac
+    done
+    [ -n "$main_name" ] || fail "adopt needs --main <your session name>"
+    found=$(row_by 1 "$t"); [ -n "$found" ] || fail "no thread named $t in $reg"
+    IFS=$'\t' read -r _ id build main wt _ launched <<< "$found"
+    set_main "$wt" "$main_name" "$main"
+    put_row "$t" "$(row "$t" "$id" "$build" "$main" "$wt" "$main_name" "$launched")"
+    sock=$(main_socket)
+    echo "ADOPTED $t main=$main_name socket=${sock:-none}" ;;
+  check)
+    all=0
+    if [ "${1:-}" = --all ]; then all=1; shift; fi
+    [ $# -eq 0 ] || usage
+    rows=$(awk 'NR > 1' "$reg" 2>/dev/null || true)
+    [ -n "$rows" ] || { echo NONE; exit 0; }
+    # Only this repository's threads, unless --all or outside git: other main sessions own the rest.
+    here=""
+    if [ "$all" = 0 ] && c=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then here=$(dirname "$(realpath -m "$c")"); fi
+    sock=$(main_socket); printed=0
+    while IFS=$'\t' read -r name _ _ repo wt main_name _; do
+      [ -n "$name" ] || continue
+      [ -z "$here" ] || [ "$repo" = "$here" ] || continue
+      rec=$(thread_field "$wt" MAIN-SOCKET)
+      if [ -n "$sock" ] && [ "$rec" != "$sock" ]; then
+        echo "MOVED $name main=$main_name recorded=${rec:-none} this=$sock: if you are its main session now, run thread.sh adopt $name --main <your name>"
+        printed=1
+      fi
+      out=$(inbox "$wt" "$name")
+      if [ -n "$out" ]; then printf '%s\n' "$out"; printed=1; fi
+    done <<< "$rows"
+    [ "$printed" = 1 ] || echo OK ;;
+  integrate)
+    [ $# -eq 1 ] || usage
+    found=$(row_by 1 "$1"); [ -n "$found" ] || fail "no thread named $1 in $reg"
+    IFS=$'\t' read -r _ _ build _ wt _ _ <<< "$found"
+    landing=$(thread_field "$wt" LANDING); base=$(thread_field "$wt" BASE); checkout=$(thread_field "$wt" CHECKOUT)
+    [ "$landing" = local ] || fail "$1 lands by pull request (LANDING: ${landing:-unknown}), so its base moves on origin; pull it instead"
+    [ -n "$base" ] && [ -d "$checkout" ] || fail "no BASE or CHECKOUT in $wt/.orchestration/thread.md"
+    cur=$(git -C "$checkout" symbolic-ref --quiet --short HEAD 2>/dev/null || echo 'a detached HEAD')
+    [ "$cur" = "$base" ] || fail "$checkout is on $cur, not $base; check out $base there first"
+    { git -C "$checkout" diff --quiet && git -C "$checkout" diff --cached --quiet; } \
+      || fail "$checkout has uncommitted changes to tracked files; commit or stash them first"
+    src="orchestration/$build"
+    if git -C "$checkout" merge -q --ff-only "$src" >/dev/null 2>&1; then how=fast-forward
+    elif git -C "$checkout" -c core.editor=true merge -q --no-ff --no-edit "$src" >/dev/null 2>&1; then how=merge
+    else
+      conflicted=$(git -C "$checkout" diff --name-only --diff-filter=U | tr '\n' ' ')
+      git -C "$checkout" merge --abort >/dev/null 2>&1 || true
+      fail "merging $src into $base conflicts in: $conflicted"
+    fi
+    echo "INTEGRATED $1 $base@$(git -C "$checkout" rev-parse --short HEAD) ($how)" ;;
   list)
     [ $# -eq 0 ] || usage
     rows=$(awk 'NR > 1' "$reg" 2>/dev/null || true)

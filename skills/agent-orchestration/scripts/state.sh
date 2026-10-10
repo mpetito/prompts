@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # Edit the orchestration thread's state file without typing a timestamp by hand.
-#   state.sh init <build> <main-session-name>   create .orchestration/ (briefs/, results/) and the skeleton
+#   state.sh init <build>                       create .orchestration/ (briefs/, results/) and the skeleton
 #   state.sh log "<event>"                      append "- <UTC now> <event>" to the "## Log" section
 #   state.sh set <lane> <column> <value>        replace one cell of the "## Lanes" table
 #   state.sh resume <file|->                    back up, then replace the RESUME body, stamped "Written: <UTC>"
 #   state.sh backup                             copy the file to state.<UTC stamp>.md beside it
-#   state.sh main                               print the MAIN session name
+#   state.sh main [--socket]                    print MAIN's session name, or its socket address
+#   state.sh thread <key>                       print one field of the thread record (BASE, LANE-BASE, ...)
 #   state.sh now                                print the UTC stamp the other commands use
 # The file is $ORCHESTRATION_STATE when set, else .orchestration/state.md at the root of the git worktree that
-# holds the current directory: the build's coordination worktree, ../<repo>-orch-<build>.
+# holds the current directory: the build's coordination worktree, ../<repo>-orch-<build>. MAIN's address, the
+# base and the landing mode live in the thread record beside it, .orchestration/thread.md, which MAIN's
+# thread.sh writes; read them with "main" and "thread", and read MAIN's address afresh before every message.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 now=$(utc_now)
-usage() { sed -n '2,11p' "$0" >&2; exit 1; }
+usage() { sed -n '2,12p' "$0" >&2; exit 1; }
 resolve() { file=$(resolve_state "$PWD" ORCHESTRATION_STATE) || exit 1; }
 need_file() { resolve; [ -f "$file" ] || { echo "no state file at $file; start one with state.sh init" >&2; exit 1; }; }
 backup() {
@@ -24,12 +27,12 @@ backup() {
 case "${1:-}" in
   now) echo "$now" ;;
   init)
-    [ $# -eq 3 ] || { echo 'usage: state.sh init <build> <main-session-name>' >&2; exit 1; }
+    [ $# -eq 2 ] || { echo 'usage: state.sh init <build>' >&2; exit 1; }
     resolve
     [ ! -e "$file" ] || { echo "refusing: $file already exists" >&2; exit 1; }
     mkdir -p "$(dirname "$file")/briefs" "$(dirname "$file")/results"
-    printf '# Orchestration thread: %s\n\n## Thread\n\nMAIN: %s\nStarted: %s\n\n## RESUME\n\nWritten: %s\n(nothing yet)\n\n## Lanes\n\n| Lane | Agent | PR | Head SHA | Next action |\n| --- | --- | --- | --- | --- |\n\n## Decisions\n\n## Log\n\n- %s thread started\n' \
-      "$2" "$3" "$now" "$now" "$now" > "$file"
+    printf '# Orchestration thread: %s\n\n## Thread\n\nRecord: thread.md (MAIN, base, landing; written by MAIN)\nStarted: %s\n\n## RESUME\n\nWritten: %s\n(nothing yet)\n\n## Lanes\n\n| Lane | Agent | PR | Head SHA | Next action |\n| --- | --- | --- | --- | --- |\n\n## Decisions\n\n## Log\n\n- %s thread started\n' \
+      "$2" "$now" "$now" "$now" > "$file"
     echo "initialised $file $now" ;;
   backup)
     need_file
@@ -95,9 +98,23 @@ case "${1:-}" in
     mv "$tmp" "$file"
     echo "resume written $now (previous copy $saved)" ;;
   main)
+    [ $# -le 2 ] || usage
     need_file
-    name=$(sed -n 's/^MAIN:[[:space:]]*//p' "$file" | head -1)
-    [ -n "$name" ] || { echo "no MAIN: line in $file" >&2; exit 1; }
-    echo "$name" ;;
+    top=$(dirname "$(dirname "$file")")
+    if [ "${2:-}" = --socket ]; then
+      value=$(thread_field "$top" MAIN-SOCKET)
+      [ -n "$value" ] || { echo "no MAIN-SOCKET in $top/.orchestration/thread.md" >&2; exit 1; }
+    elif [ -z "${2:-}" ]; then
+      value=$(main_name "$top")
+      [ -n "$value" ] || { echo "no MAIN in $top/.orchestration/thread.md or $file" >&2; exit 1; }
+    else usage; fi
+    echo "$value" ;;
+  thread)
+    [ $# -eq 2 ] || usage
+    need_file
+    top=$(dirname "$(dirname "$file")")
+    value=$(thread_field "$top" "$2")
+    [ -n "$value" ] || { echo "no $2 in $top/.orchestration/thread.md" >&2; exit 1; }
+    echo "$value" ;;
   *) usage ;;
 esac

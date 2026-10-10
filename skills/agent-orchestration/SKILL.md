@@ -23,14 +23,17 @@ command, because a shell variable does not survive between Bash calls. Each prin
 
 Your brief opens with `MAIN: <name>` and `STATE: <path>`. You run in your own coordination
 worktree, `../<repo>-orch-<build>` on the branch `orchestration/<build>`, which MAIN created
-beside the owner's checkout. Your state lives in its untracked `.orchestration/` folder.
+beside the owner's checkout. Your state lives in its untracked `.orchestration/` folder, beside
+the thread record MAIN writes there, `thread.md`: MAIN's address, the owner's checkout, the base
+branch, where lanes branch from (`LANE-BASE`) and how they land (`LANDING`: `pr` or `local`).
+Read a field with `state.sh thread <key>`; never edit the record.
 
 1. If the state file exists, this is a rotation: follow *After a rotation* in the state-file
    reference, send `STATUS: working - resumed from RESUME …`, then run the loop.
 2. Otherwise create it:
 
    ```bash
-   ~/.claude/skills/agent-orchestration/scripts/state.sh init "<build>" "<MAIN>"
+   ~/.claude/skills/agent-orchestration/scripts/state.sh init "<build>"
    ```
 
 3. Plan before the first delegation, and write the plan to `.orchestration/plan.md`, or to the
@@ -101,11 +104,13 @@ or a message from MAIN.
 
 ## 4. Workers and rulings
 
-- **You edit only your own worktree.** A hook refuses `Edit` and `Write` anywhere else: the
-  owner's checkout and every worker's worktree. In yours you keep the files you own (plans, the
-  decision log, docs), commit them on `orchestration/<build>`, and land them like a lane. Lanes
-  tick their own plan items in their own PR, so a check-off lands with the work it describes.
-  Code goes to workers; you don't hand-edit it.
+- **Your files are in your own worktree; code goes to workers.** You keep the files you own
+  (plans, the decision log, docs) there, commit them on `orchestration/<build>`, and land them
+  like a lane. Lanes tick their own plan items, so a check-off lands with the work it describes.
+  A hook refuses writes into the owner's checkout, which may hold the owner's uncommitted work,
+  and adds advice when you write into a lane's worktree; a small deliberate fix there is yours to
+  make, logged. Owner-approved edits to instructions, agents, settings or links go to MAIN as
+  exact diffs: a relayed decision is not the owner's consent for those, so MAIN applies them.
 - **Brief every worker from [references/briefs.md](references/briefs.md):** an explicit model
   (Opus by default; Sonnet only for a mechanical lane, with the reason in the brief; never inherited), its own worktree
   (`../<repo>-wt-<lane>`, or `isolation: "worktree"` for a subagent), Owns and Never-touch,
@@ -132,16 +137,24 @@ or a message from MAIN.
   into one commit and merged on CI, and nits go to a deferred list.
 - **Send delta rounds to the same reviewer** with the exact range. Replace a resumed reviewer once
   its context passes about 300K tokens, with the review file as input.
-- **Approval is a commit status on the exact head, and landing goes through `land.sh`:**
+- **Approval binds the exact head, and landing goes through a script.** With `LANDING: pr`:
 
   ```bash
   ~/.claude/skills/agent-orchestration/scripts/land.sh <PR> <worktree> --check <name> --subject "<conventional subject>" --body-file <body.md>
   ```
 
   It merges the base if it moved, proves the approval carries over (one merge of the base onto
-  the approved head, empty `--remerge-diff`), and merges with `--match-head-commit`. It prints
-  `LANDED` or `STOPPED <reason>`; a stopped landing goes back to the reviewer as a delta, never
-  retried as is. Never merge with `--admin` or another bypass.
+  the approved head, empty `--remerge-diff`), and merges with `--match-head-commit`. Never merge
+  with `--admin` or another bypass. With `LANDING: local` (nothing pushed; lanes branch from
+  `orchestration/<build>`), from your worktree:
+
+  ```bash
+  ~/.claude/skills/agent-orchestration/scripts/land-local.sh <lane branch> <approved sha> --check "<the repo's CI steps>" --subject "<conventional subject>"
+  ```
+
+  It merges the approved head with `--no-ff`, runs the checks, and undoes the merge if they fail.
+  Both print `LANDED` or `STOPPED <reason>`; a stopped landing goes back to the reviewer as a
+  delta, never retried as is.
 - **After a change to the deploy path or a failed release,** merge one PR, watch its release to
   completion, then merge the next. While a release fails, merge nothing.
 - **Nothing owner-facing is done on machine evidence alone.** A worker walks the owner's own path
@@ -168,4 +181,5 @@ or a message from MAIN.
    `finish-lane.sh <worktree> <archive dir>`.
 2. Write a short retrospective file: what the gates caught, what it cost, what transfers. Land
    the reviewers' `Scope brief` proposals you accept as one change to the repository's `REVIEW.md`.
-3. Send `STATUS: done - …` with what the owner should check, and the retrospective's path.
+3. Send `STATUS: done - …` with what the owner should check, the retrospective's path, and, with
+   `LANDING: local`, the head of `orchestration/<build>` for MAIN to integrate into the base.

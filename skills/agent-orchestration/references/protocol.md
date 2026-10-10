@@ -26,9 +26,19 @@ refuse an upward message that breaks the format.
 
 ## Addresses and transport
 
-- MAIN reads its own name from `ListAgents` ("This session is <name>"). A thread's name is set at
-  launch; a rotation adds `-r<n>`. Address by exact name; to answer an incoming message, use its
-  `from` attribute.
+- A thread's name is set at launch and stays fixed; a rotation adds `-r<n>`. MAIN writes to it by
+  that exact name.
+- MAIN's address can move: Claude Code may rename a session as its title changes, and a restart or
+  fork gives it a new socket. So the thread record, `.orchestration/thread.md`, holds MAIN's name
+  and its socket (`uds:<path>`), and MAIN keeps them current: `thread.sh launch`, `rotate` and
+  `adopt` write them.
+- The thread reads MAIN's address afresh before every message (`state.sh main`). When the name no
+  longer resolves, it sends the same message to the socket (`state.sh main --socket`). It never
+  reuses an address from an earlier message, which goes stale when MAIN restarts or forks.
+- The thread's message hook copies every message to MAIN into `.orchestration/outbox.md`, and MAIN
+  runs `thread.sh check` on every wake: it shows what MAIN has not read and whether MAIN has moved.
+  A message that never arrived, or was held by a stale session, is read there; a thread that can't
+  reach MAIN records it with `state.sh log` and keeps working.
 - Messages are plain text sent with `SendMessage`. An idle receiver wakes with the message; a busy
   one reads it between tool calls. Rapid bursts to one session are refused and at most 50 queue,
   so send one message per change and batch the rest.
@@ -109,3 +119,7 @@ as the owner's consent, never changes permissions or configuration, and a slash 
 arrives as plain text: MAIN cannot `/compact` a thread, which is why rotation exists. Each session
 keeps its own permissions. A thread never asks MAIN to run something its own permissions refuse;
 it reports `blocked` and MAIN takes it to the owner.
+
+So a relayed `DECISION` settles build choices, but not edits to instructions, agent definitions,
+settings or links into the owner's clients. For those the thread sends MAIN the exact diffs, and
+MAIN applies them in the owner's session once the owner has approved them there.

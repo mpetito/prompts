@@ -16,9 +16,11 @@ The message formats, decisions and rotation are in the
 script paths out in full in every command:
 
 - `~/.claude/skills/orchestration-main/scripts/thread.sh` launches, rotates, stops and lists threads,
-  and lists every thread's open decisions.
+  lists every thread's open decisions, checks your inbox and address, and integrates a local build.
 - Each thread works in its own worktree beside the owner's checkout, `../<repo>-orch-<build>`,
-  and keeps its state and decisions in that worktree's `.orchestration/`; you keep no copy.
+  and keeps its state and decisions in that worktree's `.orchestration/`; you keep no copy. Your
+  address, the base and the landing mode are in its thread record, `.orchestration/thread.md`,
+  which only `thread.sh` writes.
 
 ## 1. Start a build
 
@@ -26,11 +28,16 @@ script paths out in full in every command:
    is enough: the goal, the first slice they will be able to click, the owner-before classes
    (spend, trust roots or IAM, production data, destructive actions, spec edits), and when they
    will be away.
-2. **Find your own name** with `ListAgents` ("This session is <name>").
+2. **Find your own name** with `ListAgents` ("This session is <name>"). A name Claude Code
+   generated follows the session's title and may change; one the owner set with `/rename` stays.
+   Either works: threads fall back to your socket, and `thread.sh check` catches a move.
 3. **Pick the repository checkout and a build name.** The thread gets its own worktree beside the
    checkout, `../<repo>-orch-<build>` on the branch `orchestration/<build>`; the checkout must be
    in a folder Claude Code trusts, or the background session refuses to start. One thread per
-   build.
+   build. The base is the checkout's current branch unless you pass `--base`. Landing is `pr`
+   when that branch is on origin with nothing unpushed, otherwise `local`: lanes merge into
+   `orchestration/<build>` and you integrate it at the close. `--landing` overrides; settle it in
+   the frame when the owner wants no pushes.
 4. **Write the brief** to a file: the goal in the owner's words, the sources (spec, plan, repo),
    the owner-before classes, the away times, and anything the owner already decided.
 5. **Launch:**
@@ -39,12 +46,23 @@ script paths out in full in every command:
    ~/.claude/skills/orchestration-main/scripts/thread.sh launch <name> <checkout> <brief.md> --main <your name> --build <build>
    ```
 
-   It prints `LAUNCHED <name> <id>`, or `FAILED <reason>`. The thread's first message is its
-   plan and its first questions.
+   It prints `LAUNCHED <name> <id> base=<branch>@<sha> landing=<pr|local>`, or
+   `FAILED <reason>`. The thread's first message is its plan and its first questions.
 
 ## 2. While threads run
 
-Each wake is a message from a thread, a message from the owner, or an idle notice.
+Each wake is a message from a thread, a message from the owner, or an idle notice. Start every
+wake with `thread.sh check`:
+
+- `MOVED <thread> …`: this session has a new socket since the thread last heard from it (a
+  restart or fork). Run `thread.sh adopt <thread> --main <your name>`, then send the thread
+  `STEER: MAIN moved; read my address with state.sh main before your next message`.
+- `INBOX <thread> <time> …`: a message the thread sent you, copied from its outbox. Ones you
+  already received repeat; act on the rest as if they had just arrived.
+- `OK` or `NONE`: nothing to catch up on.
+
+A new name alone isn't reported, since threads reach you through your socket when the name fails.
+When `ListAgents` shows a name other than the `main=` in `thread.sh list`, adopt anyway.
 
 | Arrives | Do |
 | --- | --- |
@@ -61,7 +79,8 @@ never re-ask a question that was answered or whose default applied.
 
 ## 3. When the owner returns or asks what you need
 
-Run `thread.sh decisions`, then reply in this order and nothing else unless asked:
+Run `thread.sh check` and `thread.sh decisions`, then reply in this order and nothing else
+unless asked:
 
 1. **Open decisions, numbered,** owner-before items first: thread, question, your recommendation,
    the default and when it applies. Recommend even on spend and other owner-before items; the
@@ -100,3 +119,10 @@ with `--force`, which restarts it from its last RESUME, and tell the owner what 
 
 On `STATUS: done`: tell the owner what to check and where the retrospective is, then
 `thread.sh stop <name>`. The build folder stays.
+
+- With `landing=local`, ask the owner, then run `thread.sh integrate <name>`: it fast-forwards the
+  base in the owner's checkout to `orchestration/<build>`, or merges when the base moved, and
+  prints `INTEGRATED` or `FAILED <reason>`.
+- Diffs the thread handed over for instructions, agent definitions, settings or links: apply them
+  yourself once the owner approves them here. A decision you relayed is not the owner's consent
+  for those, so the thread leaves them to you.

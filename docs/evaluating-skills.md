@@ -116,6 +116,16 @@ on this machine is therefore never in play unless passed as `-Baseline`. Trigger
 with the shell allowed are not comparable: the model explores with git instead of loading a
 skill. `without_skill` sees only the fixtures.
 
+Two consequences for writing cases, both from the model-council and firecrawl readmission
+(`docs/skill-audit/2026-10-10-readmit-retrospective.md`):
+
+- **Say "read the input file, but do not run commands",** never "do not call any tools". The
+  second wording stopped Sonnet reading its fixture in 12 of 21 runs.
+- **A skill built on an MCP server is measured against that server's own guidance.** Answer runs
+  see no MCP tool, so copy the server's instructions and the tool descriptions a live session
+  would see into the fixture, verbatim. Without them the eval credits the skill with rules the
+  live session already has; with them, Firecrawl's archived routing table mostly fell away.
+
 The harness (0.6.0) copies each fixture to `inputs/` and lists every one in the task prompt, so
 both arms are pointed at every file. A case cannot test whether a skill makes the model look for
 a file unprompted, such as a repository's `REVIEW.md`; test what the skill does once it has read

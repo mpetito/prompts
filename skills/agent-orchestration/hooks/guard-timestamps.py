@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """PreToolUse hook for Edit and Write.
 
-Refuses a new clock time (``14:30Z``, ``07:3xZ``, ``T18:16Z``) written by hand into a file under
-``.orchestration/`` at the root of the session's git worktree (the coordination worktree). Past builds logged
-estimated times there for hours; the only accepted source is the state helper, which interpolates ``date -u``
-itself. Times already present in the file on disk may be moved or quoted. Outside git the hook does nothing.
+Advises when the orchestration thread writes a new clock time (``14:30Z``, ``07:3xZ``, ``T18:16Z``) by hand into a
+file under ``.orchestration/`` at the root of its git worktree (the coordination worktree). Past builds logged
+estimated times there for hours; the state helper interpolates ``date -u`` itself. The write goes ahead: a time
+quoted from a log or a message is legitimate. Times already in the file on disk, workers' writes (input with
+``agent_id``) and sessions outside git pass silently.
 """
 import json
 import os
@@ -26,6 +27,8 @@ def orchestration_folder(cwd: str) -> str | None:
 
 def main() -> None:
     data = json.load(sys.stdin)
+    if data.get("agent_id"):
+        return
     tool_input = data.get("tool_input") or {}
     cwd = data.get("cwd") or ""
     build = orchestration_folder(cwd)
@@ -47,14 +50,14 @@ def main() -> None:
     new = sorted(found - existing)
     if not new:
         return
-    reason = (
-        "New clock times written by hand into an orchestration file: "
+    advice = (
+        "New clock times in an orchestration file: "
         + ", ".join(new)
-        + ". Hand-typed times were estimates in past builds. Log the event with "
-        "~/.claude/skills/agent-orchestration/scripts/state.sh log \"<event>\", which stamps it with date -u, "
-        "or append the line with a shell command that interpolates $(date -u +%Y-%m-%dT%H:%MZ)."
+        + ". If you estimated them, replace them: hand-typed times were estimates in past builds. Log events with "
+        "~/.claude/skills/agent-orchestration/scripts/state.sh log \"<event>\", which stamps them with date -u. "
+        "A time quoted from a log or a message is fine as it is."
     )
-    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}}))
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": advice}}))
 
 
 if __name__ == "__main__":

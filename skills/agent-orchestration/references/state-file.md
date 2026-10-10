@@ -8,13 +8,15 @@ overrides that.
 
 ## Sections
 
-`state.sh init <build> <MAIN>` writes them in this order. Edit them only through `state.sh`
-(`log`, `set`, `resume`, `backup`), so no time is ever typed by hand; the orchestrator's hooks
-refuse a hand-typed stamp in `.orchestration/` files.
+`state.sh init <build>` writes them in this order. Edit them only through `state.sh` (`log`,
+`set`, `resume`, `backup`), so no time is ever typed by hand; the orchestrator's hooks flag a
+hand-typed stamp in `.orchestration/` files. MAIN's address, the base and the landing mode are not
+here: they are in the thread record, `thread.md`, which MAIN's `thread.sh` writes and which
+`state.sh main` and `state.sh thread <key>` read.
 
 | Section | Holds | Changed by |
 | --- | --- | --- |
-| Thread | `MAIN: <name>`, the start time, the plan path | `init`, once |
+| Thread | A pointer to the thread record, the start time, the plan path | `init`, once |
 | RESUME | What a fresh thread needs to continue (checklist below) | `resume`, at each rotation and phase end |
 | Lanes | One row per lane: agent, PR, head SHA, next action | `set <lane> <column> <value>` |
 | Decisions | A pointer to `decisions.md`, which `decisions.sh` keeps | `decisions.sh` |

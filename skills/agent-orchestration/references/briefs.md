@@ -8,7 +8,9 @@ and give the worker the path.
 
 - **Model:** named explicitly. Opus by default; Sonnet only for a mechanical lane, with the reason
   written beside it; never inherited.
-- **Where:** its own worktree, `../<repo>-wt-<lane>`. Never the owner's checkout or yours.
+- **Where:** its own worktree, `../<repo>-wt-<lane>`. Never the owner's checkout or yours. A
+  throwaway copy for probes or mutants is a plain directory (`git archive` or `cp -a`), not a
+  worktree: the hooks refuse a raw `git worktree remove`, so a worker can't clean one up.
 - **The source beats the brief:** where they disagree, follow the source and list the discrepancy.
 - **Report contract:** first line `STATUS: done|blocked|partial - <summary>` (authors) or
   `VERDICT: approve|changes-required|close for <sha or version>` (reviewers); at most 40 lines;
@@ -30,7 +32,7 @@ Long form: <results path>
 ```markdown
 # <lane>: <one-line goal>
 Why: <the owner's or the spec's words, verbatim, with the source>
-Worktree: `git worktree add -b <branch> ../<repo>-wt-<lane> origin/<base>`; base `<sha>` at send time.
+Worktree: `git worktree add -b <branch> ../<repo>-wt-<lane> <LANE-BASE>`; base `<sha>` at send time.
 Owns: <paths>. Never touch: <paths> (owned by <lane>; message the thread with evidence instead).
 Changes: <numbered, each with its source: spec section, decision ID or finding ID>
 Invariants, one probe each before the first push: <property> - <probe>

@@ -37,3 +37,46 @@ resolve_state() {
   top=$(toplevel "$1") || { echo "$1 is not inside a git worktree; run from the coordination worktree or set $2" >&2; return 1; }
   echo "$top/.orchestration/state.md"
 }
+
+# The thread record, .orchestration/thread.md in the coordination worktree: one "Key: value" line per field,
+# written by MAIN's thread.sh (launch, rotate, adopt) and read by the thread's scripts and hooks. It is the one
+# home for MAIN's address (MAIN, MAIN-SOCKET), the owner's checkout (CHECKOUT) and the build's base and
+# landing mode (BASE, BASE-REF, LANE-BASE, LANDING).
+thread_field() {
+  # thread_field <coordination worktree root> <key>: print the value, or nothing.
+  sed -n "s/^$2:[[:space:]]*//p" "$1/.orchestration/thread.md" 2>/dev/null | head -1 | sed -E 's/[[:space:]]+$//'
+}
+
+main_name() {
+  # main_name <coordination worktree root>: MAIN's session name from the thread record, or from the MAIN: line of
+  # a state file written before the record existed.
+  local name
+  name=$(thread_field "$1" MAIN)
+  [ -n "$name" ] || name=$(sed -n 's/^MAIN:[[:space:]]*//p' "$1/.orchestration/state.md" 2>/dev/null | head -1 | sed -E 's/[[:space:]]+$//')
+  printf '%s' "$name"
+}
+
+owner_checkout() {
+  # owner_checkout <coordination worktree root>: the owner's checkout from the record, else the repository's main
+  # checkout (the directory holding the common git dir).
+  local dir common
+  dir=$(thread_field "$1" CHECKOUT)
+  if [ -z "$dir" ]; then
+    common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+    dir=$(dirname "$common")
+  fi
+  realpath -m -- "$dir"
+}
+
+worktree_of() {
+  # worktree_of <path>: the root of the git worktree holding <path> (which may not exist yet), or nothing.
+  local d
+  d=$(dirname -- "$1")
+  while [ ! -d "$d" ] && [ "$d" != / ]; do d=$(dirname -- "$d"); done
+  toplevel "$d" | xargs -r -d '\n' realpath -m --
+}
+
+# Hook replies. advise adds a note beside the tool result and leaves the call, and its permission check, as they
+# were; deny refuses the call with the reason.
+advise() { jq -n --arg c "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$c}}'; exit 0; }
+deny() { jq -n --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'; exit 0; }
