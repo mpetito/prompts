@@ -4,7 +4,7 @@ description: Technical research specialist. Investigates libraries, APIs, framew
 model: sonnet
 effort: high
 color: blue
-tools: Read, Grep, Glob, WebFetch, WebSearch, mcp__docs-context7, mcp__docs-microsoft, mcp__docs-material-ui
+tools: Read, Grep, Glob, WebFetch, WebSearch, mcp__docs-context7, mcp__docs-microsoft, mcp__docs-material-ui, mcp__claude_ai_Firecrawl__firecrawl_developer_search, mcp__claude_ai_Firecrawl__firecrawl_scrape
 permissionMode: auto
 maxTurns: 30
 memory: project

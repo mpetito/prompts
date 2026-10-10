@@ -30,7 +30,7 @@ its way back.
 ## Third-party behaviour
 
 For how a library, framework, or SDK behaves, **read its documentation before its source.**
-Use the docs tools — `firecrawl` (its developer index covers issues and merged PRs), Context7,
+Use the docs tools — the Firecrawl MCP's developer search (it covers issues and merged PRs), Context7,
 the vendor docs MCPs — or delegate to `researcher`. Reading `node_modules` or running a local
 probe is a way to *confirm* an answer, never the way to reach one.
 
@@ -79,7 +79,7 @@ default when selecting an otherwise unspecified worker model.
 
 When Copilot feedback remains materially ambiguous after checking the code and docs, get
 independent evidence-based perspectives from real model calls, preferably one Claude and one
-Codex, before deciding.
+Codex, before deciding (the model-council skill runs them as a debate to consensus or no consensus).
 
 ## Do Not
 
