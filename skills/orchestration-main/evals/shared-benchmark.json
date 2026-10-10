@@ -1,0 +1,220 @@
+{
+  "version": 2,
+  "skill_name": "orchestration-main",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-owner-returns",
+      "split": "tune",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it. Then list any message you send to a thread as `SendMessage to <name>:` followed by the full text in a fenced text block. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/owner-returns.md"
+      ],
+      "expected_behavior": [
+        "Open decisions come first, numbered, owner-before (D4) ahead of D2, each with a recommendation (even the spend item) and its default",
+        "The applied default D3 is reported as applied, not re-asked",
+        "What the owner can click now (the dev signup URL) is included; the long status is not relayed"
+      ],
+      "assertions": [
+        {
+          "name": "owner-before-first",
+          "type": "regex",
+          "pattern": "(?s)\\A(?:(?!\\bD2\\b).)*\\bD4\\b"
+        },
+        {
+          "name": "mentions-applied-default",
+          "type": "regex",
+          "pattern": "(?is)(?:applied|default)[^\\n]{0,120}(?:\\n[^\\n]{0,200}){0,3}?(?:\\bD3\\b|S3 Standard)|\\bD3\\b[^\\n]{0,200}(?:applied|default)"
+        },
+        {
+          "name": "recommends-each-decision",
+          "type": "regex",
+          "pattern": "(?is)(?:\\brecommend|\\bsuggest|\\bmy pick\\b|\\bI'd (?:go with|pick|choose)).*(?:\\brecommend|\\bsuggest|\\bmy pick\\b|\\bI'd (?:go with|pick|choose))"
+        },
+        {
+          "name": "shows-clickable",
+          "type": "contains",
+          "value": "dev.shopfront.example/signup"
+        },
+        {
+          "name": "no-waiting-footer",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*waiting on you"
+        },
+        {
+          "name": "short-reply",
+          "type": "not_regex",
+          "pattern": "(?:[^\\n]*\\n){45}"
+        },
+        {
+          "name": "digest-quality",
+          "type": "judge",
+          "rubric": [
+            "Each open decision carries a recommendation, not only the options",
+            "The 20-line catalog-api status is summarised in at most one line or left out",
+            "The order is: open decisions, then defaults applied, then what the owner can click",
+            "Nothing is asked twice"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-owner-asks-compact",
+      "split": "tune",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/compact-request.md"
+      ],
+      "expected_behavior": [
+        "The owner is told a message cannot compact another session; the thread is rotated instead",
+        "ROTATE goes to shopfront-api, and thread.sh rotate runs only after its STATUS: rotating arrives",
+        "Both threads are told the owner is away until 09:00 and that defaults apply at their deadlines"
+      ],
+      "assertions": [
+        {
+          "name": "sends-rotate",
+          "type": "regex",
+          "pattern": "(?s)SendMessage to shopfront-api:.{0,200}?ROTATE"
+        },
+        {
+          "name": "no-compact-message",
+          "type": "not_regex",
+          "pattern": "(?s)SendMessage to [^\\n]+:\\s*```[^\\n]*\\n\\s*/compact"
+        },
+        {
+          "name": "uses-rotate-script",
+          "type": "regex",
+          "pattern": "thread\\.sh rotate shopfront-api"
+        },
+        {
+          "name": "away-steer",
+          "type": "regex",
+          "pattern": "(?i)STEER:[^\\n]{0,120}away"
+        },
+        {
+          "name": "rotation-quality",
+          "type": "judge",
+          "rubric": [
+            "The reply explains in one or two sentences why /compact cannot be sent and what happens instead",
+            "thread.sh rotate is described as waiting for the thread's STATUS: rotating, not run immediately after ROTATE",
+            "The away steer says defaults apply at their deadlines and owner-before items wait",
+            "The reply to the owner is short"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-route-steer",
+      "split": "tune",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send, command you run and file you edit, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block, each edit as `Edit <path>:` with the change. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/route-steer.md"
+      ],
+      "expected_behavior": [
+        "The steer goes to the threads it affects: shopfront-web for signup and the typo, shopfront-api to park eval-harness",
+        "The main session does not fix the typo itself",
+        "The owner gets a one-line confirmation"
+      ],
+      "assertions": [
+        {
+          "name": "steers-web-thread",
+          "type": "regex",
+          "pattern": "(?s)SendMessage to shopfront-web:.{0,300}?STEER:"
+        },
+        {
+          "name": "steers-api-to-park-evals",
+          "type": "regex",
+          "pattern": "(?is)SendMessage to shopfront-api:.{0,400}?STEER:.{0,300}?(?:eval|park|drop)"
+        },
+        {
+          "name": "typo-routed-to-web",
+          "type": "regex",
+          "pattern": "(?is)SendMessage to shopfront-web:[\\s\\S]{0,800}?signup\\.tsx"
+        },
+        {
+          "name": "no-self-fix",
+          "type": "not_regex",
+          "pattern": "(?is)(?:\\bEdit\\b|\\bWrite\\b|sed -i|apply_patch)[^\\n]{0,80}signup\\.tsx|I(?:'ve| have) fixed"
+        },
+        {
+          "name": "routing-quality",
+          "type": "judge",
+          "rubric": [
+            "No lane work happens in the main session: no edit, no subagent started for the build",
+            "Each thread gets one message with only what concerns it",
+            "The reply to the owner confirms in one or two lines what was routed where"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-terse-run-build",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Be the orchestrator for this five-PR build.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-offline-keep-workstreams-moving",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I'm offline until tomorrow morning, so keep the four parallel workstreams on the checkout rewrite moving, merge whatever passes review, and leave me a list of what needs my call.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-split-work-and-ownership",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Split the search-index rebuild into pieces separate workers can build side by side, decide who owns which files, and set up who reviews each PR before it merges.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-watch-ci",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Keep watching CI on PR #57 and fix whatever fails until it goes green.",
+      "expected_behavior": [
+        "The skill should NOT trigger: one wait on CI is not a multi-agent build"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-one-subagent",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Spawn a subagent to add pagination to the orders API and tell me what it reports.",
+      "expected_behavior": [
+        "The skill should NOT trigger: one subagent task is not orchestration"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-message-session",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Tell my other session that the schema migration just finished.",
+      "expected_behavior": [
+        "The skill should NOT trigger: one message to another session is plain cross-session messaging"
+      ],
+      "assertions": []
+    }
+  ]
+}

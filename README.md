@@ -20,6 +20,8 @@ lists readmitted skills only.
 | [skill-authoring](skills/skill-authoring/SKILL.md) | `/skill-authoring` | Write, review, split or fix a skill folder |
 | [review](skills/review/SKILL.md) | `/review` | Review a code change adversarially: size it by defect risk and blast radius, prove its tests can fail, give a verdict |
 | [plan-review](skills/plan-review/SKILL.md) | `/plan-review` | Review a plan, spec or design before work starts: cuts, blast radius, contracts, overlap, owner questions |
+| [orchestration-main](skills/orchestration-main/SKILL.md) | `/orchestration-main` | Run a multi-agent build from your own session: launch, steer and rotate orchestration threads, and keep your decisions in front of you |
+| [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |
 
 ## Agents
 
@@ -37,8 +39,9 @@ model settings below, and new weaker-model choices require a task-specific reaso
 | `debugger`    | `sonnet` / `xhigh`  | Reproduce a failure, isolate its root cause, propose a minimal fix with evidence        |
 | `verifier`    | `opus` / `high`   | Adversarially check one claim, diff, or fix; return CONFIRMED, REFUTED, or UNPROVEN     |
 | `migrator`    | `sonnet` / `medium` | Apply one mechanical transformation across many files, in an isolated git worktree      |
+| `orchestrator` | `opus` / `high`   | Not a subagent: the session agent for one orchestration thread, launched in the background by `orchestration-main` |
 
-Only `migrator` can edit files, and it works in a temporary git worktree so its changes cannot disturb the caller's working tree. The other six are granted neither `Edit` nor `Write`. Note that a `Bash` grant is not a read-only guarantee — `analyst`, `verifier`, and `debugger` are restricted to inspection by their instructions, not by their tool list.
+Only `migrator` can edit files, and it works in a temporary git worktree so its changes cannot disturb the caller's working tree. Of the rest, six are granted neither `Edit` nor `Write`; `orchestrator` may write only inside its own coordination worktree, `../<repo>-orch-<build>`, enforced by a hook. The two-thread design behind it, a main session that talks to you and orchestration threads that run builds, is in [docs/orchestration/2026-10-10-two-thread-spike.md](docs/orchestration/2026-10-10-two-thread-spike.md). Note that a `Bash` grant is not a read-only guarantee — `analyst`, `verifier`, and `debugger` are restricted to inspection by their instructions, not by their tool list.
 
 **When to delegate.** Send deterministic, log-heavy work to `test-runner` and `pr-watch` by default. Send reading that spans many files to `analyst`, and anything answered by external documentation to `researcher`. Send a failure to `debugger`, a conclusion that is expensive to get wrong to `verifier`, and a repetitive change across many files to `migrator`. Keep work in the main session when it needs the conversation's full context or is a trivial single-file change.
 

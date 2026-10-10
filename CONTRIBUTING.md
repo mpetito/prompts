@@ -28,9 +28,10 @@ pwsh -NoProfile -File ./tests/Setup.Tests.ps1
 pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
 pwsh -NoProfile -File ./archive/skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1
 node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js
+bash skills/agent-orchestration/tests/run.sh   # Linux or WSL: bash 5, jq, python3, GNU coreutils
 ```
 
-All four are offline: they use disposable directories and mocked CLIs, and touch neither your
+All five are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set plus a
 PowerShell parse check over every `.ps1` and `.psm1`, on Windows and Ubuntu.
 

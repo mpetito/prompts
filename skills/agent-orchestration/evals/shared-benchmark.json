@@ -1,0 +1,172 @@
+{
+  "version": 2,
+  "skill_name": "agent-orchestration",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-wake-decision-and-lanes",
+      "split": "tune",
+      "prompt": "You are the orchestration thread described in the input file, and it is your turn. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/wake-decision-and-lanes.md"
+      ],
+      "expected_behavior": [
+        "The checkout flow goes to MAIN as a need-decision with options, a default and a UTC deadline, not to the owner and not as a blocking question",
+        "signup-web starts this turn despite the spec's 'nothing else should move'; only checkout-web waits",
+        "A background timer is armed for the deadline and the turn is recorded through the state helper",
+        "The Decimal remedy is rejected against contract C-1; the author gets a fix-round note, not the raw review"
+      ],
+      "assertions": [
+        {
+          "name": "decision-request-to-main",
+          "type": "regex",
+          "pattern": "(?s)SendMessage to main-7f.{0,400}?STATUS: need-decision"
+        },
+        {
+          "name": "decision-has-default-and-deadline",
+          "type": "regex",
+          "pattern": "(?is)STATUS: need-decision.{0,700}?Default:.{0,200}?applies at 2026-10-1[01]T\\d{2}:\\d{2}Z"
+        },
+        {
+          "name": "no-blocking-question-tool",
+          "type": "not_regex",
+          "pattern": "AskUserQuestion"
+        },
+        {
+          "name": "starts-signup-web",
+          "type": "regex",
+          "pattern": "(?is)Agent:[^\\n]{0,200}signup-web|signup-web[^\\n]{0,120}\\bAgent:"
+        },
+        {
+          "name": "arms-deadline-timer",
+          "type": "regex",
+          "pattern": "wake-at\\.sh"
+        },
+        {
+          "name": "records-through-state-helper",
+          "type": "regex",
+          "pattern": "state\\.sh (?:log|set)"
+        },
+        {
+          "name": "turn-quality",
+          "type": "judge",
+          "rubric": [
+            "The Decimal remedy for B2 is rejected because contract C-1 requires integer cents, and B2 is ruled as a rounding fix",
+            "The author receives a fix-round note with B1 and B2 as blocking and the follow-ups batched, not the reviewer's raw output",
+            "eval-harness is not started, because it is off the visible path",
+            "Only checkout-web waits for the checkout-flow decision; nothing else is held"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-rotate-with-lanes-in-flight",
+      "split": "tune",
+      "prompt": "You are the orchestration thread described in the input file, and the message has just arrived. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/rotate-with-lanes-in-flight.md"
+      ],
+      "expected_behavior": [
+        "No new work starts; the RESUME section is written through the state helper",
+        "RESUME lists what dies with the session (the subagent, both background tasks, the Codex lane) with how to restart each",
+        "A STATUS: rotating message goes to MAIN, and the turn ends; nothing tries to compact"
+      ],
+      "assertions": [
+        {
+          "name": "writes-resume-with-helper",
+          "type": "regex",
+          "pattern": "state\\.sh resume"
+        },
+        {
+          "name": "status-rotating",
+          "type": "regex",
+          "pattern": "(?m)STATUS: rotating - "
+        },
+        {
+          "name": "resume-restarts-watchers",
+          "type": "regex",
+          "pattern": "(?is)watch-gates\\.sh.{0,3000}wake-at\\.sh|wake-at\\.sh.{0,3000}watch-gates\\.sh"
+        },
+        {
+          "name": "no-compact",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*/compact"
+        },
+        {
+          "name": "no-new-workers",
+          "type": "not_regex",
+          "pattern": "(?im)^\\s*\\**Agent:[\\s*]*(?!none\\b|no\\b|nothing\\b)[A-Za-z]"
+        },
+        {
+          "name": "rotation-quality",
+          "type": "judge",
+          "rubric": [
+            "The running subagent a7c1 is either waited for or recorded as to be relaunched with its brief path",
+            "RESUME carries the PR heads, the D2 default and deadline, and the owner's approval quoted with its time",
+            "The Codex lane's fate after the session stops is addressed (left running or restarted, with the command)",
+            "The turn ends after the rotating message; nothing new is launched"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-steer-outranks-plan",
+      "split": "tune",
+      "prompt": "You are the orchestration thread described in the input file, and the message has just arrived. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/steer-outranks-plan.md"
+      ],
+      "expected_behavior": [
+        "The steer re-ranks the lanes: eval-harness and spend-ledger are parked, and the proposed rate-limit ledger lane is not started",
+        "The signup typo goes to a worker with an explicit model and its own worktree; the thread does not edit the file itself",
+        "One STATUS: working message tells MAIN what was parked and what moved up, without re-asking the owner"
+      ],
+      "assertions": [
+        {
+          "name": "status-working-to-main",
+          "type": "regex",
+          "pattern": "(?s)SendMessage to main-7f.{0,300}?STATUS: working"
+        },
+        {
+          "name": "parks-ledger-and-evals",
+          "type": "regex",
+          "pattern": "(?is)park[^\\n]{0,160}(?:ledger|eval)|(?:ledger|eval)[^\\n]{0,160}park"
+        },
+        {
+          "name": "no-self-edit",
+          "type": "not_regex",
+          "pattern": "(?is)\\b(?:Edit|Write)\\b[^\\n]{0,80}signup\\.tsx|sed -i[^\\n]{0,120}signup\\.tsx"
+        },
+        {
+          "name": "typo-to-worker",
+          "type": "regex",
+          "pattern": "(?is)Agent:[^\\n]{0,200}(?:opus|sonnet)[\\s\\S]{0,800}?signup\\.tsx"
+        },
+        {
+          "name": "no-rate-limit-lane",
+          "type": "not_regex",
+          "pattern": "(?i)Agent:[^\\n]{0,160}rate-limit"
+        },
+        {
+          "name": "steer-quality",
+          "type": "judge",
+          "rubric": [
+            "The approved spend-ledger PR #18 is not landed now, because the steer parks it",
+            "The owner is not asked again about parking evals or the ledger",
+            "The worker brief for the typo names its model, its own worktree and a check that the e2e signup spec passes",
+            "The STATUS message is short: what was parked, what moved up, what is next"
+          ]
+        }
+      ]
+    }
+  ]
+}
