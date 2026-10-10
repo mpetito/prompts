@@ -56,16 +56,45 @@ main_name() {
   printf '%s' "$name"
 }
 
-owner_checkout() {
-  # owner_checkout <coordination worktree root>: the owner's checkout from the record, else the repository's main
-  # checkout (the directory holding the common git dir).
-  local dir common
-  dir=$(thread_field "$1" CHECKOUT)
-  if [ -z "$dir" ]; then
-    common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
-    dir=$(dirname "$common")
-  fi
-  realpath -m -- "$dir"
+# session_top <cwd>: the coordination worktree of this session: the git root of the folder the session started in
+# ($CLAUDE_PROJECT_DIR, which a cd never moves), else of <cwd>.
+session_top() { toplevel "${CLAUDE_PROJECT_DIR:-$1}"; }
+
+owner_checkouts() {
+  # owner_checkouts <coordination worktree root>: every checkout to protect, one per line: the repository's main
+  # checkout (the directory holding the common git dir), which the thread cannot redirect, and the CHECKOUT the
+  # record names when the owner works in a linked worktree.
+  local common dir
+  common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  { dirname -- "$(realpath -m -- "$common")"
+    dir=$(thread_field "$1" CHECKOUT)
+    [ -z "$dir" ] || realpath -m -- "$dir"; } | awk '!seen[$0]++'
+}
+
+in_checkout() {
+  # in_checkout <target> <checkout>: true when <target> is inside <checkout> and is not inside one of the
+  # repository's own linked worktrees nested there, such as a subagent's under .claude/worktrees/. Fails closed:
+  # what git cannot place in a registered nested worktree counts as inside.
+  local tree
+  case "$1/" in "$2/"*) ;; *) return 1 ;; esac
+  tree=$(worktree_of "$1")
+  [ -n "$tree" ] && [ "$tree" != "$2" ] || return 0
+  case "$tree/" in "$2/"*) ;; *) return 0 ;; esac
+  git -C "$2" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | xargs -r -d '\n' realpath -m -- \
+    | grep -qxF -- "$tree" && return 1
+  return 0
+}
+
+config_file() {
+  # config_file <path> <coordination worktree root>: true for files that configure Claude Code, Codex or the
+  # orchestration: settings files anywhere, ~/.claude.json, ~/.codex/, the registry, and the thread record.
+  local orch
+  orch=$(realpath -m -- "${ORCHESTRATION_HOME:-$HOME/.orchestration}")
+  case "$1" in
+    */.claude/settings.json|*/.claude/settings.local.json|"$HOME/.claude.json"|"$HOME/.codex"|"$HOME/.codex/"*) return 0 ;;
+    "$orch"|"$orch/"*|"$2/.orchestration/thread.md") return 0 ;;
+  esac
+  return 1
 }
 
 worktree_of() {

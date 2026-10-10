@@ -4,7 +4,8 @@
 # longer resolves, both from .orchestration/thread.md, which MAIN keeps current. A message that breaks either
 # rule is denied with the reason, so the thread rewrites it. Every message to MAIN that passes is copied to
 # .orchestration/outbox.md, where MAIN's thread.sh check reads it, so a message that never arrives is still read.
-# Workers' messages (input with agent_id), and sessions with no state file, pass silently.
+# Workers' messages (input with agent_id), and sessions with no thread record or state file, pass silently. The
+# session is identified from the folder it started in ($CLAUDE_PROJECT_DIR).
 set -u
 here=$(dirname "$0")
 . "$here/../scripts/lib.sh"
@@ -12,8 +13,8 @@ input=$(cat)
 [ -z "$(printf '%s' "$input" | jq -r '.agent_id // empty')" ] || exit 0
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty')
 [ -n "$cwd" ] || exit 0
-top=$(toplevel "$cwd") || exit 0
-[ -f "$top/.orchestration/state.md" ] || exit 0
+top=$(session_top "$cwd") || exit 0
+[ -f "$top/.orchestration/thread.md" ] || [ -f "$top/.orchestration/state.md" ] || exit 0
 main=$(main_name "$top")
 sock=$(thread_field "$top" MAIN-SOCKET)
 to=$(printf '%s' "$input" | jq -r '.tool_input.to // empty' | sed -E 's/[[:space:]]+\[[^]]*\]$//')

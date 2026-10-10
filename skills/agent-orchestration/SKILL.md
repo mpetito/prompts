@@ -107,9 +107,10 @@ or a message from MAIN.
 - **Your files are in your own worktree; code goes to workers.** You keep the files you own
   (plans, the decision log, docs) there, commit them on `orchestration/<build>`, and land them
   like a lane. Lanes tick their own plan items, so a check-off lands with the work it describes.
-  A hook refuses writes into the owner's checkout, which may hold the owner's uncommitted work,
-  and adds advice when you write into a lane's worktree; a small deliberate fix there is yours to
-  make, logged. Owner-approved edits to instructions, agents, settings or links go to MAIN as
+  Hooks refuse writes into the owner's checkout, which may hold the owner's uncommitted work, and
+  to configuration (settings, the orchestration registry, your thread record), for you and your
+  workers alike; they add advice when you write into a lane's worktree, where a small deliberate
+  fix is yours to make, logged. Owner-approved edits to instructions, agents, settings or links go to MAIN as
   exact diffs: a relayed decision is not the owner's consent for those, so MAIN applies them.
 - **Brief every worker from [references/briefs.md](references/briefs.md):** an explicit model
   (Opus by default; Sonnet only for a mechanical lane, with the reason in the brief; never inherited), its own worktree

@@ -31,7 +31,8 @@ def main() -> None:
         return
     tool_input = data.get("tool_input") or {}
     cwd = data.get("cwd") or ""
-    build = orchestration_folder(cwd)
+    # The folder the session started in identifies it; a cd never moves CLAUDE_PROJECT_DIR.
+    build = orchestration_folder(os.environ.get("CLAUDE_PROJECT_DIR") or cwd)
     if not build:
         return
     path = tool_input.get("file_path") or ""
