@@ -2,8 +2,9 @@
 # Read both members' answers for one round and print the council's next step, one line:
 #   COUNCIL consensus|exchange|no-consensus|incomplete ...
 #   tally.sh <answer file> <answer file> --exchange <k>     (k = 0 for the blind round, then 1, 2, ...)
-# Consensus is mechanical: the same disposition and the same action text, so the coordinator never judges
-# whether two differently worded actions match. It still has to verify the decisive citation.
+# Consensus is mechanical: the same disposition and the same action text in each member's own (last) block,
+# whether reached blind or through agree, so the coordinator never judges whether two differently worded
+# actions match. It still has to verify the decisive citations.
 set -euo pipefail
 # Exchange rounds after the blind round. Debate studies find nearly all of the gain in the first exchange and
 # flat or falling accuracy after it, with conformity growing; the second round confirms a revised position.
@@ -22,6 +23,7 @@ check() {
   stance=$(field stance "$f" | tr '[:upper:]' '[:lower:]')
   disposition=$(field disposition "$f" | tr '[:upper:]' '[:lower:]')
   [ -n "$(field action "$f")" ] || { echo "COUNCIL incomplete member=$f reason=no-action"; exit 0; }
+  [ -n "$(field decisive "$f")" ] || { echo "COUNCIL incomplete member=$f reason=no-decisive-citation"; exit 0; }
   case " $DISPOSITIONS " in *" $disposition "*) ;; *) echo "COUNCIL incomplete member=$f reason=disposition '$disposition'"; exit 0 ;; esac
   if [ "$k" -eq 0 ]; then [ "$stance" = initial ] || { echo "COUNCIL incomplete member=$f reason=stance '$stance' in the blind round"; exit 0; }
   else case $stance in agree|revise|hold) ;; *) echo "COUNCIL incomplete member=$f reason=stance '$stance'"; exit 0 ;; esac; fi

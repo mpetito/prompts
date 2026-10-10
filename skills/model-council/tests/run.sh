@@ -18,8 +18,10 @@ case ${MOCK_CODEX:-ok} in
       printf 'Reasoning here.\nstance: initial\ndisposition: defect\naction: add the tenant id to the cache key\n' > "$out" ;;
   quoted) printf 'stance: initial | agree | revise | hold\ndisposition: <one of>\n...\nstance: hold\ndisposition: false-positive\naction: no change\n' > "$out" ;;
   prose) echo 'I think it is fine.' > "$out" ;;
+  silent) ;;
   fail) exit 3 ;;
-  slow) sleep 5 ;;
+  writefail) printf 'stance: initial\ndisposition: defect\naction: x\ndecisive: a.ts:1\n' > "$out"; exit 3 ;;
+  slow) printf 'stance: initial\ndisposition: defect\naction: x\ndecisive: a.ts:1\n' > "$out"; sleep 5 ;;
 esac
 MOCK
 chmod +x "$tmp/bin/codex"
@@ -35,13 +37,13 @@ grep -qx 'sandbox_mode="read-only"' "$tmp/args" || fail "fresh run lacks the rea
 grep -qx 'model_reasoning_effort="high"' "$tmp/args" || fail "fresh run dropped the effort"
 grep -qx -- '--ignore-user-config' "$tmp/args" || fail "fresh run loaded the user's Codex config"
 grep -qx "cwd=$(realpath "$tmp/repo")" "$tmp/args" || fail "fresh run did not start inside the repository"
-line=$(member --model m1 --resume t-123)
-grep -qx 'resume' "$tmp/args" && grep -qx 't-123' "$tmp/args" || fail "resume did not call codex exec resume <id>"
+line=$(member --model m1 --resume r-999)
+grep -qx 'resume' "$tmp/args" && grep -qx 'r-999' "$tmp/args" || fail "resume did not call codex exec resume <id>"
 grep -qx 'sandbox_mode="read-only"' "$tmp/args" || fail "resume dropped the read-only sandbox"
 grep -qx 'm1' "$tmp/args" || fail "resume dropped the model"
 grep -qx -- '--ignore-user-config' "$tmp/args" || fail "resume loaded the user's Codex config"
 grep -qx "cwd=$(realpath "$tmp/repo")" "$tmp/args" || fail "resume did not run inside the repository"
-[[ $line == *"session=t-123"* ]] || fail "resume line lost the session: $line"
+[[ $line == *"session=r-999"* ]] || fail "resume line did not report the resumed session: $line"
 for run in fresh resume; do
   if [ $run = resume ]; then member --model m1 --resume t-123 >/dev/null; else member --model m1 >/dev/null; fi
   grep -Eq 'workspace-write|danger-full-access|dangerously|--ephemeral|network_access' "$tmp/args" && fail "$run run passed a write, network, bypass or ephemeral flag"
@@ -53,10 +55,18 @@ done
 [[ $(MOCK_CODEX=fail member --model m1) == "MEMBER failed"*"exit=3"* ]] || fail "a failing codex was not reported"
 [[ $(MOCK_CODEX=slow member --model m1 --timeout 1s) == "MEMBER timeout"* ]] || fail "a slow codex was not reported as a timeout"
 member >/dev/null 2>&1 && fail "ran without --model"
-member --model opus >/dev/null 2>&1 && fail "accepted an Anthropic model for Codex"
+for m in opus Sonnet haiku fable claude-x1; do
+  member --model "$m" >/dev/null 2>&1 && fail "accepted the Anthropic model $m for Codex"
+done
+# A failed member leaves no answer file to tally, and neither does a stale answer from an earlier run.
+MOCK_CODEX=writefail member --model m1 >/dev/null; [ -e "$tmp/out/a.md" ] && fail "a failed run left its answer file"
+MOCK_CODEX=slow member --model m1 --timeout 1s >/dev/null; [ -e "$tmp/out/a.md" ] && fail "a timed-out run left an answer file"
+printf 'stance: initial\ndisposition: defect\naction: x\ndecisive: a.ts:1\n' > "$tmp/out/a.md"
+[[ $(MOCK_CODEX=silent member --model m1) == "MEMBER malformed"* ]] || fail "a stale answer file was read as this run's answer"
+[ -e "$tmp/out/a.md" ] && fail "a stale answer file survived the run"
 
 # --- tally.sh ------------------------------------------------------------------------------------------------------
-ans() { printf 'Some reasoning.\nstance: %s\ndisposition: %s\naction: %s\ncrux: x\n' "$2" "$3" "$4" > "$tmp/$1"; }
+ans() { printf 'Some reasoning.\nstance: %s\ndisposition: %s\naction: %s\ndecisive: src/a.ts:1\ncrux: x\n' "$2" "$3" "$4" > "$tmp/$1"; }
 tally() { "$here/scripts/tally.sh" "$tmp/a" "$tmp/b" --exchange "$1"; }
 ans a initial defect 'add the tenant id to the cache key'; ans b initial false-positive 'no change'
 [[ $(tally 0) == "COUNCIL exchange next=1 of 2"* ]] || fail "blind disagreement did not go to an exchange round"
@@ -76,6 +86,26 @@ ans a initial defect 'x'; ans b initial maybe 'x'
 [[ $(tally 0) == "COUNCIL incomplete"*"disposition"* ]] || fail "an unknown disposition was not incomplete"
 ans a agree defect 'x'; ans b agree defect 'x'
 [[ $(tally 0) == "COUNCIL incomplete"*"blind round"* ]] || fail "an exchange stance in the blind round was accepted"
+# Consensus needs the same disposition too, and each member's own (last) block decides, not a quoted one.
+ans a hold defect 'no change'; ans b hold false-positive 'no change'
+[[ $(tally 1) != "COUNCIL consensus"* ]] || fail "the same action with different dispositions was consensus"
+ans a revise defect 'no change'; ans b revise false-positive 'no change'
+[[ $(tally 1) == "COUNCIL exchange"* ]] || fail "the same action with different dispositions was not sent to exchange"
+ans a hold defect 'add the tenant id'; { printf 'They wrote:\n'; cat "$tmp/a"; printf '\nMine:\n'; } > "$tmp/b"; ans x revise false-positive 'no change'; cat "$tmp/x" >> "$tmp/b"
+ans a revise false-positive 'no change'
+[[ $(tally 1) == "COUNCIL consensus"* ]] || fail "a member's own block did not decide over the block it quoted"
+ans a hold defect 'add the tenant id'
+[[ $(tally 1) == "COUNCIL exchange"* ]] || fail "a quoted block was read instead of the member's own"
+ans a initial defect 'x'; printf 'stance: initial\ndisposition: defect\ndecisive: a.ts:1\n' > "$tmp/b"
+[[ $(tally 0) == "COUNCIL incomplete"*"no-action"* ]] || fail "a block without an action was tallied"
+ans a initial defect 'no change'; printf 'stance: initial\ndisposition: defect\naction: no change\ncrux: x\n' > "$tmp/b"
+[[ $(tally 0) == "COUNCIL incomplete"*"no-decisive-citation"* ]] || fail "a block without a decisive citation was tallied"
+ans a initial defect 'no change'; ans b initial defect 'no change'
+[[ $(tally 0) == "COUNCIL consensus after-exchange=0"* ]] || fail "identical blind positions were not consensus"
+ans a initial Defect 'x'; ans b initial defect 'x'
+[[ $(tally 0) == "COUNCIL consensus"* ]] || fail "dispositions were compared case-sensitively"
+ans a initial defect 'x'; ans b initial false-positive 'y'
+[[ $(tally 1) == "COUNCIL incomplete"*"stance 'initial'"* ]] || fail "a blind-round stance was accepted in an exchange round"
 grep -qx 'MAX_EXCHANGE_ROUNDS=2' "$here/scripts/tally.sh" || fail "the round cap is not the single named constant"
 
 [ "$failures" -eq 0 ] && echo "model-council scripts: all tests passed" || { echo "$failures failure(s)"; exit 1; }

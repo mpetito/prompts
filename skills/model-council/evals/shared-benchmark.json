@@ -22,7 +22,8 @@
       "expected_behavior": [
         "The coordinator runs an exchange round instead of choosing between the two answers or synthesizing a recommendation",
         "Each member receives the other's answer and decisive citation, with no model or vendor name and no hint from the coordinator",
-        "Each member is asked to answer agree, revise or hold and to name the crux"
+        "Each member is asked to answer agree, revise or hold and to name the crux",
+        "The messages carry no questions, summaries or challenges written by the coordinator"
       ],
       "assertions": [
         {
@@ -51,10 +52,15 @@
           "pattern": "(?is)--- message to[^\\n]*(?:claude|opus)[^\\n]*---(?:(?!--- end ---).)*?\\b(?:codex|gpt|openai)\\b|--- message to[^\\n]*(?:codex|gpt)[^\\n]*---(?:(?!--- end ---).)*?\\b(?:claude|opus|anthropic)\\b"
         },
         {
+          "name": "no-coordinator-steering",
+          "type": "not_regex",
+          "pattern": "(?ims)--- message to[^\\n]*---(?:(?!--- end ---).)*?(?:\\bsettle (?:it|this|that)\\b|\\bback up or withdraw\\b|\\bdid(?:n't| not) show\\b|\\bwithout showing\\b|\\byou both name(?:d)?\\b|\\bneither of you\\b|^\\s*\\d+\\.\\s)"
+        },
+        {
           "name": "council-quality",
           "type": "judge",
           "rubric": [
-            "The coordinator does not choose between the answers, merge them, or give the requester a recommendation before the members have exchanged positions",
+            "The coordinator does not choose between the answers, merge them, or recommend either member's action before the members have exchanged positions (saying the pre-council state stays in place meanwhile is not taking a side)",
             "The coordinator does not add its own view of which answer is stronger to either message",
             "Each member is sent the other's full answer, not a summary slanted toward one side"
           ]
@@ -87,7 +93,7 @@
         {
           "name": "status-quo-default",
           "type": "regex",
-          "pattern": "(?is)default[^\\n]{0,160}(?:no change|status quo|leave[^\\n]{0,40}(?:as is|unchanged)|keep[^\\n]{0,40}(?:as is|current))|(?:no change|status quo)[^\\n]{0,80}until"
+          "pattern": "(?is)default[^\\n]{0,160}(?:no change|status quo|pre-council state|leave[^\\n]{0,40}(?:as is|unchanged)|keep[^\\n]{0,40}(?:as is|current))|(?:no change|status quo)[^\\n]{0,80}until"
         },
         {
           "name": "reports-crux",
@@ -137,7 +143,7 @@
         {
           "name": "no-single-member-recommendation",
           "type": "not_regex",
-          "pattern": "(?im)^\\W*(?:recommendation|recommended action|bottom line|verdict|decision)\\b[^\\n]{0,100}\\b(?:narrow|delete)"
+          "pattern": "(?im)^\\W*(?:recommendation|recommended action|bottom line|short answer)\\b[^\\n]{0,100}\\bnarrow"
         },
         {
           "name": "rerun-or-names-missing-member",
@@ -151,6 +157,50 @@
             "The coordinator-written Codex answer is not counted as a member's answer or as agreement with Claude",
             "The result does not tell the requester to narrow or delete the wrapper on the council's authority",
             "It says what happened to the Codex member and what will be rerun or is missing"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-failed-citation",
+      "split": "tune",
+      "prompt": "You are the coordinating session running the model council described in the input file. Write the council's result exactly as you would deliver it to the requester. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/failed-citation.md"
+      ],
+      "expected_behavior": [
+        "The coordinator checks the shared decisive citation, client.ts:71, against the pinned code and finds it does not retry 429",
+        "A consensus whose decisive citation fails is reported as no consensus (decisive citation failed), not as consensus and not repaired",
+        "The default stays the pre-council state: the wrapper is not deleted on the council's authority"
+      ],
+      "assertions": [
+        {
+          "name": "citation-checked-and-fails",
+          "type": "regex",
+          "pattern": "(?is)(?:client\\.ts:?71|retryOn|retry policy|decisive citation)[^\\n]{0,250}(?:429[^\\n]{0,80}(?:not|absent|missing|isn't|is not|no)|(?:not|n't|no|without|omits?|lacks?|excludes?)[^\\n]{0,80}429)|429[^\\n]{0,120}(?:not (?:in|on|listed|included|retried)|absent|missing)"
+        },
+        {
+          "name": "no-consensus",
+          "type": "regex",
+          "pattern": "(?i)\\bno[- ]consensus\\b|\\bnot (?:a |counting (?:it|the agreement) as )?consensus\\b|\\bconsensus (?:is void|does(?:n't| not) stand|fails verification)\\b|\\bnot confirmed\\b"
+        },
+        {
+          "name": "not-reported-as-consensus",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*COUNCIL:?\\W*consensus\\b|\\bconsensus (?:was |has been )?reached\\b|\\bthe (?:council|members) (?:reached|agreed on) (?:a |the )?(?:consensus|recommendation|action)"
+        },
+        {
+          "name": "no-delete-directive",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*(?:recommendation|recommended action|bottom line|short answer|next step|action)\\W*:?\\W*(?:delete|go ahead|proceed)"
+        },
+        {
+          "name": "council-quality",
+          "type": "judge",
+          "rubric": [
+            "The coordinator does not repair the members' reasoning, swap in its own citation, or announce its own fix",
+            "It says the members agreed on an action but their shared decisive citation fails against the pinned code, quoting what client.ts:71 actually lists",
+            "It keeps the wrapper (the pre-council state) and hands the decision back rather than authorising deletion or resolving the thread"
           ]
         }
       ]

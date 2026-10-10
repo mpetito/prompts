@@ -29,7 +29,8 @@ every claim that matters, and say what you could not verify.
 Boundaries: read only. Do not edit files, commit, post, resolve threads, run anything that writes
 into the repository, or delegate. You have no network; everything external is in the evidence.
 
-End with this block exactly once, after your reasoning (at most about 500 words before it):
+End with this block exactly once, as plain lines without markdown, after your reasoning (at
+most about 500 words before it):
 
 stance: initial
 disposition: defect | improvement | false-positive | unnecessary-complexity | already-addressed | deferred | needs-human

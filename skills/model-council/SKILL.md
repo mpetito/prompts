@@ -25,13 +25,14 @@ for the human, not for models.
    Group claims that share code or a contract into one council. Leave your own preferred answer
    out.
 2. **Choose two members.** Claude: a fresh subagent with explicit model `opus`, of a type without
-   file-edit tools where the host has one. Codex: `scripts/codex-member.sh` in this skill's folder,
-   with an explicit high-capability model from the installed catalogue (`codex debug models` in
-   codex-cli 0.160; never an Anthropic alias) and `--effort high`. Give each a focus (correctness
-   and contract; simplicity and maintenance; or one narrow domain question); a focus is where to
-   look, never an assigned verdict. Record each member's harness, model, effort and focus. If one
-   provider is unavailable, run two fresh Opus members and label the result a single-family
-   council; never present a role-played member as the other provider.
+   file-edit tools where the host has one; it still has a shell, so it is read-only by its prompt
+   alone. Codex: `scripts/codex-member.sh` in this skill's folder, with an explicit high-capability
+   model from the installed catalogue (`codex debug models` in codex-cli 0.160; never an Anthropic
+   alias) and `--effort high`. Give each a focus (correctness and contract; simplicity and
+   maintenance; or one narrow domain question); a focus is where to look, never an assigned
+   verdict. Record each member's harness, model, effort and focus. If one provider is unavailable
+   now, before the blind round, run two fresh Opus members and mark every result `(single-family)`;
+   a member lost after launch is never replaced (step 7).
 3. **Blind round (k = 0).** Fill the blind-round template in
    [member-prompt.md](references/member-prompt.md) per member. Launch both in parallel; neither
    sees the other's answer. Codex, as a host background task so its exit wakes you:
@@ -49,35 +50,37 @@ for the human, not for models.
    ```
 
    It prints one line and you follow it: `consensus` (go to step 6), `exchange` (step 5),
-   `no-consensus` (step 7) or `incomplete` (step 7, after one rerun of the failed member).
-   Consensus is the same disposition and the same action text; the same disposition with a
-   different action is not consensus, however close the wording. The round cap is the
-   `MAX_EXCHANGE_ROUNDS` constant in the script.
+   `no-consensus` (step 7) or `incomplete` (rerun the failed member once and tally again; still
+   incomplete, step 7). Identical positions are consensus whether reached blind or through
+   `agree`: the script decides identity, never you. The same disposition with a different action
+   is not consensus, however close the wording. The round cap is `MAX_EXCHANGE_ROUNDS` there.
 5. **Exchange round.** Fill the exchange template: each member gets the other's latest answer,
    reasoning and block, with every identifying detail removed (no model or vendor name, no counts,
-   no hint from you). Continue the same members: message the same Claude subagent (a fresh one
-   gets its own previous answer too, if the host cannot continue it), and rerun Codex with
-   `--resume <session>` and the same model and effort, writing `round<k>-codex.md`. Then step 4.
+   no hint, question or summary from you). Continue the same members: message the same Claude
+   subagent (a fresh one gets its own previous answer too, if the host cannot continue it) and save
+   its reply verbatim to `round<k>-claude.md`; rerun Codex with `--resume <session>` and the same
+   model and effort, writing `round<k>-codex.md`. Then step 4.
 6. **Verify a consensus.** Open the decisive citation each member gave and check it against the
    pinned code or docs. If one fails, the result is `no consensus: decisive citation failed`, with
    what you found; do not repair the members' reasoning or substitute your own citation.
 7. **Report.** A member that failed, timed out, returned no answer block, or was not a real model
-   call (your own guess, a role-play, a placeholder) leaves the council `incomplete`, never a
-   consensus, whatever the other member said.
+   call (your own guess, a role-play, a placeholder, a substitute launched after it failed) leaves
+   the council `incomplete`, never a consensus, whatever the other member said.
 
    ```text
-   COUNCIL: consensus | no consensus | incomplete
+   COUNCIL: consensus | no consensus | incomplete [(single-family)]
    Question: <one line>
    Members: <harness, model, effort, focus per member>; rounds: blind + <k> exchange
-   Consensus: <disposition; action; decisive citation, verified>
-   No consensus: <each member's final disposition, action and decisive citation>; crux: <what separates them>
-   Default until the human decides: <no change>
+   Consensus: <disposition; action; decisive citations, verified>
+   No consensus: <per member: final disposition, action, decisive citation and crux, quoted from its block>
+   Default until the human decides: the pre-council state (<the code as pinned>)
    Incomplete: <which member, what happened, what was rerun>
    ```
 
    Keep only the lines that apply. Without a consensus (no consensus or incomplete) the default is
-   the status quo, never either member's action and never a recommendation of yours; one member's
-   answer is reported as that member's. An action class that needs the owner's approval still does.
+   the pre-council state, said so even when it matches one member's action; never a recommendation
+   of yours. One member's answer is reported as that member's. An action class that needs the
+   owner's approval still does.
 
 ## Rules
 
