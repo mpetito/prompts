@@ -30,7 +30,7 @@ jobs:
       - name: Check MCP installation with mocked CLIs
         run: ./tests/Mcp.Tests.ps1
       - name: Check existing PR feedback helpers
-        run: ./skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1
+        run: ./archive/skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1
       - name: Check status line
         run: |
           node --check statusline/statusline.js

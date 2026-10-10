@@ -1,44 +1,22 @@
 # Agentic Coding Toolkit
 
-A collection of agent skills for reliable agentic coding workflows, shared across GitHub Copilot (VS Code + Copilot CLI), Claude Code, Codex, and OpenCode.
+Agent configuration shared across GitHub Copilot (VS Code + Copilot CLI), Claude Code, Codex, and OpenCode: instructions, subagent definitions, a status line, and a skill collection that is currently archived pending readmission on evidence.
 
 Skills are the single unit of reusable workflow guidance in this repository: they auto-load when relevant, and both VS Code and Claude Code expose each skill as an explicit `/name` entry point. There is no separate `prompts/` concept; former prompt slugs are preserved as skill names.
 
 ## Skills
 
-| Skill                     | `/slash` invocation        | Purpose                                                                                         |
-| ------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------- |
-| `commit`                  | `/commit`                  | Validate changes, create conventional commits, push branches, and open or update pull requests  |
-| `implement`               | `/implement`               | Execute a spec or clear request end-to-end, from planning through implementation and validation |
-| `pr-feedback`             | `/pr-feedback`             | Address PR feedback from reviews, CI, and code analysis tools                                   |
-| `model-council`           | `/model-council`           | Resolve uncertain technical decisions with independent Claude/Codex perspectives and cited evidence |
-| `pr-resolve`              | `/pr-resolve`              | Reply to and resolve PR review threads                                                          |
-| `pr-consolidate`          | `/pr-consolidate`          | Consolidate multiple PRs or branches into a unified integration branch                          |
-| `review`                  | `/review`                  | Run a structured code review of staged or recently implemented changes                          |
-| `spec`                    | `/spec`                    | Produce `spec.md` (what + why) and `plan.md` (how) under `specs/{NNN-slug}/`                    |
-| `tt`                      | `/tt`                      | Log or update a Harvest time entry for current work, linked to an ADO item                      |
-| `story`                   | `/story`                   | Create a user story, issue, or bug in Azure DevOps                                              |
-| `research`                | `/research`                | Conduct deep technical research using documentation, search, and GitHub resources               |
-| `pr-review`               | `/pr-review`               | Review someone else's PR by number and draft/post feedback with approval                        |
-| `pr-authoring`            | `/pr-authoring`            | Write concise, motivation-led pull request descriptions                                         |
-| `upgrade`                 | `/upgrade`                 | Safely upgrade dependencies with research, risk assessment, and validation                      |
-| `code-authoring`          | `/code-authoring`          | Implementation methodology: prepare, implement, test, self-review, and validate                 |
-| `agents-md-authoring`     | `/agents-md-authoring`     | Author AGENTS.md / CLAUDE.md project-wide context files                                         |
-| `skill-authoring`         | `/skill-authoring`         | Author, split, and tune SKILL.md files and skill folders                                        |
-| `autonomous-loops`        | `/autonomous-loops`        | Run iterative loops against asynchronous external evaluators such as CI or deploys              |
-| `code-quality-standards`  | `/code-quality-standards`  | Detailed Next.js, React, and TypeScript code quality review standards                           |
-| `design-review-standards` | `/design-review-standards` | UI/UX and accessibility review standards for brand, responsive design, and conversion           |
-| `ecommerce-patterns`      | `/ecommerce-patterns`      | Cart, checkout, payments, orders, and conversion patterns for React/Next.js apps                |
-| `playwright-e2e`          | `/playwright-e2e`          | Playwright end-to-end testing: Page Object Models, locators, and monorepo setup                 |
-| `seo-aeo-structured-data` | `/seo-aeo-structured-data` | SEO, AEO, structured data, metadata, sitemap, and Core Web Vitals guidance                      |
-| `agentmail`               | `/agentmail`               | Use the AgentMail MCP server as a test mailbox when verifying email send/receive flows          |
-| `word-doc-editing`        | `/word-doc-editing`        | Edit Word .docx files via Word COM automation: tracked changes, structural ops, verification    |
-| `firecrawl`               | `/firecrawl`               | Search, scrape, crawl, map, and extract from the live web; developer and research indexes       |
-| `herdr-delegation`        | `/herdr-delegation`        | Coordinate agents across Herdr panes: cross-harness delegation, worktrees, blocked peers        |
-| `agent-orchestration`     | `/agent-orchestration`     | Orchestrate a multi-agent build: lanes, review and merge gates, wake-ups, the human, state       |
-| `agent-briefs`            | `/agent-briefs`            | Write briefs, fix-round notes and reviewer prompts for delegated agents, and their report format |
+**All skills are archived.** On 2026-10-09 every skill moved to `archive/skills/` so that each
+one has to earn its place back with real usage. The audit behind that decision, the per-skill
+best-practice reviews, the usage data and the readmission bar are in
+[docs/skill-audit/](docs/skill-audit/). Nothing under `archive/` is linked into any client.
 
-When you already have a spec in `specs/{NNN-slug}/`, use `/implement spec NNN` to execute it end-to-end. For ad-hoc implementation requests without a spec, describe the work directly or invoke `/implement`.
+A readmitted skill lands in `skills/<name>/` with the same layout as before (`SKILL.md`,
+`references/`, `scripts/`, `evals/`), and the installer links it on the next run. Until then
+this table is empty on purpose.
+
+| Skill | `/slash` invocation | Purpose |
+| --- | --- | --- |
 
 ## Agents
 
@@ -66,7 +44,7 @@ pins Opus instead of inheriting. Ad hoc subagents and dynamic workflow agents st
 Opus; a new weaker-model choice needs a concrete reason
 based on bounded work and verifiable output. This does not change skill-level model settings
 or the main session's model. The canonical policy, including runtime checks and escalation, is
-[agent model selection](skills/skill-authoring/references/agent-model-selection.md).
+[agent model selection](docs/agent-model-selection.md).
 
 Each agent defines a strict output contract so the caller can assess its evidence. Beyond `model` and `effort`, they set `permissionMode: auto` so background work does not stall on a prompt, `maxTurns` as a runaway guard, and `memory: project` where a project-specific fact is worth carrying between sessions — the test command, a repository's CI shape, a recurring failure mode. `analyst` and `verifier` deliberately keep no memory: both must answer from the code as it is now, and a remembered claim invites a stale one.
 
@@ -83,9 +61,9 @@ collects full review bodies as well as threads and verifies visible and suppress
 claims before accepting changes. These routes are explicit in skill bodies for other hosts,
 which do not load this Claude-only global file.
 
-When actionability remains unclear, `pr-feedback` invokes
-[model-council](skills/model-council/SKILL.md): two independent reviews focused on correctness
-and maintenance cost, preferably Claude plus Codex, followed by evidence-based synthesis.
+When actionability remains unclear, get two independent reviews focused on correctness and
+maintenance cost, preferably Claude plus Codex, followed by evidence-based synthesis (the
+archived `model-council` skill describes the transports).
 A third reviewer is reserved for a specific unresolved question. The council can use native
 delegation, Herdr peers, or authenticated CLIs; it reports recommendations without posting or
 editing code itself. Skill-level model settings remain independent of council worker models.
@@ -114,52 +92,14 @@ Reusable prompt fragments for specialized workflows.
 
 ## Workflows
 
-### Standard Feature Development
-
-```
-/spec → /implement spec NNN → /review → /commit
-```
-
-1. **Spec** (`/spec`): produce `spec.md` + `plan.md` under `specs/{NNN-slug}/`
-2. **Implement** (`/implement spec NNN`): apply any clarifications, create or review the plan, build all phases
-3. **Review** (`/review`): independent quality pass
-4. **Commit** (`/commit`): branch, commit, push, open/update PR
-
-### Direct Implementation (Clear Requirements, No Spec)
-
-```
-(describe the work) → /review → /commit
-```
-
-### Research Spike
-
-```
-/research → /spec → ...
-```
-
-### PR Feedback Loop
-
-```
-/pr-feedback → /pr-resolve → /commit
-```
-
-Repeat until approved.
-
-### Dependency Upgrade
-
-```
-/upgrade → /commit
-```
-
-### Branch Consolidation
-
-```
-/pr-consolidate → /commit
-```
+The slash-command workflows this section used to list (`/spec → /implement → /review → /commit`
+and the others) depended on archived skills. The archived text is in `archive/skills/`, and
+the usage data in `docs/skill-audit/2026-10-09/usage.md` shows which of them ran in the last
+60 days before the archive.
 
 ## Evaluating Skills
 
-A skill can carry an eval suite at `skills/<name>/evals/shared-benchmark.json`, in the
+A skill can carry an eval suite at `skills/<name>/evals/shared-benchmark.json` (or under `archive/skills/` while it is being readmitted), in the
 [skill-eval-harness](https://github.com/adewale/skill-eval-harness) manifest format. The suite
 runs the same prompt with and without the skill mounted, grades the outputs with deterministic
 assertions plus an LLM judge, and measures whether the skill fires on its own for a set of
@@ -184,7 +124,7 @@ suite through `codex exec`.
 Authoring rules for a suite: each case produces text from a fixture under `evals/fixtures/`,
 because a headless run has no shell or network; every assertion traces to a rule in the skill
 that a model without the skill plausibly breaks, with a trap for it in the fixture; and trigger
-negatives are near-misses from adjacent tasks. `skills/pr-authoring/evals/` is the reference
+negatives are near-misses from adjacent tasks. `archive/skills/pr-authoring/evals/` is the reference
 suite. A skill with `disable-model-invocation: true` (such as `pr-consolidate`) never fires on
 its own by design, so it carries no trigger suite.
 
@@ -284,9 +224,9 @@ Skills here target the lowest common denominator so they work everywhere:
 - Directory names match the frontmatter `name`
 - Tool references are described as capabilities (e.g. "Context7 docs", "IDE diagnostics") rather than literal tool IDs, which differ per host
 - Cross-references are **skill-relative** (`../other-skill/SKILL.md`), never repo-root-relative — the tree is symlinked into user-level folders where no repo root exists
-- `skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. It is linked alongside the skills because sibling-relative references from PR skills depend on it; having no `SKILL.md`, it never enters a tool's skill catalog. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
+- `archive/skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. It is linked alongside the skills because sibling-relative references from PR skills depend on it; having no `SKILL.md`, it never enters a tool's skill catalog. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
 - `instructions/CLAUDE.md` is the user-level global instruction file, linked only into Claude Code for the same reason. It loads into every session in every project, so keep it short and keep every line load-bearing
-- `agents/` is Claude Code's subagent format and is deliberately **not** cross-tool — other hosts use incompatible agent formats, so the setup script links it into Claude Code only. Keep agent bodies host-generic and project-agnostic (no employer, stack, or repository specifics) so they behave the same in every project. Agents may depend on `skills/` two ways — a relative path such as `../skills/pr-scripts/…`, which resolves in both the repository and `~/.claude/`, and a `skills:` frontmatter entry naming a skill to preload. `researcher` also names specific documentation MCP servers in its `tools` list; adjust that line on a machine where those servers are not configured
+- `agents/` is Claude Code's subagent format and is deliberately **not** cross-tool — other hosts use incompatible agent formats, so the setup script links it into Claude Code only. Keep agent bodies host-generic and project-agnostic (no employer, stack, or repository specifics) so they behave the same in every project. Agents may depend on a readmitted skill two ways — a relative path such as `../skills/<name>/…`, which resolves in both the repository and `~/.claude/`, and a `skills:` frontmatter entry naming a skill to preload; while the collection is archived, agents carry what they need inline. `researcher` also names specific documentation MCP servers in its `tools` list; adjust that line on a machine where those servers are not configured
 
 Codex custom agents use standalone TOML files under `~/.codex/agents/` (or `.codex/agents/` for one repository), so the Claude Markdown files in `agents/` cannot be linked there directly. If Codex equivalents are added later, keep them in a separate source folder and link those TOML files into `~/.codex/agents/`; share behavioral instructions deliberately, but translate model, reasoning, sandbox, MCP, and skill settings to Codex's schema.
 
@@ -294,10 +234,8 @@ Codex custom agents use standalone TOML files under `~/.codex/agents/` (or `.cod
 
 Large skills keep `SKILL.md` lean and push detail into a `references/` subfolder, which loads
 only when `SKILL.md` points at it. `SKILL.md` carries the workflow, decisions, and pitfalls;
-`references/` carries code libraries, command tables, and long worked examples. Currently used
-by `agent-briefs`, `agent-orchestration`, `agentmail`, `ecommerce-patterns`, `firecrawl`,
-`model-council`, `playwright-e2e`, `review`, `seo-aeo-structured-data`, `skill-authoring`,
-`story`, `upgrade`, and `word-doc-editing`.
+`references/` carries code libraries, command tables, and long worked examples. The archived
+skills show the pattern (`agent-briefs`, `firecrawl`, `playwright-e2e`, `word-doc-editing`).
 
 ### Host-Specific Frontmatter
 
@@ -315,7 +253,7 @@ pattern skills — deliberately set no `model`, so they inherit whatever the cal
 `firecrawl` is the exception: it is tool-driving work, so it pins `sonnet` to stay cheap under an
 Opus session while keeping `effort: high`, because choosing the right rung of the search/scrape/crawl
 ladder and writing a good query is where its judgment actually goes.
-See the `skill-authoring` skill for the full key list and selection guidance.
+See the archived `skill-authoring` skill for the full key list and selection guidance.
 
 Codex ignores Claude-only skill keys such as `model: sonnet`, `effort`, and `disable-model-invocation`; they do not select an Anthropic model or prevent the skill from loading. When a Claude-only key carries behavior that must also hold in Codex, add the Codex equivalent in the skill's optional `agents/openai.yaml`. In particular, Codex's equivalent of `disable-model-invocation: true` is `policy.allow_implicit_invocation: false`.
 

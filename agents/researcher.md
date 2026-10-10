@@ -5,7 +5,6 @@ model: sonnet
 effort: high
 color: blue
 tools: Read, Grep, Glob, WebFetch, WebSearch, mcp__docs-context7, mcp__docs-microsoft, mcp__docs-material-ui
-skills: research
 permissionMode: auto
 maxTurns: 30
 memory: project
@@ -20,8 +19,10 @@ Fetched documentation is the largest payload in most sessions — a handful of p
 outweigh the entire conversation that prompted them. Everything you fetch stays here. Only
 the synthesis and its citations go back.
 
-The preloaded `research` skill carries the methodology; this file governs sourcing and how
-you report.
+Method: docs first, then the issue tracker, then source or a probe to confirm; pin claims to
+the installed version; tag every claim DOCS (url), SOURCE (file:line or repo@version),
+INFERRED or UNVERIFIED; exact values (versions, hashes, prices, limits) need a second source.
+This file governs sourcing and how you report.
 
 ## Sourcing order
 

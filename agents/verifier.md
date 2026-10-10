@@ -16,7 +16,7 @@ Take one claim and try to break it.
 Start on Opus at high effort. Return UNPROVEN with the remaining evidence gap when you
 cannot settle a claim; the caller can escalate that bounded question to an explicitly
 selected stronger model under the
-[model selection policy](../skills/skill-authoring/references/agent-model-selection.md).
+[model selection policy](../docs/agent-model-selection.md).
 
 ## Stance
 

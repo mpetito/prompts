@@ -53,9 +53,11 @@ $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 function Resolve-SkillList {
     param([string[]]$Requested)
     if ($Requested) { return $Requested -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } }
-    Get-ChildItem -Directory (Join-Path $repo 'skills') |
+    # Live skills first; archived skills (archive/skills) are measured on their way back in.
+    @('skills', 'archive/skills') | ForEach-Object { Join-Path $repo $_ } | Where-Object { Test-Path -LiteralPath $_ } |
+        ForEach-Object { Get-ChildItem -Directory $_ } |
         Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'evals/shared-benchmark.json') } |
-        Select-Object -ExpandProperty Name
+        Select-Object -ExpandProperty Name -Unique
 }
 
 function New-ClaudeWrapper {
@@ -122,7 +124,8 @@ $failed = @()
 foreach ($name in $names) {
   try {
     $manifest = Join-Path $repo "skills/$name/evals/shared-benchmark.json"
-    if (-not (Test-Path -LiteralPath $manifest)) { throw "No manifest at $manifest" }
+    if (-not (Test-Path -LiteralPath $manifest)) { $manifest = Join-Path $repo "archive/skills/$name/evals/shared-benchmark.json" }
+    if (-not (Test-Path -LiteralPath $manifest)) { throw "No manifest for $name under skills/ or archive/skills/" }
     $out = Join-Path $OutRoot "$name/$stamp"
     $runsDir = Join-Path $out 'runs'
     $null = New-Item -ItemType Directory -Path $out -Force

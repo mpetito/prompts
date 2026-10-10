@@ -11,19 +11,21 @@
 
 ## Skills
 
-When a skill names another skill as a **step** in its procedure, invoke that skill (Skill tool)
-before performing the step. A linked skill is reference material only when the sentence is a
-"see also"; if it sits inside a numbered step, it is an instruction. Never author from a summary
-of a skill — a summary is there to help you recognise which skill applies, not to stand in for it.
+The skill collection is archived (`archive/skills/` in the configuration repository that this
+file links from; `readlink -f ~/.claude/CLAUDE.md` finds it). Nothing auto-loads. A skill
+returns only through the readmission bar in `docs/skill-audit/readmission.md` there.
 
-`code-authoring` holds the canonical coding standards. Load it before writing code — for a bug
-fix, a refactor, or an infra change, not only a feature.
+When a task goes wrong in a way an instruction would have prevented, or you find yourself
+re-deriving a procedure or a fact a skill used to carry, record it in
+`docs/skill-audit/candidates.md` in that repository: the date, the project, what went wrong,
+and the archived skill (if any) that covered it. That ledger is the only way a skill earns
+its way back.
 
-- For React, Next.js, or TypeScript work, also load `code-quality-standards` before editing.
-- Before reporting implementation complete, load `review` and review the final diff. For
-  someone else's PR, use `pr-review`; for incoming feedback, use `pr-feedback`.
 - Follow the target project's conventions first. Keep comments concise; explain only what
-  names, types, and code cannot. These checks also apply to delegated implementation.
+  names, types, and code cannot. These rules also apply to delegated implementation.
+- Before reporting implementation complete, review the final diff yourself: prove every new
+  guard or fix can fail (revert it or plant a mutant), run the project's checks, and report
+  findings by severity.
 
 ## Third-party behaviour
 
@@ -61,21 +63,23 @@ trivial single-file change, or when the round trip costs more than the work itse
 
 A subagent's report is evidence to weigh, not a conclusion to relay unexamined.
 
-Load `agent-briefs` before writing a brief, review prompt, or fix-round note for another agent.
-When coordinating several agents on one build, load `agent-orchestration` as well.
+A brief for another agent is self-contained (the agent has none of this conversation), puts
+facts such as SHAs from commands run at send time, and ends with a report contract whose first
+line is `STATUS:` or `VERDICT:`.
 
 ## Model tiers
 
 Before any subagent, team, dynamic workflow, or background agent launch, read and apply
-`references/agent-model-selection.md` from the installed `skill-authoring` skill folder.
+`docs/agent-model-selection.md` in the configuration repository named above.
 Default to explicit `opus`. A weaker model needs a task-specific justification based on bounded
 work and verifiable results. This applies to every workflow stage and retry,
 including generated agents that do not use the named definitions above.
 Preserve existing named-agent model pins as deliberate role-specific choices; apply the
 default when selecting an otherwise unspecified worker model.
 
-When Copilot feedback remains materially ambiguous after checking the code and docs, use
-`model-council` for independent evidence-based perspectives, preferably Claude and Codex.
+When Copilot feedback remains materially ambiguous after checking the code and docs, get
+independent evidence-based perspectives from real model calls, preferably one Claude and one
+Codex, before deciding.
 
 ## Do Not
 

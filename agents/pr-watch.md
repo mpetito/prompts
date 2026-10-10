@@ -77,17 +77,16 @@ remembered value that contradicts what you are seeing as stale, and update it.
 
 ## Copilot review comments
 
-Collect threads with the shared helper rather than hand-rolling GraphQL — it already
-returns author, body, file, line, resolution state, and per-comment `createdAt`:
+Collect threads with one GraphQL query; it returns resolution state, author, body, file,
+line and `createdAt` per comment:
 
-```
-pwsh ../skills/pr-scripts/Get-PrThreads.ps1 -Pr <number> -Unresolved
+```bash
+gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{isResolved path line comments(first:20){nodes{author{login} body createdAt}}}}}}}' \
+  -F o=<owner> -F r=<repo> -F n=<number> --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved|not)'
 ```
 
-The path is relative to this agent file and resolves in both the repository and the
-user-level agents folder. `Get-PrFeedback.ps1` in the same folder aggregates unresolved
-threads, failing checks, and code-scanning alerts in one call — prefer it when the caller
-wants everything at once and you are not watching incrementally.
+Failing checks: `gh pr checks <number> --json name,state,link`, then `gh run view <run-id> --log-failed`
+for the excerpt.
 
 **Identifying Copilot.** Match the author login case-insensitively against `copilot`
 rather than hardcoding one exact string — the bot login varies by feature and has changed

@@ -26,7 +26,7 @@ There is no package manager here. Run what CI runs, from the repository root:
 ```sh
 pwsh -NoProfile -File ./tests/Setup.Tests.ps1
 pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
-pwsh -NoProfile -File ./skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1
+pwsh -NoProfile -File ./archive/skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1
 node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js
 ```
 
@@ -37,6 +37,17 @@ PowerShell parse check over every `.ps1` and `.psm1`, on Windows and Ubuntu.
 Scripts target **PowerShell 7.4+** on Windows, Linux, and macOS. Windows PowerShell 5.1 is not
 supported, so `$IsWindows` and other PowerShell 7 built-ins are safe to rely on. `.gitattributes`
 normalizes scripts and docs to LF.
+
+## Archived skills and readmission
+
+Every skill was archived on 2026-10-09 under `archive/skills/`, with the audit that led to it
+in `docs/skill-audit/2026-10-09/`. The installer links only `skills/`, so an archived skill is
+invisible to every client. A skill (old or new) enters `skills/` only through the bar in
+[docs/skill-audit/readmission.md](docs/skill-audit/readmission.md): a recorded gap in
+`docs/skill-audit/candidates.md`, three behaviour evals that fail without it, one named
+consumer role with its line budget, no overlap with the harness or a sibling, and loads within
+30 days of readmission (`python3 scripts/skill-usage.py`). Start a readmission from the
+archived text and the audit's review of it, never from a blank file.
 
 ## After adding or renaming a skill
 
@@ -68,11 +79,11 @@ Do not write these from memory; the canonical guidance lives in the tree:
 
 | Authoring | Source |
 | --- | --- |
-| `SKILL.md` files and skill folders | the `skill-authoring` skill |
-| `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md` | the `agents-md-authoring` skill |
+| `SKILL.md` files and skill folders | [archive/skills/skill-authoring/SKILL.md](archive/skills/skill-authoring/SKILL.md), plus the readmission bar above |
+| `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md` | [archive/skills/agents-md-authoring/SKILL.md](archive/skills/agents-md-authoring/SKILL.md) |
 | Cross-tool portability rules | [Cross-Tool Authoring Notes](README.md#cross-tool-authoring-notes) |
 | Claude-only frontmatter keys | [Host-Specific Frontmatter](README.md#host-specific-frontmatter) |
-| Worker model selection | `skills/skill-authoring/references/agent-model-selection.md` |
+| Worker model selection | [docs/agent-model-selection.md](docs/agent-model-selection.md) |
 
 Two rules bite often enough to repeat here: cross-references between skills must be
 skill-relative (`../other-skill/SKILL.md`), never repo-root-relative, because the tree is
