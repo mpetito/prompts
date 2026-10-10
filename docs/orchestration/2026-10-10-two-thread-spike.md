@@ -80,3 +80,37 @@ Constraints from the docs that the design has to respect:
 
 The spike's agent, skill, state file and lane outputs were removed from `~/dev` afterwards; the
 background sessions were stopped and deleted with `claude rm`.
+
+## Live smoke test of the built thread
+
+Run at 2026-10-10T12:25Z, after linking the skills: `thread.sh launch` from a main session against
+this repository (base `main`), a brief of probes instead of a build, two follow-up probes sent as a
+`STEER`, then `ROTATE`.
+
+| Probe | Result | Refused by |
+| --- | --- | --- |
+| Write inside the thread's worktree | allowed | |
+| Write in the owner's checkout | denied | guard-writes |
+| Hand-typed `14:30Z` in `.orchestration/` | denied | guard-timestamps |
+| `pkill -0 -f …` | denied | guard-bash |
+| `sleep 31` alone | denied | Claude Code's Bash tool, before any hook |
+| `true; sleep 31`, and an `until` loop on `sleep` | denied | guard-bash |
+| `git worktree remove …` | denied | guard-bash |
+| `rm -rf .orchestration/results/…` | denied | guard-bash |
+| Message to main without a `STATUS:` line | denied | guard-message |
+| `pwd`, top level, branch | `../prompts-orch-smoke`, `orchestration/smoke` | |
+
+- Hooks see the thread's worktree as `cwd`, and a `Write` there edits in place.
+- The launch text arrives as the arguments of `/agent-orchestration`, so the skill loads on the
+  first turn. Every turn ran `claude-opus-5-5` at effort `high` (the transcript records both).
+- Protocol messages passed the message guard in both directions.
+- `ROTATE` brought `STATUS: rotating` and a complete RESUME within a minute; `thread.sh rotate`
+  started `smoke-hooks-r1`, whose first message was `STATUS: working - resumed from RESUME …`.
+  `thread.sh list` run in the same second showed the new thread `not-running` until it
+  registered; the next call showed `busy`.
+- The thread's results file quoted a denial reason containing the probe's time, and the timestamp
+  guard refused it too. The thread wrote a placeholder through the shell instead, which the hook
+  allows by design.
+
+The worktree, branch and both sessions were removed afterwards; the probe evidence was archived
+outside the repository.
