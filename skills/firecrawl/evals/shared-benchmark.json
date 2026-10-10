@@ -15,7 +15,7 @@
     {
       "id": "pos-guides-subtree-keyless",
       "split": "tune",
-      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Do not run any commands or call any tools; everything you need is in the input file.",
+      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Read the input file, but do not run commands or call any other tool. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Everything you need is in the input file.",
       "files": [
         "fixtures/guides-subtree-keyless.md"
       ],
@@ -47,6 +47,74 @@
       ]
     },
     {
+      "id": "pos-release-posts-fields",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Read the input file, but do not run commands or call any other tool. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Everything you need is in the input file.",
+      "files": [
+        "fixtures/release-posts-breaking.md"
+      ],
+      "expected_behavior": [
+        "Scrapes each of the 42 posts asking only for its breaking changes (json with a schema, or the query format), so answers reach the context instead of 42 full pages",
+        "Does not scrape the posts as full markdown",
+        "Builds the table from the per-post answers with the source URL for each row"
+      ],
+      "assertions": [
+        {
+          "name": "fields-not-pages",
+          "type": "regex",
+          "pattern": "\"formats\"\\s*:\\s*\\[[^\\]]*\"(?:json|query)\""
+        },
+        {
+          "name": "no-markdown-post-scrapes",
+          "type": "not_regex",
+          "pattern": "(?s)\"url\"\\s*:\\s*\"https://blog\\.example\\.com/releases/[^\"]*\"(?:(?!\"tool\"\\s*:).){0,200}?\"formats\"\\s*:\\s*\\[\\s*\"markdown\"|\"formats\"\\s*:\\s*\\[\\s*\"markdown\"[^\\]]*\\](?:(?!\"tool\"\\s*:).){0,200}?\"url\"\\s*:\\s*\"https://blog\\.example\\.com/releases/"
+        },
+        {
+          "name": "context-quality",
+          "type": "judge",
+          "rubric": [
+            "Each post is scraped with a json schema or query prompt that returns only its breaking changes and version",
+            "The plan does not pull 42 full pages of markdown into the context",
+            "Each table row cites the post URL it came from"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "guard-auth-pages-large-site",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Read the input file, but do not run commands or call any other tool. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Everything you need is in the input file.",
+      "files": [
+        "fixtures/auth-pages-large-site.md"
+      ],
+      "expected_behavior": [
+        "Regression guard, not a gap: the model without the skill already does this; the skill's crawl rule must not pull it into crawling a 4,000-page site",
+        "Finds the authentication pages with map and --search instead of crawling the site and filtering afterwards",
+        "Scrapes only the matched URLs into docs-offline/auth/ after stating the count"
+      ],
+      "assertions": [
+        {
+          "name": "map-with-search",
+          "type": "regex",
+          "pattern": "(?s)firecrawl(?:-cli(?:@\\S+)?)?\\s+map\\b(?:(?!\"tool\"\\s*:).){0,300}?--search\\b"
+        },
+        {
+          "name": "no-site-crawl",
+          "type": "not_regex",
+          "pattern": "firecrawl(?:-cli(?:@\\S+)?)?\\s+crawl\\b"
+        },
+        {
+          "name": "scope-quality",
+          "type": "judge",
+          "rubric": [
+            "The plan discovers the authentication URLs with map --search rather than crawling the whole site",
+            "It scrapes only the matched URLs and writes them under docs-offline/auth/",
+            "It reports or checks the match count before scraping"
+          ]
+        }
+      ]
+    },
+    {
       "id": "trig-mirror-api-reference",
       "kind": "trigger",
       "split": "tune",
@@ -73,6 +141,16 @@
       "prompt": "What does https://example.com/pricing say right now about the limits on the team plan?",
       "expected_behavior": [
         "The skill should NOT trigger: one page is covered by the Firecrawl scrape tool's own description."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-fields-many-pages",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Pull the price and stock status from each of these 60 product pages into a CSV; the URLs are in urls.txt.",
+      "expected_behavior": [
+        "The skill should trigger."
       ],
       "assertions": []
     },
