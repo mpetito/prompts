@@ -34,6 +34,9 @@ These two rules apply on every turn, including the first turn after a compaction
 | What a reviewer does to a diff | [review](../review/SKILL.md) |
 | One contested technical decision that needs independent opinions | [model-council](../model-council/SKILL.md) |
 | The model for every worker | [agent model selection](../skill-authoring/references/agent-model-selection.md) |
+| The scripts and hooks behind this skill's rules: state stamps, the decision queue, the meter, landing, gate watching, lane teardown | [orchestration-ops](../orchestration-ops/SKILL.md) |
+| The owner-path walk and friction check before anything owner-facing is "complete" | [owner-acceptance](../owner-acceptance/SKILL.md) |
+| Learning from the transcripts afterwards | [session-retro](../session-retro/SKILL.md) |
 
 ---
 
@@ -76,6 +79,16 @@ Decide these before the first delegation. Write each into the plan or the
    [agent-briefs](../agent-briefs/SKILL.md).
 10. **Where agent memory and scratch files live** (gitignored), and whether a brief's "write no
     files" includes them.
+11. **Visible-first order.** Rank lanes by distance to something the human can click on the
+    deployed environment, and schedule in that order. Anything off that path (evals, ledgers,
+    counters, alarms, hardening) gets one review round, then parks until the human opts in. In
+    one build the owner asked for visible progress in the first hour and most of the first three
+    days went to evidence pipelines and infrastructure the owner never saw.
+12. **Challenge each mechanism the spec prescribes before briefing it.** Name the platform
+    primitive that already gives the property (queue depth, a TTL, IAM, a conditional write), and
+    propose the cut to the human in one line with a default, instead of building as written.
+13. **Install the hooks and set the script path** from [orchestration-ops](../orchestration-ops/SKILL.md),
+    so timestamps, pattern kills and worktree removal are refused by the host rather than by memory.
 
 ---
 
@@ -83,9 +96,11 @@ Decide these before the first delegation. Write each into the plan or the
 
 Every wake runs the same five steps: wake, sweep, act, arm, record.
 
-1. **Wake.** Read the time with `date -u`; never estimate it. Don't spend a turn on an interim
-   notice, such as a subagent that stopped while its own background work still runs. Wait for its
-   hand-back.
+1. **Wake.** Read the time with `date -u`; never estimate it. Read both budget meters
+   (`meter.sh` for Codex; the harness's usage view for Claude) and record them. List the decisions
+   whose default is due (`decisions.sh due`), apply each one and log it. Don't spend a turn on an
+   interim notice, such as a subagent that stopped while its own background work still runs. Wait
+   for its hand-back.
 2. **Sweep** every lane, not only the one that woke you: subagents, peers, background watchers and
    result files. Also:
    - scan running agents for permission or classifier denials on each sweep, rather than waiting
@@ -106,8 +121,9 @@ Every wake runs the same five steps: wake, sweep, act, arm, record.
    | PR gates | One background script that waits for checks and reviews, then prints one line ([autonomous-loops](../autonomous-loops/SKILL.md)) |
    | Long local job | One background command writing a log, waited on once |
 
-5. **Record** each state change in the [state file](references/state-file.md), batched once per
-   turn.
+5. **Record** each state change in the [state file](references/state-file.md) through the state
+   helper, batched once per turn. A status post to an absent human is one line per change, not a
+   report.
 
 ---
 
@@ -118,9 +134,17 @@ and what continues meanwhile. Then dispatch every task the question doesn't gate
 list what the idle lanes could do and send it. Use a blocking prompt only when nothing else can
 move.
 
-- **Keep one numbered open-decisions list.** Each item carries a recommendation and what it
-  blocks. Re-post the whole list whenever it changes, so the human can answer by number. When
-  nothing changed, don't repeat the ask.
+- **Keep the decision queue in one file,** `decisions.md` beside the state file, through
+  `decisions.sh` ([orchestration-ops](../orchestration-ops/SKILL.md)). Each item is one line: what,
+  why now, what it blocks, the default, and the time the default applies ("applies at 18:00Z
+  unless you object"). Post the list once at the top of a message, and again only when it changes
+  or the human returns. Never a per-turn "waiting on you" footer: in one build the human answered
+  defaults within minutes every time they were offered, and the orchestrator still idled about
+  70 hours on questions whose answers matched the defaults.
+- **Ask in this shape:** the stake in two lines, then the default and the recommendation in the
+  first sentence. Never a bare label. Never relay a reviewer's or an author's label to the human
+  without opening the artifact first; one "roleplay, age-play" flag relayed unread was an
+  unassessed placeholder.
 - **Escalate with:** the conflict; two to four feasible options with their effect and cost; a
   recommendation; what continues meanwhile. Measure each option against the hard constraints
   before recommending it (a subagent can do this in minutes). When the human picks, scope any extra
@@ -133,14 +157,20 @@ move.
 
 ### Away Protocol
 
-When the human says they are away:
+When the human says they are away, or has not answered for an hour:
 
 1. Open a handoff file or issue with four sections: needs-human, decided-by-orchestrator,
    escalated-and-unmerged, and merged.
 2. Write the away rules into the state file: what you decide, what you park, and what you never do.
 3. Decide implementation details yourself and log each one. Park content, legal and money
    questions with a safe default.
-4. Keep merging whatever passes the gates, and keep the handoff current.
+4. **Ask once, then apply the default.** An item that is not human-before by the approval matrix
+   gets its deadline from the queue; when it passes, apply the default, log it, and move on.
+   Human-before items wait, and nothing else waits with them.
+5. Keep merging whatever passes the gates, and keep the handoff current.
+6. Ask for things only the human can do (an SSO renewal, a subscription confirmation) while the
+   human is present, and verify them through the API afterwards; a request sent into an absence
+   costs a day.
 
 ---
 
@@ -164,17 +194,34 @@ Never forward raw reviewer output.
 - **Rule once on a recurring flake, on first sight:** its signature, owner, issue and rerun policy.
   Add the ruling to the standing rules so parallel authors don't each diagnose it again. Flake
   triage itself is in [playwright-e2e](../playwright-e2e/SKILL.md).
+- **Check the premise before ruling.** Any claim about existing code or vendor behaviour in a
+  ruling or a brief is verified by reading the file or citing the doc line, or labelled a
+  hypothesis. A ruling that adds a mechanism goes to a reviewer before the implementer, or is
+  marked provisional. Never launch an author or reviewer round on a design the human is
+  mid-discussion on, and re-confirm before removing something the human just approved. In one
+  build, wrong coordinator claims cost about one review round in five.
+- **The orchestrator does not hand-edit code.** Resume the idle author or launch a fixer; anything
+  beyond a comment or a log line gets a delta check by a reviewer.
 
 ---
 
 ## 5. Review and Merge Gates
 
-- **Every PR gets an independent adversarial reviewer:** another model family, or at least a fresh
-  context. That includes docs, spec and decision-log PRs. First-pass reviews required changes on
-  about three of every four PRs. The reviewer's procedure is in [review](../review/SKILL.md), and
-  its brief is in [agent-briefs](../agent-briefs/SKILL.md).
-- **Docs and status PRs get a fact-check review** (every SHA, number and state checked against its
-  source), then a diff-only check of the fixes.
+- **Size the review to the lane's risk.** Docs-only and mechanical lanes get one fact-check pass
+  (every SHA, number and state checked against its source), then a diff-only check of the fixes.
+  Safety, auth, deletion, IAM and data-integrity lanes get an adversarial review with mutants and
+  a delta round. Everything else gets one adversarial pass without a second independent reviewer.
+  A second reviewer is for high-risk lanes only, and only while its unique findings justify it.
+  The reviewer's procedure is in [review](../review/SKILL.md), and its brief is in
+  [agent-briefs](../agent-briefs/SKILL.md).
+- **Three rounds is the cap, and round 3 is for blockers only.** After round 2, only `blocking`
+  findings reopen the lane; `follow-up` test gaps are batched into one commit and merged on CI
+  without a delta review; `nit` items go to the deferred list. Mutants are required only for the
+  invariants the brief names. In one build two lanes in three needed a second round, one in ten
+  ran to four or more, and the rounds were mostly spent on test gaps and reviewer preference.
+- **Replace a resumed reviewer once its context passes about 300K tokens.** Start a fresh one
+  with the review file as input; a reviewer that has read every earlier round costs more per
+  round than it saves.
 - **Approval is a commit status on the exact head SHA, made a required check.** Required checks
   must pass on the latest commit, so any push voids the approval
   ([GitHub docs](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)).
@@ -220,6 +267,9 @@ Never forward raw reviewer output.
 - **After each deploy that changes behaviour, verify it live.** Pair every "hidden" or "absent"
   assertion with a check that the thing exists and can appear. A result that never changes means
   the probe is wrong.
+- **Nothing owner-facing is complete on machine evidence alone.** Walk the human's own path in a
+  browser on the deployed environment, run the friction check, and sample owner-facing content
+  with the human before any pipeline runs ([owner-acceptance](../owner-acceptance/SKILL.md)).
 
 The merge, watch and verify loop and deploy step timeouts are in
 [autonomous-loops](../autonomous-loops/SKILL.md).
@@ -228,16 +278,20 @@ The merge, watch and verify loop and deploy step timeouts are in
 
 ## 7. Context and State
 
-The orchestrator's whole context is re-read on every turn. In one build, about 1,500 turns ran at
-185K to 650K tokens.
+The orchestrator's whole context is re-read on every turn. In one build the median call carried
+about 500K tokens and the top tenth 845K, across 14 compactions; the advice in this section
+existed and did not hold. Target a median under 250K, and get there with tooling, not intent:
 
-- **Cap hand-backs at about 40 lines:** a verdict or status line, blockers, and a path to the full
-  report. Read the full file only when ruling on it. The report contract is in
-  [agent-briefs](../agent-briefs/SKILL.md).
-- **Keep a state file** from [the template](references/state-file.md): a lanes table, open
-  decisions, the human queue, away rules and helper scripts. Update it on each state change, back
-  it up before overwriting it, and rewrite it as a clean resume point at a calm moment before a
-  planned compaction.
+- **Scripts do the mechanical turns.** Landing, gate watching, deploys, lane teardown and state
+  edits run through [orchestration-ops](../orchestration-ops/SKILL.md) and print one line each.
+  The check suite runs through a `test-runner` agent, never inline.
+- **Cap hand-backs at about 40 lines** by the report contract in
+  [agent-briefs](../agent-briefs/SKILL.md): a verdict or status line, blockers, and a path to the
+  full report. Read the full file only when ruling on it. Never reply to an interim notification.
+- **Keep a state file** from [the template](references/state-file.md): a lanes table, the
+  decision queue, the human queue, away rules and helper scripts. Update it through the state
+  helper on each state change, back it up before overwriting it, and rewrite it as a clean resume
+  point at a calm moment before a planned compaction.
 - **After compaction,** follow the resume procedure in the state file: re-verify every ID and
   number against its source before using it, and re-load any tools loaded on demand.
 - **Put durable decisions in the repository's decision log,** not only in the state file.
@@ -265,8 +319,15 @@ The orchestrator's whole context is re-read on every turn. In one build, about 1
 - **Run small cross-lane changes as parallel stacked drafts** (spec, contract, tests and
   implementation together). Keep strictly serial hand-offs for changes that need independent
   owners: a serial chain once stretched a ten-line change to about 20 hours.
-- **Treat a metered peer's quota** (for example a weekly Codex limit) as a shared budget, and
-  reserve a slice for reviews. Reading the meter is in [herdr-delegation](../herdr-delegation/SKILL.md).
+- **Treat every metered budget as shared and finite.** In one build the Codex weekly meter was
+  exhausted within 36 hours and the Claude weekly limit stopped both coordinators for 35 hours,
+  with lanes finished and unserviced. The rule, mechanised in `meter.sh`:
+  - read both meters on every wake and record them in the state file;
+  - above 70%: authors go to the smaller model, second reviewers are dropped, live eval rounds
+    pause, and no fan-out launches within 3 hours of a limit warning;
+  - on a limit notice: write the resume point, record the reset time from the meter, arm a timed
+    wake for it (`wake-at.sh`), and launch nothing metered until then;
+  - reserve a slice for reviews from the start.
 - **Batch deferred low-priority findings per area,** and re-check each against the current base
   before queueing it.
 
@@ -296,7 +357,11 @@ The orchestrator's whole context is re-read on every turn. In one build, about 1
 | Approved tests could never fail | The review read the diff but never proved it could fail | Reviewer briefs require the mutation probes in [review](../review/SKILL.md) |
 | Every merge of the base forces a full re-review | Approval is keyed to the head with no carry-over rule | The carry-over check; authors merge the base last and push once |
 | One mechanism takes four to seven review rounds | The ruling prescribed a mechanism, relayed an unchecked remedy, or patched examples instead of the class | Rule on invariant, clauses and verification; class fix after round 2; escalate after round 3 |
-| Orchestrator context sits at hundreds of thousands of tokens | Full hand-backs and review files read in | 40-line hand-backs; read the file only to rule |
+| Orchestrator context sits at hundreds of thousands of tokens | Full hand-backs and review files read in; mechanical turns run inline | 40-line hand-backs; read the file only to rule; scripts and `test-runner` for the mechanical turns |
+| Days of work the human never sees; "what do you need from me?" asked repeatedly | Lanes scheduled by spec order, not by visibility; decisions parked as footers | Visible-first order at kickoff; the decision queue with defaults that apply themselves |
+| Both budgets gone within two days; finished lanes unserviced for a day | No meter read in the loop; no wake armed at the reset | `meter.sh` every wake; the 70% switch; `wake-at.sh` at the reset |
+| A lane declared complete, and the human finds an empty first screen | Completion judged on CI, review and a health probe | The owner-path walk and friction check in [owner-acceptance](../owner-acceptance/SKILL.md) |
+| Hand-typed timestamps, a pattern kill, a worktree removed with its evidence | A rule in a paragraph, under load | The hooks in [orchestration-ops](../orchestration-ops/SKILL.md) |
 | IDs, SHAs or counts are wrong after compaction | Recalled from the summary | The resume procedure in [the state file](references/state-file.md) |
 | Release failures multiply | More PRs merged while a release was failing | One merge, watch the release, then the next; merge nothing while it fails |
 | A status sent to the human is wrong | Published before the check was read | Verify, read, then publish, with the observation time |

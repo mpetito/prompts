@@ -21,10 +21,16 @@ For implementing a lane, a phase or a fix.
 ## Where
 - Create your worktree: `git worktree add -b <branch> <worktree path> origin/<base>`
 - Work only there. Never edit `<main checkout path>`.
-- Facts at send time: base `<base>` at `<sha>`; <PR #N head `<sha>`, checks <state>>;
-  moved since planning: <list, or "nothing">.
 - The source beats this brief. Where they disagree, follow the source and list the
   discrepancy in your report.
+
+## Facts at send time (generated, not recalled)
+| Fact | Value | Checked with |
+| --- | --- | --- |
+| Base `<base>` | `<sha>` | `git rev-parse origin/<base>` |
+| Prerequisite <lane or PR> | merged `<sha>` | `gh pr view <N> --json mergeCommit` |
+| Moved since planning | <list, or "nothing"> | `git log <old>..<new> --oneline` |
+| Environment | <known slow tests, `CI=true`, port `<port>`> | <command> |
 
 ## Load first
 - `<project instructions file>` now.
@@ -41,6 +47,11 @@ For implementing a lane, a phase or a fix.
 - `<path or area>`, owned by <lane>. If you need a change there, message the coordinator with
   the evidence and a proposed fix, then keep working.
 
+## Pre-granted (do these without asking)
+- Add `<a transport, mock or fixture>` under `<path>`.
+- Add exports to `<aggregator file>` for this lane's modules only, additively.
+- Test-only lint exceptions: `<list>`. Nothing else is granted.
+
 ## Changes
 1. `<file>:<line>`: <change>. Source: <spec section, decision ID or finding ID>.
 2. `<file>:<line>`: <change>. Source: <source>.
@@ -51,6 +62,13 @@ For implementing a lane, a phase or a fix.
 | Invariant | Probe | Result |
 | --- | --- | --- |
 | <property the area must keep> | <command or check> | <fill in> |
+
+## Simplest mechanism
+Each mechanism below is not demanded by an acceptance criterion or a ruling. Build none of them
+without a ruling; use the primitive instead.
+| Mechanism the spec or plan mentions | Primitive that gives the property | Status |
+| --- | --- | --- |
+| <e.g. a pending ledger table> | <e.g. queue depth plus a TTL> | cut / needs ruling |
 
 ## Stop and report (don't choose)
 - If <temptation, e.g. the contract lacks an ID you need>: stop that item and report the
@@ -84,6 +102,9 @@ Acceptance: all required checks green on the pushed head.
 - [ ] IDs are in test titles and the PR title
 - [ ] The PR body matches the evidence and was regenerated after the last push
 - [ ] No closing keywords unless closing is intended
+- [ ] Every server and watcher you started is stopped; `pids` file lists them
+- [ ] Owner-facing lane only: the owner-path walk and friction check from `owner-acceptance`
+      ran on the deployed environment, with the result in the report
 
 ## Merge order
 <"Independent" or "Merge after #N">, because <the failure the order prevents>.
@@ -120,11 +141,16 @@ reject it in your report with evidence.
 ### Blocking
 - <ID>: "<reviewer's text, verbatim>" (<file:line>)
 
-### Should fix
+### Follow-up
 - <ID>: "<reviewer's text, verbatim>"
 
 ### Nits
 - <ID>: "<reviewer's text, verbatim>"
+
+## Close the class (round 2 onward)
+For each blocking finding, list every site in the same class by grep (`<pattern>`), not from
+memory, and fix or justify each one in the report. Replay every earlier probe. If the mechanism
+itself is wrong, say so instead of patching sites.
 
 ## Rulings
 - <open question>: <invariant to keep>. Binding: <contract clause>. Verify with: <check>.
@@ -147,9 +173,10 @@ Append to `<result file>`:
 ## Round <r>
 Head: <sha>
 - <ID>: fixed | rejected (<evidence>) | blocked (<reason>)
+Class closure: <pattern>: <n> sites, <fixed/justified>
 ```
 
-Then hand back with the report contract.
+Then hand back with the report contract; `STATUS` is its first line on this round too.
 ````
 
 ---
@@ -184,9 +211,17 @@ discrepancy.
 Load the `review` skill and work in its Delegated Report-Only Mode. Your working directory is
 the scratch worktree `<path>`; edits and mutants are allowed there and never committed.
 Severity is independent of the round number; the coordinator decides escalation.
+Depth for this lane: <fact-check only | adversarial | adversarial with mutants and delta>,
+because <risk class: docs, mechanical, or safety/auth/deletion/IAM/data integrity>.
+
+## Over-engineering
+Answer first: which code in this diff is not required by an acceptance criterion or a ruling?
+Name each mechanism (a ledger, a counter, a policy, a second check) with the primitive or the
+cut that would do. Report it under its own heading; it is a finding, not a style note.
 
 ## Required probes (a floor, not a ceiling)
-Run the probes in the review skill's "Prove the Change Can Fail" that match this diff. At
+Run the probes in the review skill's "Prove the Change Can Fail" that match this diff. Mutants
+are required only for these named invariants, one each: <list from the author brief>. At
 minimum:
 - <named mutants to plant in the code under test>
 - <a bug to restore, to show the new proof fails without the fix>
@@ -200,7 +235,9 @@ finding fixed, not fixed or regressed.
 
 ## Output
 The report shape from Delegated Report-Only Mode, first line
-`VERDICT: approve|changes-required|close for <sha>`. Long form in `<path>`.
+`VERDICT: approve|changes-required|close for <sha>`. Tag every finding `blocking`, `follow-up`
+or `nit`; a missing test is `follow-up` unless it guards a safety invariant or an auth boundary.
+Long form in `<path>`.
 ````
 
 ---

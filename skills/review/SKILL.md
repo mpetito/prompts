@@ -47,6 +47,7 @@ Cover each relevant dimension. Skip those that do not apply to the diff (e.g. no
 | **Correctness**     | Logic errors, edge cases, null/empty/boundary handling, concurrency, state           |
 | **Maintainability** | Clarity, naming, organization, type safety, consistency with codebase                |
 | **DRY / Clean**     | Duplication, missed abstractions, unnecessary complexity                             |
+| **Over-engineering**| Code no acceptance criterion or ruling requires: ledgers, counters, policies, second checks, options; name the primitive or the cut that would do |
 | **Error Handling**  | Graceful handling, useful messages, recovery paths, no swallowed exceptions          |
 | **Tests**           | Coverage of new paths and edge cases; assertions that fail when the code breaks      |
 | **Security**        | Input validation, auth checks, injection (SQL/XSS/cmd), secret handling, deps (Snyk) |
@@ -74,6 +75,12 @@ reviewer needs a task-specific justification under the selection policy.
    - 🔴 **Critical** — must fix; blocks approval
    - 🟡 **Important** — should fix
    - 🟢 **Suggestion** — optional improvement
+
+   A missing or weak test is Important unless it guards a safety invariant, an auth boundary or
+   data integrity, where it is Critical. In one build a quarter of about 1,100 findings were
+   missing-mutant tests, and they drove most of the extra rounds. Over-engineering is a finding
+   at the severity of the maintenance cost it adds, never a style note; the same build's
+   reviewers raised it 3 times in 175 reviews while the owner raised it on most status calls.
 6. **Cite by file + function/section**, not by line number. A delegated report also gives the
    line at the reviewed head SHA
 7. **Fix minor items directly** (typos, formatting, dead-code removal). Surface anything larger
@@ -87,7 +94,7 @@ mutant table format are in [adversarial probes](references/adversarial-probes.md
 
 | The diff…                             | Required proof                                                                     |
 | ------------------------------------- | ---------------------------------------------------------------------------------- |
-| Adds or changes tests or proofs       | Mutants of the code under test; restore each targeted bug; compare test counts     |
+| Adds or changes tests or proofs       | Mutants of the code under test for the invariants the brief names (every guard when it names none); restore each targeted bug; compare test counts |
 | Fixes a flaky or timing-bound test    | Reproduce on unfixed code under CI-like load; before/after rates; ablate the fix   |
 | Relaxes a shared test helper          | Old helper's real-code mutants still caught; relaxation scoped to the flaky engine |
 | Enables or depends on another change  | Overlay it; run count rises with no skips; full gate on the other lanes' heads     |
@@ -172,6 +179,11 @@ reviewer briefs is in [agent-briefs](../agent-briefs/SKILL.md).
 - **Do not post, push, commit, reply to or resolve threads, or start subagents.**
 - **Report minor issues instead of fixing them,** and skip Handling In-Review Change Requests.
 - **Rate severity on the finding alone,** never on the round number; the caller decides escalation.
+- **Tag every finding** `blocking`, `follow-up` or `nit`. After round 2 only `blocking` reopens
+  the lane; the caller batches `follow-up` items. A test gap is `follow-up` unless it guards a
+  safety invariant or an auth boundary.
+- **Match the depth the brief sets:** a fact-check pass for docs and mechanical lanes (every SHA,
+  number and state against its source), adversarial with mutants only where the brief says so.
 - **Bind the verdict to the head SHA you reviewed.** A new push needs a new verdict.
 - **Return at most about 40 lines** in this shape. Write the long form (full mutant table, logs,
   probe scripts) to the file the brief names, or to your scratch folder.
@@ -181,8 +193,12 @@ VERDICT: approve | changes-required | close for <head-sha>
 
 Blocking
 - B1 <file>:<line> <defect>. Evidence: <probe, log, or quote>. Fix: <validated suggestion>
-Should fix
-- S1 <file>:<line> <issue and suggestion>
+Follow-up
+- F1 <file>:<line> <issue and suggestion>
+Nits
+- N1 <file>:<line> <issue>
+Not required by any acceptance criterion or ruling:
+- O1 <mechanism> at <file>; primitive or cut: <what would do instead>
 Mutants (mutant | result | killing assertion), survivors first:
 - M3 <change> | survived | none, see B1
 Claims checked: <PR-body and report claims, verified or refuted>

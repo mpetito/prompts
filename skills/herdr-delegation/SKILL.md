@@ -43,8 +43,11 @@ If the check fails, stop. Do not drive a Herdr session from outside it.
 A peer costs roughly 5s of startup plus a terminal, and its whole context is a screen you must parse. Prefer a subagent unless one of the right-hand reasons applies.
 
 For an independent one-shot review or fix while a Codex peer is busy, run `codex exec` as a host
-background task with `-o <result file>` instead of queueing it on the peer. Its flags and sandbox
-notes are in [model-council's cross-harness reference](../model-council/references/cross-harness.md).
+background task with `-o <result file>` instead of queueing it on the peer. Use the launcher in
+[orchestration-ops](../orchestration-ops/SKILL.md) (`codex-exec.sh`): it sets `--cd` to the
+worktree, caps the run at 2 hours, strips the named secret variables from the environment and
+prints one line on exit. Flags and sandbox notes are in
+[model-council's cross-harness reference](../model-council/references/cross-harness.md).
 
 ---
 
@@ -172,11 +175,16 @@ A prompt crossing harnesses must carry what the target cannot infer.
   `<branch>`, open a PR, create a worktree under `<root>`, merge the base without rebasing) and
   the ones it may not. Codex's automatic reviewer reads the user messages in the transcript, so an
   explicit grant is what it approves on; an action the prompt never mentioned may be denied.
-- **The budget, for a metered peer.** The peer can't see its own usage meter, so read it before
-  each task: `/status` in an idle Codex session, or the newest `rate_limits.primary.used_percent`
-  in the session log under `~/.codex/sessions/` (`window_minutes: 10080` is the weekly window).
-  Put the remaining budget in the prompt, give open-ended investigations a time box and a stop
-  percentage, and keep a slice back for reviews.
+- **The budget, for a metered peer.** The peer can't see its own usage meter, so read it on
+  every wake, not only before a task, and record the value where the next wake will see it (the
+  state file's Budget row). `meter.sh` in [orchestration-ops](../orchestration-ops/SKILL.md)
+  prints the newest `rate_limits.primary.used_percent` and `resets_at` from the session log under
+  `~/.codex/sessions/` (`window_minutes: 10080` is the weekly window); `/status` in an idle Codex
+  session shows the same. Put the remaining budget in the prompt, give open-ended investigations
+  a time box and a stop percentage, and keep a slice back for reviews. Above 70%, stop launching
+  new Codex lanes; the switch and the limit-stop checklist are in
+  [agent-orchestration](../agent-orchestration/SKILL.md). One build exhausted the weekly meter in
+  36 hours because the meter was read only when a lane was about to launch.
 
 ## Result Handoff
 

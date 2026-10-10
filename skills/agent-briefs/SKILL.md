@@ -28,6 +28,7 @@ the agent's first attempt the right one, and makes its report cheap to act on.
 | Research method and source quality | [research](../research/SKILL.md) |
 | Test stability gate and flake triage | [playwright-e2e](../playwright-e2e/SKILL.md) |
 | The agent's model | [agent model selection](../skill-authoring/references/agent-model-selection.md) |
+| The owner-path walk a UI lane's brief must require before "done" | [owner-acceptance](../owner-acceptance/SKILL.md) |
 
 Select the model with that policy before launch. This skill does not choose models.
 
@@ -43,12 +44,15 @@ Select the model with that policy before launch. This skill does not choose mode
    the 5–8 rules most likely to be broken. A kickoff brief for an orchestrator goes in a file
    too, because long text pasted into a terminal can fragment.
 3. **Facts come from commands at send time.** Generate the head SHA, base, check status and
-   "what has moved" with `git` and `gh` when you send the brief, never from memory. Check every
-   precondition the brief asserts, such as a file existing on the base. Then add: "The source
-   beats this brief. List any discrepancy in your report."
-4. **Prescriptions are hypotheses.** Label any fix, constant or option you prescribe as a
-   hypothesis. Require a control that proves the guard still bites after the change, and ask
-   what the option sacrifices.
+   "what has moved" with `git` and `gh` when you send the brief, never from memory. Put the base
+   SHA and each upstream prerequisite in a checked table (item, merged SHA, verified how), not in
+   prose. Check every precondition the brief asserts, such as a file existing on the base. Then
+   add: "The source beats this brief. List any discrepancy in your report."
+4. **Prescriptions are hypotheses, and premises are checked.** Label any fix, constant or option
+   you prescribe as a hypothesis. Require a control that proves the guard still bites after the
+   change, and ask what the option sacrifices. Any claim the brief makes about existing code or
+   vendor behaviour cites the file and line or the doc line, or is labelled a hypothesis too; in
+   one build, wrong coordinator claims cost about one review round in five.
 5. **Examples use placeholders.** Agents copy examples verbatim. Write `<product-name>`, never
    realistic content. Grep the brief against the project's Do-Not list before sending it.
 6. **Name every invariant.** List each property the area must keep, with one probe each, to
@@ -68,6 +72,17 @@ Select the model with that policy before launch. This skill does not choose mode
 10. **Ask asynchronously.** A question carries two options and a stated default, and the agent
     keeps working on independent items until it gets an answer. Questions are not for status
     pings or for facts the agent can read from the repo.
+11. **Pre-grant the standard slots.** List what the author may do without asking: the transport
+    or mock it may add, the exports it may add to an aggregator file, the test-only lint
+    exceptions, the files that may change in lockstep. In one build eight of eight "may I?"
+    questions were granted; each one cost a round trip.
+12. **Name the simplest mechanism.** The brief lists, per numbered change, each mechanism that no
+    acceptance criterion or ruling demands, with the platform primitive that would replace it.
+    The author builds nothing on that list without a ruling. The reviewer brief asks the mirror
+    question (which code is not required by an acceptance criterion?).
+13. **A UI or owner-facing lane carries the acceptance walk.** Its self-check includes the
+    owner-path steps and the friction check from [owner-acceptance](../owner-acceptance/SKILL.md);
+    "done" without them is "built".
 
 A spawn prompt that follows principles 1 and 2:
 
@@ -98,8 +113,12 @@ orchestrator settles at kickoff. Delete a line only when it cannot apply.
   `<scratch dir>/<task id>/pr-body.md`.
 - Set `TMPDIR=<disk path>` and keep caches on disk, never on a tmpfs such as `/tmp`. Use port
   `<port>` (from `<PORT_ENV_VAR>`) and at most `<n>` test workers.
-- Stop every server you start, by PID or with its own stop command. Never run `pkill -f` with
-  a pattern that appears in your own command line: it can match your own shell and kill it.
+- Leave no process behind. Record the PID of every server or watcher you start in
+  `<scratch dir>/<task id>/pids`, stop each one by PID or with its own stop command before you
+  report, and list any you could not stop. Never run `pkill` or `killall`: a pattern can match
+  your own shell or another lane's server, and one stray listener once cost a day.
+- Use only port `<port>` for your servers and `<port+1>` for previews. Another lane's port in use
+  is a report, never a kill.
 - Read a file before you edit or write it, and read it again after a formatter, a merge or a
   scripted edit.
 - Commit each logical fix before any temporary edit. Never undo with `git checkout <file>`:
@@ -158,7 +177,8 @@ Every brief ends with a report contract whose first line a coordinator can parse
 - **Reviewers:** `VERDICT: approve|changes-required|close for <sha>`, where `close` means
   "close, don't merge" and needs evidence. The rest of the shape is in review's
   [Delegated Report-Only Mode](../review/SKILL.md#delegated-report-only-mode).
-- **Authors and every other agent:** the block below.
+- **Authors and every other agent:** the block below, on every round, including fix rounds:
+  `STATUS` is line 1 of a round-2 report too.
 
 ```text
 STATUS: done|blocked|partial, head <sha>
@@ -179,8 +199,14 @@ Long form: <result file or PR comment URL>
 - **At most about 40 lines.** The long form goes in the result file or a PR comment.
 - **A multi-round agent ends each round with its full report** (its hand-back). It uses
   mid-run messages only for questions and cross-lane blockers.
-- **One result file per task.** Each round appends a `## Round N` section with the head SHA and
-  one line per item, so the history survives the coordinator's compaction.
+- **One result file per task, mandatory for every lane.** Each round appends a `## Round N`
+  section with the head SHA and one line per item, so the history survives the coordinator's
+  compaction.
+- **Round 2 closes the class.** A fix-round note from round 2 onward says: "list every site in
+  this class by grep, not from memory, and fix or justify each one". Patching the sites the
+  reviewer named is what produced rounds 3 and 4.
+- **Findings carry a tag:** `blocking`, `follow-up` or `nit`. Only `blocking` reopens a lane
+  after round 2; the coordinator batches `follow-up` items into one commit.
 
 ---
 
@@ -208,7 +234,10 @@ Long form: <result file or PR comment URL>
 - [ ] Skills to load named, each with its moment
 - [ ] Owns, lockstep and Never-touch lists explicit
 - [ ] Invariants listed, one probe each; temptations named with their stop action
-- [ ] Prescribed fixes and constants labelled as hypotheses, with a control
+- [ ] Prescribed fixes and constants labelled as hypotheses, with a control; code and vendor
+      claims cite file:line or the doc line
+- [ ] Prerequisites in a checked table with SHAs; pre-granted slots listed; simplest-mechanism
+      list filled; environment facts (known slow tests, `CI=true`) generated into the brief
 - [ ] Examples are placeholders; brief grepped against the project's Do-Not list
 - [ ] Standing block pasted and filled; report contract pasted
 - [ ] A result file path and a line cap given
@@ -222,6 +251,9 @@ Long form: <result file or PR comment URL>
 | Each review round surfaced one more invariant | List every invariant up front, with a probe each |
 | A prescribed fix passed but its test can no longer fail | Label it a hypothesis; require a control that fails without the change |
 | A peer idled on one missing prerequisite | Park only the dependent item; reserve "stop" for safety and scope |
+| Authors stop to ask "may I add a mock / an export / a test-only lint rule?" | Pre-grant the standard slots in the brief |
+| Round 3 reopens sites the reviewer did not name | Round-2 note requires class closure by grep |
+| The lane shipped a ledger, a counter or a policy no acceptance criterion asked for | Simplest-mechanism list in the author brief; the over-engineering question in the reviewer brief |
 | A reviewer stalled on permission prompts | Run it in a scratch worktree as its cwd; drop "read-only" from experiment briefs |
 | A reviewer softened a late finding to avoid escalation | State that severity is independent of the round; the coordinator decides escalation |
 | A researcher hit its turn cap with nothing written | Output file first, append per finding, report by call N |
