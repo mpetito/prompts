@@ -28,8 +28,29 @@ Set `FIRECRAWL_NO_TELEMETRY=1` to disable the CLI's anonymous telemetry.
 ## `scrape [urls...]`
 
 Scrapes one or more URLs. Multiple URLs run concurrently and are **saved to `.firecrawl/`
-rather than stdout**, one file per page. Scrape works without a key, so this is the keyless way
-to write many pages to files (capped per IP per day; the docs give no number).
+rather than stdout**, each logged as `Saved: <file>` on stderr. Scrape works without a key, so
+this is the keyless way to write many pages to files (capped per IP per day; the docs give no
+number).
+
+File names flatten the URL and drop its query, so `/a/b` and `/a-b`, or `?x=1` and `?x=2`,
+write one file: the later page silently overwrites the earlier, and the run still reports every
+URL succeeded (CLI 1.26.3, 2026-10-10). For a URL list taken from a fetched page:
+
+- Keep only URLs under the seed path; cut fragments, queries and trailing slashes; dedupe.
+- Run from an empty directory, so `.firecrawl/` holds only this run.
+- Put `--` before the URLs, so a list line such as `--output=x` is read as a URL, not an
+  option, and pass the list through `tr '\n' '\0' | xargs -0`, which neither splits nor globs
+  a line. Unquoted `$(cat urls.txt)` does both.
+- Afterwards compare the file count with the URL count; `uniq -d` below names each file
+  written twice. Scrape each URL behind it, and any page that differs only by its query, on
+  its own with `-o <file>`.
+
+```bash
+sed -E 's/[?#].*//; s:/+$::' links.txt | grep -E '^https://docs\.example\.com/guides(/|$)' | sort -u > urls.txt
+tr '\n' '\0' < urls.txt | xargs -0 npx -y firecrawl-cli@latest scrape --only-main-content -- 2> scrape.log
+wc -l < urls.txt; ls .firecrawl | wc -l; grep -o 'Saved: .*' scrape.log | sort | uniq -d
+npx -y firecrawl-cli@latest scrape --only-main-content -o pages/a-b.md -- https://docs.example.com/guides/a-b
+```
 
 | Flag                       | Meaning                                                                                                                   |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |

@@ -7,6 +7,8 @@
   is not set and `~/.config/firecrawl` does not exist.
 - The guides index at https://docs.example.com/guides links about 140 guide pages, some nested
   two levels deep (for example `/guides/auth/sso/okta`).
+- Besides the guide pages, the index links the site navigation (`/api`, `/blog`, a GitHub
+  link), `#section` anchors into guide pages, and `?lang=` variants of some guides.
 
 ## The user's request
 

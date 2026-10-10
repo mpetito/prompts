@@ -20,28 +20,30 @@
         "fixtures/guides-subtree-keyless.md"
       ],
       "expected_behavior": [
-        "Keeps the ~140 pages out of the context: either one keyless CLI scrape over the URL list (from one links scrape of the index) that writes each page to a file, or a keyed crawl seeded at /guides, bounded by --limit and written to a file",
+        "Keeps the ~140 pages out of the context by writing each page to a file: one keyless CLI scrape over the URL list (from one links scrape of the index), a keyed crawl seeded at /guides and bounded by --limit, or a fetch without Firecrawl (curl, wget or a script) that writes each page to a file",
         "States the page count before fetching, and on the keyless route says the per-IP daily cap may stop it partway and offers a key for one bounded crawl",
-        "Does not scrape the guide pages one by one through the MCP scrape tool"
+        "Keeps only URLs under /guides, deduplicated, and checks that every URL ended in its own file",
+        "Does not scrape the guide pages one by one through the MCP scrape tool; one sample page is fine"
       ],
       "assertions": [
         {
           "name": "pages-to-files",
           "type": "regex",
-          "pattern": "(?s)firecrawl(?:-cli(?:@\\S+)?)?\\s+crawl\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--limit\\s+\\d+|xargs[^\\n]{0,120}firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b|firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b[^\\n]{0,400}?(?:\\$\\(|`cat|https?://\\S+\\s+(?:\\\\\\s*)?https?://|<\\s*\\S+\\.txt|\\.firecrawl/)"
+          "pattern": "(?s)firecrawl(?:-cli(?:@\\S+)?)?\\s+crawl\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--limit\\s+\\d+|xargs[^\\n]{0,120}firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b|firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b[^\\n]{0,400}?(?:\\$[({]|`cat|https?://\\S+\\s+(?:\\\\\\s*)?https?://|<\\s*\\S+\\.txt|\\.firecrawl/)|\\\"(?:command|content)\\\"\\s*:\\s*\\\"(?:[^\\\"\\\\]|\\\\.){0,3000}?(?:\\bwhile\\b|\\bfor\\s+\\w+\\s+in\\b|\\bxargs\\b)(?:[^\\\"\\\\]|\\\\.){0,300}?\\b(?:curl|wget)\\b(?:[^\\\"\\\\]|\\\\.){0,300}?(?:\\s(?:-[a-zA-Z]*[oO]|--output|--output-document)\\s+\\\\?[\\\"\\']?[^\\s\\\"\\'|;&]*\\$|\\s-[a-zA-Z]*O(?=\\s)(?!\\s+-(?:\\s|$))|\\s--remote-name(?:-all)?\\b|\\s>>?\\s*\\\\?[\\\"\\']?[^\\s\\\"\\'|;&]*\\$)|\\\"(?:command|content)\\\"\\s*:\\s*\\\"(?:[^\\\"\\\\]|\\\\.){0,3000}?\\bwget\\b(?:[^\\\"\\\\]|\\\\.){0,300}?\\s(?:-i|--input-file|-r|--recursive|-m|--mirror)\\b|\\\"(?:command|content)\\\"\\s*:\\s*\\\"(?:[^\\\"\\\\]|\\\\.){0,3000}?(?:urlopen|requests\\.get|httpx\\.get|\\bfetch\\()(?:[^\\\"\\\\]|\\\\.){0,4000}?(?:write_text|write_bytes|(?<!stdout)\\.write\\(|writeFile)"
         },
         {
           "name": "no-mcp-scrape-of-guide-pages",
           "type": "not_regex",
-          "pattern": "(?s)\\\"tool\\\"\\s*:\\s*\\\"(?:mcp__\\w+?__)?firecrawl_scrape\\\"(?:(?!\\\"tool\\\"\\s*:).){0,300}?\\\"url\\\"\\s*:\\s*\\\"https://docs\\.example\\.com/guides/[^\\\"]+\\\""
+          "pattern": "(?s)\\\"tool\\\"\\s*:\\s*\\\"(?:mcp__\\w+?__)?firecrawl_scrape\\\"(?:(?!\\\"tool\\\"\\s*:).){0,300}?\\\"url\\\"\\s*:\\s*\\\"https://docs\\.example\\.com/guides/[^\\\"]+\\\".*?\\\"tool\\\"\\s*:\\s*\\\"(?:mcp__\\w+?__)?firecrawl_scrape\\\"(?:(?!\\\"tool\\\"\\s*:).){0,300}?\\\"url\\\"\\s*:\\s*\\\"https://docs\\.example\\.com/guides/[^\\\"]+\\\""
         },
         {
           "name": "route-quality",
           "type": "judge",
           "rubric": [
-            "The plan keeps the pages out of the context: a keyless multi-URL CLI scrape to files, or a keyed crawl to a file",
+            "The plan keeps the pages out of the context by writing each page to a file: a keyless multi-URL CLI scrape, a keyed crawl, or curl, wget or a script that writes files",
             "It states the page count first; on the keyless route it mentions the daily cap and offers a key for a bounded crawl",
-            "Any crawl it proposes is seeded at /guides and bounded by --limit"
+            "Any crawl it proposes is seeded at /guides and bounded by --limit",
+            "It keeps only URLs under /guides, drops duplicates (anchors, query or trailing-slash variants), and checks that every URL produced its own file, for example by comparing the file count with the URL count"
           ]
         }
       ]
@@ -96,7 +98,7 @@
         {
           "name": "map-with-search",
           "type": "regex",
-          "pattern": "(?is)firecrawl(?:-cli(?:@\\S+)?)?\\s+map\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--search\\b|\\bmap\\b[^.\\n]{0,120}(?:--search|\\bsearch\\s+(?:term|query|queries|filter|parameter|option|flag)s?\\b|\\bwith\\s+(?:a\\s+)?search\\b)"
+          "pattern": "(?is)firecrawl(?:-cli(?:@\\S+)?)?\\s+map\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--search\\b"
         },
         {
           "name": "no-site-crawl",
@@ -107,7 +109,7 @@
           "name": "scope-quality",
           "type": "judge",
           "rubric": [
-            "The plan discovers the authentication URLs with map --search rather than crawling the whole site",
+            "The plan discovers the authentication URLs with map and a search filter (`map --search`, as a command or described in prose) rather than crawling the whole site",
             "It scrapes only the matched URLs and writes them under docs-offline/auth/",
             "It reports or checks the match count before scraping"
           ]

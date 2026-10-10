@@ -106,7 +106,6 @@ Monitors send outward-facing notifications. Confirm with the user before creatin
 | `/v2/search/research/papers/{id}`               | GET        | Paper metadata; add `query` for the top full-text passages                                                        |
 | `/v2/search/research/papers/{id}/similar`       | GET        | Citation-graph expansion                                                                                          |
 
-
 ### Support and Account
 
 | Endpoint                            | Method   | Notes                                                                     |

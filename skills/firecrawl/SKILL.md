@@ -23,13 +23,21 @@ by what the user needs from them:
      npx -y firecrawl-cli@latest crawl "https://docs.example.com/guides" --limit 200 --wait -o guides.json
      ```
 
-   - Without a key: take the URL list from one scrape of the index with `formats: ["links"]`,
-     state the count, then pass the URLs to one CLI `scrape`, which saves each page to its own
-     file under `.firecrawl/` (add it to `.gitignore`). Keyless use is capped per IP per day and
-     the docs give no number, so a long list may stop partway; offer a key for one bounded crawl.
+   - Without a key: take the links from one scrape of the index with `formats: ["links"]` into a
+     file, keep only URLs under the path with fragments, queries and trailing slashes cut and
+     duplicates dropped, and state the count. In an empty directory, pass them to one CLI
+     `scrape` after `--`, through `xargs -0` so no line becomes an option or a glob; it saves
+     the pages under `.firecrawl/` (add it to `.gitignore`). File names flatten the path, so
+     `/a/b` and `/a-b` share a file and the later silently overwrites the earlier: compare the
+     file count with the URL count, and scrape each URL behind a name saved twice on its own
+     with `-o` (likewise a page that differs only by its query). Keyless use is capped per IP
+     per day and the docs give no number, so a long list may stop partway; offer a key for one
+     bounded crawl.
 
      ```bash
-     npx -y firecrawl-cli@latest scrape $(cat guide-urls.txt) --only-main-content
+     sed -E 's/[?#].*//; s:/+$::' links.txt | grep -E '^https://docs\.example\.com/guides(/|$)' | sort -u > urls.txt
+     tr '\n' '\0' < urls.txt | xargs -0 npx -y firecrawl-cli@latest scrape --only-main-content -- 2> scrape.log
+     wc -l < urls.txt; ls .firecrawl | wc -l; grep -o 'Saved: .*' scrape.log | sort | uniq -d
      ```
 
 2. **Fields or answers across many pages: ask each page for them, not for its text.** Scrape
