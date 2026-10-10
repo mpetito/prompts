@@ -31,17 +31,23 @@ done
 [ -f "$brief" ] || { echo "no brief at $brief" >&2; exit 1; }
 command -v codex >/dev/null || { echo "codex is not on PATH" >&2; exit 1; }
 mkdir -p "$(dirname "$result")"
+# Codex reads both paths from inside the worktree, so they must not depend on the caller's directory.
+wt=$(realpath "$wt"); brief=$(realpath "$brief"); result=$(realpath -m "$result")
 env_args=()
 for v in "${strip[@]}"; do env_args+=(-u "$v"); done
-args=(exec --cd "$wt" --sandbox workspace-write --output-last-message "$result")
-[ -n "$model" ] && args+=(--model "$model")
-[ -n "$effort" ] && args+=(-c "model_reasoning_effort=\"$effort\"")
-[ "$network" = 1 ] && args+=(-c sandbox_workspace_write.network_access=true)
-[ -n "$resume" ] && args=(exec resume "$resume" --output-last-message "$result")
+# The same sandbox, model and network setting for a fresh lane and a resumed one. `codex exec resume` takes
+# no --sandbox or --cd, so the sandbox is a config override and the command runs from inside the worktree;
+# without them a resumed lane ran under the user's own Codex default.
+opts=(-c 'sandbox_mode="workspace-write"' --output-last-message "$result")
+[ -n "$model" ] && opts+=(--model "$model")
+[ -n "$effort" ] && opts+=(-c "model_reasoning_effort=\"$effort\"")
+[ "$network" = 1 ] && opts+=(-c sandbox_workspace_write.network_access=true)
+if [ -n "$resume" ]; then args=(exec resume "$resume" "${opts[@]}")
+else args=(exec --cd "$wt" --sandbox workspace-write "${opts[@]}"); fi
 prompt="Read $brief in full and follow it. Write your final report to $result."
 start=$(utc_now)
 set +e
-env "${env_args[@]}" timeout --kill-after="$kill_after" "$timeout_for" codex "${args[@]}" - <<< "$prompt" > "${result%.md}.log" 2>&1
+(cd "$wt" && env "${env_args[@]}" timeout --kill-after="$kill_after" "$timeout_for" codex "${args[@]}" - <<< "$prompt") > "${result%.md}.log" 2>&1
 code=$?
 set -e
 case $code in

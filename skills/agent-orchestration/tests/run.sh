@@ -58,7 +58,8 @@ MOCK
 cat > "$tmp/bin/codex" <<'MOCK'
 #!/usr/bin/env bash
 case ${MOCK_CODEX:-ok} in
-  ok) while [ $# -gt 0 ]; do [ "$1" = --output-last-message ] && echo done > "$2"; shift; done ;;
+  ok) [ -n "${MOCK_CODEX_ARGS:-}" ] && printf '%s\n' "cwd=$PWD" "$@" > "$MOCK_CODEX_ARGS"
+      while [ $# -gt 0 ]; do [ "$1" = --output-last-message ] && echo done > "$2"; shift; done ;;
   fail) exit 3 ;;
   slow) sleep 5 ;;
 esac
@@ -239,6 +240,17 @@ printf 'brief\n' > "$tmp/brief.md"
 MOCK_CODEX=fail "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" | grep -q '^CODEX failed lane=wt exit=3' || fail "codex-exec.sh did not report failure"
 MOCK_CODEX=slow "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" --timeout 1s | grep -q '^CODEX timeout lane=wt after 1s' || fail "codex-exec.sh did not report a timeout"
 "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" >/dev/null 2>&1 && fail "codex-exec.sh ran without a result file"
+# A resumed lane keeps the sandbox, the model and the network setting, and runs from inside its worktree.
+MOCK_CODEX_ARGS="$tmp/codex-args" "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" --resume abc123 --model m1 >/dev/null
+grep -qx 'resume' "$tmp/codex-args" || fail "codex-exec.sh --resume did not call codex exec resume"
+grep -qx 'sandbox_mode="workspace-write"' "$tmp/codex-args" || fail "codex-exec.sh --resume dropped the sandbox"
+grep -qx 'm1' "$tmp/codex-args" || fail "codex-exec.sh --resume dropped the model"
+grep -qx "cwd=$(realpath "$tmp/wt")" "$tmp/codex-args" || fail "codex-exec.sh --resume did not run inside the worktree"
+grep -q 'network_access' "$tmp/codex-args" && fail "codex-exec.sh --resume enabled the network without --network"
+MOCK_CODEX_ARGS="$tmp/codex-args" "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" --resume abc123 --network >/dev/null
+grep -qx 'sandbox_workspace_write.network_access=true' "$tmp/codex-args" || fail "codex-exec.sh --resume dropped --network"
+MOCK_CODEX_ARGS="$tmp/codex-args" "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" >/dev/null
+grep -qx 'workspace-write' "$tmp/codex-args" && grep -qx 'sandbox_mode="workspace-write"' "$tmp/codex-args" || fail "codex-exec.sh dropped the sandbox on a fresh lane"
 
 # --- finish-lane.sh (no herdr on PATH) -------------------------------------------------------------------------
 git -C "$tmp/seed" worktree add -q "$tmp/lane" -b lane-x
