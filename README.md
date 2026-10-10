@@ -21,6 +21,7 @@ lists readmitted skills only.
 | [review](skills/review/SKILL.md) | `/review` | Review a code change adversarially: size it by defect risk and blast radius, prove its tests can fail, give a verdict, and keep the repository's `REVIEW.md` scope brief current |
 | [plan-review](skills/plan-review/SKILL.md) | `/plan-review` | Review a plan, spec or design before work starts: cuts, blast radius, contracts, overlap, owner questions |
 | [model-council](skills/model-council/SKILL.md) | `/model-council` | Settle one bounded technical decision by debate between a Claude and a Codex member: consensus, or `no consensus` with each position for the human |
+| [firecrawl](skills/firecrawl/SKILL.md) | `/firecrawl` | Pull many pages with Firecrawl: a bounded crawl or a checked keyless scrape to files, and fields across pages as JSON |
 | [orchestration-main](skills/orchestration-main/SKILL.md) | `/orchestration-main` | Run a multi-agent build from your own session: launch, steer and rotate orchestration threads, and keep your decisions in front of you |
 | [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |
 
@@ -68,12 +69,11 @@ collects full review bodies as well as threads and verifies visible and suppress
 claims before accepting changes. These routes are explicit in skill bodies for other hosts,
 which do not load this Claude-only global file.
 
-When actionability remains unclear, get two independent reviews focused on correctness and
-maintenance cost, preferably Claude plus Codex, followed by evidence-based synthesis (the
-archived `model-council` skill describes the transports).
-A third reviewer is reserved for a specific unresolved question. The council can use native
-delegation, Herdr peers, or authenticated CLIs; it reports recommendations without posting or
-editing code itself. Skill-level model settings remain independent of council worker models.
+When actionability remains unclear, run the [model-council](skills/model-council/SKILL.md)
+skill: one Claude and one Codex member answer blind, then exchange positions for up to two
+rounds. The result is consensus, or `no consensus` with each member's position and crux for the
+human; the coordinator never synthesizes a verdict. Members are read-only, and the council posts
+or edits nothing itself. Skill-level model settings remain independent of council member models.
 
 ## Status Line
 
@@ -237,8 +237,8 @@ Codex custom agents use standalone TOML files under `~/.codex/agents/` (or `.cod
 
 Large skills keep `SKILL.md` lean and push detail into a `references/` subfolder, which loads
 only when `SKILL.md` points at it. `SKILL.md` carries the workflow, decisions, and pitfalls;
-`references/` carries code libraries, command tables, and long worked examples. The archived
-skills show the pattern (`agent-briefs`, `firecrawl`, `playwright-e2e`, `word-doc-editing`).
+`references/` carries code libraries, command tables, and long worked examples. `firecrawl`
+shows the pattern: a short `SKILL.md`, with its CLI and REST detail in `references/`.
 
 ### Host-Specific Frontmatter
 
@@ -248,14 +248,12 @@ not break portability. Several skills set them:
 | Key                        | Used for                                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
 | `model`                    | Pinning a cheaper tier on mechanical skills (`commit`, `tt`, `story`, `pr-resolve`, `pr-authoring`) |
-| `effort`                   | Tuning reasoning depth without changing model tier (`firecrawl` runs `sonnet` at `high`)            |
+| `effort`                   | Tuning reasoning depth without changing model tier                                                  |
 | `disable-model-invocation` | User-typed `/name` only (`pr-consolidate`, whose merges are destructive)                            |
 
 Skills that are _consumed inside another task_ rather than invoked directly — the standards and
 pattern skills — deliberately set no `model`, so they inherit whatever the calling workflow uses.
-`firecrawl` is the exception: it is tool-driving work, so it pins `sonnet` to stay cheap under an
-Opus session while keeping `effort: high`, because choosing the right rung of the search/scrape/crawl
-ladder and writing a good query is where its judgment actually goes.
+`firecrawl` follows the same rule: it is a domain reference read inside the session that needs it.
 See [skill-authoring](skills/skill-authoring/SKILL.md) for when to set each key.
 
 Codex ignores Claude-only skill keys such as `model: sonnet`, `effort`, and `disable-model-invocation`; they do not select an Anthropic model or prevent the skill from loading. When a Claude-only key carries behavior that must also hold in Codex, add the Codex equivalent in the skill's optional `agents/openai.yaml`. In particular, Codex's equivalent of `disable-model-invocation: true` is `policy.allow_implicit_invocation: false`.

@@ -46,7 +46,7 @@ This policy selects models for authorized delegation; it does not require delega
    for fixing the setup, not a larger model. Reuse completed results and stop duplicate work.
 
 For independent perspectives on an uncertain decision, use
-[model-council](../../model-council/SKILL.md). A council complements evidence gathering;
+[model-council](../skills/model-council/SKILL.md). A council complements evidence gathering;
 it does not justify reducing reviewer capability or launching many copies of the same review.
 
 ## Claude Code runtime checks
