@@ -1,0 +1,239 @@
+{
+  "version": 2,
+  "skill_name": "model-council",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-blind-split-exchange",
+      "split": "tune",
+      "prompt": "You are the coordinating session running the model council described in the input file. Say exactly what you do next, and write out every message you would send to a council member between a line '--- message to <member> ---' and a line '--- end ---'. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/blind-split.md"
+      ],
+      "expected_behavior": [
+        "The coordinator runs an exchange round instead of choosing between the two answers or synthesizing a recommendation",
+        "Each member receives the other's answer and decisive citation, with no model or vendor name and no hint from the coordinator",
+        "Each member is asked to answer agree, revise or hold and to name the crux"
+      ],
+      "assertions": [
+        {
+          "name": "sends-exchange-to-both",
+          "type": "regex",
+          "pattern": "(?is)--- message to[^\\n]*(?:claude|opus)[^\\n]*---.*?--- end ---.*--- message to[^\\n]*(?:codex|gpt)[^\\n]*---|--- message to[^\\n]*(?:codex|gpt)[^\\n]*---.*?--- end ---.*--- message to[^\\n]*(?:claude|opus)[^\\n]*---"
+        },
+        {
+          "name": "agree-revise-hold",
+          "type": "regex",
+          "pattern": "(?is)--- message to.*?\\bagree\\b.{0,300}\\brevise\\b.{0,300}\\bhold\\b"
+        },
+        {
+          "name": "codex-gets-claude-evidence",
+          "type": "regex",
+          "pattern": "(?is)--- message to[^\\n]*(?:codex|gpt)[^\\n]*---(?:(?!--- end ---).)*?warm-catalog\\.ts:21"
+        },
+        {
+          "name": "claude-gets-codex-evidence",
+          "type": "regex",
+          "pattern": "(?is)--- message to[^\\n]*(?:claude|opus)[^\\n]*---(?:(?!--- end ---).)*?with-tenant\\.ts:9"
+        },
+        {
+          "name": "messages-unattributed",
+          "type": "not_regex",
+          "pattern": "(?is)--- message to[^\\n]*(?:claude|opus)[^\\n]*---(?:(?!--- end ---).)*?\\b(?:codex|gpt|openai)\\b|--- message to[^\\n]*(?:codex|gpt)[^\\n]*---(?:(?!--- end ---).)*?\\b(?:claude|opus|anthropic)\\b"
+        },
+        {
+          "name": "council-quality",
+          "type": "judge",
+          "rubric": [
+            "The coordinator does not choose between the answers, merge them, or give the requester a recommendation before the members have exchanged positions",
+            "The coordinator does not add its own view of which answer is stronger to either message",
+            "Each member is sent the other's full answer, not a summary slanted toward one side"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-final-split-no-consensus",
+      "split": "tune",
+      "prompt": "You are the coordinating session running the model council described in the input file. Write the council's result exactly as you would deliver it to the requester. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/final-split.md"
+      ],
+      "expected_behavior": [
+        "The result is no consensus: both say defect but their actions differ, and the last exchange round is spent",
+        "Each member's final disposition, action and decisive citation are reported with the crux that separates them",
+        "The default until the human decides is no change, not either member's action or a merged one; the decision goes to the human"
+      ],
+      "assertions": [
+        {
+          "name": "no-consensus",
+          "type": "regex",
+          "pattern": "(?i)\\bno[- ]consensus\\b|\\b(?:did not|didn't|do not|don't) (?:agree|converge)\\b|\\bsplit\\b"
+        },
+        {
+          "name": "not-reported-as-consensus",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*COUNCIL:?\\W*consensus\\b|\\bconsensus (?:was |has been )?reached\\b|\\bthe (?:council|members) (?:reached|agreed on) (?:a |the )?(?:consensus|recommendation|action)"
+        },
+        {
+          "name": "status-quo-default",
+          "type": "regex",
+          "pattern": "(?is)default[^\\n]{0,160}(?:no change|status quo|leave[^\\n]{0,40}(?:as is|unchanged)|keep[^\\n]{0,40}(?:as is|current))|(?:no change|status quo)[^\\n]{0,80}until"
+        },
+        {
+          "name": "reports-crux",
+          "type": "regex",
+          "pattern": "(?is)(?:crux|deciding question|open question|question (?:that|which) (?:decides|settles)|turns on)[^\\n]{0,200}(?:finance|invoice totals|ledger totals)"
+        },
+        {
+          "name": "no-extra-round",
+          "type": "not_regex",
+          "pattern": "(?i)\\b(?:run|start|send|launch) (?:a |another |one more |a third )(?:exchange |debate )?round\\b"
+        },
+        {
+          "name": "council-quality",
+          "type": "judge",
+          "rubric": [
+            "The result does not recommend shipping either member's action, or a combination of them",
+            "It states both final positions fairly, with their decisive citations",
+            "It hands the decision to a human with the question that would settle it (whether finance needs exact equality)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-failed-member-incomplete",
+      "split": "tune",
+      "prompt": "You are the coordinating session running the model council described in the input file. Write the council's result exactly as you would deliver it to the requester. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/failed-member.md"
+      ],
+      "expected_behavior": [
+        "The Codex member timed out, so the council is incomplete, whatever the coordinator-filled answer says",
+        "The coordinator-filled block is not presented as a member answer or as agreement",
+        "The Codex member is rerun (once) or the council is reported incomplete with the missing member named",
+        "No recommendation rests on the one member that answered; the default until the council completes or the human decides is no change"
+      ],
+      "assertions": [
+        {
+          "name": "incomplete",
+          "type": "regex",
+          "pattern": "(?i)\\bincomplete\\b"
+        },
+        {
+          "name": "not-reported-as-consensus",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*COUNCIL:?\\W*consensus\\b|\\bconsensus (?:was |has been )?reached\\b|\\bthe (?:council|members) (?:reached|agreed on) (?:a |the )?(?:consensus|recommendation|action)"
+        },
+        {
+          "name": "no-single-member-recommendation",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*(?:recommendation|recommended action|bottom line|verdict|decision)\\b[^\\n]{0,100}\\b(?:narrow|delete)"
+        },
+        {
+          "name": "rerun-or-names-missing-member",
+          "type": "regex",
+          "pattern": "(?is)(?:re-?run|retry|relaunch|run (?:it |the codex member |codex )?again)[^\\n]{0,160}(?:codex|member)|codex[^\\n]{0,160}(?:re-?run|retry|again|timed out|time ?out)"
+        },
+        {
+          "name": "council-quality",
+          "type": "judge",
+          "rubric": [
+            "The coordinator-written Codex answer is not counted as a member's answer or as agreement with Claude",
+            "The result does not tell the requester to narrow or delete the wrapper on the council's authority",
+            "It says what happened to the Codex member and what will be rerun or is missing"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-terse-council",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run a model council on whether we drop the synchronous fallback in the webhook handler.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-copilot-dead-code-unclear",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Copilot says the null check in the invoice mapper is dead code, and after tracing the callers I still can't tell if it's right, so have two different AI models look at it separately and tell me which way the evidence points.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-reviewers-disagree-cache-key",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "My two reviewers are split on whether the cache key needs the tenant id; get a couple of models to argue it out without seeing each other's first answers.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-fix-worth-the-complexity",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The suggested fix for this race adds a whole locking layer and I'm not convinced it's worth it, can you get Claude and Codex to each judge whether the bug is real and whether a smaller change would do?",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-second-opinion-retry",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I want a second opinion from another model before deciding whether to keep the retry wrapper around the export call.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-verify-fix",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Check whether commit 4e1a2b9 actually fixes the double-charge race and tell me CONFIRMED or REFUTED with evidence.",
+      "expected_behavior": [
+        "The skill should NOT trigger: checking one claim or fix belongs to the verifier agent."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-diff",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my staged changes for bugs before I commit.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing a diff belongs to review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-plan",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Poke holes in the migration plan in docs/migration-plan.md before we start.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing a plan belongs to plan-review."
+      ],
+      "assertions": []
+    }
+  ]
+}
