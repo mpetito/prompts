@@ -35,8 +35,8 @@ A skill enters `skills/` only when all five hold. Start from the archived text a
    lines), human (slash-invoked; short, procedural) or domain reference (loaded when a project
    needs it; progressive disclosure into `references/`). The line budget follows the role.
 4. **No overlap** with the harness, an enabled plugin, or a sibling skill. commit, review and
-   pr-review must beat the official plugins on the same fixtures or stay archived. A rule has
-   one home.
+   pr-review must beat the official plugins on the same fixtures (`-Baseline`, see
+   [evaluating-skills.md](../evaluating-skills.md)) or stay archived. A rule has one home.
 5. **Loads within 30 days** of readmission, measured by `python3 scripts/skill-usage.py`, or
    it returns to the archive. Run the script monthly.
 

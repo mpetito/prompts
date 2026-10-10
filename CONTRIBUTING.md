@@ -62,12 +62,10 @@ Edits *inside* an already-linked skill need no rerun — they are visible immedi
 
 ## After changing a skill
 
-If the skill has an `evals/` suite, rerun it before and after the edit and compare the paired
-delta and trigger rates (see [Evaluating Skills](README.md#evaluating-skills)):
-
-```sh
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill <name>
-```
+If the skill has an `evals/` suite, run it with the previous revision as the `-Baseline` arm
+and compare pass rates, judge scores and trigger rates.
+[docs/evaluating-skills.md](docs/evaluating-skills.md) gives the commands and says which run
+fits which edit.
 
 A shortened skill should keep its objective pass rate and trigger rate while costing fewer
 tokens. A new case for an extended skill should fail on the old text and pass on the new one.

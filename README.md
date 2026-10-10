@@ -108,18 +108,14 @@ tokens; shortening, extending or removing a skill is judged by rerunning the sam
 
 ```sh
 uv tool install skill-eval-harness
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pr-authoring            # one skill
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Runs 3                        # every skill with a suite
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill review -SkipTrigger -SkipJudge
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pr-authoring -Runs 3       # one skill
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pr-authoring -TriggerOnly  # description edits
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Regrade .eval-runs/<skill>/<timestamp>
 ```
 
-Results land in `.eval-runs/<skill>/<timestamp>/` (gitignored): `benchmark.json`, per-run
-outputs, judge verdicts, `trigger-matrix.json` and a `review.html` page. The script wraps
-Claude so the run sees project-level settings only, with every acting tool denied; the skills, plugins and MCP servers linked
-into this machine's user profile stay out of both arms, and a sandboxed run cannot touch the
-shell, the filesystem or Herdr. Trigger rates measured with shell access allowed are not
-comparable: the model tends to explore with git instead of loading a skill. Pass `-Agent codex` to run the same
-suite through `codex exec`.
+[docs/evaluating-skills.md](docs/evaluating-skills.md) says which run fits which edit, how to
+compare against an earlier revision or a competing skill (`-Baseline`), how to read the
+results, and what each arm can see.
 
 Authoring rules for a suite: each case produces text from a fixture under `evals/fixtures/`,
 because a headless run has no shell or network; every assertion traces to a rule in the skill
