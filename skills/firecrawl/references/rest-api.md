@@ -1,5 +1,8 @@
 # Firecrawl REST API — Reference
 
+Contents: base URL and auth · endpoints (content, discovery, extraction and agents, live
+browser sessions, monitoring, specialized indexes, support and account) · errors
+
 Use this when neither an MCP server nor the CLI is available, or when scripting Firecrawl
 calls directly.
 
@@ -40,7 +43,12 @@ Paths and methods below were read from the v2 OpenAPI document.
 
 Scrape options (shared by `/scrape`, and by `scrapeOptions` on `/search`, `/crawl`,
 `/extract`): `formats`, `onlyMainContent`, `waitFor`, `includeTags`, `excludeTags`,
-`maxAge`, `actions`, `proxy`, `location`, `timeout`, `zeroDataRetention`.
+`maxAge`, `actions`, `proxy`, `location`, `timeout`, `zeroDataRetention`. An omitted `maxAge`
+serves a copy up to 2 days old; `0` forces a live fetch (Firecrawl docs, 2026-10-10).
+
+Keyless requests reach search, scrape and parse plus the developer, research and government
+indexes; crawl, map, extract, batch scrape and agent need a key (Firecrawl docs, rate-limits,
+2026-10-10).
 
 ### Discovery
 

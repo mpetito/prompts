@@ -1,7 +1,9 @@
 # Firecrawl Developer Index
 
-An index built for coding agents: **70M+ issues, merged pull requests, and READMEs from
-public repositories, plus curated documentation sites**, most sources refreshed daily.
+Contents: when it beats the alternatives · two surfaces · filters · reading results · querying it well
+
+An index built for coding agents: **issues, merged pull requests, and READMEs from public
+repositories, plus curated documentation sites**.
 It answers a question about code behavior, a library, an API contract, an error message,
 or a known bug **from primary sources** rather than from whatever blog post ranks well.
 
@@ -22,8 +24,7 @@ Overview: <https://www.firecrawl.dev/developer-index> · Docs:
 The index reaches the *discussion* behind the code — issues, review threads, merged fixes.
 That is exactly the material a general web search is worst at surfacing.
 
-**No API key is needed to start.** Add one for higher rate limits. A developer search costs
-2 credits per 10 results, rounded up.
+**No API key is needed to start.** Add one for higher rate limits.
 
 ## Two Surfaces — Pick Deliberately
 
@@ -48,7 +49,8 @@ curl -X POST https://api.firecrawl.dev/v2/search/developer \
   -d '{"query": "how do I configure retries", "k": 10, "types": ["issue", "pull_request"]}'
 ```
 
-Via MCP: `firecrawl_developer_search`.
+Via MCP: `firecrawl_developer_search`. On the server checked on 2026-10-10 it takes only
+`query`, `k` and `skills`; the filters below need the CLI or REST.
 
 ### 2. `developer` category on ordinary web search — blended results
 
@@ -99,10 +101,3 @@ need to reach for structured filters first.
 
 Paste the **actual error string**. Ask the question the way you'd ask a maintainer. Run two
 or three distinct framings rather than one — each surfaces different issues and PRs.
-
-## Note on the Vendor Skill
-
-The docs recommend `npx -y firecrawl-cli@latest setup developer-index`, which installs
-Firecrawl's own `firecrawl-developer-index` skill into the user-level skills directory.
-Where that directory is a symlink to a managed repository, this writes vendor files straight
-into version control — ask before running it. This reference covers the same ground.

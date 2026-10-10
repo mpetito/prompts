@@ -1,32 +1,59 @@
 {
   "version": 2,
   "skill_name": "firecrawl",
-  "skill_paths": ["SKILL.md"],
-  "variants": ["with_skill", "without_skill"],
-  "optional_variants": ["old_skill"],
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
   "cases": [
     {
-      "id": "trig-page-to-markdown-terse",
-      "kind": "trigger",
+      "id": "pos-guides-subtree-keyless",
       "split": "tune",
-      "prompt": "Grab https://example.com/blog/release-notes as clean markdown.",
-      "expected_behavior": ["The skill should trigger."],
-      "assertions": []
+      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Do not run any commands or call any tools; everything you need is in the input file.",
+      "files": [
+        "fixtures/guides-subtree-keyless.md"
+      ],
+      "expected_behavior": [
+        "Notices the session has no crawl tool and no API key, so the whole subtree cannot be crawled keyless",
+        "Tells the user a whole-subtree copy needs an API key, and gives the keyed crawl seeded at /guides with a page limit, written to a file",
+        "Does not pull about 140 pages one by one through the MCP scrape tool into the context without the user agreeing to it"
+      ],
+      "assertions": [
+        {
+          "name": "says-key-needed",
+          "type": "regex",
+          "pattern": "(?is)(?:API key|FIRECRAWL_API_KEY)[\\s\\S]{0,300}?\\b(?:crawl|map)\\b|\\b(?:crawl|map)\\b[\\s\\S]{0,300}?(?:API key|FIRECRAWL_API_KEY)"
+        },
+        {
+          "name": "bounded-crawl",
+          "type": "regex",
+          "pattern": "(?:--limit\\s+\\d+|\"limit\"\\s*:\\s*\\d+)"
+        },
+        {
+          "name": "no-unasked-mass-scrape",
+          "type": "judge",
+          "rubric": [
+            "The plan does not scrape all ~140 pages one by one through firecrawl_scrape before the user agrees; at most it fetches the index's links and states the count",
+            "The plan does not run a keyless CLI crawl; it checks authentication first (for example --status) or says a key is needed before any crawl",
+            "Any crawl it proposes is seeded at /guides, bounded by a page limit, and writes to a file"
+          ]
+        }
+      ]
     },
     {
-      "id": "trig-what-does-page-say-now",
+      "id": "trig-mirror-api-reference",
       "kind": "trigger",
       "split": "tune",
-      "prompt": "What does https://example.com/pricing say right now about the limits on the team plan?",
-      "expected_behavior": ["The skill should trigger."],
-      "assertions": []
-    },
-    {
-      "id": "trig-client-rendered-status-page",
-      "kind": "trigger",
-      "split": "tune",
-      "prompt": "The vendor status page at https://status.example.com only fills in after its JavaScript runs, so a plain fetch comes back blank; get me the list of incidents from the last week.",
-      "expected_behavior": ["The skill should trigger."],
+      "prompt": "Mirror the whole API reference at https://docs.example.com/api into ./vendor-docs so our support bot can index it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
       "assertions": []
     },
     {
@@ -34,23 +61,29 @@
       "kind": "trigger",
       "split": "tune",
       "prompt": "Download every page under https://docs.example.com/guides and save the text locally so I can grep it offline.",
-      "expected_behavior": ["The skill should trigger."],
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
       "assertions": []
     },
     {
-      "id": "trig-catalog-fields-json",
+      "id": "neg-trig-one-page-now",
       "kind": "trigger",
       "split": "tune",
-      "prompt": "Pull the name, price and stock status of each product listed at https://shop.example.com/catalog into a JSON array.",
-      "expected_behavior": ["The skill should trigger."],
+      "prompt": "What does https://example.com/pricing say right now about the limits on the team plan?",
+      "expected_behavior": [
+        "The skill should NOT trigger: one page is covered by the Firecrawl scrape tool's own description."
+      ],
       "assertions": []
     },
     {
-      "id": "neg-trig-library-comparison",
+      "id": "trig-save-changelog-section",
       "kind": "trigger",
       "split": "tune",
-      "prompt": "Compare three job-queue libraries for our Node service and recommend one, with sources for each claim.",
-      "expected_behavior": ["The skill should NOT trigger: a sourced comparison and recommendation is owned by the research skill, which fetches through this one."],
+      "prompt": "Grab every post under https://blog.example.com/changelog/ and save each one as a markdown file in notes/changelog.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
       "assertions": []
     },
     {
@@ -58,15 +91,29 @@
       "kind": "trigger",
       "split": "tune",
       "prompt": "Write a Playwright test that signs in to our staging app and checks the dashboard loads.",
-      "expected_behavior": ["The skill should NOT trigger: testing our own UI in a browser is owned by the playwright-e2e skill."],
+      "expected_behavior": [
+        "The skill should NOT trigger: testing your own app in a browser is Playwright's job."
+      ],
       "assertions": []
     },
     {
-      "id": "neg-trig-docx-tracked-changes",
+      "id": "neg-trig-sdk-in-product",
       "kind": "trigger",
       "split": "tune",
-      "prompt": "Accept all the tracked changes in proposal-draft.docx and export it to PDF.",
-      "expected_behavior": ["The skill should NOT trigger: editing a Word document and exporting it is owned by the word-doc-editing skill."],
+      "prompt": "Add a step to our ingestion worker in src/ingest.ts that calls the Firecrawl Node SDK to scrape each customer URL and store the markdown.",
+      "expected_behavior": [
+        "The skill should NOT trigger: adding Firecrawl calls to a product's code is SDK work, not the session's own web reading."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-repo-grep",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Find every place in this repository that builds a pricing URL and list the files.",
+      "expected_behavior": [
+        "The skill should NOT trigger: searching the local repository needs no web access."
+      ],
       "assertions": []
     }
   ],
