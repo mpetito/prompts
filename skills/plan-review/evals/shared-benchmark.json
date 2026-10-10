@@ -1,0 +1,228 @@
+{
+  "version": 2,
+  "skill_name": "plan-review",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-overbuilt-export",
+      "split": "tune",
+      "prompt": "Review the plan in the input file before it is approved. Write your review exactly as you would deliver it. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/overbuilt-export.md"
+      ],
+      "expected_behavior": [
+        "The ledger, queue, dead-letter queue, WebSocket and admin dashboard are cut, each with the primitive that already gives the property (a streamed download, the existing job runner, a presigned URL)",
+        "The SQS exactly-once claim is corrected or marked unverified",
+        "The refunds question goes to the owner with options, a recommendation and a default",
+        "Acceptance becomes something a check can fail; the report opens with a VERDICT line"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:\\*\\*)?VERDICT: (?:approve|changes-required)\\b"
+        },
+        {
+          "name": "cuts-mechanisms-for-primitives",
+          "type": "regex",
+          "pattern": "(?is)(?:ledger|reconcil|dead-letter|WebSocket|admin[- ]dashboard)[\\s\\S]{0,500}?(?:stream|synchronous|presigned|existing (?:job|runner)|jobs/)"
+        },
+        {
+          "name": "corrects-exactly-once",
+          "type": "regex",
+          "pattern": "(?i)at[- ]least[- ]once|exactly[- ]once[^\\n]{0,120}(?:unverified|not true|false|incorrect|wrong|only|FIFO)"
+        },
+        {
+          "name": "refunds-question-with-default",
+          "type": "regex",
+          "pattern": "(?is)refund[\\s\\S]{0,400}?default"
+        },
+        {
+          "name": "measurable-acceptance",
+          "type": "regex",
+          "pattern": "(?is)acceptance[\\s\\S]{0,400}?(?:\\d+\\s?(?:s|sec|seconds|ms|rows|orders)|within \\d|under \\d)"
+        },
+        {
+          "name": "review-quality",
+          "type": "judge",
+          "rubric": [
+            "Each cut names the platform primitive or existing component that gives the property",
+            "Findings propose the smallest change, not a redesign",
+            "Findings are tagged blocking, follow-up or nit",
+            "The visible piece (the download button and file) is not left behind invisible infrastructure"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-webhooks-blast-radius",
+      "split": "tune",
+      "prompt": "Review the plan in the input file before it is approved. Write your review exactly as you would deliver it. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/webhooks-contract.md"
+      ],
+      "expected_behavior": [
+        "The payload shape, event names and versioning are flagged as expensive to change once partners and the SDKs depend on them",
+        "They become a contract, reviewed by its main consumer, before webhook-core, partner-sdk and docs build on it; the SDK waits for the contract",
+        "Internal table and column names leaking into the public API are flagged"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:\\*\\*)?VERDICT: (?:approve|changes-required)\\b"
+        },
+        {
+          "name": "contract-before-build",
+          "type": "regex",
+          "pattern": "(?is)contract[^\\n]{0,200}(?:before|first|prior)|(?:before|first)[^\\n]{0,160}contract"
+        },
+        {
+          "name": "flags-versioning",
+          "type": "regex",
+          "pattern": "(?i)\\bapi_version\\b|\\bversion(?:ed|ing)?\\b[^\\n]{0,200}(?:from (?:day one|the start|v1)|now|before|in v1|header|field|path|envelope|hard to (?:reverse|change))"
+        },
+        {
+          "name": "flags-internal-names",
+          "type": "regex",
+          "pattern": "(?is)(?:order_tbl|table names?|internal (?:columns?|names?|fields?))[\\s\\S]{0,300}?(?:leak|expos|public|rename|stable|decoupl)"
+        },
+        {
+          "name": "sdk-waits-for-contract",
+          "type": "regex",
+          "pattern": "(?is)(?:SDK|partner-sdk)[\\s\\S]{0,300}?(?:after|wait|until|depends on|blocked by)[\\s\\S]{0,120}?(?:contract|schema|payload)|(?:cut|drop|remove|defer)\\w*[^\\n]{0,80}(?:SDK|partner-sdk)|(?:SDK|partner-sdk)[^\\n]{0,300}(?:cut it|drop it|defer|not in v1|from v1)"
+        },
+        {
+          "name": "review-quality",
+          "type": "judge",
+          "rubric": [
+            "The review explains what each high-blast-radius decision will cost to change later and who depends on it",
+            "The contract is reviewed by its main consumer (the SDK or a partner) before implementation",
+            "Acceptance becomes something a check can fail",
+            "The report opens with a VERDICT line and tags findings"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-billing-overlap",
+      "split": "tune",
+      "prompt": "Review the plan in the input file before it is approved. Write your review exactly as you would deliver it. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/billing-overlap.md"
+      ],
+      "expected_behavior": [
+        "invoice.ts, edited by A and B, gets one owner or a contract",
+        "The Stripe proration claim is marked unverified with the doc or probe that would settle it",
+        "The discount goes to the owner with options, a recommendation and a default",
+        "The pricing page, the only thing the owner can click, moves earlier; the unrequested tax report is challenged"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:\\*\\*)?VERDICT: (?:approve|changes-required)\\b"
+        },
+        {
+          "name": "flags-file-overlap",
+          "type": "regex",
+          "pattern": "(?is)invoice\\.ts[\\s\\S]{0,300}?(?:owner|own|overlap|both|conflict)|(?:overlap|both)[\\s\\S]{0,200}?invoice\\.ts"
+        },
+        {
+          "name": "stripe-claim-unverified",
+          "type": "regex",
+          "pattern": "(?is)prorat[\\s\\S]{0,300}?(?:unverified|verify|source|citation|cite|docs?\\b|confirm)"
+        },
+        {
+          "name": "discount-question-with-default",
+          "type": "regex",
+          "pattern": "(?is)(?:15|20)\\s?%[\\s\\S]{0,400}?default|default[\\s\\S]{0,200}?(?:15|20)\\s?%"
+        },
+        {
+          "name": "pricing-page-earlier",
+          "type": "regex",
+          "pattern": "(?is)pricing[- ]page[\\s\\S]{0,300}?(?:first|earlier|move (?:it )?up|sooner|before|Friday)|(?:first|earlier|move)[\\s\\S]{0,150}pricing[- ]page|\\b(?:start|build|ship|move|schedule)\\s+(?:workstream\\s+)?C\\b[^\\n]{0,40}?(?:first|earlier|sooner|up)"
+        },
+        {
+          "name": "review-quality",
+          "type": "judge",
+          "rubric": [
+            "The tax report is challenged as unrequested by the owner",
+            "Acceptance becomes something a check can fail",
+            "Findings propose the smallest change, tagged blocking, follow-up or nit",
+            "Nothing unverified is stated as fact"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-poke-holes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Poke holes in this migration plan before we start.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-review-spec",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review the spec in specs/014/spec.md before I approve it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-check-breakdown",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Is this task breakdown for the search rewrite sound? Check it before the agents start.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-diff",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my staged changes for bugs before I commit.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a diff is a code review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-write-plan",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write an implementation plan for adding SSO to the admin app.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing a plan is not reviewing one"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-summarise-doc",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Summarise this design doc for my manager in five bullets.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a summary is not a review"
+      ],
+      "assertions": []
+    }
+  ]
+}
