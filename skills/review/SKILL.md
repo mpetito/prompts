@@ -11,32 +11,33 @@ Role: worker. Loaded mostly by reviewer subagents; this file stays under 120 lin
 
 Read every changed file at the head under review (`git diff`, `git diff --cached`, untracked files,
 or the PR's diff), apart from unrelated work in the tree; the project's instructions and the
-neighbouring code, whose conventions win; and what the change must satisfy, with the author's claims.
+neighbouring code, whose conventions win; what the change must satisfy, with the author's claims;
+and the repository's review scope brief, `REVIEW.md` at its root
+([read, derive and keep it current](references/review-scope.md)).
 
 ## 2. Size the review
 
 Size every review on two axes and take the deeper of the two:
 
-| Axis | Ask | High for | Then |
+| Axis | Ask | High for, e.g. | Then |
 | --- | --- | --- | --- |
 | Defect risk | What breaks if this is wrong now? | Auth, deletion, money, data integrity, security, concurrency | Adversarial review with planted mutants for the named invariants, plus a delta round |
 | Blast radius | How much must change if this is wrong later? | Public or cross-team APIs, cross-lane contracts, schemas and migrations, wire, persisted or event formats, config and CLI surfaces, shared library interfaces, names that leak into URLs or events | An interface design review (section 3), ideally at the contract stage before implementation, by its main consumer plus an adversarial reviewer |
 
-Low on both: one adversarial pass, or a fact-check for docs-only and mechanical changes (every
-SHA, number and state against its source). A low-risk change can have a high blast radius: an API
-boundary is cheap to get working and expensive to change later. Size it by the radius. State the
-depth and its reason at the top of the report.
+The examples are representative, not exhaustive; size by this repository's own surfaces and
+risky paths, from its brief. An API boundary is cheap to get working and expensive to change
+later: size it by the radius. Low on both: one adversarial pass, or a fact-check for docs-only and
+mechanical changes (every SHA, number and state against its source). State the depth and why.
 
 ## 3. Interface design review
 
-For a high blast radius, ask what changing the interface later costs:
+For a high blast radius, ask what changing the interface later costs, in the terms of the surface
+at hand (a payload, a CLI's flags and exit codes, a library's exported types, an event's schema):
 
 - **Dependents:** who builds on it now and soon (clients, lanes, stored data, partners)?
-- **Compatibility:** can a field be added, renamed or removed without breaking one? Is there a
-  version, and a deprecation path?
+- **Compatibility:** can a field change without breaking one? Is it versioned, with a deprecation path?
 - **Error model:** are failures typed, documented and distinguishable by a caller?
-- **Exposure:** does it leak internal IDs, table, column or class names, or implementation details
-  into URLs, payloads or events?
+- **Exposure:** does it leak internal IDs, table, column or class names into URLs, payloads or events?
 - **Room to extend:** pagination, filtering, units, time zones, enums with an unknown value.
 
 A shape that is costly to change and has no answer to these is `blocking`, however clean its code
@@ -62,8 +63,8 @@ stated root cause is unproven until an instrumented probe confirms it. A proof y
 
 ## 5. Audit the evidence
 
-- CI counts only for the head and base it ran on: a green run on a base that has since moved past
-  merges touching the same files does not cover this head.
+- CI covers only the head and base it ran on; once the base gains merges touching the same files,
+  a green run no longer covers this head.
 - Mark each causal, numeric and coverage claim as verified, refuted or unverified, against the logs.
 - Cite vendor behaviour from its docs, or from a probe pinned to the installed version.
 
@@ -97,6 +98,7 @@ trade-offs first, and waits for a yes. Never commit or push.
 **Proofs:** <mutant or probe> | <killed, survived or not run> | <killing assertion>, survivors first
 **Claims checked:** <claim>: verified | refuted | unverified
 **Questions:** <open design questions>
+**Scope brief:** no change | <proposed edit to REVIEW.md>, because <evidence>
 ```
 
 **Delegated** (a coordinator briefed you): report only. Edit only in the scratch folder the brief
@@ -121,5 +123,6 @@ Mutants (mutant | result | killing assertion), survivors first:
 Claims checked: <claims, each verified, refuted or unverified>
 Not verified: <check, and why>
 Outside this PR: <item, proposed as an issue>
+Scope brief: no change | <proposed edit to REVIEW.md>, because <evidence>
 Long form: <path>
 ```

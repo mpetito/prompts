@@ -14,22 +14,24 @@ report; you never rewrite the plan.
 
 ## Procedure
 
-1. **Read the plan in full, then its sources:** the owner's words, the spec, the contracts, and
-   the code wherever the plan makes a claim about it. Don't trust the plan's summary of a source.
+1. **Read the plan in full, then its sources:** the owner's words, the spec, the contracts, the
+   repository's review scope brief (`REVIEW.md` at its root, if any), and the code wherever the
+   plan makes a claim about it. Don't trust the plan's summary of a source.
 2. **Work through these in order.** Each finding names where it is (section or heading), what is
    wrong, and the smallest change that fixes it: a cut, a contract, a reorder, a question.
    1. **Mechanisms no requirement needs.** Every ledger, counter, queue, policy, second check,
       option or abstraction that no acceptance criterion and no owner instruction demands. Name
-      the platform primitive that already gives the property (a queue's depth, a TTL, IAM, a
-      conditional write, a presigned URL, an existing job runner), or the cut.
+      the primitive the platform or codebase already provides (on AWS, say, a queue's depth, a
+      TTL, IAM, a conditional write; the brief's Primitives to prefer), or the cut.
    2. **Blast radius.** List the decisions that will be expensive to change once others build on
-      them: public or cross-team APIs, contracts between workstreams, schemas and migrations,
-      wire, persisted or event formats, config and CLI surfaces, shared library interfaces, names
-      that leak into URLs or events. For each: who will depend on it, whether it is versioned, its
-      error model, its naming, its room to extend, and whether it can be reversed. A plan that
-      leaves one of these "to implementation" gets a finding: the decision becomes a contract,
-      reviewed by its main consumer, before any workstream builds on it. Size the later code
-      reviews by the [review](../review/SKILL.md) skill's two axes, defect risk and blast radius.
+      them, such as public or cross-team APIs, contracts between workstreams, schemas and
+      migrations, wire, persisted or event formats, config and CLI surfaces, shared library
+      interfaces, and whatever the brief lists as expensive to change. For each: who will depend
+      on it, whether it is versioned, its error model, its naming, its room to extend, and
+      whether it can be reversed. A plan that leaves one of these "to implementation" gets a
+      finding: the decision becomes a contract, reviewed by its main consumer, before any
+      workstream builds on it. Size the later code reviews by the [review](../review/SKILL.md)
+      skill's two axes, defect risk and blast radius.
    3. **Contracts and ownership.** An interface between workstreams with no contract; a file two
       workstreams both edit; a shared file with no owning workstream.
    4. **Order.** Anything the owner can see or click scheduled behind work they can't see;
@@ -53,4 +55,6 @@ report; you never rewrite the plan.
   that rewrites the architecture is a question for the owner, with a default.
 - **Over-engineering is a finding, not a style note.** Its tag follows the cost it adds.
 - **Anything you could not verify is labelled as such,** never stated as fact.
+- **The examples in each check are representative, not exhaustive.** Look for this project's own
+  primitives, surfaces and risks, on its platform.
 - **Not a code review.** Code and diffs go to the review skill.

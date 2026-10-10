@@ -153,9 +153,10 @@
         "fixtures/partner-customer-endpoint.md"
       ],
       "expected_behavior": [
-        "The review is sized by blast radius, not by the 'read-only, low risk' framing, because an external partner hard-codes the response next week",
-        "The verdict is changes-required, with the interface shape as a blocking finding despite green tests and full coverage",
-        "It names the costly shape: internal keys and table names in the URL and payload, internal status codes due to change, no version, a plain-text error, locale times, float dollars, unpaginated orders"
+        "The review is sized by blast radius, not by the clean-looking code or the teammate's LGTM, because the partner generates clients from this contract and ships next week",
+        "The verdict is changes-required, with the contract's shape as a blocking finding despite green tests, full coverage and the versioned path",
+        "It names the subtle costly shapes: a closed status enum that Billing's planned statuses will break in generated clients, an orders response that is a bare array and so cannot gain paging metadata, page offsets over a list that grows at the top, timestamps without an offset despite format date-time, and order totals without their currency",
+        "With no REVIEW.md in the repository, it ends with a Scope brief proposing one that lists the partner routes and their OpenAPI document as expensive to change"
       ],
       "assertions": [
         {
@@ -169,38 +170,100 @@
           "pattern": "(?i)blast radius|interface design review"
         },
         {
-          "name": "flags-internal-exposure",
+          "name": "flags-closed-enum",
           "type": "regex",
-          "pattern": "(?is)(?:customer_pk|order_pk|tbl_\\w+|status_cd|internal (?:ids?|keys?|names?|codes?)|primary keys?|database (?:ids?|keys?|columns?|tables?))[^\\n]{0,200}(?:leak|expos|internal|public)|(?:leak|expos)[^\\n]{0,200}(?:customer_pk|order_pk|tbl_|status_cd|internal|primary key|database)"
+          "pattern": "(?is)(?:\\benum\\b|decod\\w*|generated (?:swift|kotlin|client)\\w*|codegen)[^\\n]{0,300}(?:trial|past_due|new (?:status|value|case)\\w*|unknown)|(?:trial|past_due|new (?:status|value|case)\\w*|unknown)[^\\n]{0,300}(?:\\benum\\b|decod\\w*|generated (?:swift|kotlin|client)\\w*|codegen)"
         },
         {
-          "name": "flags-versioning",
+          "name": "flags-bare-array",
           "type": "regex",
-          "pattern": "(?i)\\bversion(?:ing|ed)?\\b|/v1\\b|deprecat|backward[- ]compat"
+          "pattern": "(?i)\\b(?:top[- ]level|bare|raw|plain|naked) (?:JSON )?arrays?\\b|\\barrays? at the top\\b|\\bwrap\\w*[^\\n]{0,80}\\b(?:object|envelope)\\b|\\b(?:next_?cursor|has_?more)\\b"
         },
         {
-          "name": "flags-error-model",
+          "name": "flags-offsetless-timestamps",
           "type": "regex",
-          "pattern": "(?i)error (?:model|codes?|body|shape|format|contract|envelope|object)|plain[- ]text (?:error|404|body|response)|typed errors?|machine[- ]readable"
+          "pattern": "(?is)(?:time ?zone|offset|\\bUTC\\b|RFC ?3339)[^\\n]{0,200}(?:missing|\\bno\\b|without|lacks?|drops?|naive|local|ambiguous)|(?:missing|\\bno\\b|without|lacks?|drops?|naive|local|ambiguous)[^\\n]{0,200}(?:time ?zone|offset|\\bUTC\\b|RFC ?3339)"
         },
         {
-          "name": "flags-unbounded-orders",
+          "name": "flags-missing-currency",
           "type": "regex",
-          "pattern": "(?i)paginat|unbounded"
+          "pattern": "(?i)\\bcurrency\\b"
         },
         {
           "name": "interface-is-blocking",
           "type": "regex",
-          "pattern": "(?is)\\bBlocking\\b.{0,1500}?(?:customer_pk|tbl_|internal|version|status_cd|contract|shape|leak|expos)"
+          "pattern": "(?is)\\bBlocking\\b.{0,1500}?(?:enum|status|array|cursor|offset|time ?zone|currency|contract|shape)"
+        },
+        {
+          "name": "scope-brief-proposes-partner-surface",
+          "type": "regex",
+          "pattern": "(?s)Scope brief\\b.{0,600}?(?i:partner|/v1|openapi)"
         },
         {
           "name": "reviewer-quality",
           "type": "judge",
           "rubric": [
-            "The review rejects the 'low risk, tests green' framing and sizes the change by blast radius, because an external partner hard-codes the response next week",
-            "It names the costly-to-change shape: internal keys and table names in the URL and payload, single-letter status codes due to change, locale-formatted local times, dollars as floats, a plain-text 404",
-            "It proposes a contract to agree before merge: a versioned path, opaque IDs, documented enums with an unknown value, ISO-8601 UTC times, integer cents, a typed error body, paginated orders",
-            "It spends no findings on code style or test count, and does not take the teammate's LGTM as evidence"
+            "The review sizes the change by blast radius: the partner generates Swift and Kotlin clients from this contract and old app versions stay installed for months, so 'read-only, versioned, tests green' does not make it low risk",
+            "It finds that the closed status enum, with no unknown value, breaks decoding in the partner's generated clients once Billing adds trial and past_due, and that the STATUS map then yields no status at all",
+            "It finds that the orders response is a bare top-level array, so paging metadata such as a cursor or has-more flag cannot be added later without a breaking change, and that page offsets skip or repeat orders as new ones arrive",
+            "It finds that the timestamps carry no offset although the contract says date-time, and that order totals omit their currency although orders have one",
+            "These contract issues are blocking and the verdict is changes-required; it does not invent problems the change has solved, such as a missing version or leaked database keys"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-scope-brief-update",
+      "split": "tune",
+      "prompt": "Review the branch described in the input file and give me your review with a merge recommendation. Do not run any commands; everything you need is in the input file.",
+      "files": [
+        "fixtures/ledger-export-scope.md"
+      ],
+      "expected_behavior": [
+        "Applies the repository's REVIEW.md: the float64 conversion in money breaks its Always check rule and is blocking; the verdict is changes-required",
+        "Treats the CSV header and columns as a surface others build on, though neither the generic examples nor the brief list it",
+        "Ends with a Scope brief proposal, separate from this branch: add the CSV export under Expensive to change, fix the internal/report/json.go entry that #240 moved to internal/render, and revisit the brief in full because its Revisited date is more than three months old"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-changes-required",
+          "type": "regex",
+          "pattern": "(?im)^[\\s#*_>-]*Verdict[\\s*_]*:[\\s*_`]*changes[- ]required\\b"
+        },
+        {
+          "name": "float-is-blocking",
+          "type": "regex",
+          "pattern": "(?is)\\bBlocking\\b.{0,1500}?(?:float64|InexactFloat64|FormatFloat|\\bfloat\\b)"
+        },
+        {
+          "name": "scope-brief-proposes-edit",
+          "type": "regex",
+          "pattern": "(?im)^[\\s#*_>-]*Scope brief[\\s*_]*(?::|$)(?![\\s*_`]*no change)"
+        },
+        {
+          "name": "brief-adds-export-surface",
+          "type": "regex",
+          "pattern": "(?s)Scope brief\\b.{0,800}?(?i:csv|export)"
+        },
+        {
+          "name": "brief-fixes-stale-path",
+          "type": "regex",
+          "pattern": "(?s)Scope brief\\b.{0,800}?(?i:internal/report|internal/render|stale|no longer exists?|moved|renamed)"
+        },
+        {
+          "name": "brief-revisit-due",
+          "type": "regex",
+          "pattern": "(?s)Scope brief\\b.{0,800}?(?i:2026-03-02|three months|3 months|seven months|7 months|in full|full revisit)"
+        },
+        {
+          "name": "scope-quality",
+          "type": "judge",
+          "rubric": [
+            "The float64 conversion in money is a blocking finding grounded in REVIEW.md's Always check rule, with a decimal-based fix such as StringFixed(2)",
+            "The CSV header names and column order are treated as a contract the accountants' bank imports map by name, not as an internal detail",
+            "The review proposes REVIEW.md edits as a change separate from this branch: list the CSV export as expensive to change, and replace the stale internal/report/json.go entry",
+            "It notes the brief was last revisited 2026-03-02, more than three months ago, and recommends revisiting it in full",
+            "It does not fold the REVIEW.md edit into the branch under review"
           ]
         }
       ]

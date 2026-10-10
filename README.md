@@ -18,7 +18,7 @@ lists readmitted skills only.
 | Skill | `/slash` invocation | Purpose |
 | --- | --- | --- |
 | [skill-authoring](skills/skill-authoring/SKILL.md) | `/skill-authoring` | Write, review, split or fix a skill folder |
-| [review](skills/review/SKILL.md) | `/review` | Review a code change adversarially: size it by defect risk and blast radius, prove its tests can fail, give a verdict |
+| [review](skills/review/SKILL.md) | `/review` | Review a code change adversarially: size it by defect risk and blast radius, prove its tests can fail, give a verdict, and keep the repository's `REVIEW.md` scope brief current |
 | [plan-review](skills/plan-review/SKILL.md) | `/plan-review` | Review a plan, spec or design before work starts: cuts, blast radius, contracts, overlap, owner questions |
 | [orchestration-main](skills/orchestration-main/SKILL.md) | `/orchestration-main` | Run a multi-agent build from your own session: launch, steer and rotate orchestration threads, and keep your decisions in front of you |
 | [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |

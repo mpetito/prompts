@@ -41,8 +41,8 @@ beside the owner's checkout. Your state lives in its untracked `.orchestration/`
    - **Ownership:** one owner per file or area, with Owns and Never-touch lists. Each interface
      between lanes gets a contract first, reviewed by its main consumer.
    - **Challenge every mechanism the spec prescribes:** name the platform primitive that already
-     gives the property (a queue's depth, a TTL, IAM, a conditional write) and propose the cut as a
-     decision with a default.
+     gives the property (on AWS, say, a queue's depth, a TTL, IAM, a conditional write) and propose
+     the cut as a decision with a default.
    - **Approval classes:** owner-before (spend, trust roots or IAM, production data, destructive
      actions, spec edits, and any decision the spec or the owner reserved for the owner);
      notice-after (additive deploys, settings you own); default (everything else, decided with a
@@ -166,5 +166,6 @@ or a message from MAIN.
 
 1. Before removing a worktree, compare its leftover edits with the merged head, then run
    `finish-lane.sh <worktree> <archive dir>`.
-2. Write a short retrospective file: what the gates caught, what it cost, what transfers.
+2. Write a short retrospective file: what the gates caught, what it cost, what transfers. Land
+   the reviewers' `Scope brief` proposals you accept as one change to the repository's `REVIEW.md`.
 3. Send `STATUS: done - …` with what the owner should check, and the retrospective's path.

@@ -116,6 +116,11 @@ on this machine is therefore never in play unless passed as `-Baseline`. Trigger
 with the shell allowed are not comparable: the model explores with git instead of loading a
 skill. `without_skill` sees only the fixtures.
 
+The harness (0.6.0) copies each fixture to `inputs/` and lists every one in the task prompt, so
+both arms are pointed at every file. A case cannot test whether a skill makes the model look for
+a file unprompted, such as a repository's `REVIEW.md`; test what the skill does once it has read
+it, or what it does when the file is absent.
+
 ## Agents
 
 `-AgentDefinition <name>` evaluates `agents/<name>.md` instead of a skill. Its suite lives in
