@@ -1,7 +1,9 @@
 {
   "version": 2,
   "skill_name": "review",
-  "skill_paths": ["SKILL.md"],
+  "skill_paths": [
+    "SKILL.md"
+  ],
   "variants": [
     "with_skill",
     "without_skill"
@@ -18,46 +20,37 @@
         "fixtures/discount-code-review.md"
       ],
       "expected_behavior": [
-        "Uses the interactive Output Format: Review Summary, Overall Assessment, severity sections, Proofs Run, Questions for Author",
-        "Verdict is REQUEST CHANGES because of the SQL injection and the never-matching usage increment",
+        "Uses the interactive report: a Review heading, a Verdict line, a Depth line with its reason, Blocking and Follow-up findings, Proofs, Claims checked",
+        "Verdict is changes-required because of the SQL injection and the never-matching usage increment",
         "Findings cite file plus function, not line numbers",
-        "Names mutants the weak tests would let survive and audits the 14-tests and expiry-covered claims against the log",
-        "Does not ask for new result types against the plain-dict convention; suggests /commit as the next step"
+        "Names mutants the weak tests would let survive, marks unrun proofs as not run, and audits the 14-tests and expiry-covered claims against the log",
+        "Does not ask for new result types against the plain-dict convention"
       ],
       "assertions": [
         {
-          "name": "review-summary-heading",
+          "name": "verdict-changes-required",
           "type": "regex",
-          "pattern": "(?m)^#{1,3}\\s*Review Summary"
+          "pattern": "(?im)^[\\s#*_>-]*Verdict[\\s*_]*:[\\s*_`]*changes[- ]required\\b"
         },
         {
-          "name": "overall-assessment-request-changes",
+          "name": "states-depth",
           "type": "regex",
-          "pattern": "(?im)^[*_\\s]*Overall Assessment[*_\\s]*:[^\\w\\n]*REQUEST[\\s_-]CHANGES\\b"
+          "pattern": "(?im)^[\\s*_>-]*Depth[\\s*_]*:"
         },
         {
-          "name": "severity-sections",
-          "type": "contains_all",
-          "values": [
-            "Critical Issues",
-            "Important Issues",
-            "Suggestions"
-          ]
+          "name": "blocking-and-follow-up-labels",
+          "type": "regex",
+          "pattern": "(?s)(?=.*\\bBlocking\\b)(?=.*\\bFollow-up\\b)"
         },
         {
           "name": "proofs-section",
           "type": "regex",
-          "pattern": "(?im)^#{2,4}\\s*Proofs\\b"
+          "pattern": "(?im)^[\\s#*_>-]*Proofs\\b"
         },
         {
           "name": "names-surviving-mutant",
           "type": "regex",
           "pattern": "(?is)\\b(mutants?|mutations?)\\b.{0,150}\\bsurviv(e|es|ed|ing|or|ors)\\b|\\bsurviv(e|es|ed|ing|or|ors)\\b.{0,150}\\b(mutants?|mutations?)\\b"
-        },
-        {
-          "name": "suggests-commit-next",
-          "type": "contains",
-          "value": "/commit"
         },
         {
           "name": "no-line-number-citations",
@@ -89,7 +82,7 @@
         "fixtures/flaky-drain-delegated.md"
       ],
       "expected_behavior": [
-        "Returns the Delegated Report-Only shape: a verdict line bound to head 3f9a2c1d, Blocking, Should fix, Mutants, Claims checked, Not verified, Outside this PR, Long form",
+        "Returns the delegated report: a verdict line bound to head 3f9a2c1d, a Depth line, Blocking, Follow-up, Mutants, Claims checked, Not verified, Outside this PR, Long form",
         "Verdict is changes-required or close: the helper swallows every timeout and the failed-jobs assertion was removed",
         "Severity is rated on the findings, not lowered because this is round 3",
         "The root cause and the 50-run and CI-green claims are marked unproven or refuted; the report has no markdown headings"
@@ -99,6 +92,11 @@
           "name": "verdict-line-bound-to-sha",
           "type": "regex",
           "pattern": "(?m)^[*_`\\s]*VERDICT\\b(?=[^\\n]*3f9a2c1)(?=[^\\n]*\\b(?i:changes[- ]required|close)\\b)"
+        },
+        {
+          "name": "states-depth",
+          "type": "regex",
+          "pattern": "(?im)^[\\s*_>-]*Depth[\\s*_]*:"
         },
         {
           "name": "blocking-id-with-file-line",
@@ -133,7 +131,7 @@
         {
           "name": "no-round-based-severity",
           "type": "not_regex",
-          "pattern": "(?i)\\b(given|since|because|as)\\s+(that\\s+)?(this|it)\\s+is\\s+(the\\s+)?(review\\s+)?(round\\s*(3|three)|third\\s+round)\\b"
+          "pattern": "(?im)(?:^|[.!?]\\s+)(?![^.\\n]*(?:\\bnot\\b|\\bnever\\b|n't\\b))[^.\\n]*\\b(?:given|since|because|as)\\s+(?:that\\s+)?(?:this|it)\\s+is\\s+(?:the\\s+)?(?:review\\s+)?(?:round\\s*(?:3|three)|third\\s+round)\\b"
         },
         {
           "name": "reviewer-quality",
@@ -143,6 +141,66 @@
             "The removed expect(queue.failed) assertion is reported as lost coverage, and severity is not lowered because this is round 3",
             "The '0 failures in 50 runs' claim and the CI run on main@b71e0a4 (before PR #409 touched src/retryQueue.ts) are marked unverified or refuted",
             "The report does not claim any mutant or probe was actually run; unrun proofs appear under Not verified"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-blast-radius-endpoint",
+      "split": "tune",
+      "prompt": "Review the pull request described in the input file and give me your review with a merge verdict. Do not run any commands; everything you need is in the input file.",
+      "files": [
+        "fixtures/partner-customer-endpoint.md"
+      ],
+      "expected_behavior": [
+        "The review is sized by blast radius, not by the 'read-only, low risk' framing, because an external partner hard-codes the response next week",
+        "The verdict is changes-required, with the interface shape as a blocking finding despite green tests and full coverage",
+        "It names the costly shape: internal keys and table names in the URL and payload, internal status codes due to change, no version, a plain-text error, locale times, float dollars, unpaginated orders"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-changes-required",
+          "type": "regex",
+          "pattern": "(?im)^[\\s#*_>-]*Verdict[\\s*_]*:[\\s*_`]*changes[- ]required\\b"
+        },
+        {
+          "name": "sizes-by-blast-radius",
+          "type": "regex",
+          "pattern": "(?i)blast radius|interface design review"
+        },
+        {
+          "name": "flags-internal-exposure",
+          "type": "regex",
+          "pattern": "(?is)(?:customer_pk|order_pk|tbl_\\w+|status_cd|internal (?:ids?|keys?|names?|codes?)|primary keys?|database (?:ids?|keys?|columns?|tables?))[^\\n]{0,200}(?:leak|expos|internal|public)|(?:leak|expos)[^\\n]{0,200}(?:customer_pk|order_pk|tbl_|status_cd|internal|primary key|database)"
+        },
+        {
+          "name": "flags-versioning",
+          "type": "regex",
+          "pattern": "(?i)\\bversion(?:ing|ed)?\\b|/v1\\b|deprecat|backward[- ]compat"
+        },
+        {
+          "name": "flags-error-model",
+          "type": "regex",
+          "pattern": "(?i)error (?:model|codes?|body|shape|format|contract|envelope|object)|plain[- ]text (?:error|404|body|response)|typed errors?|machine[- ]readable"
+        },
+        {
+          "name": "flags-unbounded-orders",
+          "type": "regex",
+          "pattern": "(?i)paginat|unbounded"
+        },
+        {
+          "name": "interface-is-blocking",
+          "type": "regex",
+          "pattern": "(?is)\\bBlocking\\b.{0,1500}?(?:customer_pk|tbl_|internal|version|status_cd|contract|shape|leak|expos)"
+        },
+        {
+          "name": "reviewer-quality",
+          "type": "judge",
+          "rubric": [
+            "The review rejects the 'low risk, tests green' framing and sizes the change by blast radius, because an external partner hard-codes the response next week",
+            "It names the costly-to-change shape: internal keys and table names in the URL and payload, single-letter status codes due to change, locale-formatted local times, dollars as floats, a plain-text 404",
+            "It proposes a contract to agree before merge: a versioned path, opaque IDs, documented enums with an unknown value, ISO-8601 UTC times, integer cents, a typed error body, paginated orders",
+            "It spends no findings on code style or test count, and does not take the teammate's LGTM as evidence"
           ]
         }
       ]
@@ -178,12 +236,12 @@
       "assertions": []
     },
     {
-      "id": "neg-trig-teammate-pr-comments",
+      "id": "neg-trig-review-plan",
       "kind": "trigger",
       "split": "tune",
-      "prompt": "Review my teammate's GitHub PR #212 and post the comments once I approve them.",
+      "prompt": "Review this implementation plan before we start building and tell me what's missing.",
       "expected_behavior": [
-        "The skill should NOT trigger: posting a review on someone else's GitHub PR belongs to pr-review."
+        "The skill should NOT trigger: reviewing a plan before work starts belongs to plan-review"
       ],
       "assertions": []
     },
@@ -193,7 +251,7 @@
       "split": "tune",
       "prompt": "Work through the Copilot review comments on my PR and fix the valid ones.",
       "expected_behavior": [
-        "The skill should NOT trigger: triaging incoming feedback on your own PR belongs to pr-feedback."
+        "The skill should NOT trigger: working through review comments on your own PR is not reviewing a change"
       ],
       "assertions": []
     },
@@ -203,7 +261,7 @@
       "split": "tune",
       "prompt": "Reply to the review threads on my PR and resolve the ones my last push fixed.",
       "expected_behavior": [
-        "The skill should NOT trigger: replying to and resolving threads belongs to pr-resolve."
+        "The skill should NOT trigger: replying to and resolving threads is not reviewing a change"
       ],
       "assertions": []
     }

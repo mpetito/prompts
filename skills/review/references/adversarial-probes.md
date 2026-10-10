@@ -1,8 +1,19 @@
-# Adversarial Probes
+# Adversarial probes
 
-How to run the proofs that [Prove the Change Can Fail](../SKILL.md#prove-the-change-can-fail)
+How to run the proofs that [Prove the change can fail](../SKILL.md#4-prove-the-change-can-fail)
 requires. Work in a scratch copy or worktree. Keep each probe script and its log, so the author
 can re-run them.
+
+## Contents
+
+- Mutants of the code under test
+- Restore the bug
+- Flaky or timing-bound fixes
+- Dependent and stacked changes
+- Gates, validators and parsers
+- Secrets and redaction
+- No-behaviour-change claims
+- Evidence audit
 
 ## Mutants of the Code Under Test
 

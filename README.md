@@ -18,6 +18,7 @@ lists readmitted skills only.
 | Skill | `/slash` invocation | Purpose |
 | --- | --- | --- |
 | [skill-authoring](skills/skill-authoring/SKILL.md) | `/skill-authoring` | Write, review, split or fix a skill folder |
+| [review](skills/review/SKILL.md) | `/review` | Review a code change adversarially: size it by defect risk and blast radius, prove its tests can fail, give a verdict |
 
 ## Agents
 
