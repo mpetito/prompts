@@ -1,11 +1,15 @@
 # Firecrawl REST API — Reference
 
+Contents: base URL and auth · endpoints (content, discovery, extraction and agents, live
+browser sessions, monitoring, specialized indexes, support and account) · errors
+
 Use this when neither an MCP server nor the CLI is available, or when scripting Firecrawl
 calls directly.
 
 **Base URL:** `https://api.firecrawl.dev` — every endpoint below is under `/v2`.
 
-**Auth:** `Authorization: Bearer fc-YOUR-API-KEY` on every request.
+**Auth:** `Authorization: Bearer fc-YOUR-API-KEY`. Required except on the keyless endpoints
+listed under Scrape options below, where a key only raises the rate limits.
 
 The authoritative schema is the OpenAPI document, which is worth fetching rather than
 guessing at a request body:
@@ -40,7 +44,12 @@ Paths and methods below were read from the v2 OpenAPI document.
 
 Scrape options (shared by `/scrape`, and by `scrapeOptions` on `/search`, `/crawl`,
 `/extract`): `formats`, `onlyMainContent`, `waitFor`, `includeTags`, `excludeTags`,
-`maxAge`, `actions`, `proxy`, `location`, `timeout`, `zeroDataRetention`.
+`maxAge`, `actions`, `proxy`, `location`, `timeout`, `zeroDataRetention`. An omitted `maxAge`
+serves a copy up to 2 days old; `0` forces a live fetch (Firecrawl docs, 2026-10-10).
+
+Keyless requests reach search, scrape and parse plus the developer, research and government
+indexes; crawl, map, extract, batch scrape and agent need a key (Firecrawl docs, rate-limits,
+2026-10-10).
 
 ### Discovery
 
@@ -96,8 +105,6 @@ Monitors send outward-facing notifications. Confirm with the user before creatin
 | `/v2/search/research/papers`                    | GET        | Natural-language search over the paper index                                                                     |
 | `/v2/search/research/papers/{id}`               | GET        | Paper metadata; add `query` for the top full-text passages                                                        |
 | `/v2/search/research/papers/{id}/similar`       | GET        | Citation-graph expansion                                                                                          |
-
-See `developer-index.md` for what the developer index covers and how to query it well.
 
 ### Support and Account
 

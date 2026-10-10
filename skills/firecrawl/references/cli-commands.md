@@ -1,13 +1,22 @@
 # Firecrawl CLI — Command Reference
 
-Flags below were captured from `firecrawl <command> --help` on CLI v1.23.3. Run
+Contents: global flags · scrape · search · map · crawl · parse · interact · agent · research ·
+monitor · setup commands · when a fetch misbehaves
+
+The scrape, search, map and crawl tables were checked against `--help` on CLI 1.26.3
+(2026-10-10); the other commands were captured on 1.23.3. Run
 `npx -y firecrawl-cli@latest <command> --help` to confirm against the version you have.
+Every example uses the `npx -y firecrawl-cli@latest` form, which needs no global install.
+This file covers the commands and flags this skill uses, not all of them: `developer`, `gov`,
+`find-tools`, `list-tools`, `alexandria`, `credit-usage`, `feedback`, `experimental` and some
+scrape flags (`--alexandria`, `--options`, `--request-id`, `--domain-tools`, `--tool-detail`)
+are left out. Run `npx -y firecrawl-cli@latest --help` for the rest.
 
 Every command also accepts the global flags `-k, --api-key <key>`, `--api-url <url>`,
 `-o, --output <path>`, and (where output can be JSON) `--json` / `--pretty`.
 
 ```bash
-npx -y firecrawl-cli@latest --status     # version, auth state, concurrency, credits
+npx -y firecrawl-cli@latest --status     # version, auth state, concurrency, credits; keyless prints "Not authenticated"
 npx -y firecrawl-cli@latest --version
 npx -y firecrawl-cli@latest doctor <job-id>   # diagnose a specific failed run
 ```
@@ -19,7 +28,29 @@ Set `FIRECRAWL_NO_TELEMETRY=1` to disable the CLI's anonymous telemetry.
 ## `scrape [urls...]`
 
 Scrapes one or more URLs. Multiple URLs run concurrently and are **saved to `.firecrawl/`
-rather than stdout**.
+rather than stdout**, each logged as `Saved: <file>` on stderr. Scrape works without a key, so
+this is the keyless way to write many pages to files (capped per IP per day; the docs give no
+number).
+
+File names flatten the URL and drop its query, so `/a/b` and `/a-b`, or `?x=1` and `?x=2`,
+write one file: the later page silently overwrites the earlier, and the run still reports every
+URL succeeded (CLI 1.26.3, 2026-10-10). For a URL list taken from a fetched page:
+
+- Keep only URLs under the seed path; cut fragments, queries and trailing slashes; dedupe.
+- Run from an empty directory, so `.firecrawl/` holds only this run.
+- Put `--` before the URLs, so a list line such as `--output=x` is read as a URL, not an
+  option, and pass the list through `tr '\n' '\0' | xargs -0`, which neither splits nor globs
+  a line. Unquoted `$(cat urls.txt)` does both.
+- Afterwards compare the file count with the URL count; `uniq -d` below names each file
+  written twice. Scrape each URL behind it, and any page that differs only by its query, on
+  its own with `-o <file>`.
+
+```bash
+sed -E 's/[?#].*//; s:/+$::' links.txt | grep -E '^https://docs\.example\.com/guides(/|$)' | sort -u > urls.txt
+tr '\n' '\0' < urls.txt | xargs -0 npx -y firecrawl-cli@latest scrape --only-main-content -- 2> scrape.log
+wc -l < urls.txt; ls .firecrawl | wc -l; grep -o 'Saved: .*' scrape.log | sort | uniq -d
+npx -y firecrawl-cli@latest scrape --only-main-content -o pages/a-b.md -- https://docs.example.com/guides/a-b
+```
 
 | Flag                       | Meaning                                                                                                                   |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -33,7 +64,8 @@ rather than stdout**.
 | `--full-page-screenshot`   | Capture a full-page screenshot                                                                                            |
 | `--include-tags <tags>`    | Only these HTML tags                                                                                                      |
 | `--exclude-tags <tags>`    | Drop these HTML tags                                                                                                      |
-| `--max-age <ms>`           | Accept cached content up to this age                                                                                      |
+| `--max-age <ms>`           | Accept cached content up to this age. Omitted, the API serves a copy up to 2 days old; `0` forces a live fetch (Firecrawl docs, features/fast-scraping, 2026-10-10) |
+| `--max-pages <n>`          | Maximum PDF pages to parse (1-10000)                                                                                      |
 | `--country <code>`         | ISO country code for geo-targeted scraping                                                                                |
 | `--languages <codes>`      | Comma-separated language codes                                                                                            |
 | `-Q, --query <prompt>`     | Ask a question about the page instead of returning the whole thing                                                        |
@@ -55,8 +87,8 @@ rather than stdout**.
 | Flag                          | Meaning                                                                                       |
 | ----------------------------- | ----------------------------------------------------------------------------------------------- |
 | `--limit <n>`                 | Max results (default 5, max 100)                                                                |
-| `--sources <sources>`         | `web`, `images`, `news` (default `web`)                                                         |
-| `--categories <categories>`   | `github`, `research`, `pdf`, `developer`                                                        |
+| `--sources <sources>`         | `web`, `images`, `news`, `alexandria` (default `web,alexandria`)                                |
+| `--categories <categories>`   | `research`, `pdf`, `developer`, `gov`                                                           |
 | `--tbs <value>`               | Recency: `qdr:h`, `qdr:d`, `qdr:w`, `qdr:m`, `qdr:y`                                            |
 | `--location <location>`       | Geo-targeting, e.g. `"San Francisco,California,United States"`                                  |
 | `--country <code>`            | ISO country code (default `US`)                                                                 |
@@ -68,14 +100,14 @@ rather than stdout**.
 | `--only-main-content`         | Main content only when scraping (default true here)                                             |
 
 `--categories research` filters **web results to research-affiliated sites**. It is not the
-paper index — use `research search-papers` for papers. `--categories developer` searches the
+paper index — use `npx -y firecrawl-cli@latest research search-papers` for papers. `--categories developer` searches the
 indexed GitHub issues, merged PRs, READMEs, and curated docs.
 
 ---
 
 ## `map [url]`
 
-**Requires an API key.** Discovers a site's URLs without fetching page content — the cheap
+**Requires an API key** (keyless, it prints a login menu, does nothing and exits 0). Discovers a site's URLs without fetching page content — the cheap
 way to decide what is worth scraping.
 
 | Flag                        | Meaning                                     |
@@ -92,7 +124,9 @@ way to decide what is worth scraping.
 
 ## `crawl [url-or-job-id]`
 
-**Requires an API key.** Also the status/cancel surface for an existing crawl job.
+**Requires an API key** (keyless, it prints a login menu, does nothing and exits 0). Seeded at a
+path, a crawl follows only child URLs unless `--crawl-entire-domain`; without `--limit` the API
+default is 10,000 pages (Firecrawl docs, 2026-10-10). Also the status/cancel surface for an existing crawl job.
 
 | Flag                           | Meaning                                          |
 | ------------------------------ | ------------------------------------------------ |
@@ -184,8 +218,8 @@ Set `--max-credits` on every agent run.
 
 ## `research <subcommand>`
 
-A dedicated index of roughly 43M paper abstracts — about 90% biomedical (PubMed, bioRxiv,
-medRxiv) plus arXiv. Use it instead of scraping PubMed or Google Scholar by hand.
+The paper index: mostly biomedical (PubMed, bioRxiv, medRxiv) plus arXiv. Use it instead of
+scraping PubMed or Google Scholar by hand.
 
 | Subcommand                        | Purpose                                                                                  |
 | --------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -250,3 +284,17 @@ into the user-level skills directory — which, in a setup where that directory 
 to a managed repository, drops them straight into version control. Ask first.
 
 `env` pulls `FIRECRAWL_API_KEY` into a local `.env`; make sure `.env` is gitignored.
+
+---
+
+## When a fetch misbehaves
+
+| Symptom | Next step (MCP parameter / CLI flag) |
+| --- | --- |
+| Navigation, cookie banners, footers | `onlyMainContent: true` / `--only-main-content` |
+| Empty page or an app shell | Client-rendered: `waitFor: 3000` / `--wait-for 3000`, then `interact` |
+| 403 or a "verify you are human" page | Retry once with `proxy: "auto"` / `--proxy auto`; still challenged means the site declines automated access: say so and stop |
+| `429` | Rate or concurrency limit; keyless limits are per IP per day. Back off |
+| Output missing from stdout | Several URLs or formats write to `.firecrawl/`; pass `-o` |
+| Repository shows untracked files | The `.firecrawl/` cache; add it to `.gitignore` |
+| A failed or surprising job | Keep the job ID; `npx -y firecrawl-cli@latest doctor <job-id>` diagnoses it. Do not blind-retry a job that may have partly run |

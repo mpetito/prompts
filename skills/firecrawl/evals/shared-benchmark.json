@@ -1,0 +1,221 @@
+{
+  "version": 2,
+  "skill_name": "firecrawl",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-guides-subtree-keyless",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Read the input file, but do not run commands or call any other tool. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Everything you need is in the input file.",
+      "files": [
+        "fixtures/guides-subtree-keyless.md"
+      ],
+      "expected_behavior": [
+        "Keeps the ~140 pages out of the context by writing each page to a file: one keyless CLI scrape over the URL list (from one links scrape of the index), a keyed crawl seeded at /guides and bounded by --limit, or a fetch without Firecrawl (curl, wget or a script) that writes each page to a file",
+        "States the page count before fetching, and on the keyless route says the per-IP daily cap may stop it partway and offers a key for one bounded crawl",
+        "Keeps only URLs under /guides, deduplicated, and checks that every URL ended in its own file",
+        "Does not scrape the guide pages one by one through the MCP scrape tool; one sample page is fine"
+      ],
+      "assertions": [
+        {
+          "name": "pages-to-files",
+          "type": "regex",
+          "pattern": "(?s)firecrawl(?:-cli(?:@\\S+)?)?\\s+crawl\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--limit\\s+\\d+|xargs[^\\n]{0,120}firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b|firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b[^\\n]{0,400}?(?:\\$[({]|`cat|https?://\\S+\\s+(?:\\\\\\s*)?https?://|<\\s*\\S+\\.txt|\\.firecrawl/)|\\\"(?:command|content)\\\"\\s*:\\s*\\\"(?:[^\\\"\\\\]|\\\\.){0,3000}?(?:\\bwhile\\b|\\bfor\\s+\\w+\\s+in\\b|\\bxargs\\b)(?:[^\\\"\\\\]|\\\\.){0,300}?\\b(?:curl|wget)\\b(?:[^\\\"\\\\]|\\\\.){0,300}?(?:\\s(?:-[a-zA-Z]*[oO]|--output|--output-document)\\s+\\\\?[\\\"\\']?[^\\s\\\"\\'|;&]*\\$|\\s-[a-zA-Z]*O(?=\\s)(?!\\s+-(?:\\s|$))|\\s--remote-name(?:-all)?\\b|\\s>>?\\s*\\\\?[\\\"\\']?[^\\s\\\"\\'|;&]*\\$)|\\\"(?:command|content)\\\"\\s*:\\s*\\\"(?:[^\\\"\\\\]|\\\\.){0,3000}?\\bwget\\b(?:[^\\\"\\\\]|\\\\.){0,300}?\\s(?:-i|--input-file|-r|--recursive|-m|--mirror)\\b|\\\"(?:command|content)\\\"\\s*:\\s*\\\"(?:[^\\\"\\\\]|\\\\.){0,3000}?(?:urlopen|requests\\.get|httpx\\.get|\\bfetch\\()(?:[^\\\"\\\\]|\\\\.){0,4000}?(?:write_text|write_bytes|(?<!stdout)\\.write\\(|writeFile)"
+        },
+        {
+          "name": "no-mcp-scrape-of-guide-pages",
+          "type": "not_regex",
+          "pattern": "(?s)\\\"tool\\\"\\s*:\\s*\\\"(?:mcp__\\w+?__)?firecrawl_scrape\\\"(?:(?!\\\"tool\\\"\\s*:).){0,300}?\\\"url\\\"\\s*:\\s*\\\"https://docs\\.example\\.com/guides/[^\\\"]+\\\".*?\\\"tool\\\"\\s*:\\s*\\\"(?:mcp__\\w+?__)?firecrawl_scrape\\\"(?:(?!\\\"tool\\\"\\s*:).){0,300}?\\\"url\\\"\\s*:\\s*\\\"https://docs\\.example\\.com/guides/[^\\\"]+\\\""
+        },
+        {
+          "name": "route-quality",
+          "type": "judge",
+          "rubric": [
+            "The plan keeps the pages out of the context by writing each page to a file: a keyless multi-URL CLI scrape, a keyed crawl, or curl, wget or a script that writes files",
+            "It states the page count first; on the keyless route it mentions the daily cap and offers a key for a bounded crawl",
+            "Any crawl it proposes is seeded at /guides and bounded by --limit",
+            "It keeps only URLs under /guides, drops duplicates (anchors, query or trailing-slash variants), and checks that every URL produced its own file, for example by comparing the file count with the URL count"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-release-posts-fields",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Read the input file, but do not run commands or call any other tool. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Everything you need is in the input file.",
+      "files": [
+        "fixtures/release-posts-breaking.md"
+      ],
+      "expected_behavior": [
+        "Scrapes each of the 42 posts asking only for its breaking changes (json with a schema, or the query format), so answers reach the context instead of 42 full pages",
+        "Does not scrape the posts as full markdown",
+        "Builds the table from the per-post answers with the source URL for each row"
+      ],
+      "assertions": [
+        {
+          "name": "fields-not-pages",
+          "type": "regex",
+          "pattern": "\"formats\"\\s*:\\s*\\[[^\\]]*\"(?:json|query)\""
+        },
+        {
+          "name": "no-markdown-post-scrapes",
+          "type": "not_regex",
+          "pattern": "(?s)\"url\"\\s*:\\s*\"https://blog\\.example\\.com/releases/[^\"]*\"(?:(?!\"tool\"\\s*:).){0,200}?\"formats\"\\s*:\\s*\\[\\s*\"markdown\"|\"formats\"\\s*:\\s*\\[\\s*\"markdown\"[^\\]]*\\](?:(?!\"tool\"\\s*:).){0,200}?\"url\"\\s*:\\s*\"https://blog\\.example\\.com/releases/"
+        },
+        {
+          "name": "context-quality",
+          "type": "judge",
+          "rubric": [
+            "Each post is scraped with a json schema or query prompt that returns only its breaking changes and version",
+            "The plan does not pull 42 full pages of markdown into the context",
+            "Each table row cites the post URL it came from"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "guard-auth-pages-large-site",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a Claude Code session: the tools it has and the user's request. Read the input file, but do not run commands or call any other tool. Write the exact tool calls you would make, in order, each as a JSON object {\"tool\": <bare tool name>, \"arguments\": {...}} (a Bash call carries its full command), then what you would tell the user. Everything you need is in the input file.",
+      "files": [
+        "fixtures/auth-pages-large-site.md"
+      ],
+      "expected_behavior": [
+        "Regression guard, not a gap: the model without the skill already does this; the skill's crawl rule must not pull it into crawling a 4,000-page site",
+        "Finds the authentication pages with map and --search instead of crawling the site and filtering afterwards",
+        "Scrapes only the matched URLs into docs-offline/auth/ after stating the count"
+      ],
+      "assertions": [
+        {
+          "name": "map-with-search",
+          "type": "regex",
+          "pattern": "(?is)firecrawl(?:-cli(?:@\\S+)?)?\\s+map\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--search\\b"
+        },
+        {
+          "name": "no-site-crawl",
+          "type": "not_regex",
+          "pattern": "firecrawl(?:-cli(?:@\\S+)?)?\\s+crawl\\b"
+        },
+        {
+          "name": "scope-quality",
+          "type": "judge",
+          "rubric": [
+            "The plan discovers the authentication URLs with map and a search filter (`map --search`, as a command or described in prose) rather than crawling the whole site",
+            "It scrapes only the matched URLs and writes them under docs-offline/auth/",
+            "It reports or checks the match count before scraping"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-mirror-api-reference",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Mirror the whole API reference at https://docs.example.com/api into ./vendor-docs so our support bot can index it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-docs-subtree-offline",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Download every page under https://docs.example.com/guides and save the text locally so I can grep it offline.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-one-page-now",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "What does https://example.com/pricing say right now about the limits on the team plan?",
+      "expected_behavior": [
+        "The skill should NOT trigger: one page is covered by the Firecrawl scrape tool's own description."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-fields-many-pages",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Pull the price and stock status from each of these 60 product pages into a CSV; the URLs are in urls.txt.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-save-changelog-section",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Grab every post under https://blog.example.com/changelog/ and save each one as a markdown file in notes/changelog.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-playwright-login-test",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a Playwright test that signs in to our staging app and checks the dashboard loads.",
+      "expected_behavior": [
+        "The skill should NOT trigger: testing your own app in a browser is Playwright's job."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-sdk-in-product",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a step to our ingestion worker in src/ingest.ts that calls the Firecrawl Node SDK to scrape each customer URL and store the markdown.",
+      "expected_behavior": [
+        "The skill should NOT trigger: adding Firecrawl calls to a product's code is SDK work, not the session's own web reading."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-repo-grep",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Find every place in this repository that builds a pricing URL and list the files.",
+      "expected_behavior": [
+        "The skill should NOT trigger: searching the local repository needs no web access."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-few-pages",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Read these three pages and tell me what each says about rate limits: https://docs.example.com/limits, https://docs.example.com/api/quotas and https://docs.example.com/faq.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a few pages are covered by the Firecrawl scrape tool's own description."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-developer-index",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Search upstream GitHub issues and merged PRs: was the undici ECONNRESET bug on long-running requests ever fixed, and in which release?",
+      "expected_behavior": [
+        "The skill should NOT trigger: a developer-index lookup is routed by the Firecrawl MCP server's own instructions."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
