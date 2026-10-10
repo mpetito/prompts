@@ -72,14 +72,16 @@ Run `thread.sh decisions`, then reply in this order and nothing else unless aske
 
 ## 4. When the owner is away
 
-Confirm the return time, then send each thread
+Confirm the return time. Before a long absence (overnight or longer), first rotate every thread,
+idle ones included (section 5), so each starts the absence on a fresh context; tell the owner in
+one clause. Then send each thread
 `STEER: owner away until <UTC>; apply defaults at their deadlines; owner-before items wait`.
 Send the owner nothing while they are away; keep the digest for their return.
 
 ## 5. Rotate a thread
 
 Replace a thread after a phase ends, when it reports a compaction or a meter at 70% or more, or
-before a long absence.
+before a long absence (section 4).
 A message cannot `/compact` a thread; rotation is the only way to reset its context.
 
 1. Send `ROTATE`.

@@ -76,8 +76,8 @@
       ],
       "expected_behavior": [
         "The owner is told a message cannot compact another session; the thread is rotated instead",
-        "ROTATE goes to shopfront-api, and thread.sh rotate runs only after its STATUS: rotating arrives",
-        "Both threads are told the owner is away until 09:00 and that defaults apply at their deadlines"
+        "Both threads are rotated before the overnight absence, the idle shopfront-web one included: ROTATE goes to each, and each thread.sh rotate runs only after that thread's STATUS: rotating arrives",
+        "After the rotations, both threads are told the owner is away until 09:00 and that defaults apply at their deadlines"
       ],
       "assertions": [
         {
@@ -96,6 +96,11 @@
           "pattern": "thread\\.sh rotate shopfront-api"
         },
         {
+          "name": "rotates-idle-web-before-absence",
+          "type": "regex",
+          "pattern": "(?s)SendMessage to shopfront-web:.{0,200}?ROTATE.*thread\\.sh rotate shopfront-web"
+        },
+        {
           "name": "away-steer",
           "type": "regex",
           "pattern": "(?i)STEER:[^\\n]{0,120}away"
@@ -105,8 +110,9 @@
           "type": "judge",
           "rubric": [
             "The reply explains in one or two sentences why /compact cannot be sent and what happens instead",
-            "thread.sh rotate is described as waiting for the thread's STATUS: rotating, not run immediately after ROTATE",
-            "The away steer says defaults apply at their deadlines and owner-before items wait",
+            "Both threads are rotated before the overnight absence, the idle shopfront-web one included, and the reply mentions that in at most a clause",
+            "thread.sh rotate is described as waiting for each thread's STATUS: rotating, not run immediately after ROTATE",
+            "The away steer goes to the threads after rotation and says defaults apply at their deadlines and owner-before items wait",
             "The reply to the owner is short"
           ]
         }
