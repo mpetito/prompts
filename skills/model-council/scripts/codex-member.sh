@@ -29,8 +29,13 @@ esac
 [ -f "$prompt" ] || { echo "no prompt at $prompt" >&2; exit 1; }
 command -v codex >/dev/null || { echo "codex is not on PATH" >&2; exit 1; }
 mkdir -p "$(dirname "$out")"
-repo=$(realpath "$repo"); prompt=$(realpath "$prompt"); out=$(realpath -m "$out")
+# -s keeps a symlinked answer path as the link itself; the script then refuses it below.
+repo=$(realpath "$repo"); prompt=$(realpath "$prompt"); out=$(realpath -s -m "$out")
 events=${out%.md}.jsonl
+# Only the member's own regular files are removed or written, never a symlink's target or anything else.
+for f in "$out" "$events" "${out%.md}.log"; do
+  if [ -L "$f" ] || { [ -e "$f" ] && [ ! -f "$f" ]; }; then echo "$f is a symlink or not a regular file; refusing" >&2; exit 1; fi
+done
 rm -f "$out"  # a stale answer from an earlier run must not survive this one
 
 # Read-only on both paths. `codex exec resume` takes no --sandbox or --cd, so the sandbox is also a config

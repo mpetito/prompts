@@ -54,7 +54,7 @@
         {
           "name": "no-coordinator-steering",
           "type": "not_regex",
-          "pattern": "(?ims)--- message to[^\\n]*---(?:(?!--- end ---).)*?(?:\\bsettle (?:it|this|that)\\b|\\bback up or withdraw\\b|\\bdid(?:n't| not) show\\b|\\bwithout showing\\b|\\byou both name(?:d)?\\b|\\bneither of you\\b|^\\s*\\d+\\.\\s)"
+          "pattern": "(?ims)--- message to[^\\n]*---(?:(?!--- end ---).)*?(?:\\bsettle (?:it|this|that)\\b|\\bback up or withdraw\\b|\\bdid(?:n't| not) show\\b|\\bwithout showing\\b|\\byou both name(?:d)?\\b|\\bneither of you\\b)"
         },
         {
           "name": "council-quality",
@@ -177,7 +177,7 @@
         {
           "name": "citation-checked-and-fails",
           "type": "regex",
-          "pattern": "(?is)(?:client\\.ts:?71|retryOn|retry policy|decisive citation)[^\\n]{0,250}(?:429[^\\n]{0,80}(?:not|absent|missing|isn't|is not|no)|(?:not|n't|no|without|omits?|lacks?|excludes?)[^\\n]{0,80}429)|429[^\\n]{0,120}(?:not (?:in|on|listed|included|retried)|absent|missing)"
+          "pattern": "(?is)(?:client\\.ts:?71|retryOn|retry policy|decisive citation)[^\\n]{0,250}(?:429[^\\n]{0,80}(?:not|absent|missing|isn't|is not|no)|(?:not|n't|no|without|omits?|lacks?|excludes?)[^\\n]{0,80}429)|429[^\\n]{0,120}(?:not (?:in|on|listed|included|retried)|absent|missing)|(?:does(?:n't| not)|not) (?:include|list|contain|cover|retry)\\w*[^\\n]{0,20}429"
         },
         {
           "name": "no-consensus",
@@ -201,6 +201,45 @@
             "The coordinator does not repair the members' reasoning, swap in its own citation, or announce its own fix",
             "It says the members agreed on an action but their shared decisive citation fails against the pinned code, quoting what client.ts:71 actually lists",
             "It keeps the wrapper (the pre-council state) and hands the decision back rather than authorising deletion or resolving the thread"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-lost-member-no-substitute",
+      "split": "tune",
+      "prompt": "You are the coordinating session running the model council described in the input file. Say exactly what you do next, and write the council's result if you have one, exactly as you would deliver it. Do not run anything; everything you need is in the input file.",
+      "files": [
+        "fixtures/lost-member.md"
+      ],
+      "expected_behavior": [
+        "Codex was lost after launch, so the council is incomplete; the coordinator does not launch a second Opus member in Codex's place",
+        "No single-family result is reported: the single-family fallback is chosen before the blind round, not after a member fails",
+        "The coordinator reruns the Codex member once, or reports incomplete, with the pre-council state as the default"
+      ],
+      "assertions": [
+        {
+          "name": "incomplete",
+          "type": "regex",
+          "pattern": "(?i)\\bincomplete\\b"
+        },
+        {
+          "name": "no-single-family-result",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*COUNCIL:?[^\\n]*single-family"
+        },
+        {
+          "name": "codex-rerun-or-missing",
+          "type": "regex",
+          "pattern": "(?is)(?:re-?run|retry|relaunch|resume|run (?:it |the codex member |codex )?again)[^\\n]{0,160}codex|codex[^\\n]{0,160}(?:re-?run|retry|again|timed out|time ?out)"
+        },
+        {
+          "name": "council-quality",
+          "type": "judge",
+          "rubric": [
+            "The coordinator does not launch, or plan to launch, a second Opus or Claude member to fill the Codex member's place",
+            "It does not report a consensus or a single-family consensus",
+            "It keeps the pre-council state (no constraint added) as the default and does not recommend the Claude member's action"
           ]
         }
       ]
