@@ -97,6 +97,35 @@ config_file() {
   return 1
 }
 
+session_config() {
+  # session_config <path> <coordination worktree root>: true for files in the coordination worktree that configure
+  # the thread's own session: project settings, agents, skills, commands and hooks under .claude/, .mcp.json and
+  # CLAUDE.md. A project agent named orchestrator would replace the one that carries these hooks.
+  case "$1" in
+    "$2/.claude"|"$2/.claude/"*|"$2/.mcp.json"|"$2/CLAUDE.md"|"$2/CLAUDE.local.md") return 0 ;;
+  esac
+  return 1
+}
+
+build_worktree() {
+  # build_worktree <path> <coordination worktree root>: true when <path> is inside one of the repository's
+  # registered worktrees (the lanes, a subagent's nested worktree). The caller has already excluded the owner's.
+  local tree
+  tree=$(worktree_of "$1")
+  [ -n "$tree" ] || return 1
+  git -C "$2" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | xargs -r -d '\n' realpath -m -- \
+    | grep -qxF -- "$tree"
+}
+
+scratch_path() {
+  # scratch_path <path>: true under a temp folder (/tmp, /var/tmp, $TMPDIR), outside the home folder.
+  local home tmpdir
+  home=$(realpath -m -- "$HOME"); tmpdir=$(realpath -m -- "${TMPDIR:-/tmp}")
+  case "$1/" in "$home/"*) return 1 ;; esac
+  case "$1/" in /tmp/*|/var/tmp/*|"$tmpdir/"*) return 0 ;; esac
+  return 1
+}
+
 worktree_of() {
   # worktree_of <path>: the root of the git worktree holding <path> (which may not exist yet), or nothing.
   local d

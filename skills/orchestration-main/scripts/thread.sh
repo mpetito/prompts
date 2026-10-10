@@ -76,31 +76,39 @@ brief_text() { printf 'MAIN: %s\nSTATE: %s\n\n%s' "$1" "$2" "$3"; }
 main_socket() { [ -z "${CLAUDE_CODE_MESSAGING_SOCKET:-}" ] || printf 'uds:%s' "$CLAUDE_CODE_MESSAGING_SOCKET"; }
 main_copy() { printf '%s/records/%s.md' "$home" "$(printf '%s' "$1" | md5sum | cut -c1-16)"; }
 publish_record() {
-  # publish_record <worktree>: copy MAIN's record over the worktree's, undoing any change made there.
-  mkdir -p "$1/.orchestration"
-  cp "$(main_copy "$1")" "$1/.orchestration/thread.md.tmp" && mv "$1/.orchestration/thread.md.tmp" "$1/.orchestration/thread.md"
+  # publish_record <worktree>: copy MAIN's record over the worktree's, undoing any change made there. The folder is
+  # the thread's, so nothing in it is followed: a symlinked .orchestration is refused, the copy goes to a fresh
+  # mktemp file, and mv replaces whatever entry thread.md is, a symlink included, rather than writing through it.
+  local dir="$1/.orchestration" tmp
+  [ ! -L "$dir" ] || fail "$dir is a symlink; refusing to write MAIN's record through it"
+  mkdir -p "$dir"
+  tmp=$(mktemp "$dir/.thread.md.XXXXXX")
+  cat "$(main_copy "$1")" > "$tmp"
+  mv -f "$tmp" "$dir/thread.md"
 }
 write_record() {
   # write_record <worktree> <main name> <checkout> <base> <base ref> <lane base> <landing>
-  local copy
+  local copy tmp
   copy=$(main_copy "$1")
   mkdir -p "$(dirname "$copy")"
+  tmp=$(mktemp "$copy.XXXXXX")
   printf '%s\n' "# Thread record, written by MAIN's thread.sh (launch, rotate, adopt). The thread reads it and never edits it." \
     "MAIN: $2" "MAIN-SOCKET: $(main_socket)" "CHECKOUT: $3" "BASE: $4" "BASE-REF: $5" "LANE-BASE: $6" "LANDING: $7" \
-    "UPDATED: $(utc_now)" > "$copy.tmp"
-  mv "$copy.tmp" "$copy"
+    "UPDATED: $(utc_now)" > "$tmp"
+  mv -f "$tmp" "$copy"
   publish_record "$1"
 }
 set_main() {
   # set_main <worktree> <main name> <checkout>: point MAIN's record at this session and publish it; a thread started
   # before records existed gets one with what the registry knows, and no base or landing mode.
-  local copy
+  local copy tmp
   copy=$(main_copy "$1")
   if [ ! -f "$copy" ]; then write_record "$1" "$2" "$3" "" "" "" ""; return 0; fi
+  tmp=$(mktemp "$copy.XXXXXX")
   awk -v m="$2" -v s="$(main_socket)" -v u="$(utc_now)" '
     /^MAIN:/ { print "MAIN: " m; next } /^MAIN-SOCKET:/ { print "MAIN-SOCKET: " s; next }
-    /^UPDATED:/ { print "UPDATED: " u; next } { print }' "$copy" > "$copy.tmp"
-  mv "$copy.tmp" "$copy"
+    /^UPDATED:/ { print "UPDATED: " u; next } { print }' "$copy" > "$tmp"
+  mv -f "$tmp" "$copy"
   publish_record "$1"
 }
 # record_field <worktree> <key>: a field from MAIN's own copy of the thread's record.

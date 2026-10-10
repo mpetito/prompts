@@ -34,7 +34,7 @@ if printf '%s' "$cmd" | grep -Eq "${at}rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^
 fi
 # Writing configuration or the thread record from the shell: the rule guard-writes applies to Edit and Write. A
 # guardrail against mistakes, not a sandbox: it looks for a write verb and one of those paths in the same command.
-config_paths='(\.orchestration/thread\.md|\.orchestration/(threads\.tsv|records/)|\.claude/settings(\.local)?\.json|\.claude\.json|\.codex/)'
+config_paths='(\.orchestration/thread\.md|\.orchestration/(threads\.tsv|records/)|\.claude/settings(\.local)?\.json|\.claude/(agents|skills|commands|hooks)/|\.claude\.json|\.mcp\.json|\.codex/)'
 write_verbs='(>|(^|[^[:alnum:]_-])(tee|cp|mv|rm|ln|install|truncate|chmod)[[:space:]]|sed[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-i)'
 if printf '%s' "$cmd" | grep -Eq "$config_paths" && printf '%s' "$cmd" | grep -Eq "$write_verbs"; then
   deny "This command writes configuration for Claude Code, Codex or this orchestration (settings, the registry, the thread record). Neither the thread nor its workers change it: send MAIN the diff, and MAIN applies it once the owner approves. Read the record with state.sh main or state.sh thread <key>."

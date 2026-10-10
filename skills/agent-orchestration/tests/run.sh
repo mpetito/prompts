@@ -322,7 +322,8 @@ bash_note 'while ! curl -s localhost; do sleep 2; done' | advised 'loops on slee
 bash_note 'pkill -f vite' false worker-1 | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null || fail "guard-bash let a worker pkill"
 bash_note 'git worktree remove ../wt' false worker-1 | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'plain directory' || fail "guard-bash did not point a worker at plain-directory copies"
 for c in 'echo MAIN: x > .orchestration/thread.md' "sed -i s/a/b/ ~/.claude/settings.json" 'cp x ~/.orchestration/records/a.md' \
-         'tee -a .claude/settings.local.json < x' 'mv new.toml ~/.codex/config.toml'; do
+         'tee -a .claude/settings.local.json < x' 'mv new.toml ~/.codex/config.toml' 'echo {} > .mcp.json' \
+         'cp a.md .claude/agents/orchestrator.md'; do
   bash_note "$c" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null || fail "guard-bash let a shell command write configuration: $c"
 done
 for c in 'cat .orchestration/thread.md' 'grep MAIN .orchestration/thread.md' 'jq . ~/.claude/settings.json'; do
@@ -331,14 +332,14 @@ done
 jq -n '{tool_input:{command:"sleep 45"}}' | "$here/hooks/guard-bash.sh" | advised 'sleeps 45 s' || fail "guard-bash should advise on a foreground sleep when the input has no cwd"
 
 # --- hooks fixture: the owner's checkout, a coordination worktree, a lane worktree, a nested worktree -----------
-git init -q -b main "$tmp/gw/app"
-gwapp=$(realpath "$tmp/gw/app")
+git init -q -b main "$HOME/gw/app"
+gwapp=$(realpath "$HOME/gw/app")
 (cd "$gwapp" && printf 'x\n' > a.txt && git add . && git commit -qm init)
 printf '.orchestration/\n' >> "$gwapp/.git/info/exclude"
-git -C "$gwapp" worktree add -q "$tmp/gw/app-orch-b" -b orchestration/b
-git -C "$gwapp" worktree add -q "$tmp/gw/app-wt-lane-a" -b lane-a
+git -C "$gwapp" worktree add -q "$HOME/gw/app-orch-b" -b orchestration/b
+git -C "$gwapp" worktree add -q "$HOME/gw/app-wt-lane-a" -b lane-a
 git -C "$gwapp" worktree add -q "$gwapp/.claude/worktrees/agent-x" -b agent-x
-gwc=$(realpath "$tmp/gw/app-orch-b"); gwl=$(realpath "$tmp/gw/app-wt-lane-a"); gwn="$gwapp/.claude/worktrees/agent-x"
+gwc=$(realpath "$HOME/gw/app-orch-b"); gwl=$(realpath "$HOME/gw/app-wt-lane-a"); gwn="$gwapp/.claude/worktrees/agent-x"
 mkdir -p "$gwc/.orchestration" "$gwc/sub"
 printf '# state\n' > "$gwc/.orchestration/state.md"
 printf '%s\n' '# record' 'MAIN: Main one' "MAIN-SOCKET: uds:$tmp/main-1.sock" "CHECKOUT: $gwapp" > "$gwc/.orchestration/thread.md"
@@ -358,10 +359,24 @@ writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes allowed the owner's 
 writes "$gwc" "$gwapp/new/dir/b.txt" | denied || fail "guard-writes allowed a new folder in the owner's checkout"
 writes "$gwc" "../app/a.txt" | denied || fail "guard-writes allowed a relative path into the owner's checkout"
 writes "$gwc" "$gwapp/a.txt" | reason | grep -q "owner's checkout, $gwapp" || fail "guard-writes reason did not name the owner's checkout"
-writes "$gwc" "$gwl/src/app.ts" | noted 'outside your coordination worktree' || fail "guard-writes should advise, not refuse, a lane worktree"
-writes "$gwc" "/etc/hosts" notebook_path | noted 'outside your coordination worktree' || fail "guard-writes should advise on a notebook outside the worktree"
-writes "$gwc" "$gwc/../app-orch-b-evil/x" | noted 'outside your coordination worktree' || fail "guard-writes took a sibling with a shared prefix for its worktree"
-writes "$gwc" "$gwn/x.ts" | noted 'outside your coordination worktree' || fail "guard-writes took a nested worktree for the owner's checkout"
+writes "$gwc" "$gwl/src/app.ts" | noted "in a lane's worktree" || fail "guard-writes should advise, not refuse, a lane worktree"
+writes "$gwc" "/etc/hosts" notebook_path | denied || fail "guard-writes allowed a notebook outside the build"
+writes "$gwc" "$gwc/../app-orch-b-evil/x" | denied || fail "guard-writes took a sibling with a shared prefix for its worktree"
+writes "$gwc" "/etc/hosts" | reason | grep -q 'outside this build' || fail "guard-writes did not say why a path outside the build was refused"
+for f in "$HOME/.bashrc" "$HOME/.claude/skills/new/SKILL.md" "$HOME/.agents/skills/x/SKILL.md" "$HOME/.gitconfig"; do
+  writes "$gwc" "$f" | denied || fail "guard-writes let the thread write $f"
+  AGENT=w1 writes "$gwc" "$f" | denied || fail "guard-writes let a worker write $f"
+done
+mkdir -p "$tmp/scratch"
+[ -z "$(writes "$gwc" "$tmp/scratch/x.md")" ] || fail "guard-writes noted a write to a temp folder"
+[ -z "$(AGENT=w1 writes "$gwc" "$tmp/scratch/x.md")" ] || fail "guard-writes noted a worker's write to a temp folder"
+for f in "$gwc/.claude/agents/orchestrator.md" "$gwc/.claude/skills/x/SKILL.md" "$gwc/.mcp.json" "$gwc/CLAUDE.md"; do
+  writes "$gwc" "$f" | denied || fail "guard-writes let the thread write its own session's config: $f"
+  AGENT=w1 writes "$gwc" "$f" | denied || fail "guard-writes let a worker write the thread's session config: $f"
+done
+[ -z "$(writes "$gwc" "$gwc/docs/plan.md")" ] || fail "guard-writes noted a plain file in the coordination worktree"
+writes "$gwc" "$gwl/.claude/agents/x.md" | noted 'lane' || fail "guard-writes treated a lane's .claude like the thread's own"
+writes "$gwc" "$gwn/x.ts" | noted "in a lane's worktree" || fail "guard-writes took a nested worktree for the owner's checkout"
 [ -z "$(AGENT=w1 writes "$gwc" "$gwl/src/app.ts")" ] || fail "guard-writes noted a worker in its lane worktree"
 [ -z "$(AGENT=w1 writes "$gwc" "$gwn/x.ts")" ] || fail "guard-writes noted a worker in a nested worktree"
 AGENT=w1 writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes let a worker write the owner's checkout"
@@ -370,7 +385,7 @@ AGENT=w1 writes "$gwc" "$gwapp/a.txt" | reason | grep -q 'Workers edit only thei
 CLAUDE_PROJECT_DIR="$gwc" writes "$gwapp" "$gwapp/a.txt" | denied || fail "guard-writes trusted a cwd moved into the owner's checkout"
 # A repository made inside the owner's checkout is not one of its worktrees, so it is still the checkout.
 git init -q "$gwapp/inner"
-writes "$gwc" "$gwapp/inner/x.ts" | denied || fail "guard-writes let a nested git init escape the owner's checkout"
+writes "$gwc" "$gwapp/inner/x.ts" | reason | grep -q "in the owner's checkout" || fail "guard-writes let a nested git init escape the owner's checkout"
 AGENT=w1 writes "$gwc" "$gwapp/inner/x.ts" | denied || fail "guard-writes let a worker into a nested repository in the owner's checkout"
 # When git cannot place a path, it counts as inside.
 ( . "$here/scripts/lib.sh"; worktree_of() { :; }; in_checkout "$gwn/x.ts" "$gwapp" ) || fail "in_checkout failed open when git could not place the path"
@@ -587,6 +602,17 @@ sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$wtc/.orchestration/thread.m
 cmp -s "$(copy_of "$wtc")" "$wtc/.orchestration/thread.md" || fail "thread.sh adopt did not restore the record"
 for t in t-a-r2 t-b2 t-d t-s t-s2; do "$thread" adopt "$t" --main 'Main two' >/dev/null; done
 [ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check did not print OK with nothing to catch up on"
+# Publishing the record never writes through a link the thread planted.
+wtd="$tmp/proj/app-orch-d"
+printf 'victim\n' > "$tmp/victim1"; printf 'victim\n' > "$tmp/victim2"
+ln -sf "$tmp/victim1" "$wtd/.orchestration/thread.md.tmp"
+rm -f "$wtd/.orchestration/thread.md"; ln -s "$tmp/victim2" "$wtd/.orchestration/thread.md"
+"$thread" adopt t-d --main 'Main two' >/dev/null
+[ "$(cat "$tmp/victim1")" = victim ] && [ "$(cat "$tmp/victim2")" = victim ] || fail "thread.sh wrote MAIN's record through a symlink"
+[ -f "$wtd/.orchestration/thread.md" ] && [ ! -L "$wtd/.orchestration/thread.md" ] || fail "thread.sh left thread.md a symlink"
+mv "$wtd/.orchestration" "$tmp/moved-orch"; ln -s "$tmp/moved-orch" "$wtd/.orchestration"
+"$thread" adopt t-d --main 'Main two' | grep -q 'is a symlink; refusing' || fail "thread.sh wrote into a symlinked .orchestration"
+rm "$wtd/.orchestration"; mv "$tmp/moved-orch" "$wtd/.orchestration"
 
 # --- land-local.sh -------------------------------------------------------------------------------------------
 git -C "$app" worktree add -q "$tmp/proj/app-wt-l1" -b lane/l1 orchestration/c

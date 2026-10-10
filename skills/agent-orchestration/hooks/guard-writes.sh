@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Edit, Write, MultiEdit and NotebookEdit in an orchestration thread and in the workers it
-# starts (a worker's input carries agent_id). For both it refuses two things: a write into the owner's checkout,
-# which may hold the owner's uncommitted work, and a write to configuration (Claude Code or Codex settings, the
-# orchestration registry, the thread record). The thread writing anywhere else outside its coordination worktree,
-# such as a lane worktree, goes ahead with advice; a worker passes silently.
+# starts (a worker's input carries agent_id). Writes go to an allowlist: the coordination worktree (except the
+# files that configure the thread's own session), the repository's other registered worktrees (the lanes) and temp
+# folders. Refused for both: the owner's checkout, which may hold the owner's uncommitted work; configuration
+# (settings anywhere, the orchestration registry, the thread record); and everything else, such as the home
+# folder. The thread writing in a lane's worktree goes ahead with advice; a worker passes silently.
 # The session is identified from the folder it started in ($CLAUDE_PROJECT_DIR), so a cd changes nothing. A path
 # counts as the owner's checkout unless git places it in one of the repository's linked worktrees nested there.
 set -u
@@ -36,6 +37,17 @@ while IFS= read -r owner; do
   fi
   deny "$target is in the owner's checkout, $owner, which may hold the owner's uncommitted work. Brief a worker to make the change in its lane worktree, or send MAIN the diff for the owner to apply."
 done <<< "$owners"
-[ -z "$worker" ] || exit 0
-case "$target/" in "$top/"*) exit 0 ;; esac
-advise "You wrote $target, outside your coordination worktree, $top. If it belongs to a lane, that lane's worker owns it: a change there usually goes to the worker as a ruling, so it lands with the worker's tests and review. A deliberate small fix is fine; record it with state.sh log."
+case "$target/" in
+  "$top/"*)
+    for p in "$raw" "$target"; do
+      session_config "$p" "$top" \
+        && deny "$p configures the thread's own session (project settings, agents, skills, hooks, .mcp.json or CLAUDE.md in the coordination worktree). Neither the thread nor its workers change it: send MAIN the diff for the owner."
+    done
+    exit 0 ;;
+esac
+if build_worktree "$target" "$top"; then
+  [ -z "$worker" ] || exit 0
+  advise "You wrote $target, in a lane's worktree outside your coordination worktree, $top. That lane's worker owns it: a change there usually goes to the worker as a ruling, so it lands with the worker's tests and review. A deliberate small fix is fine; record it with state.sh log."
+fi
+scratch_path "$target" && exit 0
+deny "$target is outside this build: writes go to the coordination worktree, the repository's lane worktrees and temp folders. If the change belongs elsewhere, such as the owner's home folder or another repository, send MAIN the diff for the owner."
