@@ -15,7 +15,7 @@ The message formats, decisions and rotation are in the
 [protocol](../agent-orchestration/references/protocol.md); read it before the first launch. Write
 script paths out in full in every command:
 
-- `~/.claude/skills/orchestration-main/scripts/thread.sh` launches, rotates, stops and lists threads,
+- `~/.claude/skills/orchestration-main/scripts/thread.sh` launches, rotates, stops, lists and closes threads,
   lists every thread's open decisions, checks your inbox and address, and integrates a local build.
 - Each thread works in its own worktree beside the owner's checkout, `../<repo>-orch-<build>`,
   and keeps its state and decisions in that worktree's `.orchestration/`; you keep no copy. Your
@@ -120,12 +120,16 @@ with `--force`, which restarts it from its last RESUME, and tell the owner what 
 
 ## 7. Close
 
-On `STATUS: done`: tell the owner what to check and where the retrospective is, then
-`thread.sh stop <name>`. The build folder stays.
+On `STATUS: done`: tell the owner what to check and where the retrospective is.
 
 - With `landing=local`, ask the owner, then run `thread.sh integrate <name>`: it fast-forwards the
   base in the owner's checkout to `orchestration/<build>`, or merges when the base moved, and
   prints `INTEGRATED` or `FAILED <reason>`.
+- Then `thread.sh close <name>`. It refuses while the build branch holds work the base lacks
+  (integrate it, or land it by PR first), archives `.orchestration/` under
+  `$ORCHESTRATION_HOME/archive/`, removes the worktree, branch and session, and names any lane
+  worktrees left behind. A build the registry no longer lists, after a `stop`, closes with
+  `--worktree ../<repo>-orch-<build> --base <branch>`. `thread.sh stop` only pauses a thread.
 - Diffs the thread handed over for instructions, agent definitions, settings or links: apply them
   yourself once the owner approves them here. A decision you relayed is not the owner's consent
   for those, so the thread leaves them to you.

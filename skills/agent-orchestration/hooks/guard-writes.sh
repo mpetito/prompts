@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Edit, Write, MultiEdit and NotebookEdit in an orchestration thread and in the workers it
 # starts (a worker's input carries agent_id). Writes go to an allowlist: the coordination worktree (except the
-# files that configure the thread's own session), the repository's other registered worktrees (the lanes) and temp
-# folders. Refused for both: the owner's checkout, which may hold the owner's uncommitted work; configuration
+# files that configure the thread's own session), the build's worktrees (lanes beside the main checkout as
+# <repo>-wt-<lane>, subagents' under .claude/worktrees/) and temp folders. Refused for both: the owner's checkout, which may hold the owner's uncommitted work; configuration
 # (settings anywhere, the orchestration registry, the thread record); and everything else, such as the home
 # folder. The thread writing in a lane's worktree goes ahead with advice; a worker passes silently.
 # The session is identified from the folder it started in ($CLAUDE_PROJECT_DIR), so a cd changes nothing. A path
@@ -26,9 +26,10 @@ done
 [ -n "$top" ] || exit 0
 [ -f "$top/.orchestration/thread.md" ] || [ -f "$top/.orchestration/state.md" ] || exit 0
 if ! owners=$(owner_checkouts "$top"); then
-  case "$target/" in "$top/"*) exit 0 ;; esac
+  case "$target/" in "$top/"*) session_config "$target" "$top" || exit 0 ;; esac
   deny "git could not name the owner's checkout from $top, so a write outside the coordination worktree is refused."
 fi
+main=$(printf '%s\n' "$owners" | head -1)
 while IFS= read -r owner; do
   [ -n "$owner" ] && [ "$owner" != "$top" ] || continue
   in_checkout "$target" "$owner" || continue
@@ -37,6 +38,11 @@ while IFS= read -r owner; do
   fi
   deny "$target is in the owner's checkout, $owner, which may hold the owner's uncommitted work. Brief a worker to make the change in its lane worktree, or send MAIN the diff for the owner to apply."
 done <<< "$owners"
+# A subagent's worktree, under .claude/worktrees/ of the main checkout or of this worktree.
+if build_worktree "$target" "$top" "$main"; then
+  [ -z "$worker" ] || exit 0
+  advise "You wrote $target, in a lane's or a worker's worktree outside your coordination worktree, $top. Its worker owns it: a change there usually goes to the worker as a ruling, so it lands with the worker's tests and review. A deliberate small fix is fine; record it with state.sh log."
+fi
 case "$target/" in
   "$top/"*)
     for p in "$raw" "$target"; do
@@ -45,9 +51,5 @@ case "$target/" in
     done
     exit 0 ;;
 esac
-if build_worktree "$target" "$top"; then
-  [ -z "$worker" ] || exit 0
-  advise "You wrote $target, in a lane's worktree outside your coordination worktree, $top. That lane's worker owns it: a change there usually goes to the worker as a ruling, so it lands with the worker's tests and review. A deliberate small fix is fine; record it with state.sh log."
-fi
 scratch_path "$target" && exit 0
 deny "$target is outside this build: writes go to the coordination worktree, the repository's lane worktrees and temp folders. If the change belongs elsewhere, such as the owner's home folder or another repository, send MAIN the diff for the owner."

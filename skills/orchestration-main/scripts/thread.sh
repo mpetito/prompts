@@ -8,11 +8,14 @@
 #   thread.sh adopt <name> --main <your session name>
 #   thread.sh check [--all]
 #   thread.sh integrate <name>
+#   thread.sh close <name> | --worktree <coordination worktree> [--base <branch>] [--force]
 #   thread.sh list
 #   thread.sh decisions
 # launch, stop, rotate, adopt and integrate print one line: LAUNCHED <name> <id> base=<branch>@<sha> landing=<mode>,
 # STOPPED <name> <id>, ROTATED <old> -> <new> <id>, ADOPTED <name> main=<name> socket=<address>,
-# INTEGRATED <name> <branch>@<sha> (fast-forward|merge), or FAILED <reason> with exit 1. check prints MOVED and
+# INTEGRATED <name> <branch>@<sha> (fast-forward|merge), CLOSED <build> archive=<dir>, or FAILED <reason> with
+# exit 1. close ends a build: it refuses while the build branch holds work the base lacks, archives
+# .orchestration/ under $ORCHESTRATION_HOME/archive/, and removes the worktree, branch and session. check prints MOVED and
 # INBOX lines, or OK; list and decisions print one line per thread or item, or NONE.
 # The base defaults to the checkout's current branch. Landing is pr when the base is on origin with nothing
 # unpushed, else local: lanes merge into orchestration/<build>, and integrate brings that branch into the base.
@@ -30,7 +33,7 @@ resume_max_age_minutes=15
 home=${ORCHESTRATION_HOME:-$HOME/.orchestration}
 reg="$home/threads.tsv"
 fail() { echo "FAILED $*"; exit 1; }
-usage() { sed -n '2,24p' "$0" >&2; exit 1; }
+usage() { sed -n '2,27p' "$0" >&2; exit 1; }
 ensure_registry() {
   mkdir -p "$home"
   [ -f "$reg" ] || printf 'name\tid\tbuild\trepo\tworktree\tmain\tlaunched\n' > "$reg"
@@ -112,7 +115,12 @@ set_main() {
   publish_record "$1"
 }
 # record_field <worktree> <key>: a field from MAIN's own copy of the thread's record.
-record_field() { sed -n "s/^$2:[[:space:]]*//p" "$(main_copy "$1")" 2>/dev/null | head -1 | sed -E 's/[[:space:]]+$//'; }
+record_field() {
+  local copy
+  copy=$(main_copy "$1")
+  [ -f "$copy" ] || return 0
+  sed -n "s/^$2:[[:space:]]*//p" "$copy" | head -1 | sed -E 's/[[:space:]]+$//'
+}
 pick_base() {
   # pick_base <main checkout> <base branch> <requested landing or empty>: set base_ref and landing. origin/<base>
   # when the local branch has nothing unpushed (or is absent), else the local branch; landing follows: pr from
@@ -330,6 +338,62 @@ case "$cmd" in
       fail "merging $src into $base conflicts in: $conflicted"
     fi
     echo "INTEGRATED $1 $base@$(git -C "$checkout" rev-parse --short HEAD) ($how)" ;;
+  close)
+    name=""; wt=""; base=""; force=0
+    while [ $# -gt 0 ]; do
+      case $1 in
+        --worktree) need_value "$1" $#; wt=$(realpath -m -- "$2"); shift 2 ;;
+        --base) need_value "$1" $#; base=$2; shift 2 ;;
+        --force) force=1; shift ;;
+        -*) usage ;;
+        *) [ -z "$name" ] || usage; name=$1; shift ;;
+      esac
+    done
+    [ -n "$name" ] || [ -n "$wt" ] || usage
+    id=""
+    if [ -n "$name" ]; then
+      found=$(row_by 1 "$name"); [ -n "$found" ] || fail "no thread named $name in $reg; for a build the registry no longer lists, pass --worktree <coordination worktree>"
+      IFS=$'\t' read -r _ id _ _ wt _ _ <<< "$found"
+    fi
+    [ -d "$wt" ] || fail "no coordination worktree at $wt"
+    branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null) || fail "$wt has a detached HEAD; it is not a coordination worktree"
+    [[ $branch == orchestration/* ]] || fail "$wt is on $branch, not orchestration/<build>; it is not a coordination worktree"
+    build=${branch#orchestration/}
+    repo=$(dirname "$(realpath -m "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)")")
+    [ "$wt" = "$(dirname "$repo")/$(basename "$repo")-orch-$build" ] || fail "$wt is not $(basename "$repo")-orch-$build beside $repo"
+    [ ! -L "$wt/.orchestration" ] || fail "$wt/.orchestration is a symlink; refusing to archive through it"
+    [ -n "$base" ] || base=$(record_field "$wt" BASE)
+    landing=$(record_field "$wt" LANDING)
+    if [ "$force" = 0 ]; then
+      [ -z "$(git -C "$wt" status --porcelain --untracked-files=no)" ] || fail "$wt has uncommitted changes to tracked files; land them, or pass --force"
+      [ -n "$base" ] || fail "no record of $wt's base; pass --base <branch>, or --force"
+      ref="refs/heads/$base"
+      if [ "$landing" = pr ] || ! git -C "$repo" rev-parse --verify -q "$ref" >/dev/null; then
+        git -C "$repo" fetch -q origin 2>/dev/null || true; ref="refs/remotes/origin/$base"
+      fi
+      git -C "$repo" rev-parse --verify -q "$ref" >/dev/null || fail "no branch $base to compare $branch with; pass --base <branch>, or --force"
+      # Landed means an ancestor of the base, or, after a squash merge, every file the branch changed as it is on the base.
+      if ! git -C "$repo" merge-base --is-ancestor "$branch" "$ref"; then
+        fork=$(git -C "$repo" merge-base "$branch" "$ref"); unlanded=""
+        while IFS= read -r -d '' f; do
+          [ "$(git -C "$repo" rev-parse -q --verify "$branch:$f" || echo none)" = "$(git -C "$repo" rev-parse -q --verify "$ref:$f" || echo none)" ] \
+            || unlanded+="$f "
+        done < <(git -C "$repo" diff -z --name-only "$fork" "$branch")
+        [ -z "$unlanded" ] || fail "$branch holds work that ${ref#refs/*/} lacks in: $unlanded(integrate or land it, or pass --force)"
+      fi
+    fi
+    if [ -n "$id" ] && [ "$id" != pending ]; then claude_env claude stop "$id" >/dev/null 2>&1 || true; fi
+    archive="$home/archive/$build-$(date -u +%Y%m%dT%H%M%SZ)"
+    mkdir -p "$archive"
+    [ ! -d "$wt/.orchestration" ] || cp -a "$wt/.orchestration/." "$archive/"
+    [ ! -f "$(main_copy "$wt")" ] || mv "$(main_copy "$wt")" "$archive/thread.main.md"
+    git -C "$repo" worktree remove --force "$wt" || fail "git worktree remove $wt failed; the archive is at $archive"
+    git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
+    if [ -n "$id" ] && [ "$id" != pending ]; then claude_env claude rm "$id" >/dev/null 2>&1 || true; fi
+    [ -z "$name" ] || delete_row "$name"
+    rm -f "$home/seen/$(printf '%s' "$wt" | md5sum | cut -c1-16)"
+    lanes=$(git -C "$repo" worktree list --porcelain | sed -n "s#^worktree \($(dirname "$repo")/$(basename "$repo")-wt-[^/]*\)\$#\1#p" | tr '\n' ' ')
+    echo "CLOSED $build archive=$archive${lanes:+ lanes still present: $lanes}" ;;
   list)
     [ $# -eq 0 ] || usage
     rows=$(awk 'NR > 1' "$reg" 2>/dev/null || true)

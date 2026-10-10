@@ -43,8 +43,10 @@ resolve_state() {
 # home for MAIN's address (MAIN, MAIN-SOCKET), the owner's checkout (CHECKOUT) and the build's base and
 # landing mode (BASE, BASE-REF, LANE-BASE, LANDING).
 thread_field() {
-  # thread_field <coordination worktree root> <key>: print the value, or nothing.
-  sed -n "s/^$2:[[:space:]]*//p" "$1/.orchestration/thread.md" 2>/dev/null | head -1 | sed -E 's/[[:space:]]+$//'
+  # thread_field <coordination worktree root> <key>: print the value, or nothing. Never fails, so callers running
+  # under set -e and pipefail survive a missing record.
+  [ -f "$1/.orchestration/thread.md" ] || return 0
+  sed -n "s/^$2:[[:space:]]*//p" "$1/.orchestration/thread.md" | head -1 | sed -E 's/[[:space:]]+$//'
 }
 
 main_name() {
@@ -52,7 +54,8 @@ main_name() {
   # a state file written before the record existed.
   local name
   name=$(thread_field "$1" MAIN)
-  [ -n "$name" ] || name=$(sed -n 's/^MAIN:[[:space:]]*//p' "$1/.orchestration/state.md" 2>/dev/null | head -1 | sed -E 's/[[:space:]]+$//')
+  [ -n "$name" ] || [ ! -f "$1/.orchestration/state.md" ] \
+    || name=$(sed -n 's/^MAIN:[[:space:]]*//p' "$1/.orchestration/state.md" | head -1 | sed -E 's/[[:space:]]+$//')
   printf '%s' "$name"
 }
 
@@ -71,17 +74,22 @@ owner_checkouts() {
     [ -z "$dir" ] || realpath -m -- "$dir"; } | awk '!seen[$0]++'
 }
 
+registered_worktree() {
+  # registered_worktree <dir> <any worktree of the repository>: true when <dir> is one of the repository's worktrees.
+  git -C "$2" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | xargs -r -d '\n' realpath -m -- \
+    | grep -qxF -- "$1"
+}
+
 in_checkout() {
-  # in_checkout <target> <checkout>: true when <target> is inside <checkout> and is not inside one of the
-  # repository's own linked worktrees nested there, such as a subagent's under .claude/worktrees/. Fails closed:
-  # what git cannot place in a registered nested worktree counts as inside.
+  # in_checkout <target> <checkout>: true when <target> is inside <checkout> and not inside a subagent's worktree
+  # nested in it (a registered worktree under <checkout>/.claude/worktrees/). Fails closed: a path git cannot
+  # place there counts as inside, and so does any other worktree nested in the checkout, wherever registered.
   local tree
   case "$1/" in "$2/"*) ;; *) return 1 ;; esac
   tree=$(worktree_of "$1")
-  [ -n "$tree" ] && [ "$tree" != "$2" ] || return 0
-  case "$tree/" in "$2/"*) ;; *) return 0 ;; esac
-  git -C "$2" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | xargs -r -d '\n' realpath -m -- \
-    | grep -qxF -- "$tree" && return 1
+  [ -n "$tree" ] || return 0
+  case "$tree/" in "$2/.claude/worktrees/"?*) ;; *) return 0 ;; esac
+  registered_worktree "$tree" "$2" && return 1
   return 0
 }
 
@@ -91,7 +99,7 @@ config_file() {
   local orch
   orch=$(realpath -m -- "${ORCHESTRATION_HOME:-$HOME/.orchestration}")
   case "$1" in
-    */.claude/settings.json|*/.claude/settings.local.json|"$HOME/.claude.json"|"$HOME/.codex"|"$HOME/.codex/"*) return 0 ;;
+    */.claude/settings.json|*/.claude/settings.local.json|"$HOME/.claude.json"|*/.codex|*/.codex/*) return 0 ;;
     "$orch"|"$orch/"*|"$2/.orchestration/thread.md") return 0 ;;
   esac
   return 1
@@ -100,7 +108,8 @@ config_file() {
 session_config() {
   # session_config <path> <coordination worktree root>: true for files in the coordination worktree that configure
   # the thread's own session: project settings, agents, skills, commands and hooks under .claude/, .mcp.json and
-  # CLAUDE.md. A project agent named orchestrator would replace the one that carries these hooks.
+  # CLAUDE.md. A project agent named orchestrator would replace the one that carries these hooks. Subagents'
+  # worktrees under .claude/worktrees/ are not configuration; the caller checks them first.
   case "$1" in
     "$2/.claude"|"$2/.claude/"*|"$2/.mcp.json"|"$2/CLAUDE.md"|"$2/CLAUDE.local.md") return 0 ;;
   esac
@@ -108,13 +117,20 @@ session_config() {
 }
 
 build_worktree() {
-  # build_worktree <path> <coordination worktree root>: true when <path> is inside one of the repository's
-  # registered worktrees (the lanes, a subagent's nested worktree). The caller has already excluded the owner's.
-  local tree
+  # build_worktree <path> <coordination worktree root> <main checkout>: true when <path> is inside a worktree the
+  # build uses: a lane's, beside the main checkout as <repo>-wt-<lane>, or a subagent's, under .claude/worktrees/ of
+  # the main checkout or of the coordination worktree. Both the place and git's registration count: the thread can
+  # register a worktree anywhere with git worktree add, so registration alone grants nothing.
+  local tree lanes
   tree=$(worktree_of "$1")
   [ -n "$tree" ] || return 1
-  git -C "$2" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p' | xargs -r -d '\n' realpath -m -- \
-    | grep -qxF -- "$tree"
+  lanes="$(dirname -- "$3")/$(basename -- "$3")-wt-"
+  case "$tree" in
+    "$lanes"?*) case "${tree#"$lanes"}" in */*) return 1 ;; esac ;;
+    "$3/.claude/worktrees/"?*|"$2/.claude/worktrees/"?*) ;;
+    *) return 1 ;;
+  esac
+  registered_worktree "$tree" "$2"
 }
 
 scratch_path() {
