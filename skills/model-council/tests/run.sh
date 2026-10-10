@@ -65,6 +65,17 @@ printf 'stance: initial\ndisposition: defect\naction: x\ndecisive: a.ts:1\n' > "
 [[ $(MOCK_CODEX=silent member --model m1) == "MEMBER malformed"* ]] || fail "a stale answer file was read as this run's answer"
 [ -e "$tmp/out/a.md" ] && fail "a stale answer file survived the run"
 
+# A symlinked answer, log or event path is refused: its target is neither removed nor written beside.
+mkdir -p "$tmp/keep" "$tmp/links"
+for suffix in md log jsonl; do
+  printf 'keep\n' > "$tmp/keep/target.$suffix"; rm -f "$tmp/links"/*
+  ln -s "$tmp/keep/target.$suffix" "$tmp/links/a.$suffix"
+  MOCK_CODEX=fail "$here/scripts/codex-member.sh" "$tmp/repo" "$tmp/prompt.md" "$tmp/links/a.md" --model m1 >/dev/null 2>&1 \
+    && fail "a symlinked .$suffix path was not refused"
+  [ "$(cat "$tmp/keep/target.$suffix")" = keep ] || fail "the target of a symlinked .$suffix path was changed or removed"
+done
+ls "$tmp/keep" | grep -qvE '^target\.(md|log|jsonl)$' && fail "files were written beside a symlink target"
+
 # --- tally.sh ------------------------------------------------------------------------------------------------------
 ans() { printf 'Some reasoning.\nstance: %s\ndisposition: %s\naction: %s\ndecisive: src/a.ts:1\ncrux: x\n' "$2" "$3" "$4" > "$tmp/$1"; }
 tally() { "$here/scripts/tally.sh" "$tmp/a" "$tmp/b" --exchange "$1"; }
