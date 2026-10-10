@@ -9,6 +9,7 @@
 set -u
 here=$(dirname "$0")
 . "$here/../scripts/lib.sh"
+require_jq
 input=$(cat)
 [ -z "$(printf '%s' "$input" | jq -r '.agent_id // empty')" ] || exit 0
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty')

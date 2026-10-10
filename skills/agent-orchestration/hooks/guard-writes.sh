@@ -9,6 +9,7 @@
 # counts as the owner's checkout unless git places it in one of the repository's linked worktrees nested there.
 set -u
 . "$(dirname "$0")/../scripts/lib.sh"
+require_jq
 input=$(cat)
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty')
 path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
@@ -23,8 +24,12 @@ for p in "$raw" "$target"; do
     deny "$p configures Claude Code, Codex or this orchestration (settings, the registry, the thread record). Neither the thread nor its workers edit it: send MAIN the diff, and MAIN applies it once the owner approves."
   fi
 done
-[ -n "$top" ] || exit 0
-[ -f "$top/.orchestration/thread.md" ] || [ -f "$top/.orchestration/state.md" ] || exit 0
+# These hooks run only in orchestrator sessions, so they enforce whether or not the thread's files are present: a
+# thread could delete them. Without a git root to anchor the allowlist, only temp folders are open.
+if [ -z "$top" ]; then
+  scratch_path "$target" && exit 0
+  deny "git could not find this session's coordination worktree, so only temp folders take writes; $target is not one."
+fi
 if ! owners=$(owner_checkouts "$top"); then
   case "$target/" in "$top/"*) session_config "$target" "$top" || exit 0 ;; esac
   deny "git could not name the owner's checkout from $top, so a write outside the coordination worktree is refused."

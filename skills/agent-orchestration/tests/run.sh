@@ -125,6 +125,10 @@ printf '%s\n' '# record' 'MAIN: Main session one' 'MAIN-SOCKET: uds:/tmp/main-1.
 [ "$("$here/scripts/state.sh" main --socket)" = uds:/tmp/main-1.sock ] || fail "state.sh main --socket did not read MAIN-SOCKET"
 [ "$("$here/scripts/state.sh" thread LANE-BASE)" = orchestration/b1 ] || fail "state.sh thread did not read a record field"
 "$here/scripts/state.sh" thread NOPE >/dev/null 2>&1 && fail "state.sh thread printed a missing field"
+"$here/scripts/state.sh" thread "x//;e touch $tmp/pwned;#" >/dev/null 2>&1 || true
+"$here/scripts/state.sh" thread "x/;w $tmp/pwned2
+#" >/dev/null 2>&1 || true
+[ ! -e "$tmp/pwned" ] && [ ! -e "$tmp/pwned2" ] || fail "state.sh thread ran a key as a sed script"
 "$here/scripts/state.sh" main --bogus >/dev/null 2>&1 && fail "state.sh main accepted an unknown option"
 "$here/scripts/state.sh" log "lane A launched" | grep -Eq "^logged $utc$" || fail "state.sh log printed the wrong line"
 tail -1 "$s1" | grep -Eq "^- $utc lane A launched$" || fail "state.sh log did not append to the Log section"
@@ -282,6 +286,20 @@ out=$("$here/scripts/finish-lane.sh" "$tmp/lane" "$tmp/archive")
 printf '%s' "$out" | grep -q 'archived ignored .eval-runs/' || fail "finish-lane.sh did not report the archived eval runs"
 [ ! -d "$tmp/lane" ] || fail "finish-lane.sh did not remove the worktree"
 printf '%s' "$out" | grep -q 'deleted branch lane-x' || fail "finish-lane.sh did not delete the lane branch"
+# A process still working in the lane stops the removal; --force overrides that check alone.
+git -C "$tmp/seed" worktree add -q "$tmp/lane2" -b lane-y
+(cd "$tmp/lane2" && exec sleep 30) & busy_pid=$!
+sleep 0.3
+"$here/scripts/finish-lane.sh" "$tmp/lane2" "$tmp/archive2" 2>&1 | grep -q "refusing: still running in $tmp/lane2: $busy_pid" || fail "finish-lane.sh removed a worktree a process still runs in"
+[ -d "$tmp/lane2" ] || fail "finish-lane.sh removed the busy worktree"
+"$here/scripts/finish-lane.sh" "$tmp/lane2" "$tmp/archive2" --force >/dev/null || fail "finish-lane.sh --force did not remove the worktree"
+kill "$busy_pid" 2>/dev/null || true; wait "$busy_pid" 2>/dev/null || true
+# When git can't list the ignored files, nothing is archived or removed.
+git -C "$tmp/seed" worktree add -q "$tmp/lane3" -b lane-z
+idx="$(git -C "$tmp/lane3" rev-parse --absolute-git-dir)/index"; cp "$idx" "$tmp/lane3.index.bak"; printf 'corrupt' > "$idx"
+"$here/scripts/finish-lane.sh" "$tmp/lane3" "$tmp/archive3" 2>&1 | grep -q 'git status failed in .*nothing was removed' || fail "finish-lane.sh carried on when git status failed"
+[ -d "$tmp/lane3" ] || fail "finish-lane.sh removed a worktree it could not list"
+cp "$tmp/lane3.index.bak" "$idx"
 
 # --- guard-bash.sh -------------------------------------------------------------------------------------------
 denies() { jq -n --arg c "$1" --argjson bg "${2:-false}" --arg cwd "${3:-$tmp}" '{cwd:$cwd,tool_input:{command:$c,run_in_background:$bg}}' \
@@ -294,6 +312,10 @@ denies 'rm -rf .orchestration/tmp' || fail "guard-bash should deny deleting a la
 denies 'rm -rf ../app-orch-b1/.orchestration/results/lane-a.md' || fail "guard-bash should deny deleting results"
 denies "rm -r $coord/.orchestration/briefs" || fail "guard-bash should deny deleting the briefs folder"
 denies "rm -r $coord/.orchestration/plan.md" && fail "guard-bash denied deleting a non-evidence file"
+denies 'rm -rf .orchestration' || fail "guard-bash should deny deleting the whole .orchestration folder"
+denies 'rm -rf ./.orchestration/' || fail "guard-bash should deny deleting .orchestration/ with a slash"
+denies 'rm .orchestration/state.md' || fail "guard-bash should deny deleting the state file"
+denies 'rm -f .orchestration/thread.md .orchestration/outbox.md' || fail "guard-bash should deny deleting the record and outbox"
 denies 'kill 1234' && fail "guard-bash denied kill by pid"
 denies 'git worktree add ../wt -b x' && fail "guard-bash denied git worktree add"
 denies 'echo pkill-safe-name' && fail "guard-bash denied a harmless word"
@@ -431,8 +453,27 @@ sed -i "s#^CHECKOUT: .*#CHECKOUT: $gwapp#" "$gwc/.orchestration/thread.md"
 sed -i '/^CHECKOUT:/d' "$gwc/.orchestration/thread.md"
 writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes did not fall back to the main checkout"
 printf 'CHECKOUT: %s\n' "$gwapp" >> "$gwc/.orchestration/thread.md"
-[ -z "$(writes "$tmp/plain" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from outside git"
-[ -z "$(writes "$tmp/nostate" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from a worktree with no state file"
+# The hooks run only in orchestrator sessions, so they hold without the thread's files, and outside git.
+writes "$tmp/plain" "$gwapp/a.txt" | denied || fail "guard-writes allowed a write from a session outside git"
+[ -z "$(writes "$tmp/plain" "$tmp/scratch/x.md")" ] || fail "guard-writes refused a temp folder from a session outside git"
+writes "$tmp/nostate" "$gwapp/a.txt" | denied || fail "guard-writes allowed a write from a worktree with no thread files"
+mv "$gwc/.orchestration" "$tmp/gwc-orch-aside"
+writes "$gwc" "$gwapp/a.txt" | reason | grep -q "in the owner's checkout, $gwapp" || fail "guard-writes stopped guarding once the thread's files were gone"
+mv "$tmp/gwc-orch-aside" "$gwc/.orchestration"
+# CHECKOUT comes from MAIN's copy of the record, which the thread can't reach, ahead of the worktree's.
+mrec="$ORCHESTRATION_HOME/records/$(printf '%s' "$gwc" | md5sum | cut -c1-16).md"
+mkdir -p "$(dirname "$mrec")"; printf 'CHECKOUT: %s\n' "$gwl" > "$mrec"
+writes "$gwc" "$gwl/src/app.ts" | reason | grep -q "in the owner's checkout, $gwl" || fail "guard-writes ignored MAIN's copy of the record"
+sed -i '/^CHECKOUT:/d' "$gwc/.orchestration/thread.md"
+writes "$gwc" "$gwl/src/app.ts" | denied || fail "guard-writes let the worktree record override MAIN's copy"
+printf 'CHECKOUT: %s\n' "$gwapp" >> "$gwc/.orchestration/thread.md"; rm -f "$mrec"
+# Without jq, the hooks refuse rather than read every field as empty.
+mkdir -p "$tmp/nojq"
+for t in bash git realpath sed awk md5sum cut dirname xargs grep cat tr head mktemp env python3; do ln -sf "$(command -v "$t")" "$tmp/nojq/$t"; done
+for h in guard-writes.sh guard-message.sh guard-bash.sh; do
+  jq -n --arg cwd "$gwc" '{cwd:$cwd,tool_input:{file_path:"/etc/hosts",to:"x",message:"m",command:"ls"}}' > "$tmp/in.json"
+  PATH="$tmp/nojq" bash "$here/hooks/$h" < "$tmp/in.json" | reason | grep -q 'jq is not installed' || fail "$h did not refuse without jq"
+done
 
 # --- guard-message.sh ----------------------------------------------------------------------------------------
 msg() { jq -n --arg cwd "$1" --arg to "$2" --arg m "$3" '{cwd:$cwd,tool_input:{to:$to,message:$m}}' | with_agent | "$here/hooks/guard-message.sh"; }

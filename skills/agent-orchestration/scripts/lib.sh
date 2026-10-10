@@ -42,11 +42,17 @@ resolve_state() {
 # written by MAIN's thread.sh (launch, rotate, adopt) and read by the thread's scripts and hooks. It is the one
 # home for MAIN's address (MAIN, MAIN-SOCKET), the owner's checkout (CHECKOUT) and the build's base and
 # landing mode (BASE, BASE-REF, LANE-BASE, LANDING).
+record_value() {
+  # record_value <file> <key>: the value of the first "<key>: value" line, trimmed, or nothing. The key is matched as
+  # plain text, never as a pattern or script, and a missing file prints nothing rather than failing, so callers
+  # under set -e and pipefail survive it.
+  [ -f "$1" ] || return 0
+  awk -v k="$2:" 'index($0, k) == 1 { v = substr($0, length(k) + 1); sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v); print v; exit }' "$1"
+}
+
 thread_field() {
-  # thread_field <coordination worktree root> <key>: print the value, or nothing. Never fails, so callers running
-  # under set -e and pipefail survive a missing record.
-  [ -f "$1/.orchestration/thread.md" ] || return 0
-  sed -n "s/^$2:[[:space:]]*//p" "$1/.orchestration/thread.md" | head -1 | sed -E 's/[[:space:]]+$//'
+  # thread_field <coordination worktree root> <key>: print the value, or nothing.
+  record_value "$1/.orchestration/thread.md" "$2"
 }
 
 main_name() {
@@ -54,8 +60,7 @@ main_name() {
   # a state file written before the record existed.
   local name
   name=$(thread_field "$1" MAIN)
-  [ -n "$name" ] || [ ! -f "$1/.orchestration/state.md" ] \
-    || name=$(sed -n 's/^MAIN:[[:space:]]*//p' "$1/.orchestration/state.md" | head -1 | sed -E 's/[[:space:]]+$//')
+  [ -n "$name" ] || name=$(record_value "$1/.orchestration/state.md" MAIN)
   printf '%s' "$name"
 }
 
@@ -63,14 +68,22 @@ main_name() {
 # ($CLAUDE_PROJECT_DIR, which a cd never moves), else of <cwd>.
 session_top() { toplevel "${CLAUDE_PROJECT_DIR:-$1}"; }
 
+main_record() {
+  # main_record <coordination worktree root>: MAIN's own copy of the thread record, which thread.sh keeps under
+  # $ORCHESTRATION_HOME/records/ out of the thread's reach (the hooks refuse writes there).
+  printf '%s/records/%s.md' "${ORCHESTRATION_HOME:-$HOME/.orchestration}" "$(printf '%s' "$1" | md5sum | cut -c1-16)"
+}
+
 owner_checkouts() {
   # owner_checkouts <coordination worktree root>: every checkout to protect, one per line: the repository's main
-  # checkout (the directory holding the common git dir), which the thread cannot redirect, and the CHECKOUT the
-  # record names when the owner works in a linked worktree.
+  # checkout (the directory holding the common git dir), which the thread cannot redirect, and the CHECKOUT in MAIN's
+  # copy of the record, for an owner working in a linked worktree. The worktree's copy is only a fallback, when MAIN
+  # keeps none: the thread can delete and rewrite that one.
   local common dir
   common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
   { dirname -- "$(realpath -m -- "$common")"
-    dir=$(thread_field "$1" CHECKOUT)
+    dir=$(record_value "$(main_record "$1")" CHECKOUT)
+    [ -n "$dir" ] || [ -f "$(main_record "$1")" ] || dir=$(thread_field "$1" CHECKOUT)
     [ -z "$dir" ] || realpath -m -- "$dir"; } | awk '!seen[$0]++'
 }
 
@@ -151,6 +164,15 @@ worktree_of() {
 }
 
 # Hook replies. advise adds a note beside the tool result and leaves the call, and its permission check, as they
-# were; deny refuses the call with the reason.
-advise() { jq -n --arg c "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$c}}'; exit 0; }
-deny() { jq -n --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'; exit 0; }
+# were; deny refuses the call with the reason. Neither needs jq, so a hook can still refuse when jq is missing.
+json_string() {
+  local s=$1
+  s=${s//\\/\\\\}; s=${s//\"/\\\"}; s=${s//$'\n'/\\n}; s=${s//$'\r'/\\r}; s=${s//$'\t'/\\t}
+  s=$(printf '%s' "$s" | tr -d '\000-\010\013\014\016-\037')
+  printf '"%s"' "$s"
+}
+advise() { printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":%s}}\n' "$(json_string "$1")"; exit 0; }
+deny() { printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":%s}}\n' "$(json_string "$1")"; exit 0; }
+# require_jq: the hooks read their input with jq; without it every field would read as empty and the hook would
+# allow everything, so refuse instead.
+require_jq() { command -v jq >/dev/null 2>&1 || deny "jq is not installed, so this orchestration hook cannot read the tool call; it refuses rather than allows. Install jq."; }

@@ -6,6 +6,8 @@
 # A command is matched only in command position (start of a line, after ; & | ( or $( , or after
 # `sh -c '`), so the same words inside a quoted string, a backtick span or a comment pass.
 set -u
+. "$(dirname "$0")/../scripts/lib.sh"
+require_jq
 input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 background=$(printf '%s' "$input" | jq -r '.tool_input.run_in_background // false')
@@ -15,10 +17,6 @@ worker=$(printf '%s' "$input" | jq -r '.agent_id // empty')
 foreground_sleep_limit=30
 # Lanes fail in confusing ways once /tmp runs out of inodes; 70% leaves room to clean up first.
 inode_warn_percent=70
-deny() {
-  jq -n --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
-  exit 0
-}
 at='(^|[;&|(]|\$\(|-c[[:space:]]+["'"'"'])[[:space:]]*(sudo[[:space:]]+)?'
 if printf '%s' "$cmd" | grep -Eq "${at}(pkill|killall)([[:space:]]|$)"; then
   deny "pkill and killall match by pattern or name across every lane on this machine, and have killed the caller's own shell and another lane's server. Stop a process by PID: find it with 'ss -ltnp' or 'pgrep -a', read its command line, then 'kill <pid>'."
@@ -29,8 +27,8 @@ fi
 # Lane evidence lives in the coordination worktree's .orchestration/briefs and results, a lane worktree keeps its
 # scratch in .orchestration/tmp until finish-lane.sh archives it, and .orchestration/lanes holds evidence from
 # earlier builds.
-if printf '%s' "$cmd" | grep -Eq "${at}rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^[:space:]]*\.orchestration/(briefs|results|lanes|tmp)([/[:space:]]|$)"; then
-  deny "Deleting .orchestration/briefs, results, lanes or tmp removes lane evidence. Archive a lane worktree (../<repo>-wt-<lane>) with finish-lane.sh, or move files aside instead."
+if printf '%s' "$cmd" | grep -Eq "${at}rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*[^[:space:]]*\.orchestration(/((briefs|results|lanes|tmp)(/[^[:space:]]*)?|state\.md|decisions\.md|thread\.md|outbox\.md))?/?([[:space:]]|$)"; then
+  deny "Deleting .orchestration, or its briefs, results, lanes, tmp, state, decisions, record or outbox, removes the build's evidence and memory. Archive a lane worktree (../<repo>-wt-<lane>) with finish-lane.sh; MAIN's thread.sh close archives the coordination worktree."
 fi
 # Writing configuration or the thread record from the shell: the rule guard-writes applies to Edit and Write. A
 # guardrail against mistakes, not a sandbox: it looks for a write verb and one of those paths in the same command.
