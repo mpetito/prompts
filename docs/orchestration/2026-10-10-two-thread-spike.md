@@ -1,0 +1,82 @@
+# Two-thread orchestration spike (2026-10-10)
+
+Question: can a main thread that talks to the owner run an orchestration thread in a separate
+Claude Code session, steer it, rotate it and get decisions back, with nothing but built-in
+features? Claude Code 2.1.296 on Linux, both sessions in `auto` permission mode.
+
+## Setup
+
+- **Orchestration thread**: a background session started with
+  `claude --agent spike-orchestrator --bg --name spike-orch-1 "<brief>"` from a non-git folder
+  under a trusted parent (a scratch folder; a git repo would have moved it into a
+  worktree, and `/tmp` is not trusted, so `--bg` refuses it).
+- **The agent** was thin: `model: sonnet`, an empty body (so the default system prompt stays), and
+  `initialPrompt: /spike-orchestration`, which loads the protocol skill on the first turn. The
+  `skills:` field does not preload in session mode; `initialPrompt` does (probes 3 and 4).
+- **Protocol skill**, eight rules: never ask the owner directly; messages from MAIN carry the
+  owner's steer; every message up starts `STATUS: <working|need-decision|rotating|done> - …`;
+  decisions carry a default and an `applies at <UTC>` deadline; state file timestamped with
+  `date -u`; lane work goes to Sonnet subagents; `ROTATE` means write RESUME and stop; a resume
+  brief means read state first.
+- **Main thread**: an ordinary interactive session using `SendMessage` and `ListAgents`.
+
+## What happened
+
+| Time (UTC) | Event |
+| --- | --- |
+| 03:35:06 | Thread 1 launched |
+| 03:35:19 | `STATUS: working` and a `need-decision` (tea/coffee, default tea at 03:45:10Z) arrive at main |
+| 03:35:33 | Main's answer, sent with `notify_when_idle`, is acted on within seconds |
+| 03:35:39 | `STATUS: done`; idle notice arrives |
+| 03:35:57 | `ROTATE` answered with `STATUS: rotating` and a clean RESUME |
+| 03:36:05 | Thread 1 stopped (`claude stop`); thread 2 launched with a resume brief |
+| 03:36:18 | Thread 2 finishes new lane C; lanes A and B untouched (mtimes checked) |
+| 03:36:39 | Lane D asked with a 2-minute default; main does not answer |
+| 03:38:46 | Default applied 8 s after its deadline, reported as such |
+
+## Findings
+
+Worked as designed:
+
+- Messages arrive as new turns when the receiver is idle and between tool calls when it is busy.
+  Steer-to-action took seconds.
+- Zero `AskUserQuestion` calls in either thread; every question went to main in protocol form.
+- Rotation from the state file was clean: the fresh thread skipped finished work and continued.
+- Orchestration context stayed near 50K tokens per call (about 1.1–1.2M cache-read tokens over
+  22–24 calls per thread), against a 517K median in a past orchestrated build.
+- Subagent workers ran on the model the protocol named.
+
+Did not hold, or needs a mechanism rather than a rule:
+
+- **Waiting on a deadline blocked the thread.** Thread 2 waited with a foreground
+  `until … sleep 5` loop: for two minutes it could not read a message from main or serve another
+  lane. Use a background timer that re-invokes the thread (the archived `wake-at.sh`).
+- **State edits by hand.** Thread 1 rewrote RESUME with `sed -i` and inline Python, and its first
+  RESUME carried a stale "Next" line until `ROTATE` forced a rewrite. Use a state helper (the
+  archived `state.sh`).
+- **Time zones differ by channel.** The idle notice reports local time (23:35) while the protocol
+  and the state file use UTC.
+
+Constraints from the docs that the design has to respect:
+
+- A message from another session never counts as the owner's consent, cannot change
+  configuration, and a slash command in it arrives as plain text. Rotation, not `/compact`, is
+  how main manages an orchestrator's context.
+- Messages are plain text, rapid bursts to one session are refused, and at most 50 queue.
+- Only the main conversation can subscribe to idle notices, and only for local sessions.
+- A background session can still ask the owner directly in agent view; the protocol must forbid
+  it.
+
+## Implications
+
+- The two-thread shape works with built-in features; Herdr is not needed between Claude
+  sessions. It stays useful for Codex and Copilot lanes and for visible panes.
+- Each thread is a thin session agent plus a skill. The protocol (message format, decision
+  defaults, rotation) is shared and belongs in one reference both skills link to.
+- Mechanise the two failures above before writing the full skills: a background deadline timer
+  and a state helper.
+- Evals: single-wake decisions of each thread fit snapshot fixtures; the protocol fits a lint
+  test; launch, delivery, idle notice and rotation fit a scripted smoke test like this spike.
+
+The spike's agent, skill, state file and lane outputs were removed from `~/dev` afterwards; the
+background sessions were stopped and deleted with `claude rm`.
