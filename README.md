@@ -6,17 +6,18 @@ Skills are the single unit of reusable workflow guidance in this repository: the
 
 ## Skills
 
-**All skills are archived.** On 2026-10-09 every skill moved to `archive/skills/` so that each
-one has to earn its place back with real usage. The audit behind that decision, the per-skill
-best-practice reviews, the usage data and the readmission bar are in
+**Skills are archived until readmitted.** On 2026-10-09 every skill moved to `archive/skills/`
+so that each one has to earn its place back with real usage. The audit behind that decision,
+the per-skill best-practice reviews, the usage data and the readmission bar are in
 [docs/skill-audit/](docs/skill-audit/). Nothing under `archive/` is linked into any client.
 
 A readmitted skill lands in `skills/<name>/` with the same layout as before (`SKILL.md`,
-`references/`, `scripts/`, `evals/`), and the installer links it on the next run. Until then
-this table is empty on purpose.
+`references/`, `scripts/`, `evals/`), and the installer links it on the next run. The table
+lists readmitted skills only.
 
 | Skill | `/slash` invocation | Purpose |
 | --- | --- | --- |
+| [skill-authoring](skills/skill-authoring/SKILL.md) | `/skill-authoring` | Write, review, split or fix a skill folder |
 
 ## Agents
 
@@ -249,7 +250,7 @@ pattern skills — deliberately set no `model`, so they inherit whatever the cal
 `firecrawl` is the exception: it is tool-driving work, so it pins `sonnet` to stay cheap under an
 Opus session while keeping `effort: high`, because choosing the right rung of the search/scrape/crawl
 ladder and writing a good query is where its judgment actually goes.
-See the archived `skill-authoring` skill for the full key list and selection guidance.
+See [skill-authoring](skills/skill-authoring/SKILL.md) for when to set each key.
 
 Codex ignores Claude-only skill keys such as `model: sonnet`, `effort`, and `disable-model-invocation`; they do not select an Anthropic model or prevent the skill from loading. When a Claude-only key carries behavior that must also hold in Codex, add the Codex equivalent in the skill's optional `agents/openai.yaml`. In particular, Codex's equivalent of `disable-model-invocation: true` is `policy.allow_implicit_invocation: false`.
 

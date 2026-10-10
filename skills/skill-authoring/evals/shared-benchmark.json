@@ -22,9 +22,15 @@
         "The description carries Use-when triggers and names prod-restore as the adjacent skill for production restores",
         "The ~200-row flag table goes to a references/ file; the staging-smoke link is skill-relative (../staging-smoke/SKILL.md)",
         "The human-start-only refresh sets disable-model-invocation, the requested haiku pin is not applied, and the repo-wide SQL conventions are redirected to AGENTS.md",
-        "The embedded announcement template uses a wider outer fence (or moves to its own template file)"
+        "The embedded announcement template uses a wider outer fence (or moves to its own template file)",
+        "The body's first line names its consumer role (human: a person starts every refresh)"
       ],
       "assertions": [
+        {
+          "name": "body-names-consumer-role",
+          "type": "regex",
+          "pattern": "(?im)^[ \\t]*(?:\\*\\*|_)?role\\b[:*_ \\t]*(?:orchestrator|worker|human|domain reference)\\b"
+        },
         {
           "name": "folder-matches-lowercase-name",
           "type": "regex",
@@ -91,8 +97,8 @@
       ],
       "expected_behavior": [
         "Frontmatter problems come first: name must equal the folder (release-notes) and the description needs Use-when triggers",
-        "The model pin is removed, not swapped for another tier, because the skill is a reference skill read inside ship-release",
-        "The 640-line file is cut under 500 lines by moving the script and command table to references/ (or scripts/)",
+        "The model pin is removed, not swapped for another tier, because the skill is read inside ship-release and a pin would switch the caller's model",
+        "The 640-line file is cut to a stated line budget by moving the script and command table to references/ (or scripts/)",
         "The repo-root link becomes ../pr-authoring/SKILL.md, the copied section is replaced by a cross-link, and the nested template fence is widened",
         "The drafting worker gets an explicit opus model instead of inherit or an unjustified cheaper tier"
       ],
@@ -125,7 +131,7 @@
         {
           "name": "length-budget-and-references",
           "type": "regex",
-          "pattern": "(?is)\\b500\\b[^\\n]{0,40}\\blines?\\b[\\s\\S]*?\\breferences/|\\breferences/[\\s\\S]*?\\b500\\b[^\\n]{0,40}\\blines?\\b"
+          "pattern": "(?is)(?:(?:under|below|budget of|limit of|at most|within)[^\\n]{0,20}?\\b\\d{2,3}\\b[^\\n]{0,10}\\blines?\\b|\\b\\d{2,3}[- ]lines?\\b[^\\n]{0,10}\\b(?:limit|budget|cap)\\b)[\\s\\S]*?\\breferences/|\\breferences/[\\s\\S]*?(?:(?:under|below|budget of|limit of|at most|within)[^\\n]{0,20}?\\b\\d{2,3}\\b[^\\n]{0,10}\\blines?\\b|\\b\\d{2,3}[- ]lines?\\b[^\\n]{0,10}\\b(?:limit|budget|cap)\\b)"
         },
         {
           "name": "skill-relative-cross-reference",
@@ -150,6 +156,67 @@
             "The copied 'Grouping changes' section is flagged as duplication to replace with a cross-link to the canonical skill",
             "The untested changelog-gen command is flagged as unverified and must be run or removed before merge",
             "The 'save tokens' rationale for a cheaper drafting model is rejected as insufficient justification on its own"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-fix-misfiring-description",
+      "split": "tune",
+      "prompt": "Fix the skill in the input file so it fires on the requests its owner lists and stops firing on the wrong ones. Output the corrected frontmatter block in full, then list every other change to the file, most important first; quote original lines inline in backticks, never as code blocks. Do not run any commands; everything you need is in the input file.",
+      "files": [
+        "fixtures/preview-deploy-skill.md"
+      ],
+      "expected_behavior": [
+        "The triggers move into the description, not into Claude Code's when_to_use key, because Codex reads only the description",
+        "The description uses the owner's phrasings (preview link, spin up a preview) and ends with Not-for clauses naming prod-deploy and preview-cleanup",
+        "The description drops the <branch> placeholder and the rollback and teardown claims",
+        "The body's When to Use and Related Skills sections are deleted"
+      ],
+      "assertions": [
+        {
+          "name": "description-uses-user-phrasing",
+          "type": "regex",
+          "pattern": "(?ims)^[ \\t]*description:(?:(?!\\n[ \\t]*(?:---|```|[a-z][\\w-]*:[ \\t])).){0,1100}?\\bpreview link"
+        },
+        {
+          "name": "description-names-prod-deploy",
+          "type": "regex",
+          "pattern": "(?ims)^[ \\t]*description:(?:(?!\\n[ \\t]*(?:---|```|[a-z][\\w-]*:[ \\t])).){0,1100}?\\bprod-deploy\\b"
+        },
+        {
+          "name": "description-names-preview-cleanup",
+          "type": "regex",
+          "pattern": "(?ims)^[ \\t]*description:(?:(?!\\n[ \\t]*(?:---|```|[a-z][\\w-]*:[ \\t])).){0,1100}?\\bpreview-cleanup\\b"
+        },
+        {
+          "name": "no-when-to-use-key",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*when_to_use:"
+        },
+        {
+          "name": "no-angle-brackets-in-description",
+          "type": "not_regex",
+          "pattern": "(?ims)^[ \\t]*description:(?:(?!\\n[ \\t]*(?:---|```|[a-z][\\w-]*:[ \\t])).){0,1100}?<[a-z]"
+        },
+        {
+          "name": "drops-when-to-use-section",
+          "type": "regex",
+          "pattern": "(?i)\\b(?:remov|delet|drop|cut)\\w*\\b[^\\n]{0,80}when to use|when to use[^\\n]{0,120}\\b(?:remov|delet|drop|cut|redundant|duplicat)\\w*"
+        },
+        {
+          "name": "drops-related-skills-section",
+          "type": "regex",
+          "pattern": "(?i)\\b(?:remov|delet|drop|cut)\\w*\\b[^\\n]{0,80}related skills|related skills[^\\n]{0,120}\\b(?:remov|delet|drop|cut|redundant|duplicat)\\w*|related skills[^\\n]{0,40}\\bwith nothing\\b"
+        },
+        {
+          "name": "fix-quality",
+          "type": "judge",
+          "rubric": [
+            "The owner's plan to move the triggers into when_to_use is rejected because Codex reads only the description, and the triggers go into the description instead",
+            "The description leads with what the skill does in plain words and no longer claims rollback or teardown, which belong to prod-deploy and preview-cleanup",
+            "The When to Use and Related Skills sections are deleted rather than kept beside the new description",
+            "The corrected description stays under about 900 characters"
           ]
         }
       ]
@@ -210,7 +277,7 @@
       "split": "tune",
       "prompt": "Benchmark my pr-authoring skill against its previous version and report the pass-rate difference.",
       "expected_behavior": [
-        "The skill should NOT trigger: measuring skill performance belongs to skill-creator, not authoring"
+        "The skill should NOT trigger: running or benchmarking a skill's evals is measurement, not authoring"
       ],
       "assertions": []
     }
