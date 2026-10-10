@@ -25,7 +25,9 @@ A skill enters `skills/` only when all five hold. Start from the archived text a
 
 1. **A recorded gap.** An entry in [candidates.md](candidates.md): the date, the project, the
    session, what the model did wrong without the skill, and the wrong output quoted. A skill
-   nobody missed stays archived.
+   nobody missed stays archived. The first readmissions skip this item: the maintainer accepts
+   their gaps as known (skill-authoring, readmitted 2026-10-09, is one). The other four
+   items still apply.
 2. **Three behaviour evals** in the `skill-eval-harness` manifest format used by
    `scripts/run-skill-eval.ps1`, each with a fixture trap, each failing without the skill and
    passing with it. Trigger cases come after, not instead. Use `archive/skills/pr-authoring/evals/`
