@@ -5,6 +5,9 @@
 # hook JSON on stdin; a worker's carries agent_id.
 # A command is matched only in command position (start of a line, after ; & | ( or $( , or after
 # `sh -c '`), so the same words inside a quoted string, a backtick span or a comment pass.
+# The matching is textual, not bash's parser: quoting, escapes, variables, xargs or find -delete, or another
+# program can get past it. It catches the mistakes past builds made, not a thread working around it. The path
+# checks that hold are guard-writes, for Edit and Write; a boundary for shell commands needs Claude Code's sandbox.
 set -u
 . "$(dirname "$0")/../scripts/lib.sh"
 require_jq
