@@ -31,6 +31,9 @@ param(
     [ValidateSet('claude', 'codex')]
     [string]$Agent = 'claude',
     [string]$Model = 'sonnet',
+    # Reasoning effort for skill answer runs, every arm alike; agent runs use the definition's own.
+    [ValidateSet('low', 'medium', 'high', 'xhigh', 'max')]
+    [string]$Effort,
     [string]$JudgeModel = 'sonnet',
     [ValidateRange(1, 50)]
     [int]$Runs = 1,
@@ -143,7 +146,9 @@ function Copy-AgentDefinition {
 }
 
 function New-ClaudeWrapper {
-    param([string]$Directory)
+    # Effort, when given, applies to every claude call through this wrapper; the installed harness's
+    # run-agent has no --effort of its own. Name keeps a second wrapper (the judge's) apart.
+    param([string]$Directory, [string]$Effort, [string]$Name = 'claude-eval')
     # A nested `claude -p` refuses to start while CLAUDECODE marks the parent session, so clear it.
     # Eval cases only read fixtures and write text, so every tool that can act on the machine is
     # denied outright: managed settings can grant Bash to a headless run, and a sandboxed run that
@@ -151,16 +156,17 @@ function New-ClaudeWrapper {
     $denied = 'Bash,PowerShell,Write,Edit,MultiEdit,NotebookEdit,Agent,WebFetch,WebSearch'
     $cleared = @('CLAUDECODE', 'HERDR_PANE_ID', 'HERDR_TAB_ID', 'HERDR_WORKSPACE_ID', 'HERDR_SOCKET_PATH',
         'HERDR_BIN_PATH', 'HERDR_ENV', 'TERM_PROGRAM')
-    $claude = "claude --setting-sources project --strict-mcp-config --disallowedTools `"$denied`""
+    $effortArg = $Effort ? " --effort $Effort" : ''
+    $claude = "claude --setting-sources project --strict-mcp-config$effortArg --disallowedTools `"$denied`""
     if ($IsWindows) {
-        $wrapper = Join-Path $Directory 'claude-eval.cmd'
+        $wrapper = Join-Path $Directory "$Name.cmd"
         $lines = @('@echo off') + @($cleared | ForEach-Object { "set $_=" }) + "$claude %*"
         Set-Content -LiteralPath $wrapper -Value ($lines -join "`r`n") -Encoding ascii
     }
     else {
-        $wrapper = Join-Path $Directory 'claude-eval.sh'
+        $wrapper = Join-Path $Directory "$Name.sh"
         $lines = @('#!/bin/sh', "unset $($cleared -join ' ')", "exec $claude `"`$@`"")
-        Set-Content -LiteralPath $wrapper -Value (($lines -join "`n") + "`n") -Encoding ascii
+        Set-Content -LiteralPath $wrapper -Value (($lines -join "`n") + "`n") -Encoding ascii -NoNewline
         & chmod +x -- $wrapper
         if ($LASTEXITCODE -ne 0) { throw "chmod failed for $wrapper" }
     }
@@ -319,7 +325,10 @@ foreach ($name in $names) {
     Set-Content -LiteralPath (Join-Path $out 'source-manifest.txt') -Value $manifest -Encoding utf8
     # One wrapper per run directory: concurrent invocations rewriting a shared .cmd made launches
     # fail with WinError 193, and every failed launch was scored as a miss.
-    $claudeBin = New-ClaudeWrapper -Directory $out
+    # Answer and trigger runs carry -Effort; agent runs take the definition's own, and the judge
+    # keeps the default so verdicts stay comparable across runs.
+    $claudeBin = New-ClaudeWrapper -Directory $out -Effort ($AgentDefinition ? $null : $Effort)
+    $judgeBin = New-ClaudeWrapper -Directory $out -Name 'claude-judge'
 
     if ($AgentDefinition) {
         $staged = Copy-AgentDefinition -Source $definition -Directory (Join-Path $out 'definitions/with_skill')
@@ -405,7 +414,7 @@ foreach ($name in $names) {
         $benchmark = @('benchmark', $answerManifest, '--runs', $runsDir, '--split', $Split, '--out', (Join-Path $out 'benchmark.json')) + $variantArgs
         if (-not $SkipJudge) {
             $judgeResults = Join-Path $out 'judge-results.jsonl'
-            Invoke-ArmJudges -Manifest $answerManifest -RunsDir $runsDir -Variants $variants -ResultsPath $judgeResults -ClaudeBin $claudeBin -LogDir $logDir
+            Invoke-ArmJudges -Manifest $answerManifest -RunsDir $runsDir -Variants $variants -ResultsPath $judgeResults -ClaudeBin $judgeBin -LogDir $logDir
             $benchmark += @('--judge-results', $judgeResults)
         }
         Invoke-Harness $benchmark

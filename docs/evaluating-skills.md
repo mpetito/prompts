@@ -40,6 +40,11 @@ Every run lands in `.eval-runs/<skill>/<timestamp>/` (gitignored).
 
 One run is noisy; decide on three. `-Runs 3` means three runs per arm per case.
 
+Measure a skill on the model and effort it will run on: `-Model opus -Effort high` for the
+orchestration skills. `-Effort` reaches the answer and trigger runs, every arm alike, through the
+Claude wrapper (the installed harness's `run-agent` has no effort option); the judge keeps its
+default so verdicts stay comparable.
+
 ## Compare against an earlier revision or a competing skill
 
 `-Baseline <folder>` runs that folder's `SKILL.md` as a third arm, `old_skill`, beside
@@ -97,6 +102,11 @@ are the ways an assertion goes wrong once outputs arrive:
   run with it, all arms alike.
 
 Test a new pattern against a real passing and a real failing output before relying on it.
+
+Read the trace before tuning a description for a missed should-not-fire query
+(`trigger-traces/…/<query>/run-N/trace.jsonl`). The harness counts any read of the mounted
+SKILL.md as loading it, and in an otherwise empty workspace the model may read the file while
+exploring after it has already routed the request elsewhere, such as to a built-in skill.
 
 ## What each arm can see
 
