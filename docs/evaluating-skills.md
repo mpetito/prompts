@@ -12,6 +12,7 @@ format is [skill-eval-harness](https://github.com/adewale/skill-eval-harness) (t
 - Read the results
 - Write and fix assertions
 - What each arm can see
+- Agents
 - Speed and cost
 
 ## Setup
@@ -34,6 +35,7 @@ Every run lands in `.eval-runs/<skill>/<timestamp>/` (gitignored).
 | Only a judge rubric | `-Regrade .eval-runs/<name>/<timestamp> -Rejudge`; judge calls only |
 | A fixture or a case prompt | a new run; earlier runs no longer pair with it |
 | A new or readmitted skill | `-Runs 3 -TriggerRuns 3` |
+| An agent definition under `agents/` | `-AgentDefinition <name> -Runs 3` (see Agents) |
 | Anything, while iterating | `-Runs 1 -SkipJudge -SkipTrigger`; confirm with `-Runs 3` |
 
 One run is noisy; decide on three. `-Runs 3` means three runs per arm per case.
@@ -103,6 +105,32 @@ user-level skills, plugins and MCP servers stay out of every arm. A competing sk
 on this machine is therefore never in play unless passed as `-Baseline`. Trigger rates measured
 with the shell allowed are not comparable: the model explores with git instead of loading a
 skill. `without_skill` sees only the fixtures.
+
+## Agents
+
+`-AgentDefinition <name>` evaluates `agents/<name>.md` instead of a skill. Its suite lives in
+`evals/agents/<name>/`, outside `agents/`, because setup links that folder whole into
+`~/.claude/agents` and Claude Code loads every `.md` beneath it as an agent.
+`evals/agents/verifier/` is the example.
+
+- `with_skill` runs the definition as the session (`claude -p --agent <name>`), so its system
+  prompt and tool list apply. `without_skill` is plain Claude Code.
+- Every arm runs on the definition's `model` and `effort`. The CLI's `--model` overrides an
+  agent's own pin, so the runner passes the pin to all arms, and the comparison measures the
+  definition rather than the model.
+- `-Baseline <file>` adds an earlier definition as `old_skill`. `-Regrade` and `-Rejudge` work
+  as for skills.
+
+Agent tasks go through `scripts/agent-eval-backend.py` (the harness's `run-subagent
+--agent-cmd`). It moves the definition into the workspace's `.claude/agents/`, removes the
+harness's "read and follow the skill file" opening from every arm alike, and fails the run if
+Claude serves a model other than the one requested.
+
+Write cases for what the definition adds. In the verifier pilot, Opus without the definition
+found the same defects; the output contract and the one-claim rule separated the arms.
+
+Not supported yet: delegation evals (whether a main session hands work to the agent), and
+Codex, since agent definitions are Claude Code's format.
 
 ## Speed and cost
 

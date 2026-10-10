@@ -116,7 +116,7 @@ pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Regrade .eval-runs/<skill>/<
 
 [docs/evaluating-skills.md](docs/evaluating-skills.md) says which run fits which edit, how to
 compare against an earlier revision or a competing skill (`-Baseline`), how to read the
-results, and what each arm can see.
+results, what each arm can see, and how to evaluate an agent definition (`-AgentDefinition`).
 
 Authoring rules for a suite: each case produces text from a fixture under `evals/fixtures/`,
 because a headless run has no shell or network; every assertion traces to a rule in the skill

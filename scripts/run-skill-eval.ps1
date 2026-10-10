@@ -20,6 +20,8 @@ pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill review,spec -Runs 3 -S
 .EXAMPLE
 pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill skill-authoring -Runs 3 -SkipTrigger -Baseline ~/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator/skills/skill-creator
 .EXAMPLE
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -AgentDefinition verifier -Runs 3
+.EXAMPLE
 pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Regrade .eval-runs/skill-authoring/20261009-223826
 #>
 [CmdletBinding()]
@@ -50,6 +52,9 @@ param(
     # A skill folder (or its SKILL.md) to run as the old_skill arm instead of old_skill_paths:
     # an earlier revision, or a competing skill such as an official plugin's.
     [string]$Baseline,
+    # An agent under agents/ to evaluate instead of skills: its suite is evals/agents/<name>/, and
+    # every arm runs on the definition's model and effort. -Baseline then takes an agent file.
+    [string]$AgentDefinition,
     # An existing run directory to grade again against the current manifest. No model calls
     # unless -Rejudge is given.
     [string]$Regrade,
@@ -88,26 +93,53 @@ function Get-ManifestPath {
     throw "No manifest for $Name under skills/ or archive/skills/"
 }
 
-function New-BaselineManifest {
-    param([string]$Manifest, [string]$BaselinePath, [string]$Directory)
-    $skillMd = (Test-Path -LiteralPath $BaselinePath -PathType Container) ? (Join-Path $BaselinePath 'SKILL.md') : $BaselinePath
-    if (-not (Test-Path -LiteralPath $skillMd -PathType Leaf)) { throw "Baseline has no SKILL.md: $BaselinePath" }
-    # The harness resolves skill paths against the skill folder and fixtures against the manifest's
-    # folder, so this copy, written beside the run, carries every path absolute.
-    $evalsDir = Split-Path -Parent $Manifest
-    $skillRoot = Split-Path -Parent $evalsDir
+function New-RunManifest {
+    # SkillPath replaces the manifest's skill_paths; BaselinePath becomes old_skill_paths.
+    param([string]$Manifest, [string]$Directory, [string]$SkillPath, [string]$BaselinePath)
+    # The harness resolves skill paths against the skill folder (the manifest's own folder outside
+    # an evals/ layout) and fixtures against the manifest's folder, so this copy, written beside
+    # the run, carries every path absolute.
+    $manifestDir = Split-Path -Parent $Manifest
+    $inEvals = (Split-Path -Leaf $Manifest) -eq 'shared-benchmark.json' -and (Split-Path -Leaf $manifestDir) -eq 'evals'
+    $skillRoot = $inEvals ? (Split-Path -Parent $manifestDir) : $manifestDir
     $m = Get-Content -Raw -LiteralPath $Manifest | ConvertFrom-Json -AsHashtable -Depth 100
-    $m.skill_paths = @($m.skill_paths | ForEach-Object { [IO.Path]::GetFullPath($_, $skillRoot) })
+    $m.skill_paths = $SkillPath ? @($SkillPath) : @($m.skill_paths | ForEach-Object { [IO.Path]::GetFullPath($_, $skillRoot) })
     foreach ($case in $m.cases) {
-        if ($case.files) { $case.files = @($case.files | ForEach-Object { [IO.Path]::GetFullPath($_, $evalsDir) }) }
-        if ($case.prompt_ref) { $case.prompt_ref = [IO.Path]::GetFullPath($case.prompt_ref, $evalsDir) }
+        if ($case.files) { $case.files = @($case.files | ForEach-Object { [IO.Path]::GetFullPath($_, $manifestDir) }) }
+        if ($case.prompt_ref) { $case.prompt_ref = [IO.Path]::GetFullPath($case.prompt_ref, $manifestDir) }
     }
-    # The harness mounts the whole folder that holds this SKILL.md, minus evals/ and dotfiles.
-    $m.old_skill_paths = @((Resolve-Path -LiteralPath $skillMd).Path)
+    if ($BaselinePath) { $m.old_skill_paths = @($BaselinePath) }
     $path = Join-Path $Directory 'manifest.json'
     $m | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $path -Encoding utf8
-    Set-Content -LiteralPath (Join-Path $Directory 'baseline.txt') -Value $m.old_skill_paths[0] -Encoding utf8
     $path
+}
+
+function Resolve-SkillBaseline {
+    param([string]$BaselinePath)
+    $skillMd = (Test-Path -LiteralPath $BaselinePath -PathType Container) ? (Join-Path $BaselinePath 'SKILL.md') : $BaselinePath
+    if (-not (Test-Path -LiteralPath $skillMd -PathType Leaf)) { throw "Baseline has no SKILL.md: $BaselinePath" }
+    # The harness mounts the whole folder that holds this SKILL.md, minus evals/ and dotfiles.
+    (Resolve-Path -LiteralPath $skillMd).Path
+}
+
+function Get-FrontmatterValue {
+    param([string]$Path, [string]$Key)
+    $text = Get-Content -Raw -LiteralPath $Path
+    if ($text -notmatch '(?s)\A---\s*\n(.*?)\n---') { return $null }
+    if ($Matches[1] -match "(?m)^$Key[ \t]*:[ \t]*['""]?([^'""\r\n]+?)['""]?[ \t]*\r?$") { return $Matches[1] }
+    $null
+}
+
+function Copy-AgentDefinition {
+    # The harness mounts the whole folder that holds a skill path, so each definition is staged
+    # alone; agent-eval-backend.py refuses a workspace with more than one.
+    param([string]$Source, [string]$Directory)
+    if (-not (Test-Path -LiteralPath $Source -PathType Leaf)) { throw "No agent definition at $Source" }
+    if (-not (Get-FrontmatterValue -Path $Source -Key 'name')) { throw "No name in the frontmatter of $Source" }
+    $null = New-Item -ItemType Directory -Path $Directory -Force
+    $dest = Join-Path $Directory (Split-Path -Leaf $Source)
+    Copy-Item -LiteralPath $Source -Destination $dest
+    $dest
 }
 
 function New-ClaudeWrapper {
@@ -189,8 +221,12 @@ function Write-Summary {
     Write-Host "== $Name =="
     if ($BenchmarkPath) {
         $b = Get-Content -Raw -LiteralPath $BenchmarkPath | ConvertFrom-Json
-        $baselineName = ($BaselineFile -and (Test-Path -LiteralPath $BaselineFile)) ?
-            (Split-Path -Leaf (Split-Path -Parent (Get-Content -LiteralPath $BaselineFile -TotalCount 1))) : $null
+        $baselineName = $null
+        if ($BaselineFile -and (Test-Path -LiteralPath $BaselineFile)) {
+            # A skill baseline is named by its folder, an agent baseline by its file.
+            $baselinePath = Get-Content -LiteralPath $BaselineFile -TotalCount 1
+            $baselineName = ((Split-Path -Leaf $baselinePath) -eq 'SKILL.md') ? (Split-Path -Leaf (Split-Path -Parent $baselinePath)) : [IO.Path]::GetFileNameWithoutExtension($baselinePath)
+        }
         # Judge rubrics are soft by default, so they never move the pass rates; report them apart.
         $judge = @{}
         foreach ($r in $b.results) {
@@ -230,7 +266,9 @@ if ($Regrade) {
     $runsDir = Join-Path $out 'runs'
     if (-not (Test-Path -LiteralPath $runsDir)) { throw "No runs/ directory under $out" }
     $name = Split-Path -Leaf (Split-Path -Parent $out)
-    $manifest = Get-ManifestPath $name
+    # Runs record their suite's manifest; earlier skill runs are found by folder name.
+    $source = Join-Path $out 'source-manifest.txt'
+    $manifest = (Test-Path -LiteralPath $source) ? (Get-Content -LiteralPath $source -TotalCount 1) : (Get-ManifestPath $name)
     $benchmarkPath = Join-Path $out 'benchmark-regraded.json'
     $runVariants = Get-RunVariants $runsDir
     $grade = @('benchmark', $manifest, '--runs', $runsDir, '--split', $Split, '--out', $benchmarkPath) +
@@ -249,28 +287,70 @@ if ($Regrade) {
     return
 }
 
-$names = @(Resolve-SkillList -Requested $Skill)
+if ($AgentDefinition) {
+    if ($Skill) { throw '-AgentDefinition and -Skill are separate runs; pass one of them.' }
+    if ($Agent -ne 'claude') { throw 'Agent definitions are Claude Code subagents; run them with -Agent claude.' }
+    if ($TriggerOnly) { throw 'Delegation evals for agent definitions are not supported yet; -TriggerOnly has nothing to run.' }
+    $names = @("agent-$AgentDefinition")
+}
+else {
+    $names = @(Resolve-SkillList -Requested $Skill)
+}
 if (-not $names) { throw 'No skill has an evals/shared-benchmark.json manifest.' }
 if ($Baseline -and $names.Count -ne 1) { throw '-Baseline compares one skill; name it with -Skill.' }
 $failed = @()
 foreach ($name in $names) {
   $triggerJob = $null
   try {
-    $manifest = Get-ManifestPath $name
+    if ($AgentDefinition) {
+        # Suites live outside agents/: setup links that folder whole into ~/.claude/agents, and
+        # Claude Code loads every .md beneath it as an agent.
+        $definition = Join-Path $repo "agents/$AgentDefinition.md"
+        $manifest = Join-Path $repo "evals/agents/$AgentDefinition/shared-benchmark.json"
+        if (-not (Test-Path -LiteralPath $manifest)) { throw "No manifest for agent $AgentDefinition at $manifest" }
+    }
+    else {
+        $manifest = Get-ManifestPath $name
+    }
     $out = Join-Path $OutRoot "$name/$stamp"
     $runsDir = Join-Path $out 'runs'
     $logDir = Join-Path $out 'logs'
     $null = New-Item -ItemType Directory -Path $out -Force
+    Set-Content -LiteralPath (Join-Path $out 'source-manifest.txt') -Value $manifest -Encoding utf8
     # One wrapper per run directory: concurrent invocations rewriting a shared .cmd made launches
     # fail with WinError 193, and every failed launch was scored as a miss.
     $claudeBin = New-ClaudeWrapper -Directory $out
 
-    $answerManifest = $Baseline ? (New-BaselineManifest -Manifest $manifest -BaselinePath $Baseline -Directory $out) : $manifest
+    if ($AgentDefinition) {
+        $staged = Copy-AgentDefinition -Source $definition -Directory (Join-Path $out 'definitions/with_skill')
+        $stagedBaseline = $null
+        if ($Baseline) {
+            $stagedBaseline = Copy-AgentDefinition -Source $Baseline -Directory (Join-Path $out 'definitions/old_skill')
+            Set-Content -LiteralPath (Join-Path $out 'baseline.txt') -Value (Resolve-Path -LiteralPath $Baseline).Path -Encoding utf8
+        }
+        $answerManifest = New-RunManifest -Manifest $manifest -Directory $out -SkillPath $staged -BaselinePath $stagedBaseline
+        # Every arm runs on the definition's own model and effort, so the comparison measures the
+        # definition, not the model. The CLI's --model overrides an agent's model pin.
+        $agentModel = Get-FrontmatterValue -Path $definition -Key 'model'
+        if (-not $agentModel -or $agentModel -eq 'inherit') { $agentModel = $Model }
+        $agentEffort = Get-FrontmatterValue -Path $definition -Key 'effort'
+    }
+    elseif ($Baseline) {
+        $baselineSkill = Resolve-SkillBaseline $Baseline
+        Set-Content -LiteralPath (Join-Path $out 'baseline.txt') -Value $baselineSkill -Encoding utf8
+        $answerManifest = New-RunManifest -Manifest $manifest -Directory $out -BaselinePath $baselineSkill
+    }
+    else {
+        $answerManifest = $manifest
+    }
     $variants = @('with_skill', 'without_skill') + (($IncludeOldSkill -or $Baseline) ? @('old_skill') : @())
     Invoke-Harness @('validate', $answerManifest, '--strict-leakage')
 
     $triggerReport = $null
-    if (-not $SkipTrigger) {
+    if ($AgentDefinition -and -not $SkipTrigger) {
+        Write-Host '  delegation evals for agent definitions are not supported yet; no trigger run'
+    }
+    elseif (-not $SkipTrigger) {
         # Triggering reads only the description, so it runs alongside the answer runs.
         $triggerReport = Join-Path $out 'trigger-matrix.json'
         $trigger = @('--agent', $Agent, '--model', $Model, '--runs-per-query', $TriggerRuns, '--timeout', $TimeoutSeconds, '--trace-runs', (Join-Path $out 'trigger-traces'), '--out', $triggerReport, $manifest)
@@ -297,14 +377,26 @@ foreach ($name in $names) {
         # Round-robin keeps each shard's mix of slow and fast cases even.
         $rows = @(Get-Content -LiteralPath $tasks | Where-Object { $_.Trim() })
         $shardCount = [Math]::Max(1, [Math]::Min($Parallel, $rows.Count))
+        if ($AgentDefinition) {
+            # run-agent would tell the model to read the definition as a skill file; the backend
+            # runs it as the session instead (see scripts/agent-eval-backend.py).
+            $backend = Join-Path $PSScriptRoot 'agent-eval-backend.py'
+            $agentCmd = "`"$harnessPython`" `"$backend`" --claude-bin `"$claudeBin`"" + ($agentEffort ? " --effort $agentEffort" : '')
+        }
         $jobs = for ($i = 0; $i -lt $shardCount; $i++) {
             $shard = Join-Path $out "tasks-$i.jsonl"
             Set-Content -LiteralPath $shard -Encoding utf8 -Value @(for ($j = $i; $j -lt $rows.Count; $j += $shardCount) { $rows[$j] })
-            $run = @('run-agent', '--agent', $Agent, '--model', $Model, '--timeout', $TimeoutSeconds, '--tasks', $shard, '--runs', $runsDir)
-            if ($Agent -eq 'claude') { $run += @('--claude-bin', $claudeBin) }
+            if ($AgentDefinition) {
+                $run = @('run-subagent', '--model', $agentModel, '--timeout', $TimeoutSeconds, '--tasks', $shard, '--runs', $runsDir, '--agent-cmd', $agentCmd)
+            }
+            else {
+                $run = @('run-agent', '--agent', $Agent, '--model', $Model, '--timeout', $TimeoutSeconds, '--tasks', $shard, '--runs', $runsDir)
+                if ($Agent -eq 'claude') { $run += @('--claude-bin', $claudeBin) }
+            }
             [pscustomobject]@{ Label = "answers-$i"; Arguments = $run }
         }
-        Write-Host "> skill-benchmark run-agent: $($rows.Count) tasks in $shardCount parallel shards (logs: $logDir)"
+        $runner = $AgentDefinition ? "run-subagent ($AgentDefinition on $agentModel$($agentEffort ? ", effort $agentEffort" : ''))" : 'run-agent'
+        Write-Host "> skill-benchmark ${runner}: $($rows.Count) tasks in $shardCount parallel shards (logs: $logDir)"
         Invoke-HarnessParallel -Jobs $jobs -LogDir $logDir
 
         # Without --variant, judge and benchmark score only the manifest's default arms, so the

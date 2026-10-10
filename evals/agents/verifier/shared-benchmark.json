@@ -1,0 +1,151 @@
+{
+  "version": 2,
+  "skill_name": "verifier",
+  "harness": {
+    "name": "skill-eval-harness",
+    "url": "https://github.com/adewale/skill-eval-harness",
+    "version": ">=0.6.0"
+  },
+  "skill_paths": [
+    "../../../agents/verifier.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-missed-call-site",
+      "split": "tune",
+      "prompt": "Verify the claim in the input file. Everything you need is in the input file; do not run any commands.",
+      "files": [
+        "fixtures/receipt-dates-claim.md"
+      ],
+      "expected_behavior": [
+        "Verdict REFUTED under a Verdict heading: email.ts:22 still formats issuedAt in server-local time",
+        "A Counterexample section with concrete input and the wrong date it produces",
+        "A Residual risk section naming what was not checked"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-refuted",
+          "type": "regex",
+          "pattern": "(?im)^#{1,4}[ \\t]*Verdict\\b[^\\n]*\\n(?:[ \\t]*\\n)*[ \\t]*[*_`]*REFUTED\\b|^#{1,4}[ \\t]*Verdict[ \\t]*[:\\-][ \\t]*[*_`]*REFUTED\\b"
+        },
+        {
+          "name": "cites-email-call-site",
+          "type": "regex",
+          "pattern": "email\\.ts:22\\b"
+        },
+        {
+          "name": "counterexample-section",
+          "type": "regex",
+          "pattern": "(?im)^#{1,4}[ \\t]*Counterexample\\b"
+        },
+        {
+          "name": "residual-risk-section",
+          "type": "regex",
+          "pattern": "(?im)^#{1,4}[ \\t]*Residual risk\\b"
+        },
+        {
+          "name": "verify-quality",
+          "type": "judge",
+          "rubric": [
+            "The counterexample is concrete: an issuedAt shortly after midnight UTC (such as 2026-03-01T02:00:00Z) and the wrong date the email shows under TZ=America/New_York (Feb 28, 2026)",
+            "It says the new test covers formatReceiptDate only, so it cannot prove that every receipt date renders in UTC",
+            "It accounts for every caller in the grep output: the PDF path is fine, the CSV path is UTC through toISOString, and the email path is the failure",
+            "The residual risk names what was not checked, such as callers outside src/ or client-side rendering, instead of claiming completeness"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-green-ci-weak-test",
+      "split": "tune",
+      "prompt": "Verify the claim in the input file. Everything you need is in the input file; do not run any commands.",
+      "files": [
+        "fixtures/flaky-retry-claim.md"
+      ],
+      "expected_behavior": [
+        "Verdict UNPROVEN under a Verdict heading: the evidence cannot distinguish fixed from lucky",
+        "Names the toBeDefined assertion as unable to fail without the retry",
+        "Says which test run would settle it instead of running or editing anything"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-unproven",
+          "type": "regex",
+          "pattern": "(?im)^#{1,4}[ \\t]*Verdict\\b[^\\n]*\\n(?:[ \\t]*\\n)*[ \\t]*[*_`]*UNPROVEN\\b|^#{1,4}[ \\t]*Verdict[ \\t]*[:\\-][ \\t]*[*_`]*UNPROVEN\\b"
+        },
+        {
+          "name": "flags-weak-assertion",
+          "type": "regex",
+          "pattern": "toBeDefined"
+        },
+        {
+          "name": "residual-risk-section",
+          "type": "regex",
+          "pattern": "(?im)^#{1,4}[ \\t]*Residual risk\\b"
+        },
+        {
+          "name": "verify-quality",
+          "type": "judge",
+          "rubric": [
+            "It says toBeDefined passes on success and on failure, so the test cannot fail without the retry",
+            "It says three passing runs prove little against the prior rate of 4 failures in 50 runs (roughly a 78% chance of three passes with no fix at all)",
+            "It says the verdict depends on a test run it did not perform and names the run that would settle it, such as a strengthened assertion or the old code under the same mock",
+            "It does not rewrite the code or the test as its answer; any change is a recommendation for the caller"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-several-claims-false-premise",
+      "split": "tune",
+      "prompt": "Verify the claims in the input file. Everything you need is in the input file; do not run any commands.",
+      "files": [
+        "fixtures/migration-claims.md"
+      ],
+      "expected_behavior": [
+        "Only claim 1 is verified: REFUTED, because PostgreSQL refuses CREATE INDEX CONCURRENTLY inside a transaction block",
+        "Claims 2 and 3 are named as not tested instead of being given verdicts"
+      ],
+      "assertions": [
+        {
+          "name": "verdict-refuted",
+          "type": "regex",
+          "pattern": "(?im)^#{1,4}[ \\t]*Verdict\\b[^\\n]*\\n(?:[ \\t]*\\n)*[ \\t]*[*_`]*REFUTED\\b|^#{1,4}[ \\t]*Verdict[ \\t]*[:\\-][ \\t]*[*_`]*REFUTED\\b"
+        },
+        {
+          "name": "names-transaction-block",
+          "type": "regex",
+          "pattern": "(?i)\\b(?:inside|within|in)\\s+(?:a|the|an explicit)\\s+transaction"
+        },
+        {
+          "name": "says-other-claims-untested",
+          "type": "regex",
+          "pattern": "(?i)(?:\\bclaims?\\s*[23]\\b|\\(\\s*[23]\\s*\\)|\\bclaims?\\s+2\\s+and\\s+3\\b)[^\\n]{0,160}\\b(?:not\\s+(?:tested|verified)|untested|unverified)\\b|\\b(?:not\\s+(?:tested|verified)|untested|unverified)\\b[\\s\\S]{0,200}?(?:\\bclaims?\\s*[23]\\b|\\(\\s*[23]\\s*\\)|\\bclaims?\\s+2\\s+and\\s+3\\b)"
+        },
+        {
+          "name": "residual-risk-section",
+          "type": "regex",
+          "pattern": "(?im)^#{1,4}[ \\t]*Residual risk\\b"
+        },
+        {
+          "name": "verify-quality",
+          "type": "judge",
+          "rubric": [
+            "Only claim 1 gets a verdict; claims 2 and 3 are named as untested and left for separate requests",
+            "The finding is that PostgreSQL refuses CREATE INDEX CONCURRENTLY inside a transaction block, so the migration fails at deploy, citing 0042_orders_customer_idx.sql lines 1-3",
+            "It does not answer the question as posed (whether the index blocks writes) as if the statement would run",
+            "The residual risk says what would settle the remaining doubt, such as whether the runner adds its own transaction, instead of restating the verdict"
+          ]
+        }
+      ]
+    }
+  ],
+  "ablations": []
+}
