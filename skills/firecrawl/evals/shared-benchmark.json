@@ -20,28 +20,28 @@
         "fixtures/guides-subtree-keyless.md"
       ],
       "expected_behavior": [
-        "Notices the session has no crawl tool and no API key, so the whole subtree cannot be crawled keyless",
-        "Tells the user a whole-subtree copy needs an API key, and gives the keyed crawl seeded at /guides with a page limit, written to a file",
-        "Does not pull about 140 pages one by one through the MCP scrape tool into the context without the user agreeing to it"
+        "Keeps the ~140 pages out of the context: either one keyless CLI scrape over the URL list (from one links scrape of the index) that writes each page to a file, or a keyed crawl seeded at /guides, bounded by --limit and written to a file",
+        "States the page count before fetching, and on the keyless route says the per-IP daily cap may stop it partway and offers a key for one bounded crawl",
+        "Does not scrape the guide pages one by one through the MCP scrape tool"
       ],
       "assertions": [
         {
-          "name": "says-key-needed",
+          "name": "pages-to-files",
           "type": "regex",
-          "pattern": "(?is)(?:API key|FIRECRAWL_API_KEY)[\\s\\S]{0,300}?\\b(?:crawl|map)\\b|\\b(?:crawl|map)\\b[\\s\\S]{0,300}?(?:API key|FIRECRAWL_API_KEY)"
+          "pattern": "(?s)firecrawl(?:-cli(?:@\\S+)?)?\\s+crawl\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--limit\\s+\\d+|xargs[^\\n]{0,120}firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b|firecrawl(?:-cli(?:@\\S+)?)?\\s+scrape\\b[^\\n]{0,400}?(?:\\$\\(|`cat|https?://\\S+\\s+(?:\\\\\\s*)?https?://|<\\s*\\S+\\.txt|\\.firecrawl/)"
         },
         {
-          "name": "bounded-crawl",
-          "type": "regex",
-          "pattern": "(?:--limit\\s+\\d+|\"limit\"\\s*:\\s*\\d+)"
+          "name": "no-mcp-scrape-of-guide-pages",
+          "type": "not_regex",
+          "pattern": "(?s)\\\"tool\\\"\\s*:\\s*\\\"(?:mcp__\\w+?__)?firecrawl_scrape\\\"(?:(?!\\\"tool\\\"\\s*:).){0,300}?\\\"url\\\"\\s*:\\s*\\\"https://docs\\.example\\.com/guides/[^\\\"]+\\\""
         },
         {
-          "name": "no-unasked-mass-scrape",
+          "name": "route-quality",
           "type": "judge",
           "rubric": [
-            "The plan does not scrape all ~140 pages one by one through firecrawl_scrape before the user agrees; at most it fetches the index's links and states the count",
-            "The plan does not run a keyless CLI crawl; it checks authentication first (for example --status) or says a key is needed before any crawl",
-            "Any crawl it proposes is seeded at /guides, bounded by a page limit, and writes to a file"
+            "The plan keeps the pages out of the context: a keyless multi-URL CLI scrape to files, or a keyed crawl to a file",
+            "It states the page count first; on the keyless route it mentions the daily cap and offers a key for a bounded crawl",
+            "Any crawl it proposes is seeded at /guides and bounded by --limit"
           ]
         }
       ]
@@ -96,7 +96,7 @@
         {
           "name": "map-with-search",
           "type": "regex",
-          "pattern": "(?s)firecrawl(?:-cli(?:@\\S+)?)?\\s+map\\b(?:(?!\"tool\"\\s*:).){0,300}?--search\\b"
+          "pattern": "(?is)firecrawl(?:-cli(?:@\\S+)?)?\\s+map\\b(?:(?!\\\"tool\\\"\\s*:).){0,300}?--search\\b|\\bmap\\b[^.\\n]{0,120}(?:--search|\\bsearch\\s+(?:term|query|queries|filter|parameter|option|flag)s?\\b|\\bwith\\s+(?:a\\s+)?search\\b)"
         },
         {
           "name": "no-site-crawl",
@@ -191,6 +191,26 @@
       "prompt": "Find every place in this repository that builds a pricing URL and list the files.",
       "expected_behavior": [
         "The skill should NOT trigger: searching the local repository needs no web access."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-few-pages",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Read these three pages and tell me what each says about rate limits: https://docs.example.com/limits, https://docs.example.com/api/quotas and https://docs.example.com/faq.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a few pages are covered by the Firecrawl scrape tool's own description."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-developer-index",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Search upstream GitHub issues and merged PRs: was the undici ECONNRESET bug on long-running requests ever fixed, and in which release?",
+      "expected_behavior": [
+        "The skill should NOT trigger: a developer-index lookup is routed by the Firecrawl MCP server's own instructions."
       ],
       "assertions": []
     }

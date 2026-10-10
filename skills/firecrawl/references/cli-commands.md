@@ -7,6 +7,10 @@ The scrape, search, map and crawl tables were checked against `--help` on CLI 1.
 (2026-10-10); the other commands were captured on 1.23.3. Run
 `npx -y firecrawl-cli@latest <command> --help` to confirm against the version you have.
 Every example uses the `npx -y firecrawl-cli@latest` form, which needs no global install.
+This file covers the commands and flags this skill uses, not all of them: `developer`, `gov`,
+`find-tools`, `list-tools`, `alexandria`, `credit-usage`, `feedback`, `experimental` and some
+scrape flags (`--alexandria`, `--options`, `--request-id`, `--domain-tools`, `--tool-detail`)
+are left out. Run `npx -y firecrawl-cli@latest --help` for the rest.
 
 Every command also accepts the global flags `-k, --api-key <key>`, `--api-url <url>`,
 `-o, --output <path>`, and (where output can be JSON) `--json` / `--pretty`.
@@ -24,7 +28,8 @@ Set `FIRECRAWL_NO_TELEMETRY=1` to disable the CLI's anonymous telemetry.
 ## `scrape [urls...]`
 
 Scrapes one or more URLs. Multiple URLs run concurrently and are **saved to `.firecrawl/`
-rather than stdout**.
+rather than stdout**, one file per page. Scrape works without a key, so this is the keyless way
+to write many pages to files (capped per IP per day; the docs give no number).
 
 | Flag                       | Meaning                                                                                                                   |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |

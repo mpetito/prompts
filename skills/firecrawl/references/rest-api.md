@@ -8,7 +8,8 @@ calls directly.
 
 **Base URL:** `https://api.firecrawl.dev` — every endpoint below is under `/v2`.
 
-**Auth:** `Authorization: Bearer fc-YOUR-API-KEY` on every request.
+**Auth:** `Authorization: Bearer fc-YOUR-API-KEY`. Required except on the keyless endpoints
+listed under Scrape options below, where a key only raises the rate limits.
 
 The authoritative schema is the OpenAPI document, which is worth fetching rather than
 guessing at a request body:
@@ -105,7 +106,6 @@ Monitors send outward-facing notifications. Confirm with the user before creatin
 | `/v2/search/research/papers/{id}`               | GET        | Paper metadata; add `query` for the top full-text passages                                                        |
 | `/v2/search/research/papers/{id}/similar`       | GET        | Citation-graph expansion                                                                                          |
 
-See `developer-index.md` for what the developer index covers and how to query it well.
 
 ### Support and Account
 
