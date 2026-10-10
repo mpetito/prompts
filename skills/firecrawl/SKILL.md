@@ -1,7 +1,5 @@
 ---
 name: firecrawl
-model: sonnet
-effort: high
 description: "Copy many web pages with Firecrawl without pulling them one by one into the context: crawl to a file, bounded, with the API key a crawl needs. Use when a request needs every page under a site or docs path saved locally, a docs section mirrored for offline search or indexing, or more than a handful of whole pages fetched at once, even when the Firecrawl scrape tool or WebFetch looks enough. Not for one page or a few pages (the Firecrawl MCP tools' own descriptions cover those), testing or driving your own app in a browser (Playwright tools), adding Firecrawl calls to a product's code (Firecrawl SDK docs), or searching the local repository."
 ---
 
