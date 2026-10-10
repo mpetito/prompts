@@ -21,8 +21,7 @@
 # unpushed, else local: lanes merge into orchestration/<build>, and integrate brings that branch into the base.
 # Each thread's .orchestration/thread.md records MAIN's name and socket ($CLAUDE_CODE_MESSAGING_SOCKET), the
 # owner's checkout, the base and the landing mode. A session's name can change with its title and its socket
-# with a restart or fork, so MAIN runs check on every wake and adopt when it has moved. The copy in the worktree
-# is within the thread's reach, so MAIN keeps its own in $ORCHESTRATION_HOME/records/ and acts only on that.
+# with a restart or fork, so MAIN runs check on every wake and adopt when it has moved.
 # MAIN's list of threads, across repositories, is $ORCHESTRATION_HOME/threads.tsv (default
 # ~/.orchestration/threads.tsv), one tab-separated row per thread: name id build repo worktree main launched
 set -euo pipefail
@@ -33,7 +32,7 @@ resume_max_age_minutes=15
 home=${ORCHESTRATION_HOME:-$HOME/.orchestration}
 reg="$home/threads.tsv"
 fail() { echo "FAILED $*"; exit 1; }
-usage() { sed -n '2,27p' "$0" >&2; exit 1; }
+usage() { sed -n '2,26p' "$0" >&2; exit 1; }
 ensure_registry() {
   mkdir -p "$home"
   [ -f "$reg" ] || printf 'name\tid\tbuild\trepo\tworktree\tmain\tlaunched\n' > "$reg"
@@ -77,49 +76,24 @@ start_session() {
 brief_text() { printf 'MAIN: %s\nSTATE: %s\n\n%s' "$1" "$2" "$3"; }
 # This session's own inbox address, as SendMessage takes it; empty where Claude Code exports no socket.
 main_socket() { [ -z "${CLAUDE_CODE_MESSAGING_SOCKET:-}" ] || printf 'uds:%s' "$CLAUDE_CODE_MESSAGING_SOCKET"; }
-main_copy() { printf '%s/records/%s.md' "$home" "$(printf '%s' "$1" | md5sum | cut -c1-16)"; }
-publish_record() {
-  # publish_record <worktree>: copy MAIN's record over the worktree's, undoing any change made there. The folder is
-  # the thread's, so nothing in it is followed: a symlinked .orchestration is refused, the copy goes to a fresh
-  # mktemp file, and mv replaces whatever entry thread.md is, a symlink included, rather than writing through it.
-  local dir="$1/.orchestration" tmp
-  [ ! -L "$dir" ] || fail "$dir is a symlink; refusing to write MAIN's record through it"
-  mkdir -p "$dir"
-  tmp=$(mktemp "$dir/.thread.md.XXXXXX")
-  cat "$(main_copy "$1")" > "$tmp"
-  mv -f "$tmp" "$dir/thread.md"
-}
 write_record() {
   # write_record <worktree> <main name> <checkout> <base> <base ref> <lane base> <landing>
-  local copy tmp
-  copy=$(main_copy "$1")
-  mkdir -p "$(dirname "$copy")"
-  tmp=$(mktemp "$copy.XXXXXX")
+  local file="$1/.orchestration/thread.md"
+  mkdir -p "$1/.orchestration"
   printf '%s\n' "# Thread record, written by MAIN's thread.sh (launch, rotate, adopt). The thread reads it and never edits it." \
     "MAIN: $2" "MAIN-SOCKET: $(main_socket)" "CHECKOUT: $3" "BASE: $4" "BASE-REF: $5" "LANE-BASE: $6" "LANDING: $7" \
-    "UPDATED: $(utc_now)" > "$tmp"
-  mv -f "$tmp" "$copy"
-  publish_record "$1"
+    "UPDATED: $(utc_now)" > "$file.tmp"
+  mv -f "$file.tmp" "$file"
 }
 set_main() {
-  # set_main <worktree> <main name> <checkout>: point MAIN's record at this session and publish it; a thread started
+  # set_main <worktree> <main name> <checkout>: point the record's MAIN fields at this session; a thread started
   # before records existed gets one with what the registry knows, and no base or landing mode.
-  local copy tmp
-  copy=$(main_copy "$1")
-  if [ ! -f "$copy" ]; then write_record "$1" "$2" "$3" "" "" "" ""; return 0; fi
-  tmp=$(mktemp "$copy.XXXXXX")
+  local file="$1/.orchestration/thread.md"
+  if [ ! -f "$file" ]; then write_record "$1" "$2" "$3" "" "" "" ""; return 0; fi
   awk -v m="$2" -v s="$(main_socket)" -v u="$(utc_now)" '
     /^MAIN:/ { print "MAIN: " m; next } /^MAIN-SOCKET:/ { print "MAIN-SOCKET: " s; next }
-    /^UPDATED:/ { print "UPDATED: " u; next } { print }' "$copy" > "$tmp"
-  mv -f "$tmp" "$copy"
-  publish_record "$1"
-}
-# record_field <worktree> <key>: a field from MAIN's own copy of the thread's record.
-record_field() {
-  local copy
-  copy=$(main_copy "$1")
-  [ -f "$copy" ] || return 0
-  sed -n "s/^$2:[[:space:]]*//p" "$copy" | head -1 | sed -E 's/[[:space:]]+$//'
+    /^UPDATED:/ { print "UPDATED: " u; next } { print }' "$file" > "$file.tmp"
+  mv -f "$file.tmp" "$file"
 }
 pick_base() {
   # pick_base <main checkout> <base branch> <requested landing or empty>: set base_ref and landing. origin/<base>
@@ -300,12 +274,7 @@ case "$cmd" in
     while IFS=$'\t' read -r name _ _ repo wt main_name _; do
       [ -n "$name" ] || continue
       [ -z "$here" ] || [ "$repo" = "$here" ] || continue
-      copy=$(main_copy "$wt")
-      if [ -f "$copy" ] && ! cmp -s "$copy" "$wt/.orchestration/thread.md"; then
-        echo "CHANGED $name: its thread record differs from yours; restore it with thread.sh adopt $name --main <your name>"
-        printed=1
-      fi
-      if [ -f "$copy" ]; then rec=$(record_field "$wt" MAIN-SOCKET); else rec=$(thread_field "$wt" MAIN-SOCKET); fi
+      rec=$(thread_field "$wt" MAIN-SOCKET)
       if [ -n "$sock" ] && [ "$rec" != "$sock" ]; then
         echo "MOVED $name main=$main_name recorded=${rec:-none} this=$sock: if you are its main session now, run thread.sh adopt $name --main <your name>"
         printed=1
@@ -318,10 +287,9 @@ case "$cmd" in
     [ $# -eq 1 ] || usage
     found=$(row_by 1 "$1"); [ -n "$found" ] || fail "no thread named $1 in $reg"
     IFS=$'\t' read -r _ _ build repo wt _ _ <<< "$found"
-    [ -f "$(main_copy "$wt")" ] || fail "no record of $1 in $home/records; it was launched before records existed, so integrate by hand"
-    landing=$(record_field "$wt" LANDING); base=$(record_field "$wt" BASE); checkout=$(record_field "$wt" CHECKOUT)
+    landing=$(thread_field "$wt" LANDING); base=$(thread_field "$wt" BASE); checkout=$(thread_field "$wt" CHECKOUT)
     [ "$landing" = local ] || fail "$1 lands by pull request (LANDING: ${landing:-unknown}), so its base moves on origin; pull it instead"
-    [ -n "$base" ] && [ -d "$checkout" ] || fail "no BASE or CHECKOUT in $(main_copy "$wt")"
+    [ -n "$base" ] && [ -d "$checkout" ] || fail "no BASE or CHECKOUT in $wt/.orchestration/thread.md"
     [ "$(realpath -m "$(git -C "$checkout" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)")" \
       = "$(realpath -m "$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)")" ] \
       || fail "$checkout is not a checkout of $repo"
@@ -361,9 +329,8 @@ case "$cmd" in
     build=${branch#orchestration/}
     repo=$(dirname "$(realpath -m "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)")")
     [ "$wt" = "$(dirname "$repo")/$(basename "$repo")-orch-$build" ] || fail "$wt is not $(basename "$repo")-orch-$build beside $repo"
-    [ ! -L "$wt/.orchestration" ] || fail "$wt/.orchestration is a symlink; refusing to archive through it"
-    [ -n "$base" ] || base=$(record_field "$wt" BASE)
-    landing=$(record_field "$wt" LANDING)
+    [ -n "$base" ] || base=$(thread_field "$wt" BASE)
+    landing=$(thread_field "$wt" LANDING)
     if [ "$force" = 0 ]; then
       [ -z "$(git -C "$wt" status --porcelain --untracked-files=no)" ] || fail "$wt has uncommitted changes to tracked files; land them, or pass --force"
       [ -n "$base" ] || fail "no record of $wt's base; pass --base <branch>, or --force"
@@ -386,7 +353,6 @@ case "$cmd" in
     archive="$home/archive/$build-$(date -u +%Y%m%dT%H%M%SZ)"
     mkdir -p "$archive"
     [ ! -d "$wt/.orchestration" ] || cp -a "$wt/.orchestration/." "$archive/"
-    [ ! -f "$(main_copy "$wt")" ] || mv "$(main_copy "$wt")" "$archive/thread.main.md"
     git -C "$repo" worktree remove --force "$wt" || fail "git worktree remove $wt failed; the archive is at $archive"
     git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
     if [ -n "$id" ] && [ "$id" != pending ]; then claude_env claude rm "$id" >/dev/null 2>&1 || true; fi

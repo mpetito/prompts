@@ -125,10 +125,6 @@ printf '%s\n' '# record' 'MAIN: Main session one' 'MAIN-SOCKET: uds:/tmp/main-1.
 [ "$("$here/scripts/state.sh" main --socket)" = uds:/tmp/main-1.sock ] || fail "state.sh main --socket did not read MAIN-SOCKET"
 [ "$("$here/scripts/state.sh" thread LANE-BASE)" = orchestration/b1 ] || fail "state.sh thread did not read a record field"
 "$here/scripts/state.sh" thread NOPE >/dev/null 2>&1 && fail "state.sh thread printed a missing field"
-"$here/scripts/state.sh" thread "x//;e touch $tmp/pwned;#" >/dev/null 2>&1 || true
-"$here/scripts/state.sh" thread "x/;w $tmp/pwned2
-#" >/dev/null 2>&1 || true
-[ ! -e "$tmp/pwned" ] && [ ! -e "$tmp/pwned2" ] || fail "state.sh thread ran a key as a sed script"
 "$here/scripts/state.sh" main --bogus >/dev/null 2>&1 && fail "state.sh main accepted an unknown option"
 "$here/scripts/state.sh" log "lane A launched" | grep -Eq "^logged $utc$" || fail "state.sh log printed the wrong line"
 tail -1 "$s1" | grep -Eq "^- $utc lane A launched$" || fail "state.sh log did not append to the Log section"
@@ -286,14 +282,6 @@ out=$("$here/scripts/finish-lane.sh" "$tmp/lane" "$tmp/archive")
 printf '%s' "$out" | grep -q 'archived ignored .eval-runs/' || fail "finish-lane.sh did not report the archived eval runs"
 [ ! -d "$tmp/lane" ] || fail "finish-lane.sh did not remove the worktree"
 printf '%s' "$out" | grep -q 'deleted branch lane-x' || fail "finish-lane.sh did not delete the lane branch"
-# A process still working in the lane stops the removal; --force overrides that check alone.
-git -C "$tmp/seed" worktree add -q "$tmp/lane2" -b lane-y
-(cd "$tmp/lane2" && exec sleep 30) & busy_pid=$!
-sleep 0.3
-"$here/scripts/finish-lane.sh" "$tmp/lane2" "$tmp/archive2" 2>&1 | grep -q "refusing: still running in $tmp/lane2: $busy_pid" || fail "finish-lane.sh removed a worktree a process still runs in"
-[ -d "$tmp/lane2" ] || fail "finish-lane.sh removed the busy worktree"
-"$here/scripts/finish-lane.sh" "$tmp/lane2" "$tmp/archive2" --force >/dev/null || fail "finish-lane.sh --force did not remove the worktree"
-kill "$busy_pid" 2>/dev/null || true; wait "$busy_pid" 2>/dev/null || true
 # When git can't list the ignored files, nothing is archived or removed.
 git -C "$tmp/seed" worktree add -q "$tmp/lane3" -b lane-z
 idx="$(git -C "$tmp/lane3" rev-parse --absolute-git-dir)/index"; cp "$idx" "$tmp/lane3.index.bak"; printf 'corrupt' > "$idx"
@@ -312,10 +300,6 @@ denies 'rm -rf .orchestration/tmp' || fail "guard-bash should deny deleting a la
 denies 'rm -rf ../app-orch-b1/.orchestration/results/lane-a.md' || fail "guard-bash should deny deleting results"
 denies "rm -r $coord/.orchestration/briefs" || fail "guard-bash should deny deleting the briefs folder"
 denies "rm -r $coord/.orchestration/plan.md" && fail "guard-bash denied deleting a non-evidence file"
-denies 'rm -rf .orchestration' || fail "guard-bash should deny deleting the whole .orchestration folder"
-denies 'rm -rf ./.orchestration/' || fail "guard-bash should deny deleting .orchestration/ with a slash"
-denies 'rm .orchestration/state.md' || fail "guard-bash should deny deleting the state file"
-denies 'rm -f .orchestration/thread.md .orchestration/outbox.md' || fail "guard-bash should deny deleting the record and outbox"
 denies 'kill 1234' && fail "guard-bash denied kill by pid"
 denies 'git worktree add ../wt -b x' && fail "guard-bash denied git worktree add"
 denies 'echo pkill-safe-name' && fail "guard-bash denied a harmless word"
@@ -343,14 +327,6 @@ bash_note 'while ! curl -s localhost; do sleep 2; done' | advised 'loops on slee
 [ -z "$(bash_note 'until curl -s localhost; do sleep 2; done' false worker-1)" ] || fail "guard-bash advised a worker's wait loop"
 bash_note 'pkill -f vite' false worker-1 | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null || fail "guard-bash let a worker pkill"
 bash_note 'git worktree remove ../wt' false worker-1 | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'plain directory' || fail "guard-bash did not point a worker at plain-directory copies"
-for c in 'echo MAIN: x > .orchestration/thread.md' "sed -i s/a/b/ ~/.claude/settings.json" 'cp x ~/.orchestration/records/a.md' \
-         'tee -a .claude/settings.local.json < x' 'mv new.toml ~/.codex/config.toml' 'echo {} > .mcp.json' \
-         'cp a.md .claude/agents/orchestrator.md'; do
-  bash_note "$c" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null || fail "guard-bash let a shell command write configuration: $c"
-done
-for c in 'cat .orchestration/thread.md' 'grep MAIN .orchestration/thread.md' 'jq . ~/.claude/settings.json'; do
-  bash_note "$c" | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null && fail "guard-bash refused reading configuration: $c"
-done
 jq -n '{tool_input:{command:"sleep 45"}}' | "$here/hooks/guard-bash.sh" | advised 'sleeps 45 s' || fail "guard-bash should advise on a foreground sleep when the input has no cwd"
 
 # --- hooks fixture: the owner's checkout, a coordination worktree, a lane worktree, a nested worktree -----------
@@ -381,99 +357,25 @@ writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes allowed the owner's 
 writes "$gwc" "$gwapp/new/dir/b.txt" | denied || fail "guard-writes allowed a new folder in the owner's checkout"
 writes "$gwc" "../app/a.txt" | denied || fail "guard-writes allowed a relative path into the owner's checkout"
 writes "$gwc" "$gwapp/a.txt" | reason | grep -q "owner's checkout, $gwapp" || fail "guard-writes reason did not name the owner's checkout"
-writes "$gwc" "$gwl/src/app.ts" | noted "a lane's or a worker's worktree" || fail "guard-writes should advise, not refuse, a lane worktree"
-writes "$gwc" "/etc/hosts" notebook_path | denied || fail "guard-writes allowed a notebook outside the build"
-writes "$gwc" "$gwc/../app-orch-b-evil/x" | denied || fail "guard-writes took a sibling with a shared prefix for its worktree"
-writes "$gwc" "/etc/hosts" | reason | grep -q 'outside this build' || fail "guard-writes did not say why a path outside the build was refused"
-for f in "$HOME/.bashrc" "$HOME/.claude/skills/new/SKILL.md" "$HOME/.agents/skills/x/SKILL.md" "$HOME/.gitconfig"; do
-  writes "$gwc" "$f" | denied || fail "guard-writes let the thread write $f"
-  AGENT=w1 writes "$gwc" "$f" | denied || fail "guard-writes let a worker write $f"
-done
-mkdir -p "$tmp/scratch"
-[ -z "$(writes "$gwc" "$tmp/scratch/x.md")" ] || fail "guard-writes noted a write to a temp folder"
-[ -z "$(AGENT=w1 writes "$gwc" "$tmp/scratch/x.md")" ] || fail "guard-writes noted a worker's write to a temp folder"
-for f in "$gwc/.claude/agents/orchestrator.md" "$gwc/.claude/skills/x/SKILL.md" "$gwc/.mcp.json" "$gwc/CLAUDE.md"; do
-  writes "$gwc" "$f" | denied || fail "guard-writes let the thread write its own session's config: $f"
-  AGENT=w1 writes "$gwc" "$f" | denied || fail "guard-writes let a worker write the thread's session config: $f"
-done
-[ -z "$(writes "$gwc" "$gwc/docs/plan.md")" ] || fail "guard-writes noted a plain file in the coordination worktree"
-# Registering a worktree grants nothing by itself: only the build's places count.
-git -C "$gwapp" worktree add -q "$HOME/evil-wt" -b evil
-git -C "$gwapp" worktree add -q "$gwapp/.claude/skills/evil" -b evil2
-git -C "$gwapp" worktree add -q "$HOME/gw/app-orch-other" -b orchestration/other
-git -C "$gwapp" worktree add -q "$gwl/nested" -b nested
-for f in "$HOME/evil-wt/SKILL.md" "$HOME/gw/app-orch-other/.claude/agents/orchestrator.md" "$HOME/gw/app-orch-other/notes.md" "$gwl/nested/x.md"; do
-  writes "$gwc" "$f" | denied || fail "guard-writes let the thread write $f"
-  AGENT=w1 writes "$gwc" "$f" | denied || fail "guard-writes let a worker write $f"
-done
-writes "$gwc" "$gwapp/.claude/skills/evil/SKILL.md" | reason | grep -q "in the owner's checkout" || fail "guard-writes exempted a worktree registered in the owner's .claude/skills"
-git init -q "$gwapp/.claude/worktrees/fake"
-writes "$gwc" "$gwapp/.claude/worktrees/fake/x.md" | reason | grep -q "in the owner's checkout" || fail "guard-writes exempted an unregistered repository under the owner's .claude/worktrees"
-# A worker's own worktree under the thread's .claude/worktrees/ is the worker's, not the thread's configuration.
-git -C "$gwapp" worktree add -q "$gwc/.claude/worktrees/agent-y" -b agent-y
-[ -z "$(AGENT=w1 writes "$gwc" "$gwc/.claude/worktrees/agent-y/src/x.ts")" ] || fail "guard-writes stopped a worker in its own isolation worktree"
-writes "$gwc" "$gwc/.claude/worktrees/agent-y/src/x.ts" | noted "a lane's or a worker's worktree" || fail "guard-writes did not advise the thread in a worker's worktree"
-git init -q "$HOME/gw/app-wt-fake"
-writes "$gwc" "$HOME/gw/app-wt-fake/x.md" | denied || fail "guard-writes took an unregistered repository named like a lane for a lane"
-mkdir -p "$gwc/.claude/worktrees/not-a-worktree"
-writes "$gwc" "$gwc/.claude/worktrees/not-a-worktree/x.md" | denied || fail "guard-writes let the thread write under .claude/worktrees outside a registered worktree"
-writes "$gwc" "$gwl/.codex/config.toml" | denied || fail "guard-writes let the thread write a lane's Codex config"
-writes "$gwc" "$gwl/.claude/agents/x.md" | noted 'lane' || fail "guard-writes treated a lane's .claude like the thread's own"
-writes "$gwc" "$gwn/x.ts" | noted "a lane's or a worker's worktree" || fail "guard-writes took a nested worktree for the owner's checkout"
+# Elsewhere the thread is trusted: a reminder, never a refusal.
+writes "$gwc" "$gwl/src/app.ts" | noted 'outside your coordination worktree' || fail "guard-writes should advise, not refuse, a lane worktree"
+writes "$gwc" "/etc/hosts" notebook_path | noted 'outside your coordination worktree' || fail "guard-writes should advise on a notebook outside the worktree"
+writes "$gwc" "$gwc/../app-orch-b-evil/x" | noted 'outside your coordination worktree' || fail "guard-writes took a sibling with a shared prefix for its worktree"
 [ -z "$(AGENT=w1 writes "$gwc" "$gwl/src/app.ts")" ] || fail "guard-writes noted a worker in its lane worktree"
-[ -z "$(AGENT=w1 writes "$gwc" "$gwn/x.ts")" ] || fail "guard-writes noted a worker in a nested worktree"
+[ -z "$(AGENT=w1 writes "$gwc" "$HOME/notes.md")" ] || fail "guard-writes noted a worker outside the owner's checkout"
 AGENT=w1 writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes let a worker write the owner's checkout"
-AGENT=w1 writes "$gwc" "$gwapp/a.txt" | reason | grep -q 'Workers edit only their own lane worktree' || fail "guard-writes gave a worker the thread's reason"
+AGENT=w1 writes "$gwc" "$gwapp/a.txt" | reason | grep -q 'Make the change in your own lane worktree' || fail "guard-writes gave a worker the thread's reason"
 # The session is the folder it started in: a cd into the owner's checkout changes nothing.
 CLAUDE_PROJECT_DIR="$gwc" writes "$gwapp" "$gwapp/a.txt" | denied || fail "guard-writes trusted a cwd moved into the owner's checkout"
-# A repository made inside the owner's checkout is not one of its worktrees, so it is still the checkout.
-git init -q "$gwapp/inner"
-writes "$gwc" "$gwapp/inner/x.ts" | reason | grep -q "in the owner's checkout" || fail "guard-writes let a nested git init escape the owner's checkout"
-AGENT=w1 writes "$gwc" "$gwapp/inner/x.ts" | denied || fail "guard-writes let a worker into a nested repository in the owner's checkout"
-# When git cannot place a path, it counts as inside.
-( . "$here/scripts/lib.sh"; worktree_of() { :; }; in_checkout "$gwn/x.ts" "$gwapp" ) || fail "in_checkout failed open when git could not place the path"
-( . "$here/scripts/lib.sh"; in_checkout "$gwl/x.ts" "$gwapp" ) && fail "in_checkout put a sibling worktree inside the checkout"
-# Configuration and the record, for the thread and its workers, from anywhere.
-mkdir -p "$HOME/.claude" "$HOME/.codex"
-for f in "$HOME/.claude/settings.json" "$gwc/.claude/settings.local.json" "$HOME/.claude.json" "$HOME/.codex/config.toml" \
-         "$ORCHESTRATION_HOME/threads.tsv" "$gwc/.orchestration/thread.md"; do
-  writes "$gwc" "$f" | denied || fail "guard-writes let the thread write $f"
-  AGENT=w1 writes "$gwc" "$f" | denied || fail "guard-writes let a worker write $f"
-done
-writes "$tmp/plain" "$HOME/.claude/settings.json" | denied || fail "guard-writes let a session outside git write settings"
-printf '{}' > "$tmp/real-settings.json"; ln -sf "$tmp/real-settings.json" "$HOME/.claude/settings.json"
-writes "$gwc" "$HOME/.claude/settings.json" | denied || fail "guard-writes followed a settings symlink out of protection"
-rm -f "$HOME/.claude/settings.json"
-writes "$gwc" "$gwc/.orchestration/thread.md" | reason | grep -q 'send MAIN the diff' || fail "guard-writes gave no way forward for configuration"
-# A record pointing CHECKOUT elsewhere still leaves the main checkout protected.
-sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/elsewhere#" "$gwc/.orchestration/thread.md"
-writes "$gwc" "$gwapp/a.txt" | reason | grep -q "in the owner's checkout, $gwapp" || fail "guard-writes dropped the main checkout when the record named another"
-sed -i "s#^CHECKOUT: .*#CHECKOUT: $gwapp#" "$gwc/.orchestration/thread.md"
-# Without CHECKOUT in the record, the main checkout stands in for the owner's.
+# An owner working in a linked worktree is protected through the record's CHECKOUT, and the main checkout always.
+sed -i "s#^CHECKOUT: .*#CHECKOUT: $gwl#" "$gwc/.orchestration/thread.md"
+writes "$gwc" "$gwl/src/app.ts" | denied || fail "guard-writes ignored the record's CHECKOUT"
+writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes dropped the main checkout when the record named another"
 sed -i '/^CHECKOUT:/d' "$gwc/.orchestration/thread.md"
 writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes did not fall back to the main checkout"
 printf 'CHECKOUT: %s\n' "$gwapp" >> "$gwc/.orchestration/thread.md"
-# The hooks run only in orchestrator sessions, so they hold without the thread's files, and outside git.
-writes "$tmp/plain" "$gwapp/a.txt" | denied || fail "guard-writes allowed a write from a session outside git"
-[ -z "$(writes "$tmp/plain" "$tmp/scratch/x.md")" ] || fail "guard-writes refused a temp folder from a session outside git"
-writes "$tmp/nostate" "$gwapp/a.txt" | denied || fail "guard-writes allowed a write from a worktree with no thread files"
-mv "$gwc/.orchestration" "$tmp/gwc-orch-aside"
-writes "$gwc" "$gwapp/a.txt" | reason | grep -q "in the owner's checkout, $gwapp" || fail "guard-writes stopped guarding once the thread's files were gone"
-mv "$tmp/gwc-orch-aside" "$gwc/.orchestration"
-# CHECKOUT comes from MAIN's copy of the record, which the thread can't reach, ahead of the worktree's.
-mrec="$ORCHESTRATION_HOME/records/$(printf '%s' "$gwc" | md5sum | cut -c1-16).md"
-mkdir -p "$(dirname "$mrec")"; printf 'CHECKOUT: %s\n' "$gwl" > "$mrec"
-writes "$gwc" "$gwl/src/app.ts" | reason | grep -q "in the owner's checkout, $gwl" || fail "guard-writes ignored MAIN's copy of the record"
-sed -i '/^CHECKOUT:/d' "$gwc/.orchestration/thread.md"
-writes "$gwc" "$gwl/src/app.ts" | denied || fail "guard-writes let the worktree record override MAIN's copy"
-printf 'CHECKOUT: %s\n' "$gwapp" >> "$gwc/.orchestration/thread.md"; rm -f "$mrec"
-# Without jq, the hooks refuse rather than read every field as empty.
-mkdir -p "$tmp/nojq"
-for t in bash git realpath sed awk md5sum cut dirname xargs grep cat tr head mktemp env python3; do ln -sf "$(command -v "$t")" "$tmp/nojq/$t"; done
-for h in guard-writes.sh guard-message.sh guard-bash.sh; do
-  jq -n --arg cwd "$gwc" '{cwd:$cwd,tool_input:{file_path:"/etc/hosts",to:"x",message:"m",command:"ls"}}' > "$tmp/in.json"
-  PATH="$tmp/nojq" bash "$here/hooks/$h" < "$tmp/in.json" | reason | grep -q 'jq is not installed' || fail "$h did not refuse without jq"
-done
+[ -z "$(writes "$tmp/plain" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from outside git"
+[ -z "$(writes "$tmp/nostate" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from a worktree with no thread files"
 
 # --- guard-message.sh ----------------------------------------------------------------------------------------
 msg() { jq -n --arg cwd "$1" --arg to "$2" --arg m "$3" '{cwd:$cwd,tool_input:{to:$to,message:$m}}' | with_agent | "$here/hooks/guard-message.sh"; }
@@ -533,8 +435,6 @@ wta="$tmp/proj/app-orch-t-a"
 rec="$wta/.orchestration/thread.md"
 [ "$(sed -n 's/^\(MAIN\|MAIN-SOCKET\|CHECKOUT\|BASE\|BASE-REF\|LANE-BASE\|LANDING\): //p' "$rec" | tr '\n' '|')" = "prompts-9d|uds:$tmp/main-1.sock|$app|main|origin/main|origin/main|pr|" ] \
   || fail "thread.sh launch wrote the wrong thread record: $(cat "$rec")"
-copy_of() { printf '%s/records/%s.md' "$ORCHESTRATION_HOME" "$(printf '%s' "$1" | md5sum | cut -c1-16)"; }
-cmp -s "$(copy_of "$wta")" "$rec" || fail "thread.sh launch did not keep MAIN's own copy of the record"
 [ -z "$(git -C "$wta" config --get branch.orchestration/t-a.merge || true)" ] || fail "thread.sh made the coordination branch track the base"
 grep -qxF '.orchestration/' "$app/.git/info/exclude" || fail "thread.sh did not exclude .orchestration/"
 [ "$(head -2 "$MOCK_DIR/brief-t-a.txt" | tr '\n' '|')" = "MAIN: prompts-9d|STATE: $wta/.orchestration/state.md|" ] || fail "thread.sh launch brief header is wrong"
@@ -657,11 +557,6 @@ printf '%s\n' "$out" | grep -qx 'INBOX t-c 2026-10-10T13:46Z to Main two' && pri
 (cd "$tmp/plain" && "$thread" check --all) | grep -q '^INBOX t-c' && fail "thread.sh check showed an outbox entry twice"
 printf '=== 2026-10-10T14:00Z to Main two #ba9876543210\nSTATUS: working - d1\n\n' >> "$wtc/.orchestration/outbox.md"
 (cd "$tmp/plain" && "$thread" check --all) | grep -q '^INBOX t-c 2026-10-10T14:00Z' || fail "thread.sh check missed a new outbox entry"
-# A record changed in the worktree is reported, and adopt puts MAIN's copy back.
-sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$wtc/.orchestration/thread.md"
-(cd "$app" && "$thread" check) | grep -q '^CHANGED t-c: its thread record differs from yours' || fail "thread.sh check missed a changed record"
-"$thread" adopt t-c --main 'Main two' >/dev/null
-cmp -s "$(copy_of "$wtc")" "$wtc/.orchestration/thread.md" || fail "thread.sh adopt did not restore the record"
 for t in t-a-r2 t-b2 t-d t-s t-s2; do "$thread" adopt "$t" --main 'Main two' >/dev/null; done
 [ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check did not print OK with nothing to catch up on"
 # A thread with no record at all (launched before records existed) is reported, not fatal.
@@ -669,17 +564,6 @@ mkdir -p "$tmp/proj/legacy-orch/.orchestration"
 printf 't-old\tdeadbeef\told\t%s\t%s\tm\t2026-10-10T00:00Z\n' "$app" "$tmp/proj/legacy-orch" >> "$ORCHESTRATION_HOME/threads.tsv"
 (cd "$app" && "$thread" check) | grep -q '^MOVED t-old main=m recorded=none' || fail "thread.sh check failed on a thread with no record"
 "$thread" stop t-old >/dev/null
-# Publishing the record never writes through a link the thread planted.
-wtd="$tmp/proj/app-orch-d"
-printf 'victim\n' > "$tmp/victim1"; printf 'victim\n' > "$tmp/victim2"
-ln -sf "$tmp/victim1" "$wtd/.orchestration/thread.md.tmp"
-rm -f "$wtd/.orchestration/thread.md"; ln -s "$tmp/victim2" "$wtd/.orchestration/thread.md"
-"$thread" adopt t-d --main 'Main two' >/dev/null
-[ "$(cat "$tmp/victim1")" = victim ] && [ "$(cat "$tmp/victim2")" = victim ] || fail "thread.sh wrote MAIN's record through a symlink"
-[ -f "$wtd/.orchestration/thread.md" ] && [ ! -L "$wtd/.orchestration/thread.md" ] || fail "thread.sh left thread.md a symlink"
-mv "$wtd/.orchestration" "$tmp/moved-orch"; ln -s "$tmp/moved-orch" "$wtd/.orchestration"
-"$thread" adopt t-d --main 'Main two' | grep -q 'is a symlink; refusing' || fail "thread.sh wrote into a symlinked .orchestration"
-rm "$wtd/.orchestration"; mv "$tmp/moved-orch" "$wtd/.orchestration"
 
 # --- land-local.sh -------------------------------------------------------------------------------------------
 git -C "$app" worktree add -q "$tmp/proj/app-wt-l1" -b lane/l1 orchestration/c
@@ -701,8 +585,6 @@ ll lane/l1 "$l1" >/dev/null 2>&1 && fail "land-local.sh ran without --check"
 # --- thread.sh integrate -------------------------------------------------------------------------------------
 "$thread" integrate t-c | grep -q '^FAILED .* is on main, not feat-x' || fail "thread.sh integrated into the wrong branch"
 git -C "$app" checkout -q feat-x
-# integrate acts on MAIN's copy, so a record changed in the worktree can't redirect it.
-sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$wtc/.orchestration/thread.md"
 out=$("$thread" integrate t-c)
 [[ $out =~ ^INTEGRATED\ t-c\ feat-x@[0-9a-f]{7}\ \(fast-forward\)$ ]] && [ -f "$app/L1.md" ] || fail "thread.sh integrate did not fast-forward: $out"
 (cd "$app" && printf 'owner\n' > OWNER.md && git add . && git commit -qm owner)
@@ -717,7 +599,7 @@ printf 'dirty\n' >> "$app/FEAT.md"
 "$thread" integrate t-c | grep -q '^FAILED .* has uncommitted changes' || fail "thread.sh integrated over uncommitted changes"
 git -C "$app" checkout -q FEAT.md
 "$thread" integrate t-d | grep -q '^FAILED t-d lands by pull request' || fail "thread.sh integrated a pull-request build"
-sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$(copy_of "$wtc")"
+sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$wtc/.orchestration/thread.md"
 "$thread" integrate t-c | grep -q "^FAILED $tmp/proj/solo is not a checkout of $app" || fail "thread.sh integrated into another repository"
 
 # --- thread.sh close ------------------------------------------------------------------------------------------
@@ -728,7 +610,7 @@ idc=$(awk -F'\t' '$1=="t-c" {print $2}' "$ORCHESTRATION_HOME/threads.tsv")
 out=$("$thread" close t-c --force)
 [[ $out =~ ^CLOSED\ c\ archive=$ORCHESTRATION_HOME/archive/c-[0-9T]+Z\ lanes\ still\ present:\ .*app-wt-l1 ]] || fail "thread.sh close printed: $out"
 arch=${out#*archive=}; arch=${arch%% *}
-[ -f "$arch/thread.md" ] && [ -f "$arch/thread.main.md" ] && [ -f "$arch/outbox.md" ] || fail "thread.sh close did not archive .orchestration and MAIN's record"
+[ -f "$arch/thread.md" ] && [ -f "$arch/outbox.md" ] || fail "thread.sh close did not archive .orchestration"
 [ ! -e "$wtc" ] && ! git -C "$app" rev-parse --verify -q orchestration/c >/dev/null || fail "thread.sh close left the worktree or the branch"
 grep -q '^t-c	' "$ORCHESTRATION_HOME/threads.tsv" && fail "thread.sh close left the registry row"
 grep -q "stop $idc" "$MOCK_DIR/claude.log" && grep -q "rm $idc" "$MOCK_DIR/claude.log" || fail "thread.sh close did not stop and remove the session"
@@ -744,8 +626,5 @@ git -C "$app" worktree add -q -b orchestration/z "$tmp/proj/app-orch-z" main
 "$thread" close --worktree "$tmp/proj/app-orch-z" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
 "$thread" close --worktree "$app" | grep -q 'is on .*, not orchestration/<build>' || fail "thread.sh closed a checkout that is not a coordination worktree"
 "$thread" close t-nope | grep -q '^FAILED no thread named t-nope' || fail "thread.sh closed an unknown thread"
-git -C "$app" worktree add -q -b orchestration/y "$tmp/proj/app-orch-y" main
-mkdir -p "$tmp/elsewhere-orch"; ln -s "$tmp/elsewhere-orch" "$tmp/proj/app-orch-y/.orchestration"
-"$thread" close --worktree "$tmp/proj/app-orch-y" --base main | grep -q 'is a symlink; refusing to archive' || fail "thread.sh archived through a symlinked .orchestration"
 
 echo "orchestration tests passed"

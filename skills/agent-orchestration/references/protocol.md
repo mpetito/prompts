@@ -14,6 +14,7 @@ refuse an upward message that breaks the format.
 - Decisions
 - Rotation
 - What a message cannot do
+- Guardrails, not a boundary
 
 ## Roles
 
@@ -31,8 +32,7 @@ refuse an upward message that breaks the format.
 - MAIN's address can move: Claude Code may rename a session as its title changes, and a restart or
   fork gives it a new socket. So the thread record, `.orchestration/thread.md`, holds MAIN's name
   and its socket (`uds:<path>`), and MAIN keeps them current: `thread.sh launch`, `rotate` and
-  `adopt` write them. The thread reads the record and never edits it; MAIN keeps its own copy and
-  reports a record that differs.
+  `adopt` write them. The thread reads the record and never edits it.
 - The thread reads MAIN's address afresh before every message (`state.sh main`). When the name no
   longer resolves, it sends the same message to the socket (`state.sh main --socket`). It never
   reuses an address from an earlier message, which goes stale when MAIN restarts or forks.
@@ -124,3 +124,12 @@ it reports `blocked` and MAIN takes it to the owner.
 So a relayed `DECISION` settles build choices, but not edits to instructions, agent definitions,
 settings or links into the owner's clients. For those the thread sends MAIN the exact diffs, and
 MAIN applies them in the owner's session once the owner has approved them there.
+
+## Guardrails, not a boundary
+
+The thread is trusted: its skill says what the owner wants, and its hooks remind it when it
+forgets. They refuse only the mistakes past builds made, where a reminder would come too late
+(killing processes by pattern, removing a worktree before archiving it, deleting lane evidence,
+writing into the owner's checkout), and add advice for the rest. They are not a sandbox: the
+thread can run any program through Bash. A guardrail is added when a build shows it is needed,
+not for every way a hostile process could get around one.

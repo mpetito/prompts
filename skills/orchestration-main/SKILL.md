@@ -20,8 +20,7 @@ script paths out in full in every command:
 - Each thread works in its own worktree beside the owner's checkout, `../<repo>-orch-<build>`,
   and keeps its state and decisions in that worktree's `.orchestration/`; you keep no copy. Your
   address, the base and the landing mode are in its thread record, `.orchestration/thread.md`,
-  which only `thread.sh` writes. The worktree is within the thread's reach, so `thread.sh` keeps
-  its own copy of each record and acts only on that.
+  which only `thread.sh` writes.
 
 ## 1. Start a build
 
@@ -60,8 +59,6 @@ wake with `thread.sh check`:
   `STEER: MAIN moved; read my address with state.sh main before your next message`.
 - `INBOX <thread> <time> …`: a message the thread sent you, copied from its outbox. Ones you
   already received repeat; act on the rest as if they had just arrived.
-- `CHANGED <thread> …`: the record in the thread's worktree no longer matches yours. Run
-  `thread.sh adopt <thread> --main <your name>` to restore it, and ask the thread why it changed.
 - `OK` or `NONE`: nothing to catch up on.
 
 A new name alone isn't reported, since threads reach you through your socket when the name fails.

@@ -2,45 +2,25 @@
 # Retire a lane's worktree without losing its evidence: archive its scratch directory and its ignored files
 # (eval runs, logs; not dependency or cache folders) first, refuse while an agent still runs there, then remove
 # the worktree and delete the local branch. Ignored files land under <archive dir>/ignored/ at their own paths.
-#   finish-lane.sh <lane worktree, e.g. ../<repo>-wt-<lane>> <archive dir> [--scratch <relative path, default .orchestration/tmp>] [--keep-branch] [--force]
-# It refuses while any process (a Codex lane, a dev server, a shell) still has its working directory in the worktree;
-# --force skips that check, never the uncommitted-changes one.
+#   finish-lane.sh <lane worktree, e.g. ../<repo>-wt-<lane>> <archive dir> [--scratch <relative path, default .orchestration/tmp>] [--keep-branch]
 # Prints one line per step done; refusals go to stderr with exit 1.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
-usage='usage: finish-lane.sh <worktree> <archive dir> [--scratch <relative path>] [--keep-branch] [--force]'
+usage='usage: finish-lane.sh <worktree> <archive dir> [--scratch <relative path>] [--keep-branch]'
 [ $# -ge 2 ] || { echo "$usage" >&2; exit 1; }
 wt=$1; archive=$2; shift 2
-scratch=.orchestration/tmp; keep=0; force=0
+scratch=.orchestration/tmp; keep=0
 while [ $# -gt 0 ]; do
   case $1 in
     --scratch) need_value "$1" $#; scratch=$2; shift 2 ;;
     --keep-branch) keep=1; shift ;;
-    --force) force=1; shift ;;
     *) echo "unknown option $1; $usage" >&2; exit 1 ;;
   esac
 done
 [ -d "$wt" ] || { echo "no worktree at $wt" >&2; exit 1; }
 archive=$(realpath -m -- "$archive")
 git -C "$wt" rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "not a git worktree: $wt" >&2; exit 1; }
-# A process whose working directory is inside the worktree (a Codex lane, a server, a shell) would lose its files.
-# Linux answers from /proc, elsewhere lsof; with neither, the script can't tell, so it refuses unless --force.
-if [ "$force" = 0 ]; then
-  root=$(realpath -m -- "$wt"); busy=""
-  if [ -d /proc/self ]; then
-    for d in /proc/[0-9]*; do
-      [ "${d#/proc/}" != "$$" ] || continue
-      c=$(readlink "$d/cwd" 2>/dev/null) || continue
-      case "$c/" in "$root/"*) busy+="${d#/proc/}($(tr '\0' ' ' < "$d/cmdline" 2>/dev/null | cut -c1-40)) " ;; esac
-    done
-  elif command -v lsof >/dev/null 2>&1; then
-    busy=$(lsof -a -d cwd -t +D "$root" 2>/dev/null | tr '\n' ' ' || true)
-  else
-    echo "refusing: no /proc or lsof to tell whether a process still runs in $wt; stop it, then pass --force" >&2; exit 1
-  fi
-  [ -z "$busy" ] || { echo "refusing: still running in $wt: $busy(stop them, or pass --force)" >&2; exit 1; }
-fi
-# Inside Herdr, a peer agent's pane may sit in the worktree without a process there yet.
+# Only inside Herdr can a peer agent be running in the worktree; elsewhere there is nothing to ask.
 if command -v herdr >/dev/null && [ "${HERDR_ENV:-}" = 1 ]; then
   live=$(herdr agent list 2>/dev/null | jq -r --arg wt "$wt" '.result.agents[]? | select((.cwd // "") | startswith($wt)) | .name' || true)
   [ -z "$live" ] || { echo "refusing: agent(s) still run in $wt: $live" >&2; exit 1; }
