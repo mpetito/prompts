@@ -131,7 +131,7 @@
         {
           "name": "length-budget-and-references",
           "type": "regex",
-          "pattern": "(?is)(?:(?:under|below|budget of|limit of|at most|within)[^\\n]{0,20}?\\b\\d{2,3}\\b[^\\n]{0,10}\\blines?\\b|\\b\\d{2,3}[- ]lines?\\b[^\\n]{0,10}\\b(?:limit|budget|cap)\\b)[\\s\\S]*?\\breferences/|\\breferences/[\\s\\S]*?(?:(?:under|below|budget of|limit of|at most|within)[^\\n]{0,20}?\\b\\d{2,3}\\b[^\\n]{0,10}\\blines?\\b|\\b\\d{2,3}[- ]lines?\\b[^\\n]{0,10}\\b(?:limit|budget|cap)\\b)"
+          "pattern": "(?is)(?:(?:under|below|budget of|limit of|at most|within|should be|end up|aim for|target of|brings?[^\\n]{0,30}?\\bto)[^\\n]{0,20}?\\b\\d{2,3}\\b[^\\n]{0,10}\\blines?\\b|\\b\\d{2,3}[- ]lines?\\b[^\\n]{0,10}\\b(?:limit|budget|cap)\\b)[\\s\\S]*?\\breferences/|\\breferences/[\\s\\S]*?(?:(?:under|below|budget of|limit of|at most|within|should be|end up|aim for|target of|brings?[^\\n]{0,30}?\\bto)[^\\n]{0,20}?\\b\\d{2,3}\\b[^\\n]{0,10}\\blines?\\b|\\b\\d{2,3}[- ]lines?\\b[^\\n]{0,10}\\b(?:limit|budget|cap)\\b)"
         },
         {
           "name": "skill-relative-cross-reference",
