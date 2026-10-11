@@ -76,7 +76,8 @@ other agent file points to it. Code that breaks a limit: never relax a limit; de
 9. **Check, fix, repeat** until every item holds:
     - [ ] Lint exits 0 with every rule at `error`; no threshold looser than step 2; no new
       `warn`, `eslint-disable` or `# noqa`.
-    - [ ] Each rule appears in one file; CLAUDE.md, if present, contains `@AGENTS.md`.
+    - [ ] Each rule appears once, in one file and one section; CLAUDE.md, if present, contains
+      `@AGENTS.md`.
     - [ ] REVIEW.md and CONTRIBUTING.md exist; `specs/` is at the root; the lint script has
       `--max-warnings 0`.
     - [ ] copilot-instructions.md has a "What not to flag" section and repeats no AGENTS.md rule
