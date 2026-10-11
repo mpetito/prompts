@@ -400,7 +400,7 @@ foreach ($name in $names) {
             }
             else {
                 $run = @('run-agent', '--agent', $Agent, '--model', $Model, '--timeout', $TimeoutSeconds, '--tasks', $shard, '--runs', $runsDir)
-                if ($Agent -eq 'claude') { $run += @('--claude-bin', $claudeBin) }
+                if ($Agent -eq 'claude') { $run += @('--claude-bin', $claudeBin) } elseif ($Effort) { $run += @('--codex-cmd', "codex exec --json -c model_reasoning_effort=$Effort") }
             }
             [pscustomobject]@{ Label = "answers-$i"; Arguments = $run }
         }

@@ -1,0 +1,478 @@
+{
+  "version": 2,
+  "skill_name": "code-style",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "r1-second-rejection-alert",
+      "split": "tune",
+      "prompt": "In consent_review.ts, when a profile's consent is rejected for the second time, post a message to the ops channel naming the profile, so someone can reach out to the creator. Use `opsAlerts.post(text: string)`, imported as `{ opsAlerts }` from `./ops-alerts`. Only the second rejection alerts, not the third or later ones. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/consent_review.ts"
+      ],
+      "expected_behavior": [
+        "Counts the profile's consent_rejected events from the existing event log (store.listEvents) to detect the second rejection, for example by counting earlier rejections before appending, since the first one is long indexed",
+        "Adds no rejection counter, first-rejection marker or alerted flag to Profile or to the updateProfile patch",
+        "Posts the alert with opsAlerts.post only when the count is exactly two"
+      ],
+      "assertions": [
+        {
+          "name": "alert-posted",
+          "type": "regex",
+          "pattern": "opsAlerts\\.post\\("
+        },
+        {
+          "name": "reads-event-log",
+          "type": "regex",
+          "pattern": "\\.listEvents\\("
+        },
+        {
+          "name": "profile-unchanged",
+          "type": "regex",
+          "pattern": "export type Profile = \\{\\s*id: string;\\s*displayName: string;\\s*email: string;\\s*consentStatus: ConsentStatus;\\s*updatedAt: string;\\s*\\};"
+        },
+        {
+          "name": "no-stored-counter-or-flag",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes|[Aa]ttempts)\\w*\\??\\s*:\\s*number\\b|\\b\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes)\\w*\\s*:\\s*\\(?[^,\\n]*\\+\\s*1\\b|^\\s*\\w*(?:[Rr]eject|[Aa]lert|[Nn]otif)\\w*(?:At|Sent|First|ed)\\??\\s*:\\s*(?:string|boolean)\\b"
+        },
+        {
+          "name": "least-mechanism",
+          "type": "judge",
+          "rubric": [
+            "The change derives 'second rejection' from data the module already records instead of storing new state on the profile"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r2-waitlist-cap",
+      "split": "tune",
+      "prompt": "In waitlist_intake.ts, cap each region's waitlist at 1000 waiting parties: `joinWaitlist` must throw `WaitlistFullError` when the region already has 1000 parties waiting. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/waitlist_intake.ts"
+      ],
+      "expected_behavior": [
+        "Reads the region queue's depth from SQS (GetQueueAttributes, ApproximateNumberOfMessages) before sending",
+        "Adds no running total: no new DynamoDB attribute or UpdateExpression, no in-memory counter incremented in joinWaitlist and decremented in takeNextParty",
+        "Throws WaitlistFullError when the depth is at or above 1000"
+      ],
+      "assertions": [
+        {
+          "name": "throws-when-full",
+          "type": "regex",
+          "pattern": "throw\\s+new\\s+WaitlistFullError\\("
+        },
+        {
+          "name": "uses-queue-depth",
+          "type": "regex",
+          "pattern": "ApproximateNumberOfMessages"
+        },
+        {
+          "name": "no-running-total",
+          "type": "not_regex",
+          "pattern": "[\\\"'](?:ADD|SET|REMOVE)\\s+(?!joined :one[\\\"']|matched :one[\\\"'])|new\\s+Map<\\s*Region\\s*,\\s*number|\\b\\w*(?:[Ww]aiting|[Cc]ount|[Dd]epth|[Pp]ending|[Ss]ize|[Tt]otal)\\w*(?:\\[[^\\]]*\\])?\\s*(?:\\+\\+|--|[+-]=)(?![^\\n]*ApproximateNumberOf)",
+          "ci": false
+        },
+        {
+          "name": "platform-signal",
+          "type": "judge",
+          "rubric": [
+            "The cap is enforced from the queue's own depth, with no second source of truth to keep in sync"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r3-trusted-cleanup-script",
+      "split": "tune",
+      "prompt": "A security review of remove-lane-worktree.sh reported three findings: (1) a worker process may still be running inside the worktree when it is removed; (2) the lane argument goes into a path unchecked, so a value like `../..` points outside .worktrees; (3) the dirty check ignores untracked files. Address the findings. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/remove-lane-worktree.sh"
+      ],
+      "expected_behavior": [
+        "Keeps the script advisory for its trusted caller (the build's own orchestrator): the removal still runs",
+        "Adds no refusal, non-zero exit, --force gate, wait loop or lane-name allowlist; a running process or odd lane at most gets a warning, or is left to the trusted caller",
+        "Includes untracked files in the dirty check"
+      ],
+      "assertions": [
+        {
+          "name": "untracked-in-dirty-check",
+          "type": "regex",
+          "pattern": "status\\s+--porcelain(?![^\\n]*untracked-files=no\\b)"
+        },
+        {
+          "name": "still-removes",
+          "type": "regex",
+          "pattern": "worktree\\s+remove\\b"
+        },
+        {
+          "name": "no-refusal",
+          "type": "not_regex",
+          "pattern": "(?m)(?:^|[;&|{]|\\bthen\\b|\\belse\\b|\\bdo\\b)\\s*(?:exit|return)\\s+(?!0\\b|!)\\S|^\\s*-?-force\\)|==\\s*\\\"?--force|^\\s*\\[\\[[^\\n]*=~[^\\n]*\\]\\]\\s*$|^\\s*(?:while|until)\\b[^\\n]*(?:lsof|fuser|pgrep|/proc)"
+        },
+        {
+          "name": "trust-caller",
+          "type": "judge",
+          "rubric": [
+            "The answer treats the orchestrator as a trusted caller: it warns or declines rather than blocks, and does not harden the script against its own agent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r5-tool-registry",
+      "split": "tune",
+      "prompt": "In market_tools.ts, add a `get_news` tool: given a symbol and an optional limit (default 10, at most 50), it returns the latest headlines from `client.fetchNews(symbol, limit)`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/market_tools.ts"
+      ],
+      "expected_behavior": [
+        "Adds get_news to the TOOLS registry with its schema",
+        "Runs get_news from its registry entry (a handler on the tool), not from a new case or name comparison in executeTool",
+        "Moves the existing tools' handlers into the registry the same way, so executeTool dispatches through the found tool (the fixture's switch (name) goes; a name-keyed executor map is the same switch)"
+      ],
+      "assertions": [
+        {
+          "name": "registered",
+          "type": "regex",
+          "pattern": "name:\\s*[\\\"']get_news[\\\"']|defineTool\\(\\s*[\\\"']get_news[\\\"']"
+        },
+        {
+          "name": "calls-fetch-news",
+          "type": "regex",
+          "pattern": "fetchNews\\("
+        },
+        {
+          "name": "no-name-switch",
+          "type": "not_regex",
+          "pattern": "case\\s+[\\\"'`]get_news[\\\"'`]|name\\s*===?\\s*[\\\"'`]get_news[\\\"'`]|[\\\"'`]get_news[\\\"'`]\\s*===?\\s*name|switch\\s*\\(\\s*(?:\\w+\\.)?name\\s*\\)|=\\s*\\{\\s*[\\\"']?get_\\w+[\\\"']?\\s*:"
+        },
+        {
+          "name": "registry-dispatch",
+          "type": "judge",
+          "rubric": [
+            "Behaviour is selected through the registry; the answer does not grow a switch or if-chain on tool names"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r7-retry-contract-docs",
+      "split": "tune",
+      "prompt": "In webhook_delivery.ts, add retries: export a `RetryOptions` type (`maxAttempts`, `baseDelayMs`, `maxDelayMs`) and an exported `deliverWithRetry(endpoint, event, options)` that retries network errors and 5xx responses with exponential backoff and full jitter, and returns the last result. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/webhook_delivery.ts"
+      ],
+      "expected_behavior": [
+        "Opens the module with a short purpose comment and gives RetryOptions and deliverWithRetry doc comments stating their contract",
+        "Explains why the backoff is jittered (to spread out clients retrying together), not what each line does",
+        "Doc comments carry no JSDoc type annotations that repeat the TypeScript types"
+      ],
+      "assertions": [
+        {
+          "name": "exports-deliver-with-retry",
+          "type": "regex",
+          "pattern": "export\\s+(?:async\\s+function\\s+deliverWithRetry\\b|const\\s+deliverWithRetry\\s*=)"
+        },
+        {
+          "name": "doc-on-deliver-with-retry",
+          "type": "regex",
+          "pattern": "/\\*\\*(?:(?!\\*/)[\\s\\S])*\\*/\\s*export\\s+(?:async\\s+function\\s+|const\\s+)deliverWithRetry\\b"
+        },
+        {
+          "name": "doc-on-retry-options",
+          "type": "regex",
+          "pattern": "/\\*\\*(?:(?!\\*/)[\\s\\S])*\\*/\\s*export\\s+(?:type|interface)\\s+RetryOptions\\b"
+        },
+        {
+          "name": "module-header",
+          "type": "regex",
+          "pattern": "(?m)^##[^\\n]*webhook_delivery\\.ts[^\\n]*\\n\\s*`{3,}[\\w-]*[ \\t]*\\n\\s*(?:/\\*|//)"
+        },
+        {
+          "name": "jitter-why",
+          "type": "regex",
+          "pattern": "(?i)(?://|\\*)[^\\n]*(?:thundering|herd|synchroni[sz]|lock-?step|stampede|all at once|at the same time|same moment|in unison|spread[^\\n]*retr|de-?correlat|in sync|retry storm|line up|lined up|together|collid|collision|burst|simultaneous|coordinat|clump|pile[- ]?up|\\ball\\b[^\\n]*\\bat once\\b)"
+        },
+        {
+          "name": "no-jsdoc-types",
+          "type": "not_regex",
+          "pattern": "@param\\s*\\{|@returns?\\s*\\{|@type\\s*\\{"
+        },
+        {
+          "name": "contract-comments",
+          "type": "judge",
+          "rubric": [
+            "Public contracts are documented and the jitter's purpose is explained, while internal lines are not narrated"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r10-finish-migration",
+      "split": "tune",
+      "prompt": "In indicator_catalog.ts, finish moving the indicators to `defineIndicator`: rsi and roc still go through `createSpec`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/indicator_catalog.ts"
+      ],
+      "expected_behavior": [
+        "Rewrites rsi and roc with defineIndicator",
+        "Deletes createSpec now nothing in the module uses it, with no deprecated or compatibility version kept",
+        "Leaves no note or comment about the old helper in the file"
+      ],
+      "assertions": [
+        {
+          "name": "rsi-migrated",
+          "type": "regex",
+          "pattern": "\\brsi\\s*=\\s*defineIndicator\\(\\s*\\{|defineIndicator\\(\\s*\\{\\s*name:\\s*[\\\"']rsi[\\\"']"
+        },
+        {
+          "name": "roc-migrated",
+          "type": "regex",
+          "pattern": "\\broc\\s*=\\s*defineIndicator\\(\\s*\\{|defineIndicator\\(\\s*\\{\\s*name:\\s*[\\\"']roc[\\\"']"
+        },
+        {
+          "name": "old-helper-deleted",
+          "type": "not_regex",
+          "pattern": "function\\s+createSpec\\b|\\bcreateSpec\\(\\s*[\\\"'`]|(?:const|let|var)\\s+createSpec\\b|export\\s*\\{[^}]*\\bcreateSpec\\b|@deprecated|(?:const|let|var|function|export)\\s+\\w*(?i:legacy|compat)\\w*"
+        },
+        {
+          "name": "no-leftovers",
+          "type": "judge",
+          "rubric": [
+            "The migration leaves no shim, alias or deprecated path behind"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r13-404-e2e",
+      "split": "tune",
+      "prompt": "Write a Playwright test, e2e/not-found.spec.ts, for the page in not_found_page.tsx (it lives at src/pages/not_found_page.tsx): visiting an unknown URL shows the 404 page, and its home link takes you to `/`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed or created in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/not_found_page.tsx"
+      ],
+      "expected_behavior": [
+        "Locates the heading and the home link by role (or a test id), not by their copy",
+        "Takes any expected text from notFoundCopy instead of repeating the page's strings",
+        "Visits an unknown URL, follows the home link and asserts the URL is /"
+      ],
+      "assertions": [
+        {
+          "name": "visits-page",
+          "type": "regex",
+          "pattern": "page\\.goto\\("
+        },
+        {
+          "name": "asserts-home-url",
+          "type": "regex",
+          "pattern": "toHaveURL\\(|waitForURL\\(|page\\.url\\(\\)"
+        },
+        {
+          "name": "locates-by-role-or-testid",
+          "type": "regex",
+          "pattern": "getByRole\\(|getByTestId\\("
+        },
+        {
+          "name": "no-copy-matching",
+          "type": "not_regex",
+          "pattern": "(?i)\\bname\\s*:\\s*[\\\"'`/]|getBy(?:Text|Label|Placeholder|AltText|Title)\\(\\s*[\\\"'`/]|(?:toHaveText|toContainText|toHaveTitle|toHaveAccessibleName)\\(\\s*[\\\"'`/]|hasText\\s*:\\s*[\\\"'`/]|\\btext\\s*=|:has-text\\(|=\\s*[\\\"'`](?:Lost in|Back to the|See the sch|That page went|Off the air)"
+        },
+        {
+          "name": "copy-from-content-source",
+          "type": "not_regex",
+          "pattern": "(?s)##[^\\n]*\\.spec\\.ts[^\\n]*\\n\\s*`{3,}[^\\n]*\\n(?:(?!`{3}).)*?[\\\"'`/](?:Lost in the static|Back to the home page|See the schedule|That page went off|Off the air|Ways back)"
+        },
+        {
+          "name": "copy-free-contract",
+          "type": "judge",
+          "rubric": [
+            "The test's contract is roles, routes and the content source, so a copy edit cannot break it"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cx-avatar-filename-boundary",
+      "split": "tune",
+      "prompt": "In avatar_upload.ts, let users keep several avatars: take an optional `name` form field (`req.body.name`) and save the upload as `<name><ext>` in the user's folder instead of always `avatar<ext>`; with no name, keep `avatar`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/avatar_upload.ts"
+      ],
+      "expected_behavior": [
+        "Validates the user-supplied name at this HTTP boundary (pattern, basename or containment check) and answers 400 for a bad one",
+        "Keeps the existing size and image-type checks",
+        "Uses the name for the saved file and the returned URL"
+      ],
+      "assertions": [
+        {
+          "name": "reads-name",
+          "type": "regex",
+          "pattern": "body\\.name|\\{\\s*name\\b[^}]*\\}\\s*=\\s*req\\.body|req\\.body\\??\\.\\s*name|req\\.body\\[[\\\"']name[\\\"']\\]"
+        },
+        {
+          "name": "validates-name",
+          "type": "regex",
+          "pattern": "\\.test\\(|\\.match\\(|basename\\(|\\.replace\\(\\s*/|startsWith\\(|safeParse\\(|\\.regex\\(|\\.includes\\(\\s*[\\\"'](?:\\.\\.|/)"
+        },
+        {
+          "name": "keeps-size-check",
+          "type": "regex",
+          "pattern": "file\\.size\\s*>\\s*MAX_BYTES"
+        },
+        {
+          "name": "keeps-type-check",
+          "type": "regex",
+          "pattern": "EXTENSIONS\\.get\\(\\s*file\\.mimetype\\s*\\)"
+        },
+        {
+          "name": "boundary-validation",
+          "type": "judge",
+          "rubric": [
+            "Input from the public request is validated before it reaches a filesystem path; nothing that guarded the boundary was removed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reg-internal-helper-guards",
+      "split": "tune",
+      "prompt": "In order_pricing.py, add a new discount tier: orders with a subtotal of 500 or more get 15% off (the loyalty bonus still stacks on top). Also add an \"average_unit_price\" field to the summary: the subtotal divided by the total number of units, rounded to cents, as a string like the other money fields. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/order_pricing.py"
+      ],
+      "expected_behavior": [
+        "Adds the 500 tier at 0.15 and the average_unit_price field",
+        "Adds no zero-division guard, try/except, logging or None check in the internal helpers, since parse_order already guarantees at least one unit"
+      ],
+      "assertions": [
+        {
+          "name": "tier-500",
+          "type": "regex",
+          "pattern": "(?s)Decimal\\(\\s*[\\\"']500(?:\\.0+)?[\\\"']\\s*\\).{0,120}?Decimal\\(\\s*[\\\"']0?\\.15[\\\"']\\s*\\)"
+        },
+        {
+          "name": "average-field",
+          "type": "regex",
+          "pattern": "[\\\"']average_unit_price[\\\"']\\s*:"
+        },
+        {
+          "name": "no-speculative-guards",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*try:|^\\s*except\\b|ZeroDivisionError\\s*[:)]|\\bimport logging\\b|\\blogg(?:ing|er)\\.\\w+\\(|^\\s*print\\(|\\bif\\b[^\\n]*\\bis (?:not )?None\\b|^\\s*(?:if|assert)\\s+(?:not\\s+)?\\w*(?:count|units)\\w*\\b|\\bif\\s+\\w*(?:count|units)\\w*\\s+else\\b|max\\(\\s*\\w*(?:count|units)\\w*\\s*,\\s*1\\s*\\)|isinstance\\((?:subtotal|rate|item|order|amount)|\\bor\\s+1\\b|==\\s*0\\b|^\\s*if\\s+not\\s+\\w+\\.items\\b"
+        }
+      ]
+    },
+    {
+      "id": "trig-terse-pagination-fix",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Fix the off-by-one in the pagination helper.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-reject-empty-email",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The signup form lets people submit with a blank email address; make it refuse that and show an error next to the field.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-prune-old-backups",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Make the nightly backup job also delete archives older than 30 days.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-context-shared-date-helper",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We have copied the same date-formatting logic into three report pages and they have started to drift, so pull it into one shared function and point all three pages at it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-dark-mode-toggle",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a dark mode toggle to the settings page that remembers each user's choice between visits.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-uncommitted",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Look over my uncommitted changes and tell me whether they are safe to merge.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing local changes for a merge verdict belongs to review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-plan-review",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Before anyone writes code, poke holes in this design doc for the export service and tell me what will be expensive to change later.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing a plan or design before code exists belongs to plan-review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-skill-authoring",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our deploy runbook keeps getting re-explained to agents; turn it into a skill with a good description so it fires on the right requests.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing a skill belongs to skill-authoring."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-project-setup",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Set up ESLint for this repo with a complexity limit of 10 and a max file length of 300 lines, and fail CI when they are exceeded.",
+      "expected_behavior": [
+        "The skill should NOT trigger: setting up linters and thresholds belongs to project-setup."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-explain-code",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Where is pagination handled in this codebase, and how does it decide the page size? Just explain it, don't change anything.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a read-only question about how code works writes no code."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

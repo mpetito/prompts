@@ -62,9 +62,9 @@ Each agent defines a strict output contract so the caller can assess its evidenc
 
 Keeping it here rather than in `~/.claude` puts it under version control alongside the agents it routes to, so the routing table and the agent definitions cannot drift apart.
 
-The coding path is `code-authoring` → applicable `code-quality-standards` → `review`, including
-bug fixes and refactors without a spec. Project conventions take precedence over personal
-style; concise comments and reuse are checked during implementation and review. `pr-feedback`
+The coding path is `code-style` → `review`, including bug fixes and refactors without a spec.
+`code-style` holds the personal style rules (project conventions win); `review` judges the
+diff. Worker briefs name the skill because Codex does not load this file. `pr-feedback`
 collects full review bodies as well as threads and verifies visible and suppressed Copilot
 claims before accepting changes. These routes are explicit in skill bodies for other hosts,
 which do not load this Claude-only global file.
