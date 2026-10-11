@@ -24,8 +24,8 @@ Each rule is the owner's; quoted text is the owner's own words.
    is not an adversary we're defending against." Outside input (a request, a user) is still validated where it enters.
 4. **Registry dispatch:** "There should be no need for switch statements based on tool name. That's the
    purpose of a registry." Each entry carries its handler; move existing cases in; no name-keyed executor map.
-5. **"Public contracts should have doc comments"** stating limits, units and errors (no type tags); a short
-   module header; "algorithms should have comments explaining why"; never narrate a line.
+5. **Comments:** every file you touch opens with a short purpose header, added if missing. "Public contracts should
+   have doc comments": limits, units, errors, no type tags. "Algorithms should have comments explaining why"; no narration.
 6. **Delete what a change replaces,** even if exported: old helper, shim, alias, legacy path, and no note about it.
    "We don't need to maintain backwards compatibility." (Scope: pre-release and internal code.)
 7. **Tests never match copy:** "I'd rather not rely on content text matching for test contract." Locate by
