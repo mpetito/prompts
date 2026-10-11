@@ -28,22 +28,22 @@
         {
           "name": "numbered-open-questions",
           "type": "regex",
-          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))"
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))"
         },
         {
           "name": "cosmetic-questions-listed",
           "type": "regex",
-          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?\\bCCY\\b"
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?\\bCCY\\b"
         },
         {
           "name": "column-position-listed",
           "type": "regex",
-          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:\\b(?:before|after)\\b[^\\n]{0,60}\\btotal\\b|\\btotal\\b[^\\n]{0,60}\\b(?:before|after)\\b|\\bcolumn (?:order|position)\\b)"
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:\\b(?:before|after)\\b[^\\n]{0,60}\\btotal\\b|\\btotal\\b[^\\n]{0,60}\\b(?:before|after)\\b|\\bcolumn (?:order|position)\\b)"
         },
         {
           "name": "no-question-without-default",
           "type": "not_regex",
-          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?!(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$)))[\\s\\S])*?(?:\\bdefault\\b[ \\t]*(?:\\*\\*|_)?[ \\t]*[:(—–-]|\\brecommend\\w*|\\bpropos(?:ed|al)\\b|\\blean(?:s|ing)?\\b|\\bsuggest(?:ed|ion)?\\b[ \\t]*(?:\\*\\*)?[ \\t]*:|\\bwe(?:'ll| will) (?:go with|use|assume)\\b))"
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?!(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$)))[\\s\\S])*?(?:\\b(?:default|recommend(?:ed|ation)?)\\b[ \\t]*(?:\\*\\*|_)?[ \\t]*[:—–][ \\t]*(?:\\*\\*|_)?(?![ \\t]*(?:\\*\\*|_)?[ \\t]*(?:none\\b|no (?:recommendation|default|pick|preference)\\b|either\\b|your call|tbd\\b|n/a\\b|undecided|unclear|not sure))|\\bI recommend\\b(?![ \\t]*(?:\\*\\*|_)?[ \\t]*(?:none\\b|no (?:recommendation|default|pick|preference)\\b|either\\b|your call|tbd\\b|n/a\\b|undecided|unclear|not sure))|\\(recommended\\)))"
         },
         {
           "name": "answerable-by-number",
@@ -74,12 +74,12 @@
         {
           "name": "claim-is-open-question",
           "type": "regex",
-          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))|^[ \\t]*[-*][ \\t]+)(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|(?:^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))|^[ \\t]*[-*][ \\t]+))[\\s\\S])*?(?:fifth column|ISO[ \\t]*4217|every (?:bank )?(?:export )?row|always (?:include|carr|ha)|bank(?:'s)?(?: csv)? exports?|missing (?:currency|code|column)|without (?:a|the) (?:currency|code)|(?:four|4)[- ]column|no (?:currency )?code))(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|(?:^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))|^[ \\t]*[-*][ \\t]+))[\\s\\S])*?(?:confirm\\w*|verif\\w*|unconfirmed|unproven|untested|not (?:yet )?(?:been )?(?:confirmed|verified|checked|shown|proven)|is (?:that|this|it) (?:true|guaranteed|always)|can (?:we|tally) (?:rely|count|assume)|\\brely\\b|guarantee\\w*|evidence|have you (?:seen|checked)|\\bdo (?:all|every)\\b))"
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))|^[ \\t]*[-*][ \\t]+)(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|(?:^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))|^[ \\t]*[-*][ \\t]+))[\\s\\S])*?(?:fifth[ \\t\\n]+column|ISO[ \\t]*4217))(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|(?:^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))|^[ \\t]*[-*][ \\t]+))[\\s\\S])*?(?:\\?(?=[*_\\\"”]*(?:[ \\t\\n]|$))|confirm))"
         },
         {
           "name": "claim-not-stated-as-fact",
           "type": "not_regex",
-          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?(?:[.!?][ \\t]+|[.!?][ \\t]*\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1))|^[ \\t]*\\n|^[ \\t]*#[^\\n]*\\n|^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+)?|\\d{1,2}[.)][ \\t]+|>[ \\t]*)))?(?!(?:[^.!?\\n]|[.!?](?![ \\t\\n]|$)|\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1)))*?(?:\\?|confirm|verif|assum|unless|\\bif\\b|claim|request|you said|owner|question|\\bQ\\d))(?:[^.!?\\n]|[.!?](?![ \\t\\n]|$)|\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1)))*?(?:\\bguarantees?\\b|\\btrust\\s+(?:the|each|every)\\s+(?:supplied|bank|row)|every\\s+(?:bank\\s+)?(?:export\\s+)?row\\s+(?:supplies|carries|has|includes|contains)\\s+(?:a|an|one|its)\\b|since\\s+every\\s+(?:export\\s+)?row\\s+has|exports?\\s+(?:now\\s+)?(?:always\\s+)?(?:carry|carries|supply|supplies|include|includes|contain|contains|put|puts|have|has|send|sends)\\b[^.!?]{0,60}\\b(?:every\\s+row|fifth\\s+column)|\\bbank\\s+(?:now\\s+)?(?:always\\s+)?(?:sends?|puts?)\\b[^.!?]{0,60}\\b(?:every\\s+row|fifth))"
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?:(?>^[ \\t]*(?P<qh>#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|(?P=qh)[ \\t]|```|~~~))[\\s\\S])*)|(?!^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$)(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S]))*?(?:[.!?][ \\t]+|[.!?][ \\t]*\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1))|^[ \\t]*\\n|^(?!^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$)[ \\t]*#[^\\n]*\\n|^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+)?|\\d{1,2}[.)][ \\t]+|>[ \\t]*)))?(?!(?:[^.!?\\n]|[.!?](?![ \\t\\n]|$)|\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1)))*?(?:\\?|confirm|verif|assum|unless|\\bif\\b|claim|request|you said|owner|question|\\bQ\\d|\\bcan(?:'|’)t\\b|\\bcannot\\b))(?:[^.!?\\n]|[.!?](?![ \\t\\n]|$)|\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1)))*?(?:\\bguarantees?\\b|\\btrust\\s+(?:the|each|every)\\s+(?:supplied|bank|row)|every\\s+(?:bank\\s+)?(?:export\\s+)?row\\s+(?:supplies|carries|has|includes|contains)\\s+(?:a|an|one|its)\\b|since\\s+every\\s+(?:export\\s+)?row\\s+has|exports?\\s+(?:now\\s+)?(?:always\\s+)?(?:carry|carries|supply|supplies|include|includes|contain|contains|put|puts|have|has|send|sends)\\b(?!\\s+(?:no|not|never)\\b)[^.!?]{0,60}\\b(?:every\\s+row|fifth\\s+column)|\\bbank\\s+(?:now\\s+)?(?:always\\s+)?(?:sends?|puts?)\\b[^.!?]{0,60}\\b(?:every\\s+row|fifth)|\\b(?:bank(?:'s)?|exports?|rows?|csv|files?|input)\\s+(?:now\\s+)?always\\s+(?:include|includes|contain|contains|carry|carries|have|has|hold|holds|put|puts|supply|supplies)\\b(?!\\s+(?:no|not|never)\\b))"
         },
         {
           "name": "claim-held-open",
@@ -238,6 +238,16 @@
       "prompt": "Set up a specs/ folder for this repo and document its numbering convention in AGENTS.md so agents know where new work goes.",
       "expected_behavior": [
         "The skill should NOT trigger: setting up the specs/ layout and AGENTS.md belongs to project-setup."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-multi-lane-build",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run the plan for spec 027 as a build with three parallel lanes, one agent per lane, and merge them when green.",
+      "expected_behavior": [
+        "The skill should NOT trigger: running a build with several parallel lanes belongs to orchestration-main."
       ],
       "assertions": []
     },
