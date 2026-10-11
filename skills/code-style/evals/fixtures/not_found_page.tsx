@@ -5,7 +5,7 @@ export const notFoundCopy = {
   documentTitle: "Off the air | Night Shift Radio",
   title: "Lost in the static",
   body: "That page went off the air. Check the schedule or head back to the live stream.",
-  homeLink: "Back to the home page",
+  homeLink: "Tune back in",
   scheduleLink: "See the schedule",
 } as const;
 
