@@ -23,6 +23,7 @@ lists readmitted skills only.
 | [model-council](skills/model-council/SKILL.md) | `/model-council` | Settle one bounded technical decision by debate between a Claude and a Codex member: consensus, or `no consensus` with each position for the human |
 | [firecrawl](skills/firecrawl/SKILL.md) | `/firecrawl` | Pull many pages with Firecrawl: a bounded crawl or a checked keyless scrape to files, and fields across pages as JSON |
 | [orchestration-main](skills/orchestration-main/SKILL.md) | `/orchestration-main` | Run a multi-agent build from your own session: launch, steer and rotate orchestration threads, and keep your decisions in front of you |
+| [project-setup](skills/project-setup/SKILL.md) | `/project-setup` | Set a repository up, or bootstrap an existing one, for agents: size and complexity caps as lint config with CI and a commit hook, and the files agents read (AGENTS.md, CLAUDE.md, copilot-instructions.md, REVIEW.md, CONTRIBUTING.md, `specs/`) |
 | [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |
 
 ## Agents
