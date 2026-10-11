@@ -82,5 +82,5 @@ suppressions at error.
   - one-line package.json;
   - negated mentions;
   - `agents-md-rule-once` counts occurrences, not bullets.
-- The build lands without the cherry-picked runner fix (fcd7e83), which the code-style build
+- The build lands without the cherry-picked runner fix (1428c9c), which the code-style build
   owns. Codex runs need it at effort above `none`.

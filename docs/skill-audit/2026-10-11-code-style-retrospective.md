@@ -12,8 +12,8 @@
   6. delete what a change replaces
   7. tests never match copy
 
-  Landed on `orchestration/code-style` as 08d6343.
-- **Archived folders:** `archive/skills/code-authoring/SKILL.md` was moved by `git mv` (62cc1bf)
+  Landed on `orchestration/code-style` as 67105cb.
+- **Archived folders:** `archive/skills/code-authoring/SKILL.md` was moved by `git mv` (1ff4055)
   and rewritten. The rest of code-authoring and all of code-quality-standards were removed.
 - **Dropped for lack of a failing trap:** digest rules 4 (wrappers), 6 (fallbacks and mock data),
   8, 9 (never relax lint), 11 and 12. Rules 14 and 15 were cut by the owner (D2). The
@@ -58,7 +58,7 @@
   - Codex refuses to read a fixture under "read the input file, but do not run commands", because
     it has no file-read tool. Fixtures now allow a read-only `cat`.
   - `-Model sonnet` reached Codex unchanged.
-  - `-Effort` was dropped for Codex; fcd7e83 fixes it.
+  - `-Effort` was dropped for Codex; 1428c9c fixes it.
 - **Probe: CLAUDE.md in eval runs.** Claude eval arms load `~/.claude/CLAUDE.md` despite
   `--setting-sources project`. This build kept it, because subagents load it too; the note is in
   `docs/evaluating-skills.md`.

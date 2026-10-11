@@ -15,13 +15,13 @@
 
 ## Outcome
 
-- **model-council: readmitted.** Merged as 9d823f9 and ec87dfb. It is a blind round, then up to two
+- **model-council: readmitted.** Merged as 573d8a8 and cdda810. It is a blind round, then up to two
   exchange rounds, ending in consensus (decided mechanically by `tally.sh`), `no consensus`
   (status-quo default, flagged for the human) or `incomplete`.
 - **firecrawl: readmitted under D4,** with the owner's explicit partial waiver of bar item 2.
-  Merged as 17cd8da. It has two many-page rules; the routing-table draft is kept on
+  Merged as be3e26a. It has two many-page rules; the routing-table draft is kept on
   `evidence/firecrawl-routing-table`.
-- **D3 c, d, e and g: applied** in d2d0e12.
+- **D3 c, d, e and g: applied** in 5dd638e.
 - **D3 a, b and f: not applied.** They edit `instructions/CLAUDE.md` and `agents/researcher.md`, and
   a decision relayed through MAIN is not the owner's consent for those.
 

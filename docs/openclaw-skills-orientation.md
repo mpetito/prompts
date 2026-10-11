@@ -363,4 +363,4 @@ Nothing was committed, stashed, pushed, installed, or reconfigured. No existing 
 
 - Skill bodies were read in full for the workflow spine and in part (scope/trigger sections) for the domain and tool skills; `references/` files other than `agent-model-selection.md` were identified but not read through.
 - Everything about OpenClaw's own skill discovery is unverified, as set out in §5.2.
-- The repository has uncommitted modifications to `README.md`, `docs/agents-prompts-skills.md`, `setup-skills-link.ps1`, `skills/pr-scripts/REFERENCE.md`, and others. This guide describes the **working tree as it stands today**, which is what agents on this machine actually load — not the last commit (`1798ec3`).
+- The repository has uncommitted modifications to `README.md`, `docs/agents-prompts-skills.md`, `setup-skills-link.ps1`, `skills/pr-scripts/REFERENCE.md`, and others. This guide describes the **working tree as it stands today**, which is what agents on this machine actually load — not the last commit (`c3870fc`).
