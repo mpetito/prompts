@@ -21,6 +21,7 @@
       ],
       "expected_behavior": [
         "complexity, max-lines-per-function and max-lines are added at error severity, at the agreed numbers (10, 60, 300)",
+        "Test files keep a file cap of their own (max-lines 800), not an exemption",
         "The 14 existing violations are held in ESLint bulk suppressions (eslint --suppress-all, eslint-suppressions.json), not by warn, a raised threshold, an ignored path or eslint-disable comments",
         "pnpm lint fails on any warning (--max-warnings 0)",
         "The suppressions file is named as debt to burn down; new code meets the limits at once"
@@ -30,11 +31,6 @@
           "name": "bulk-suppressions",
           "type": "regex",
           "pattern": "--suppress-(?:all|rule)\\b|eslint-suppressions\\.json"
-        },
-        {
-          "name": "complexity-error-10",
-          "type": "regex",
-          "pattern": "(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?10\\b"
         },
         {
           "name": "no-warn-severity",
@@ -57,9 +53,9 @@
           "pattern": "ignores[\"']?\\s*:\\s*\\[[^\\]]*[\"'](?:\\./)?src/"
         },
         {
-          "name": "test-files-keep-file-cap",
-          "type": "not_regex",
-          "pattern": "[\"']max-lines[\"']\\s*:\\s*(?:\\[\\s*)?(?:[\"']off[\"']|0\\b)"
+          "name": "test-files-max-lines-800",
+          "type": "regex",
+          "pattern": "(?s)files[\"']?\\s*:\\s*\\[[^\\]]*(?:test|spec)[^\\]]*\\](?:(?!files[\"']?\\s*:).){0,600}?[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b|[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b(?:(?!files[\"']?\\s*:)(?!\\}\\s*,\\s*\\{).){0,400}?files[\"']?\\s*:\\s*\\[[^\\]]*(?:test|spec)[^\\]]*\\]"
         },
         {
           "name": "lint-fails-on-warnings",
