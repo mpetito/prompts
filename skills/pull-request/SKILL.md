@@ -32,12 +32,13 @@ calls shown with them.
 2. Verify each claim against the code and docs before accepting it; reject with the evidence.
    Declining a blanket guard is [code-style](../code-style/SKILL.md)'s "trust your callers".
 3. A claim that stays ambiguous after you check the code and docs goes to
-   [model-council](../model-council/SKILL.md) (or the owner); don't decide it alone. Leave its
-   thread open until it is settled.
+   [model-council](../model-council/SKILL.md) (or the owner); don't decide it alone. It stays
+   ambiguous when the code and docs leave two defensible answers: they state the goals but not
+   which one wins, so an argument you find for one side is a lean, not a settlement. Leave its
+   thread open until it is settled; its reply only says it is held for that decision, and your
+   lean and reasons go to the owner, not the thread.
 4. Commit the fixes, run the project's checks, and `git push`.
-5. Reply only after the fix is pushed, citing the pushed SHA; reply before you resolve, never
-   resolve silently.
-6. Reply to every thread. Resolve threads you fixed, and Copilot threads you declined with
+5. Reply to every thread. Resolve threads you fixed, and Copilot threads you declined with
    evidence. A human reviewer's disagreement or deferral stays open for that reviewer.
    - Reply, then resolve: `pwsh <skill dir>/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body '<reply>'`
      (it never resolves when the reply fails), or
@@ -48,12 +49,13 @@ calls shown with them.
      ```
 
    - Reply and leave open: the `.../replies` call alone.
-7. Report each thread's end state, and each body-only finding with what you did about it.
+6. Report each thread's end state, and each body-only finding with what you did about it.
 
 ## Open or update a PR
 
-- Body, kept short: the motivation first, in plain prose; then the changes grouped by purpose;
-  then validation that lists only what was actually run, with results, and says in the body what
+- Body, kept short: the motivation first, in plain prose; then the changes grouped by purpose,
+  as a bulleted list with one bullet per purpose saying what it now does, not one per file; then
+  validation that lists only what was actually run, with results, and says in the body what
   was not run. No Summary boilerplate, no filler lines.
 - Write the body to a temporary file outside the repository, then
   `gh pr create --title '<title>' --body-file <file>`, or `gh pr edit <n> --body-file <file>` for
