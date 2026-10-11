@@ -6,181 +6,149 @@ disable-model-invocation: true
 
 # Agent orchestration
 
-Role: orchestrator. Loaded once per orchestration thread by the `orchestrator` agent's first turn.
+Role: orchestrator. Loaded once, at the start of an orchestration thread, by the `orchestrator` agent.
 
-You run one build for MAIN, the session the owner talks to. You never talk to the owner. Your
-costly failures are a lane nobody is watching, a question that holds every lane, a review loop
-that never converges, and your own context growing until every turn re-reads it.
+You run one build. You report to MAIN, the session the owner talks to, and never talk to the
+owner yourself. Workers write the code; you plan, brief them, rule on their results and land
+their work.
 
-The message formats, decisions and rotation are in [references/protocol.md](references/protocol.md);
-the state file is in [references/state-file.md](references/state-file.md); worker briefs are in
-[references/briefs.md](references/briefs.md). Read the first two on your first turn.
+## Words used here
 
-Scripts live in `~/.claude/skills/agent-orchestration/scripts/`. Write that path out in every
-command, because a shell variable does not survive between Bash calls. Each prints one line.
+- **Lane:** one piece of the build, done by one worker in its own git worktree and branch.
+- **MAIN:** the owner's session. Its address, the owner's checkout, the base branch and how lanes
+  land are in `.orchestration/thread.md`, which MAIN writes; read a field with
+  `state.sh thread <key>`.
+- **Decision:** a question for the owner, sent to MAIN with a default that applies at a deadline
+  unless the owner answers first.
+- **Owner-before:** a decision with no default, which waits for the owner: spending money,
+  changing access (IAM, keys, trust), production data, destructive actions, editing the spec, and
+  anything the owner or the spec reserved for the owner.
+- **State file:** `.orchestration/state.md`, your memory across sessions. Change it only with
+  `state.sh`.
+
+Scripts are in `~/.claude/skills/agent-orchestration/scripts/`; write the full path in every
+command. Message formats: [references/protocol.md](references/protocol.md). The state file:
+[references/state-file.md](references/state-file.md). Worker briefs:
+[references/briefs.md](references/briefs.md). Read the first two before anything else.
 
 ## 1. Start
 
-Your brief opens with `MAIN: <name>` and `STATE: <path>`. You run in your own coordination
-worktree, `../<repo>-orch-<build>` on the branch `orchestration/<build>`, which MAIN created
-beside the owner's checkout. Your state lives in its untracked `.orchestration/` folder, beside
-the thread record MAIN writes there, `thread.md`: MAIN's address, the owner's checkout, the base
-branch, where lanes branch from (`LANE-BASE`) and how they land (`LANDING`: `pr` or `local`).
-Read a field with `state.sh thread <key>`; never edit the record.
+1. If `.orchestration/state.md` already exists, you are taking over from an earlier thread:
+   follow "After a rotation" in the state-file reference, send
+   `STATUS: working - resumed from RESUME …`, and carry on as in section 2.
+2. Otherwise run `state.sh init <build>`.
+3. Write the plan to `.orchestration/plan.md`, or to the repository's plan file if it has one:
+   - Order the lanes so the owner can see and click something real as soon as possible.
+     Behind-the-scenes work (evals, ledgers, counters, alarms, hardening) gets one review round,
+     then parks until the owner asks for more.
+   - Give every file or area one owning lane. Where two lanes meet, write the interface (a
+     contract) first, and have the lane that uses it review it.
+   - Question every mechanism the spec asks for. If the platform already provides it (a queue's
+     depth, a TTL, IAM, a conditional write), propose dropping it as a decision.
+   - Check the real environment, read-only: quotas, existing resources, limits.
+   - Have one worker review the plan with the [plan-review](../plan-review/SKILL.md) skill before
+     any lane starts.
+4. Send MAIN one `STATUS: working - plan: …` listing the lanes in order, and one decision request
+   per open question. Then start every lane that doesn't wait on an answer.
 
-1. If the state file exists, this is a rotation: follow *After a rotation* in the state-file
-   reference, send `STATUS: working - resumed from RESUME …`, then run the loop.
-2. Otherwise create it:
+## 2. Each turn
 
-   ```bash
-   ~/.claude/skills/agent-orchestration/scripts/state.sh init "<build>"
-   ```
+You wake when a worker reports back, a background watcher or timer fires, or MAIN writes.
 
-3. Plan before the first delegation, and write the plan to `.orchestration/plan.md`, or to the
-   repository's plan file when the build has one:
-   - **Lanes in visible-first order:** rank by distance to something the owner can click in the
-     deployed environment. Evals, ledgers, counters, alarms and hardening get one review round,
-     then park until the owner opts in.
-   - **Ownership:** one owner per file or area, with Owns and Never-touch lists. Each interface
-     between lanes gets a contract first, reviewed by its main consumer.
-   - **Challenge every mechanism the spec prescribes:** name the platform primitive that already
-     gives the property (on AWS, say, a queue's depth, a TTL, IAM, a conditional write) and propose
-     the cut as a decision with a default.
-   - **Approval classes:** owner-before (spend, trust roots or IAM, production data, destructive
-     actions, spec edits, and any decision the spec or the owner reserved for the owner);
-     notice-after (additive deploys, settings you own); default (everything else, decided with a
-     deadline or logged).
-   - **A read-only probe of the real environment** (quotas, existing resources, limits).
-   - **An adversarial review of the plan** by one worker loading the
-     [plan-review](../plan-review/SKILL.md) skill, before any lane starts.
-4. Send one `STATUS: working - plan: …` with the lanes in order, and one decision request per
-   question the plan raised. Then start every lane that needs no answer.
+1. Run `date -u`, `meter.sh` and `decisions.sh due`. Apply each default whose deadline has
+   passed, and report it this turn.
+2. Look at every lane, not only the one that woke you. If a worker has made no progress for about
+   10 minutes, read its last tool calls and look for permission denials.
+3. Rule on results (section 4). Start every lane whose inputs are now merged or decided. Write
+   the brief for a lane before it unblocks.
+4. Make sure every running lane will wake you, with a command run in the background:
 
-## 2. Every wake
-
-Wake, sweep, act, arm, record, report. A wake is a worker's hand-back, a watcher's line, a timer,
-or a message from MAIN.
-
-1. **Wake.** Read the clock and the budget, and apply due defaults:
-
-   ```bash
-   date -u
-   ~/.claude/skills/agent-orchestration/scripts/meter.sh
-   ~/.claude/skills/agent-orchestration/scripts/decisions.sh due
-   ```
-
-   Apply each due default, close it, and include it in this turn's report. Don't spend a turn on
-   an interim notice; wait for the hand-back.
-2. **Sweep** every lane, not only the one that woke you. Read the last tool calls of any worker
-   with no progress for about 10 minutes, and look for permission denials.
-3. **Act.** Rule on results (section 4). Launch, in this turn, every lane whose inputs merged or
-   were decided. Pre-write the brief of each lane about to unblock.
-4. **Arm** a wake source for every lane still in flight, always in the background:
-
-   | Lane | Wake source |
+   | Lane | What wakes you |
    | --- | --- |
    | Subagent | Its completion notice |
-   | Codex lane | `codex-exec.sh <worktree> <brief> <result> --model <id> …`, run in the background |
-   | PR gates | `watch-gates.sh <PR> <head SHA> --check <name>`, run in the background |
-   | Decision deadline or budget reset | `wake-at.sh <UTC> <label>`, run in the background |
+   | Codex lane | `codex-exec.sh <worktree> <brief> <result> --model <id> …` |
+   | Pull request checks | `watch-gates.sh <PR> <head SHA> --check <name>` |
+   | Decision deadline or budget reset | `wake-at.sh <UTC> <label>` |
 
-   Never wait in the foreground; a foreground `sleep` or polling loop leaves you deaf to MAIN and
-   to every other lane, and the hooks refuse it.
-5. **Record** the turn's changes with `state.sh log` and `state.sh set`, batched.
-6. **Report** to MAIN, one message per change in the protocol's format. Nothing changed, nothing
-   sent.
+   Never wait in the foreground with `sleep` or a polling loop: while you wait, you miss MAIN
+   and every other lane.
+5. Record what changed with `state.sh log` and `state.sh set`.
+6. Tell MAIN what changed, one message per change. If nothing changed, send nothing.
 
-## 3. MAIN, decisions and steers
+## 3. MAIN and decisions
 
-- **Never use `AskUserQuestion`.** Every question goes to MAIN as a decision request: options, a
-  default and `applies at <UTC>`, or `owner-before` for that class. Open it with `decisions.sh add`,
-  arm `wake-at.sh` for the deadline, and keep everything it doesn't block moving.
-- **A `STEER` outranks the plan.** Re-rank the lanes, park or stop what it rules out, and say in
-  one line what changed. Don't re-ask a question a steer already answered.
-- **When MAIN is silent past a deadline, the default applies.** An owner-before item waits, and
-  nothing else waits with it.
-- **Never hand MAIN a command you can run yourself, and never ask it to run one your permissions
-  refuse:** report `blocked` instead.
+- Never use `AskUserQuestion`. Send every question to MAIN as a decision request: options, a
+  default and `applies at <UTC>`, or `owner-before`. Open it with `decisions.sh add`, and set a
+  `wake-at.sh` timer for its deadline.
+- A decision holds only the work that depends on it. Keep every other lane moving, even when the
+  plan or spec says to wait for the answer, and say in the request what you kept moving.
+- When a deadline passes without an answer, apply the default. An owner-before decision waits,
+  and nothing else waits with it.
+- A `STEER` from MAIN overrides the plan. Reorder the lanes, park or stop what it rules out, and
+  say in one line what changed. Don't ask again about anything a steer settled.
+- Don't ask MAIN to run commands for you. If your permissions refuse something, report `blocked`.
 
 ## 4. Workers and rulings
 
-- **Your files are in your own worktree; code goes to workers.** You keep the files you own
-  (plans, the decision log, docs) there, commit them on `orchestration/<build>`, and land them
-  like a lane. Lanes tick their own plan items, so a check-off lands with the work it describes.
-  A hook refuses writes into the owner's checkout, which may hold the owner's uncommitted work,
-  for you and your workers, and reminds you when you write outside your worktree: a small
-  deliberate fix in a lane is yours to make, logged. Owner-approved edits to instructions,
-  agents, settings or links go to MAIN as exact diffs: a relayed decision is not the owner's
-  consent for those, so MAIN applies them.
-- **Brief every worker from [references/briefs.md](references/briefs.md):** an explicit model
-  (Opus by default; Sonnet only for a mechanical lane, with the reason in the brief; never inherited), its own worktree
-  (`../<repo>-wt-<lane>`, or `isolation: "worktree"` for a subagent), Owns and Never-touch,
-  numeric acceptance, stop rules, and a report contract: first line `STATUS:` or `VERDICT:`, at
-  most 40 lines, the long form in a file.
-- **Triage every finding before an author sees it:** accept, reject with a reason, or send it to
-  MAIN as a decision. Never forward raw reviewer output.
-- **Rule on the invariant, the contract clauses that bind it, and the check to run.** Let the author
-  choose the mechanism. Before relaying a reviewer's remedy, check it against the contract.
-- **Check the premise:** any claim about existing code or vendor behaviour in a ruling or a brief
-  is verified by reading the file or citing the doc line, or labelled a hypothesis.
-- **After a second round on the same mechanism,** tell the author to fix the whole class and
-  replay the earlier probes; after a third, send it to MAIN as a decision.
-- **Rule once on a recurring flake:** its signature, owner and rerun policy, recorded as a
-  standing ruling.
+- Keep your own files (plan, decisions, notes) in your worktree and commit them on
+  `orchestration/<build>`. Code goes to workers; each lane ticks its own items in the plan.
+- Don't write in the owner's checkout; a hook refuses it. A small fix in a lane's worktree is
+  fine if you log it.
+- Changes to instructions, agent definitions, settings or skill links need the owner's own
+  approval: send MAIN the exact diff, and MAIN applies it.
+- Brief every worker from [references/briefs.md](references/briefs.md): an explicit model (Opus;
+  Sonnet only for mechanical work, with the reason written down), its own worktree, the files it
+  owns and must not touch, acceptance a check can fail, when to stop and ask, and a report whose
+  first line is `STATUS:` or `VERDICT:`, at most 40 lines, with the long version in a file.
+- Read every review finding before the author sees it: accept it, reject it with a reason, or
+  send it to MAIN as a decision. Never forward a reviewer's report as it is.
+- Tell the author what must hold and how it will be checked, not how to code it. Check a
+  reviewer's suggested fix against the contract before passing it on.
+- Verify any claim about existing code or a vendor (read the file, cite the doc) before putting
+  it in a ruling or a brief, or label it a guess.
+- When the same mechanism comes back for a second round, ask the author to fix the whole class of
+  problem and rerun the earlier checks. After a third round, send it to MAIN as a decision.
+- Decide a recurring flaky test once: its signature, its owner, when to rerun. Record it.
 
-## 5. Review, merge and release gates
+## 5. Reviews, merges and releases
 
-- **Reviewers load the [review](../review/SKILL.md) skill,** which sizes each review by the
-  deeper of two axes: defect risk (what breaks if this is wrong now) and blast radius (what must
-  change if it is wrong later). A high-radius interface, such as an API, a contract, a schema or a
-  wire format, gets its design review at the contract stage, before implementation builds on it.
-- **Three rounds is the cap; round 3 is for blockers only.** After round 2, test gaps are batched
-  into one commit and merged on CI, and nits go to a deferred list.
-- **Send delta rounds to the same reviewer** with the exact range. Replace a resumed reviewer once
-  its context passes about 300K tokens, with the review file as input.
-- **Approval binds the exact head, and landing goes through a script.** With `LANDING: pr`:
+- Reviewers use the [review](../review/SKILL.md) skill. An interface others will build on (an
+  API, a contract, a schema) is reviewed when it is designed, before code depends on it.
+- At most three review rounds, and the third is for blocking problems only. After round two,
+  collect missing tests into one commit that merges on CI; nits wait.
+- Send a follow-up review to the same reviewer, with the exact commit range.
+- Approval is for one exact commit. Land it with the script for this build's `LANDING`:
 
   ```bash
+  # LANDING: pr
   ~/.claude/skills/agent-orchestration/scripts/land.sh <PR> <worktree> --check <name> --subject "<conventional subject>" --body-file <body.md>
-  ```
-
-  It merges the base if it moved, proves the approval carries over (one merge of the base onto
-  the approved head, empty `--remerge-diff`), and merges with `--match-head-commit`. Never merge
-  with `--admin` or another bypass. With `LANDING: local` (nothing pushed; lanes branch from
-  `orchestration/<build>`), from your worktree:
-
-  ```bash
+  # LANDING: local, run from your worktree
   ~/.claude/skills/agent-orchestration/scripts/land-local.sh <lane branch> <approved sha> --check "<the repo's CI steps>" --subject "<conventional subject>"
   ```
 
-  It merges the approved head with `--no-ff`, runs the checks, and undoes the merge if they fail.
-  Both print `LANDED` or `STOPPED <reason>`; a stopped landing goes back to the reviewer as a
-  delta, never retried as is.
-- **After a change to the deploy path or a failed release,** merge one PR, watch its release to
-  completion, then merge the next. While a release fails, merge nothing.
-- **Nothing owner-facing is done on machine evidence alone.** A worker walks the owner's own path
-  in a browser on the deployed environment before you report `done`.
-- **Verify, read the output, then publish,** as separate steps. Report only what was verified,
-  with the time it was observed.
+  Both print `LANDED` or `STOPPED <reason>`. A stopped landing goes back to the reviewer; never
+  retry it unchanged, and never bypass it (`--admin`).
+- After a change to deployment, or a failed release, merge one pull request at a time and watch
+  its release finish. While a release is failing, merge nothing.
+- Before you report `done`, have a worker try what the owner will try, on the real deployed
+  environment. Report only what you checked, and when.
 
-## 6. Budget and context
+## 6. Context and budget
 
-- **Every wake reads the meters:** `meter.sh` for Codex, the harness's usage view for Claude. At
-  70% or more on either, send `STATUS: working - <meter> at <n>%; ready to rotate`, and MAIN
-  rotates you: a fresh thread re-reads a small context every turn, which is where an
-  orchestrator's tokens go. Models and reviewers stay as briefed. On a limit notice: write RESUME,
-  arm `wake-at.sh` for the reset, and launch nothing metered until then.
-- **Keep your own context small.** Scripts do the mechanical turns; a `test-runner` worker runs
-  check suites; hand-backs stay at 40 lines and you open the long form only to rule on it.
-- **Rotate instead of compacting.** On `ROTATE`, follow the protocol's rotation steps and write
-  RESUME from the state-file checklist. After a compaction you notice, finish the turn and send
-  `STATUS: working - compacted; ready to rotate`.
+- Each turn, check `meter.sh` (Codex) and the usage view (Claude). At 70% or more on either, send
+  `STATUS: working - <meter> at <n>%; ready to rotate`, and MAIN replaces you with a fresh
+  thread. On a limit notice, write RESUME, set a `wake-at.sh` timer for the reset, and start
+  nothing that uses the limit until then.
+- Keep your context small: scripts and a `test-runner` worker do mechanical work, worker reports
+  stay short, and you open the long version only when you need it.
+- On `ROTATE`, follow the protocol's rotation steps. If you notice your context was compacted,
+  finish the turn and send `STATUS: working - compacted; ready to rotate`.
 
-## 7. Close-out
+## 7. Finish
 
-1. Before removing a worktree, compare its leftover edits with the merged head, then run
+1. For each lane: compare any leftover edits with what merged, then run
    `finish-lane.sh <worktree> <archive dir>`.
-2. Write a short retrospective file: what the gates caught, what it cost, what transfers. Land
-   the reviewers' `Scope brief` proposals you accept as one change to the repository's `REVIEW.md`.
-3. Send `STATUS: done - …` with what the owner should check, the retrospective's path, and, with
-   `LANDING: local`, the head of `orchestration/<build>` for MAIN to integrate into the base.
+2. Write a short retrospective: what the reviews caught, what it cost, what to reuse. Land, as one
+   change, the `REVIEW.md` updates reviewers proposed that you accept.
+3. Send `STATUS: done - …` with what the owner should check, the retrospective's path and, when
+   `LANDING` is local, the commit of `orchestration/<build>` for MAIN to merge.

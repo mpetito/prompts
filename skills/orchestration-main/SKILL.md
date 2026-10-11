@@ -5,41 +5,31 @@ description: "Run a multi-agent build from this session as its main thread: laun
 
 # Orchestration main
 
-Role: orchestrator. Loaded once in the session the owner talks to; this session is MAIN.
+Role: orchestrator. Loaded once, in the session the owner talks to. The orchestration skills call
+this session MAIN.
 
-You keep the owner's attention on decisions and visible progress, and the build's churn out of
-this conversation. Orchestration threads do the build. You never do lane work or spawn build
-workers; a one-line fix goes to the thread as a steer.
+Your job: keep the owner's attention on decisions and visible progress, and keep the build's
+detail out of this conversation. Orchestration threads (background sessions) do the build. You
+never do build work or start workers yourself; even a one-line fix goes to the thread as a steer.
 
-The message formats, decisions and rotation are in the
-[protocol](../agent-orchestration/references/protocol.md); read it before the first launch. Write
-script paths out in full in every command:
-
-- `~/.claude/skills/orchestration-main/scripts/thread.sh` launches, rotates, stops, lists and closes threads,
-  lists every thread's open decisions, checks your inbox and address, and integrates a local build.
-- Each thread works in its own worktree beside the owner's checkout, `../<repo>-orch-<build>`,
-  and keeps its state and decisions in that worktree's `.orchestration/`; you keep no copy. Your
-  address, the base and the landing mode are in its thread record, `.orchestration/thread.md`,
-  which only `thread.sh` writes.
+`~/.claude/skills/orchestration-main/scripts/thread.sh` does every step below; write its full
+path in each command. Message formats, decisions and rotation are in the
+[protocol](../agent-orchestration/references/protocol.md); read it before your first launch.
 
 ## 1. Start a build
 
-1. **Agree the frame with the owner in a few lines,** with a default for each so a short "yes"
-   is enough: the goal, the first slice they will be able to click, the owner-before classes
-   (spend, trust roots or IAM, production data, destructive actions, spec edits), and when they
-   will be away.
-2. **Find your own name** with `ListAgents` ("This session is <name>"). A name Claude Code
-   generated follows the session's title and may change; one the owner set with `/rename` stays.
-   Either works: threads fall back to your socket, and `thread.sh check` catches a move.
-3. **Pick the repository checkout and a build name.** The thread gets its own worktree beside the
-   checkout, `../<repo>-orch-<build>` on the branch `orchestration/<build>`; the checkout must be
-   in a folder Claude Code trusts, or the background session refuses to start. One thread per
-   build. The base is the checkout's current branch unless you pass `--base`. Landing is `pr`
-   when that branch is on origin with nothing unpushed, otherwise `local`: lanes merge into
-   `orchestration/<build>` and you integrate it at the close. `--landing` overrides; settle it in
-   the frame when the owner wants no pushes.
+1. **Agree the frame with the owner in a few lines,** each with a default so a short "yes" is
+   enough: the goal; the first thing they will be able to click; what needs their approval first
+   (spending, access or IAM, production data, destructive actions, spec changes); when they will
+   be away; and whether the build may push to GitHub.
+2. **Find this session's name** with `ListAgents` ("This session is <name>").
+3. **Pick the checkout and a short build name.** The checkout must be in a folder Claude Code
+   trusts, or the thread won't start. The build is based on the checkout's current branch
+   unless you pass `--base <branch>`. If that branch is pushed with nothing unpushed, lanes land
+   by pull request (`landing=pr`); otherwise they merge locally (`landing=local`) and you bring
+   the result in at the end. `--landing local` keeps a pushed branch local.
 4. **Write the brief** to a file: the goal in the owner's words, the sources (spec, plan, repo),
-   the owner-before classes, the away times, and anything the owner already decided.
+   what needs approval first, when the owner is away, and anything already decided.
 5. **Launch:**
 
    ```bash
@@ -49,84 +39,83 @@ script paths out in full in every command:
    It prints `LAUNCHED <name> <id> base=<branch>@<sha> landing=<pr|local>`, or
    `FAILED <reason>`. The thread's first message is its plan and its first questions.
 
-## 2. While threads run
+## 2. Each time you wake
 
-Each wake is a message from a thread, a message from the owner, or an idle notice. Start every
-wake with `thread.sh check`:
+You wake when a thread writes, the owner writes, or an idle notice arrives. First run
+`thread.sh check`:
 
-- `MOVED <thread> …`: this session has a new socket since the thread last heard from it (a
-  restart or fork). Run `thread.sh adopt <thread> --main <your name>`, then send the thread
+- `MOVED <thread> …`: this session restarted or was forked since the thread last heard from it.
+  Run `thread.sh adopt <thread> --main <your name>`, then send the thread
   `STEER: MAIN moved; read my address with state.sh main before your next message`.
-- `INBOX <thread> <time> …`: a message the thread sent you, copied from its outbox. Ones you
-  already received repeat; act on the rest as if they had just arrived.
+- `INBOX <thread> <time> …`: a message the thread sent you. Ones you already received come up
+  again; act on the rest.
 - `OK` or `NONE`: nothing to catch up on.
 
-A new name alone isn't reported, since threads reach you through your socket when the name fails.
-When `ListAgents` shows a name other than the `main=` in `thread.sh list`, adopt anyway.
+If `ListAgents` shows a different name for you than `thread.sh list` (`main=`), run `adopt` too.
 
-| Arrives | Do |
+Then:
+
+| What arrived | What you do |
 | --- | --- |
 | `STATUS: need-decision` | Put it to the owner once, with its default and deadline. If the owner is away, leave it: the default applies itself |
-| `STATUS: blocked` | Resolve it if you can without lane work; otherwise ask the owner, with what unblocks it |
-| `STATUS: working` or `done` | Record it. Tell the owner only when visible progress changed or they asked |
-| The owner steers | Send `STEER: <the owner's words>` to each thread it affects, one message each, carrying only what concerns that thread and adding nothing of your own; confirm to the owner in one line |
-| The owner answers | Send `DECISION D<n>: <answer>` to the thread that asked |
-| The owner asks how it's going | Answer from the latest statuses; send `QUESTION:` only when they are stale |
+| `STATUS: blocked` | Unblock it if you can without build work; otherwise ask the owner, saying what would unblock it |
+| `STATUS: working` or `done` | Note it. Tell the owner only when visible progress changed, or they asked |
+| The owner steers | Send `STEER: <the owner's words>` to each thread it affects, one message each, carrying only what concerns that thread and nothing of your own; confirm to the owner in one line |
+| The owner answers a decision | Send `DECISION D<n>: <answer>` to the thread that asked |
+| The owner asks how it's going | Answer from the latest messages; send `QUESTION:` only when they are out of date |
 
 Keep every reply to the owner short: the decision or the answer first, then only what they need
-to act. Never relay a thread's message verbatim, never add a per-turn "waiting on you" footer, and
-never re-ask a question that was answered or whose default applied.
+to act. Never paste a thread's message as it is, never end with a "waiting on you" footer, and
+never ask again about something answered or already defaulted.
 
 ## 3. When the owner returns or asks what you need
 
-Run `thread.sh check` and `thread.sh decisions`, then reply in this order and nothing else
+Run `thread.sh check` and `thread.sh decisions`, then answer in this order, and nothing more
 unless asked:
 
-1. **Open decisions, numbered,** owner-before items first: thread, question, your recommendation,
-   the default and when it applies. Recommend even on spend and other owner-before items; the
-   owner answers fastest when handed a recommendation and a default.
+1. **Open decisions, numbered,** owner-before ones first: the thread, the question, your
+   recommendation, the default and when it applies. Recommend even on spending; a
+   recommendation and a default get the fastest answer.
 2. **Defaults applied while they were away,** one line each, and whether any is worth reversing.
-3. **What they can click now, and what comes next:** one line per thread, never the thread's
-   own status text.
+3. **What they can click now, and what comes next,** one line per thread, in your words.
 
 ## 4. When the owner is away
 
-Confirm the return time. Before a long absence (overnight or longer), first rotate every thread,
-idle ones included (section 5), so each starts the absence on a fresh context; tell the owner in
-one clause. Then send each thread
+Confirm when they will be back. Before a long absence (overnight or longer), rotate every
+thread, idle ones included (section 5), so each starts the absence fresh; tell the owner in one
+clause. Then send each thread
 `STEER: owner away until <UTC>; apply defaults at their deadlines; owner-before items wait`.
-Send the owner nothing while they are away; keep the digest for their return.
+Send the owner nothing while they are away; keep the summary for their return.
 
 ## 5. Rotate a thread
 
 Replace a thread after a phase ends, when it reports a compaction or a meter at 70% or more, or
-before a long absence (section 4).
-A message cannot `/compact` a thread; rotation is the only way to reset its context.
+before a long absence. A message can't `/compact` a thread; rotation is the only way to give it a
+fresh context.
 
 1. Send `ROTATE`.
-2. Wait for `STATUS: rotating - …`. Don't stop the thread before it arrives: its RESUME would be
-   stale, and `thread.sh rotate` refuses one older than 15 minutes.
-3. Run `thread.sh rotate <name> --main <your name>`. It prints `ROTATED <old> -> <new> <id>`; use
-   the new name from then on.
+2. Wait for `STATUS: rotating - …`. Stopping it earlier leaves an old RESUME, and
+   `thread.sh rotate` refuses one older than 15 minutes.
+3. Run `thread.sh rotate <name> --main <your name>`. It prints `ROTATED <old> -> <new> <id>`;
+   use the new name from then on.
 
-## 6. A thread goes quiet or ends
+## 6. A thread goes quiet or stops
 
-`thread.sh list` shows each thread's state. A thread with lanes in flight and no message for
-hours: send `QUESTION: status?` with `notify_when_idle`. A thread that exited or failed: rotate it
-with `--force`, which restarts it from its last RESUME, and tell the owner what was lost.
+`thread.sh list` shows each thread's state. If a thread with lanes running has sent nothing for
+hours, send `QUESTION: status?` with `notify_when_idle`. If a thread exited or failed, run
+`thread.sh rotate <name> --main <your name> --force` to restart it from its last RESUME, and
+tell the owner what was lost.
 
-## 7. Close
+## 7. Finish a build
 
-On `STATUS: done`: tell the owner what to check and where the retrospective is.
+When a thread sends `STATUS: done`, tell the owner what to check and where the retrospective is.
 
-- With `landing=local`, ask the owner, then run `thread.sh integrate <name>`: it fast-forwards the
-  base in the owner's checkout to `orchestration/<build>`, or merges when the base moved, and
-  prints `INTEGRATED` or `FAILED <reason>`.
-- Then `thread.sh close <name>`. It refuses while the build branch holds work the base lacks
-  (integrate it, or land it by PR first), archives `.orchestration/` under
-  `$ORCHESTRATION_HOME/archive/`, removes the worktree, branch and session, and names any lane
-  worktrees left behind. A build the registry no longer lists, after a `stop`, closes with
-  `--worktree ../<repo>-orch-<build> --base <branch>`. `thread.sh stop` only pauses a thread.
-- Diffs the thread handed over for instructions, agent definitions, settings or links: apply them
-  yourself once the owner approves them here. A decision you relayed is not the owner's consent
-  for those, so the thread leaves them to you.
+1. With `landing=local`, ask the owner, then run `thread.sh integrate <name>`. It brings the
+   build's branch into the base branch in the owner's checkout and prints `INTEGRATED` or
+   `FAILED <reason>`.
+2. Apply any diffs the thread sent for instructions, agent definitions, settings or skill links,
+   once the owner approves them here: a decision you passed on is not their consent for those.
+3. Run `thread.sh close <name>`. It refuses while the build's branch has work the base lacks;
+   otherwise it archives the thread's files under `~/.orchestration/archive/`, removes its
+   worktree, branch and session, and names any lane worktrees left behind. For a build the
+   registry no longer lists, use `thread.sh close --worktree ../<repo>-orch-<build> --base <branch>`.
