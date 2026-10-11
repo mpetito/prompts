@@ -1,0 +1,315 @@
+{
+  "version": 2,
+  "skill_name": "spec",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "r1-numbered-defaults",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository: every file's path and full contents. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.\n\nThe repository owner asks:\n\n> We need tally to handle expenses in more than one currency. Add a currency column in src/parser.ts by changing parseRow() so each Expense carries its currency, and make the totals take it into account. Our bank's CSV exports always include an ISO 4217 code in the fifth column, so every row will have one. A few things I haven't decided yet: whether the totals should convert everything to USD (we would need to pull exchange rates from somewhere) or just show one subtotal per currency, whether the new column in the table output should be headed \"Currency\" or \"CCY\", whether that column goes before or after the Total column, and whether the JSON field is called \"currency\" or \"ccy\". Write the spec and plan for this.",
+      "files": [
+        "fixtures/tally-repo.md"
+      ],
+      "expected_behavior": [
+        "spec.md has an Open Questions section whose questions are numbered",
+        "The owner's four undecided points (USD conversion or per-currency subtotals, the column heading, the column position, the JSON field name) are each a numbered open question",
+        "Every open question gives a recommended default, with enough context to answer 'agreed' by number"
+      ],
+      "assertions": [
+        {
+          "name": "numbered-open-questions",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\bquestions?\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$)(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$)(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$)"
+        },
+        {
+          "name": "cosmetic-questions-listed",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\bquestions?\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?\\bCCY\\b"
+        },
+        {
+          "name": "column-position-listed",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\bquestions?\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:\\b(?:before|after)\\b[^\\n]{0,60}\\btotal\\b|\\btotal\\b[^\\n]{0,60}\\b(?:before|after)\\b|\\bcolumn (?:order|position)\\b)"
+        },
+        {
+          "name": "no-question-without-default",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\bquestions?\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$)(?!(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$))[\\s\\S])*?(?:\\bdefault\\b[ \\t]*(?:\\*\\*|_)?[ \\t]*[:(—–-]|\\brecommend\\w*|\\bpropos(?:ed|al)\\b|\\blean(?:s|ing)?\\b|\\bsuggest(?:ed|ion)?\\b[ \\t]*(?:\\*\\*)?[ \\t]*:|\\bwe(?:'ll| will) (?:go with|use|assume)\\b))"
+        },
+        {
+          "name": "answerable-by-number",
+          "type": "judge",
+          "rubric": [
+            "Each open question carries enough context (options and their consequence) that the owner could reply 'agreed' or pick an option by its number without rereading the request"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r3-unproven-claim",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository: every file's path and full contents. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.\n\nThe repository owner asks:\n\n> We need tally to handle expenses in more than one currency. Add a currency column in src/parser.ts by changing parseRow() so each Expense carries its currency, and make the totals take it into account. Our bank's CSV exports always include an ISO 4217 code in the fifth column, so every row will have one. Two things I haven't decided yet: whether the totals should convert everything to USD (we would need to pull exchange rates from somewhere) or just show one subtotal per currency, and whether the new column in the table output should be headed \"Currency\" or \"CCY\". Write the spec and plan for this.",
+      "files": [
+        "fixtures/tally-repo.md"
+      ],
+      "expected_behavior": [
+        "The owner's unproven claim (every bank export row carries an ISO 4217 code in the fifth column) is a numbered open question for the owner to confirm",
+        "spec.md does not state the claim as a requirement or a fact"
+      ],
+      "assertions": [
+        {
+          "name": "spec-written",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
+        },
+        {
+          "name": "claim-is-open-question",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\bquestions?\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$)(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$))[\\s\\S])*?(?:fifth column|ISO[ \\t]*4217|every (?:bank )?(?:export )?row|always (?:include|carr|ha)|bank(?:'s)?(?: csv)? exports?|missing (?:currency|code|column)|without (?:a|the) (?:currency|code)|(?:four|4)[- ]column|no (?:currency )?code))(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$))[\\s\\S])*?(?:confirm\\w*|verif\\w*|unconfirmed|unproven|untested|not (?:yet )?(?:been )?(?:confirmed|verified|checked|shown|proven)|is (?:that|this|it) (?:true|guaranteed|always)|can (?:we|tally) (?:rely|count|assume)|\\brely\\b|guarantee\\w*|evidence|have you (?:seen|checked)|\\bdo (?:all|every)\\b))"
+        },
+        {
+          "name": "claim-not-stated-as-fact",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?![^\\n]*(?:\\?|confirm|verif|assum|unless|\\bif\\b|claim|request|you said|owner|question|\\bQ\\d))[^\\n]*(?:\\bguarantees?\\b|\\btrust (?:the|each|every) (?:supplied|bank|row)|every (?:bank )?(?:export )?row (?:supplies|carries|has|includes|contains) (?:a|an|one|its)\\b|since every (?:export )?row has|exports? (?:now )?(?:always )?(?:carry|carries|supply|supplies)\\b[^\\n]{0,40}\\b(?:every row|fifth column))"
+        },
+        {
+          "name": "claim-held-open",
+          "type": "judge",
+          "rubric": [
+            "Nowhere in spec.md or plan.md is the fifth-column claim treated as settled: the spec says what happens if a row has no code, or makes that an open question, rather than relying on the bank's guarantee"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r3-safety-claim",
+      "split": "tune",
+      "prompt": "Write the spec and plan for the feature described in the input file. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.",
+      "files": [
+        "fixtures/allergen-badges-request.md"
+      ],
+      "expected_behavior": [
+        "The 'Nut-free kitchen - safe for nut allergies' badge text is a numbered open question for the owner to confirm, not a requirement"
+      ],
+      "assertions": [
+        {
+          "name": "spec-written",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
+        },
+        {
+          "name": "safety-claim-is-open-question",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\bquestions?\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$)(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$))[\\s\\S])*?(?:nut[- ]free|safe for (?:people with )?nut|nut allerg))(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:Q[ \\t]*)?\\d{1,2}[.):](?=[ \\t*]|$))[\\s\\S])*?(?:confirm\\w*|verif\\w*|unconfirmed|unproven|untested|not (?:yet )?(?:been )?(?:confirmed|verified|checked|shown|proven)|is (?:that|this|it) (?:true|guaranteed|always)|can (?:we|tally) (?:rely|count|assume)|\\brely\\b|guarantee\\w*|evidence|have you (?:seen|checked)|\\bdo (?:all|every)\\b|food[- ]safety|fryer|cross[- ]?(?:contact|contaminat)|legal|liabil|sign[- ]?off|approv\\w*|review\\w*))"
+        },
+        {
+          "name": "safety-claim-not-adopted",
+          "type": "judge",
+          "rubric": [
+            "The spec does not require the badge to read 'safe for nut allergies' as settled copy; the claim waits on the owner's confirmation, and the shared-fryer note is raised against it"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r4-what-how",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository: every file's path and full contents. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.\n\nThe repository owner asks:\n\n> We need tally to handle expenses in more than one currency. Add a currency column in src/parser.ts by changing parseRow() so each Expense carries its currency, and make the totals take it into account. Our bank's CSV exports always include an ISO 4217 code in the fifth column, so every row will have one. Two things I haven't decided yet: whether the totals should convert everything to USD (we would need to pull exchange rates from somewhere) or just show one subtotal per currency, and whether the new column in the table output should be headed \"Currency\" or \"CCY\". Write the spec and plan for this.",
+      "files": [
+        "fixtures/tally-repo.md"
+      ],
+      "expected_behavior": [
+        "spec.md says what and why only: no file paths, function or type names, or code, even though the request names src/parser.ts and parseRow()",
+        "plan.md is ordered steps, each naming the files it touches and ending with a check that can fail, such as npm test with a named new test"
+      ],
+      "assertions": [
+        {
+          "name": "spec-written",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
+        },
+        {
+          "name": "plan-has-steps",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/plan\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]"
+        },
+        {
+          "name": "spec-has-no-code",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?(?:\\b(?:parseRow|parseFile|toCents|toCurrency|sumByCategory|formatTable|formatJson|resolveCategory|CategoryTotal|amountCents|totalCents)\\b|`Expense`|\\b[A-Za-z_]\\w*\\(\\)|\\b(?:src|test)/[\\w.-]+|\\b\\w+\\.ts\\b)",
+          "ci": false
+        },
+        {
+          "name": "every-step-names-files",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/plan\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?!(?:(?!^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]|^[ \\t]*\\1[ \\t]*$|^[ \\t]*#{1,6}[ \\t])[\\s\\S])*?(?:\\b(?:src|test)/[\\w.-]+\\.ts\\b|\\bREADME\\.md\\b|\\bpackage\\.json\\b))"
+        },
+        {
+          "name": "every-step-has-check",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/plan\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?!(?:(?!^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]|^[ \\t]*\\1[ \\t]*$|^[ \\t]*#{1,6}[ \\t])[\\s\\S])*?(?:\\bchecks?\\b[ \\t]*(?:\\*\\*|_)?[ \\t]*:|\\bnpm (?:run )?test\\b|\\bnode[ \\t]+(?:--test|src/)|\\bverif(?:y|ied|ication)\\b[ \\t]*(?:\\*\\*)?[ \\t]*:|\\bdone when\\b))"
+        },
+        {
+          "name": "checks-can-fail",
+          "type": "judge",
+          "rubric": [
+            "Each plan step's check would fail if the step were skipped or done wrong (a named new test, a command with expected output), not a restatement such as 'works correctly'"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r5-resume-unticked-step",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository and its terminal: every file's path and contents, the recent history, and the output of the last commands run. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: list your next two actions, in the order you would take them, as a numbered list (1. and 2.), where an action is one change to the repository's files. For each action, say which plan step it serves, and give the path and full new contents of every file it changes.\n\nThe repository owner asks:\n\n> Carry on with spec 011.",
+      "files": [
+        "fixtures/tally-011-resume.md"
+      ],
+      "expected_behavior": [
+        "Sees that step 4 is already done (its tests are in the last commit and npm test passes) and ticks it in plan.md as the first action, without redoing it",
+        "The next work is step 5 (README), not step 6; plan.md keeps its steps unchanged (no re-plan)"
+      ],
+      "assertions": [
+        {
+          "name": "first-action-ticks-4",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?(?:\\[x\\][ \\t]*4\\.|\\btick\\w*\\b[^\\n]{0,60}?\\b(?:step[ \\t]*)?4\\b|\\bstep[ \\t]*4\\b[^\\n]{0,60}?\\b(?:tick\\w*|check(?:ed)?[ \\t]+off|mark\\w*)\\b|\\bmark\\w*[^\\n]{0,30}?\\bstep[ \\t]*4\\b)"
+        },
+        {
+          "name": "step-5-next",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?3[.):])[\\s\\S])*?(?:\\bstep[ \\t]*5\\b|README\\.md)|^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*README\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
+        },
+        {
+          "name": "plan-intact",
+          "type": "regex",
+          "pattern": "\\[x\\][ \\t]*4\\.[ \\t]*`test/parser\\.test\\.ts`[\\s\\S]*?\\[[ x]\\][ \\t]*5\\.[ \\t]*`README\\.md`[\\s\\S]*?\\[ \\][ \\t]*6\\.[ \\t]*`src/totals\\.ts`[\\s\\S]*?\\[ \\][ \\t]*7\\.[ \\t]*`src/format\\.ts`[\\s\\S]*?\\[ \\][ \\t]*8\\.[ \\t]*`README\\.md`"
+        }
+      ]
+    },
+    {
+      "id": "r5-tick-before-next-step",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository and its terminal: every file's path and contents, the recent history, and the output of the last commands run. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: list your next two actions, in the order you would take them, as a numbered list (1. and 2.), where an action is one change to the repository's files. For each action, say which plan step it serves, and give the path and full new contents of every file it changes.\n\nThe repository owner asks:\n\n> Carry on with spec 011.",
+      "files": [
+        "fixtures/tally-011-step-landed.md"
+      ],
+      "expected_behavior": [
+        "Sees that step 5 has landed in the working tree and its check passed, and ticks it in plan.md as the first action, in the same change as the README edit",
+        "Starts step 6 only after that tick"
+      ],
+      "assertions": [
+        {
+          "name": "first-action-ticks-5",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?(?:\\[x\\][ \\t]*5\\.|\\btick\\w*\\b[^\\n]{0,60}?\\b(?:step[ \\t]*)?5\\b|\\bstep[ \\t]*5\\b[^\\n]{0,60}?\\b(?:tick\\w*|check(?:ed)?[ \\t]+off|mark\\w*)\\b|\\bmark\\w*[^\\n]{0,30}?\\bstep[ \\t]*5\\b)"
+        },
+        {
+          "name": "no-step-6-in-first-action",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*(?:src/totals\\.ts|test/totals\\.test\\.ts|src/format\\.ts)[`*_]*:?[ \\t]*=*[ \\t]*$"
+        },
+        {
+          "name": "second-action-is-step-6",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?3[.):])[\\s\\S])*?(?:\\bstep[ \\t]*6\\b|src/totals\\.ts|CategoryTotal|sumByCategory)"
+        },
+        {
+          "name": "plan-shows-5-ticked-6-open",
+          "type": "regex",
+          "pattern": "\\[x\\][ \\t]*5\\.[ \\t]*`README\\.md`[^\\[]*\\[ \\][ \\t]*6\\."
+        }
+      ]
+    },
+    {
+      "id": "trig-spec-before-coding",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a spec and implementation plan for adding SSO login to the admin portal before we start coding.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-scope-feature",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Scope out offline mode for the field app: what is in, what is out, and how we would build it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-carry-on-spec",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Carry on with spec 042.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-finish-half-done-checklist",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We got through about half of the checklist in 031-invoice-export before running out of time yesterday; pick it up and finish the rest.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-work-through-plan-steps",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Work through the plan.md for 019-sso-login until every step is checked off.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-plan-review",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Here is the plan for spec 014; poke holes in it before anyone writes code and tell me what will be expensive to change later.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing a plan before code exists belongs to plan-review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-project-setup",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Set up a specs/ folder for this repo and document its numbering convention in AGENTS.md so agents know where new work goes.",
+      "expected_behavior": [
+        "The skill should NOT trigger: setting up the specs/ layout and AGENTS.md belongs to project-setup."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-small-fix",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Fix the off-by-one in the pagination helper; there is no ticket or design doc for it, just make the change.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a small fix with no spec belongs to code-style."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

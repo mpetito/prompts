@@ -26,9 +26,6 @@ done and summarised below; treat it as current.
 003-auth-sessions/           spec.md plan.md
 ```
 
-Sibling specs use the metadata table, numbered FR/NFR requirements and checkbox
-acceptance criteria.
-
 ## Codebase research
 
 - `apps/storefront/components/menu/MenuCard.tsx` renders photo, name, price and a "New"
@@ -48,6 +45,4 @@ acceptance criteria.
 ## Team notes
 
 - Sprint 31 starts Monday. Capacity: two frontend developers, one backend developer.
-- Food-safety wording on the site is owned by the food safety lead, Ola Brandt, who has
-  not reviewed any badge text yet.
 - The kitchen shares fryers between nut and non-nut dishes on weekends.
