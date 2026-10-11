@@ -11,9 +11,10 @@
 
 ## Skills
 
-The skill collection is archived (`archive/skills/` in the configuration repository that this
-file links from; `readlink -f ~/.claude/CLAUDE.md` finds it). Nothing auto-loads. A skill
-returns only through the readmission bar in `docs/skill-audit/readmission.md` there.
+Most of the skill collection is archived (`archive/skills/` in the configuration repository
+that this file links from; `readlink -f ~/.claude/CLAUDE.md` finds it); `skills/` there holds
+the readmitted ones. A skill returns only through the readmission bar in
+`docs/skill-audit/readmission.md` there.
 
 When a task goes wrong in a way an instruction would have prevented, or you find yourself
 re-deriving a procedure or a fact a skill used to carry, record it in
@@ -21,8 +22,9 @@ re-deriving a procedure or a fact a skill used to carry, record it in
 and the archived skill (if any) that covered it. That ledger is the only way a skill earns
 its way back.
 
-- Follow the target project's conventions first. Keep comments concise; explain only what
-  names, types, and code cannot. These rules also apply to delegated implementation.
+- Project conventions always win over my own personal style preferences. Before writing or
+  changing code, load the `code-style` skill; a brief that delegates implementation names it
+  too.
 - Before reporting implementation complete, review the final diff yourself: prove every new
   guard or fix can fail (revert it or plant a mutant), run the project's checks, and report
   findings by severity.
