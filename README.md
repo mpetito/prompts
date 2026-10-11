@@ -104,7 +104,9 @@ Reusable prompt fragments for specialized workflows.
 ## Workflows
 
 The slash-command workflows this section used to list (`/spec → /implement → /review → /commit`
-and the others) depended on archived skills. The archived text is in `archive/skills/`, and
+and the others) depended on archived skills. `spec` is readmitted and covers
+`implement` too: work with a spec runs `spec` → `plan-review` → `spec` (carrying out the plan
+under `code-style`) → `review`. The archived text is in `archive/skills/`, and
 the usage data in `docs/skill-audit/2026-10-09/usage.md` shows which of them ran in the last
 60 days before the archive.
 

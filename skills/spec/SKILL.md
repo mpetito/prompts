@@ -1,6 +1,6 @@
 ---
 name: spec
-description: "Write a spec and plan for a feature, then carry the plan out: spec.md says what and why, plan.md says how, in steps that each name their files, end with a check, and are ticked as they land. Use when asked to write a spec, plan or design before coding, to scope a feature (what is in, what is out, how to build it), to carry on with, pick up or finish spec NNN or a half-done plan or checklist, or to work through plan.md until every step is checked off. Not for reviewing or poking holes in an existing plan or spec (plan-review), setting up a specs/ folder, its numbering or AGENTS.md (project-setup), a fix or change with no spec (code-style), or running a build with several parallel lanes (agent-orchestration)."
+description: "Write a spec and plan for a feature, then carry the plan out: spec.md says what and why, plan.md says how, in steps that each name their files, end with a check, and are ticked as they land. Use when asked to write a spec, plan or design before coding, to scope a feature (what is in, what is out, how to build it), to carry on with, pick up or finish spec NNN or a half-done plan or checklist, or to work through plan.md until every step is checked off. Not for reviewing or poking holes in an existing plan or spec (plan-review), setting up a specs/ folder, its numbering or AGENTS.md (project-setup), a fix or change with no spec (code-style), or running a build with several parallel lanes (orchestration-main)."
 ---
 
 # Spec
@@ -8,26 +8,26 @@ description: "Write a spec and plan for a feature, then carry the plan out: spec
 Role: worker. Loaded by a session or a lane worker that writes a spec and plan, or carries one
 out; this file stays under 80 lines.
 
-The path: write spec.md and plan.md, "grounded in the codebase and the docs"; review them; then
-carry the plan out step by step. The `specs/` layout is
-[project-setup](../project-setup/SKILL.md)'s.
-
 ## Write the spec and plan
 
-1. **spec.md says what and why** ("spec.md (what and why) and plan.md (how)"): behaviour,
-   scope, decisions and open questions. No file paths, function or type names, or code, even
-   when the request names them; those go in plan.md.
-2. **Open questions:** a heading `## Open questions` with items numbered `1.`, `2.`, … Each item
-   is the question, one line of context (the options and what each one changes), and
-   `Default:` with your pick, so the owner can answer "agreed" by number ("I agree with all
-   your defaults and recommendations."). A question without its context comes back as "I need
-   more info / context on 1-3."
+Ground both in the codebase and the docs; the `specs/` layout is
+[project-setup](../project-setup/SKILL.md)'s.
+
+1. **spec.md says what and why:** behaviour, scope, decisions and open questions. No file
+   paths, function or type names, or code, even when the request names them; those go in
+   plan.md.
+2. **Open questions:** a heading `## Open questions` (or the project's existing form of it)
+   with items numbered `1.`, `2.`, … Each item is the question, one line of context (the
+   options and what each one changes), and `Default:` with your pick, so the owner can answer
+   "agreed" by number ("I agree with all your defaults and recommendations."). A question
+   without its context comes back as "I need more info / context on 1-3."
 3. **A claim the request asserts without proof is an open question** for the owner to confirm,
    never a fact or a requirement in spec.md. Such claims are a product fact, a safety, legal or
    money claim, or a guarantee about another system.
-4. **Write the plan on the defaults rather than stopping** ("try not to block yourself on
-   questions"). Stop only for what the owner reserved: money, access, destructive or production
-   changes, and legal or product facts.
+4. **Always write plan.md on the defaults** ("try not to block yourself on questions"). A
+   question that touches what the owner reserved (money, access, destructive or production
+   changes, legal or product facts) still gets its default and its plan step; only carrying out
+   the steps that depend on it waits for the owner's answer.
 5. **plan.md says how:** ordered steps, each a `- [ ] N.` checkbox (or the checkbox form the
    project's existing plans use) that starts with the file paths it touches and ends
    `Check: <command or test>`, a check that can fail. For example: ``- [ ] 3. `src/report.ts`,
@@ -38,8 +38,7 @@ carry the plan out step by step. The `specs/` layout is
 
 ## Carry out the plan
 
-Write the code under [code-style](../code-style/SKILL.md), "ticking off steps in plan.md as
-they land":
+Write the code under [code-style](../code-style/SKILL.md):
 
 1. **Resume at the first unticked step.** If its work is already there, run its check; once the
    check passes, tick the step and move on. Don't redo or re-plan it.
