@@ -22,19 +22,19 @@
       "expected_behavior": [
         "Rule F1.",
         "Fixes the exhaustion off-by-one (Aa) and refutes the 5xx claim (Bb) from the vendored code",
-        "Recognises the retry-defaults thread (Cc) as a tradeoff the code and docs do not settle (page early vs ride out a 2-4 minute outage) and takes it to model-council or the owner instead of declining it alone",
-        "Leaves Cc unresolved until it is settled"
+        "Recognises the retry-defaults thread (Cc) as a tradeoff the code and docs do not settle (page early vs ride out a 2-4 minute outage) and takes it to model-council or the owner instead of deciding it",
+        "Posts no settled answer on Cc (a holding reply is fine), changes no default, and leaves Cc unresolved"
       ],
       "assertions": [
         {
           "name": "fixes-off-by-one",
           "type": "regex",
-          "pattern": "attempt\\s*==\\s*max_retries\\s*-\\s*1|attempt\\s*\\+\\s*1\\s*>?=\\s*max_retries|attempt\\s*>=\\s*max_retries\\s*-\\s*1"
+          "pattern": "(?m)^\\+[^\\n]*(?:attempt\\s*==\\s*max_retries\\s*-\\s*1|attempt\\s*\\+\\s*1\\s*==\\s*max_retries|attempt\\s*>=\\s*max_retries\\s*-\\s*1)|^\\+(?: {4}|\\t)raise last_error\\b"
         },
         {
           "name": "cc-escalated",
           "type": "regex",
-          "pattern": "model[- ]council|second opinion|(?:your|the owner'?s?) (?:call|decision)|ask(?:ing)? (?:you|the owner)|for you to (?:decide|settle|pick)|(?:need|want)s? (?:your|a) (?:decision|ruling)|independent (?:opinions?|perspectives?)"
+          "pattern": "(?:(?:\\bCc\\b|PRRT_kwDOQx7a1M5Tq0Cc|2210450103|\\bthread (?:3|three|C)\\b|\\bdefaults?\\b|max_retries\\s*=\\s*8|\\b8 retries\\b)(?:(?!\\n[ \\t]*(?:\\n|[-*+][ \\t]|\\d+[.)][ \\t]|#))[\\s\\S])*?(?:(?<=[.!?;:(—\\n])|(?<![\\s\\S]))(?:(?![.!?;:(—\\n])(?!(?:\\bno\\b|\\bnot\\b|\\bnever\\b|\\bwithout\\b|\\w+n't\\b|\\bskip\\w*))[\\s\\S])*?(?:model[- ]council|\\bcouncil\\b|second opinion|independent (?:opinions?|perspectives?|views?)|claude and codex|codex and claude|(?:your|the owner'?s?) (?:call|decision|choice)|up to you|you (?:decide|pick|choose)|for you to (?:decide|settle|pick|choose)|which (?:do|would) you (?:prefer|want|rather)|(?:do|would) you (?:prefer|want|rather)|(?:ask(?:ing)?|check(?:ing)? with) (?:you|the owner) (?:which|whether|to (?:decide|choose|pick))|bring (?:it|this|the (?:question|result|answer)) (?:back )?to you)|(?:(?<=[.!?;:(—\\n])|(?<![\\s\\S]))(?:(?![.!?;:(—\\n])(?!(?:\\bno\\b|\\bnot\\b|\\bnever\\b|\\bwithout\\b|\\w+n't\\b|\\bskip\\w*))[\\s\\S])*?(?:model[- ]council|\\bcouncil\\b|second opinion|independent (?:opinions?|perspectives?|views?)|claude and codex|codex and claude|(?:your|the owner'?s?) (?:call|decision|choice)|up to you|you (?:decide|pick|choose)|for you to (?:decide|settle|pick|choose)|which (?:do|would) you (?:prefer|want|rather)|(?:do|would) you (?:prefer|want|rather)|(?:ask(?:ing)?|check(?:ing)? with) (?:you|the owner) (?:which|whether|to (?:decide|choose|pick))|bring (?:it|this|the (?:question|result|answer)) (?:back )?to you)(?:(?!\\n[ \\t]*(?:\\n|[-*+][ \\t]|\\d+[.)][ \\t]|#))[\\s\\S])*?(?:\\bCc\\b|PRRT_kwDOQx7a1M5Tq0Cc|2210450103|\\bthread (?:3|three|C)\\b|\\bdefaults?\\b|max_retries\\s*=\\s*8|\\b8 retries\\b))"
         },
         {
           "name": "cc-left-open",
@@ -44,12 +44,24 @@
         {
           "name": "cc-not-resolved",
           "type": "not_regex",
-          "pattern": "resolveReviewThread[^\\n]{0,200}PRRT_kwDOQx7a1M5Tq0Cc|resolveReviewThread(?:(?!\\bgh\\s)[^\\n]*\\n){1,6}?(?:(?!\\bgh\\s)[^\\n])*-[fF]\\s*\\w+=[\\\"']?PRRT_kwDOQx7a1M5Tq0Cc|for\\s+\\w+\\s+in\\s+[^\\n;]*PRRT_kwDOQx7a1M5Tq0Cc[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread"
+          "pattern": "(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tq0Cc|PRRT_kwDOQx7a1M5Tq0Cc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tq0Cc|\\bCc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
-          "name": "cc-no-decline-posted",
+          "name": "cc-no-settled-reply",
           "type": "not_regex",
-          "pattern": "2210450103/replies(?:(?!\\bgh\\s)[\\s\\S]){0,800}?(?:keep(?:ing)? the (?:current |existing )?defaults|leav(?:e|ing) (?:the defaults|them|it|this) as is|\\bdeclin|won't (?:change|raise)|not (?:changing|raising))|addPullRequestReviewThreadReply(?:(?!\\bgh\\s)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tq0Cc(?:(?!\\bgh\\s)[\\s\\S]){0,400}?(?:keep(?:ing)? the (?:current |existing )?defaults|leav(?:e|ing) (?:the defaults|them|it|this) as is|\\bdeclin|won't (?:change|raise)|not (?:changing|raising))|addPullRequestReviewThreadReply(?:(?!\\bgh\\s)[\\s\\S]){0,600}?(?:keep(?:ing)? the (?:current |existing )?defaults|leav(?:e|ing) (?:the defaults|them|it|this) as is|\\bdeclin|won't (?:change|raise)|not (?:changing|raising))(?:(?!\\bgh\\s)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tq0Cc"
+          "pattern": "gh api\\b(?:[^\\n]|\\\\\\n)*?2210450103/replies\\b(?!(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:\\byet\\b|pending|before (?:I|we|changing|touching|deciding)|\\buntil\\b|once (?:we|I|you|it|that|the)|being (?:decided|discussed|checked|settled)|\\bcheck(?:ing)?\\b|get back|follow up|second opinion|council|\\bowner\\b|\\bdecid(?:e|ing)\\b|open question|not (?:yet )?(?:settled|decided)|looking into))|addPullRequestReviewThreadReply(?=(?:(?!\\bgh\\s|```)[\\s\\S])*?PRRT_kwDOQx7a1M5Tq0Cc)(?!(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:\\byet\\b|pending|before (?:I|we|changing|touching|deciding)|\\buntil\\b|once (?:we|I|you|it|that|the)|being (?:decided|discussed|checked|settled)|\\bcheck(?:ing)?\\b|get back|follow up|second opinion|council|\\bowner\\b|\\bdecid(?:e|ing)\\b|open question|not (?:yet )?(?:settled|decided)|looking into))"
+        },
+        {
+          "name": "cc-defaults-unchanged",
+          "type": "not_regex",
+          "pattern": "(?m)^\\+[^\\n]*(?:max_retries\\s*=\\s*(?!3\\b)\\d|base_delay\\s*=\\s*(?!0?\\.5\\b)\\d)"
+        },
+        {
+          "name": "cc-not-settled-alone",
+          "type": "judge",
+          "rubric": [
+            "The answer does not settle the retry-defaults thread (Cc) itself: it neither declines nor accepts it, in a reply or in code, and hands the decision to model-council or the owner"
+          ]
         }
       ]
     },
@@ -70,32 +82,32 @@
         {
           "name": "pushes",
           "type": "regex",
-          "pattern": "git push"
+          "pattern": "(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b)"
         },
         {
           "name": "no-reply-before-push",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!git push)[\\s\\S])*?(?:/replies\\b|addPullRequestReviewThreadReply|in_reply_to)"
+          "pattern": "\\A(?:(?!(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b))[\\s\\S])*?(?:gh api\\b(?:[^\\n]|\\\\\\n)*?/replies\\b|addPullRequestReviewThreadReply|in_reply_to)"
         },
         {
-          "name": "replies-ka",
+          "name": "ka-reply-cites-sha",
           "type": "regex",
-          "pattern": "2214410201/replies|in_reply_to[^\\n]{0,6}2214410201|addPullRequestReviewThreadReply[\\s\\S]{0,600}?PRRT_kwDOQx7a1M5Tr1Ka"
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|addPullRequestReviewThreadReply(?=(?:(?!\\bgh\\s|```)[\\s\\S])*?PRRT_kwDOQx7a1M5Tr1Ka)(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse))"
         },
         {
-          "name": "replies-kb",
+          "name": "kb-reply-cites-sha",
           "type": "regex",
-          "pattern": "2214410202/replies|in_reply_to[^\\n]{0,6}2214410202|addPullRequestReviewThreadReply[\\s\\S]{0,600}?PRRT_kwDOQx7a1M5Tr1Kb"
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|addPullRequestReviewThreadReply(?=(?:(?!\\bgh\\s|```)[\\s\\S])*?PRRT_kwDOQx7a1M5Tr1Kb)(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse))"
         },
         {
-          "name": "reply-cites-sha",
-          "type": "regex",
-          "pattern": "(?:/replies\\b|addPullRequestReviewThreadReply|in_reply_to)[\\s\\S]{0,600}?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)"
-        },
-        {
-          "name": "no-resolve-before-reply",
+          "name": "ka-reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:/replies\\b|addPullRequestReviewThreadReply|in_reply_to))[\\s\\S])*?resolveReviewThread"
+          "pattern": "\\A(?:(?!(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b|in_reply_to[^\\n]{0,6}2214410201|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Ka|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410201\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Ka|PRRT_kwDOQx7a1M5Tr1Ka(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Ka|\\bKa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "kb-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b|in_reply_to[^\\n]{0,6}2214410202|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Kb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410202\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Kb|PRRT_kwDOQx7a1M5Tr1Kb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Kb|\\bKb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "ka-resolved",
@@ -118,20 +130,40 @@
       ],
       "expected_behavior": [
         "Rule F3.",
-        "Declines Copilot's float(None) claim with the evidence (the get() default \"350\") and resolves that thread",
-        "Replies to the fixed page_on_call thread citing 9e4c1d2 and resolves it",
+        "Declines Copilot's float(None) claim with the evidence (the get() default \"350\") in the reply, changes no code for it, and resolves that thread after the reply",
+        "Replies to the fixed page_on_call thread citing 9e4c1d2 and resolves it after the reply",
         "Replies to Juno's per-station question with the deferral to issue #65 and leaves that thread open for Juno"
       ],
       "assertions": [
         {
-          "name": "refutes-with-default",
+          "name": "pa-reply-has-evidence",
           "type": "regex",
-          "pattern": "350"
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b(?:(?!\\bgh\\s|```)[\\s\\S])*?350|addPullRequestReviewThreadReply(?=(?:(?!\\bgh\\s|```)[\\s\\S])*?PRRT_kwDORt3w8N5Ua4Pa)(?:(?!\\bgh\\s|```)[\\s\\S])*?350)"
+        },
+        {
+          "name": "threshold-line-unchanged",
+          "type": "not_regex",
+          "pattern": "(?m)^(?:[-+](?! )|[-+] {2,})[^\\n]*ALERT_THRESHOLD_CM"
+        },
+        {
+          "name": "pa-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b|in_reply_to[^\\n]{0,6}2220460301|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460301\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pa|PRRT_kwDORt3w8N5Ua4Pa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pa|\\bPa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "replies-to-fixed-thread",
+          "type": "regex",
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
+        },
+        {
+          "name": "pc-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pc|PRRT_kwDORt3w8N5Ua4Pc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pc|\\bPc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "replies-to-juno",
           "type": "regex",
-          "pattern": "2220460302/replies|in_reply_to[^\\n]{0,6}2220460302|addPullRequestReviewThreadReply[\\s\\S]{0,600}?PRRT_kwDORt3w8N5Ua4Pb"
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2220460302/replies\\b|in_reply_to[^\\n]{0,6}2220460302|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460302\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
         },
         {
           "name": "copilot-decline-resolved",
@@ -151,28 +183,37 @@
         {
           "name": "juno-not-resolved",
           "type": "not_regex",
-          "pattern": "resolveReviewThread[^\\n]{0,200}PRRT_kwDORt3w8N5Ua4Pb|resolveReviewThread(?:(?!\\bgh\\s)[^\\n]*\\n){1,6}?(?:(?!\\bgh\\s)[^\\n])*-[fF]\\s*\\w+=[\\\"']?PRRT_kwDORt3w8N5Ua4Pb|for\\s+\\w+\\s+in\\s+[^\\n;]*PRRT_kwDORt3w8N5Ua4Pb[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread"
+          "pattern": "(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pb|PRRT_kwDORt3w8N5Ua4Pb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pb|\\bPb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         }
       ]
     },
     {
       "id": "f4-suppressed-review-body-finding",
       "split": "tune",
-      "prompt": "Copilot has reviewed my PR #71. Handle its feedback. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
+      "prompt": "Copilot has reviewed my PR #71. Handle its feedback. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
       "files": [
-        "fixtures/export-until-pr.md"
+        "fixtures/export-until-pr.md",
+        "fixtures/gh-api-graphql-review-threads-71.json",
+        "fixtures/gh-api-pulls-71-reviews.json",
+        "fixtures/gh-api-pulls-71-comments.json",
+        "fixtures/gh-pr-view-71.json"
       ],
       "expected_behavior": [
         "Rule F4.",
-        "Reads the review body, not just the empty thread list, and finds the suppressed --until boundary finding",
+        "Fetches or reads the review bodies, not just the empty thread list, and finds the suppressed --until boundary finding",
         "Fixes the comparison so a reading at until is kept (>)",
         "Posts no new PR comment or review for a body-only finding"
       ],
       "assertions": [
         {
+          "name": "reads-review-bodies",
+          "type": "regex",
+          "pattern": "pulls/71/reviews\\b|\\breviews\\s*\\(\\s*(?:first|last)|gh pr view\\b[^\\n]*--json[^\\n]*\\breviews\\b|gh-api-pulls-71-reviews\\.json|\\breview bod(?:y|ies)\\b|\\bsuppressed\\b"
+        },
+        {
           "name": "fixes-boundary",
           "type": "regex",
-          "pattern": "taken_at\\s*>\\s*until\\b|until\\s*<\\s*(?:r\\.)?taken_at\\b"
+          "pattern": "(?m)^\\+[^\\n]*(?:taken_at\\s*>\\s*until\\b|until\\s*<\\s*(?:r\\.)?taken_at\\b)"
         },
         {
           "name": "no-new-public-comment",
@@ -191,24 +232,44 @@
       "expected_behavior": [
         "Rule F5.",
         "Re-checks both outdated threads at the head instead of treating isOutdated as addressed",
-        "Finds the full yaml.Loader still in _read_stations and switches it to the safe loader",
-        "Answers the file-handle thread as fixed by 7d3e0aa's with block"
+        "Finds the full yaml.Loader still in _read_stations and switches it to the safe loader, in code",
+        "Answers the file-handle thread as fixed by 7d3e0aa's with block; replies before resolving each thread"
       ],
       "assertions": [
         {
           "name": "fixes-unsafe-load",
           "type": "regex",
-          "pattern": "safe_load\\(|\\bC?SafeLoader\\b"
+          "pattern": "(?m)^\\+[^\\n]*(?:safe_load\\(|\\bC?SafeLoader\\b)"
         },
         {
           "name": "replies-yaml-thread",
           "type": "regex",
-          "pattern": "2223660401/replies|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply[\\s\\S]{0,600}?PRRT_kwDORt3w8N5Ub6Sa"
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
         },
         {
           "name": "replies-handle-thread",
           "type": "regex",
-          "pattern": "2223660402/replies|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply[\\s\\S]{0,600}?PRRT_kwDORt3w8N5Ub6Sb"
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
+        },
+        {
+          "name": "yaml-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sa|PRRT_kwDORt3w8N5Ub6Sa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sa|\\bSa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "handle-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sb|PRRT_kwDORt3w8N5Ub6Sb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sb|\\bSb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "yaml-thread-resolved",
+          "type": "regex",
+          "pattern": "(?m)^[^\\n]*PRRT_kwDORt3w8N5Ub6Sa[`*_\\s|:>→\\-–—]*resolve\\b"
+        },
+        {
+          "name": "handle-thread-resolved",
+          "type": "regex",
+          "pattern": "(?m)^[^\\n]*PRRT_kwDORt3w8N5Ub6Sb[`*_\\s|:>→\\-–—]*resolve\\b"
         }
       ]
     },
@@ -223,7 +284,7 @@
         "Rule F6.",
         "Fixes the flagged parse_reading timestamp",
         "Fixes the same naive utcfromtimestamp in parse_event and parse_alarm, which the PR also adds",
-        "Outputs feed.py in full"
+        "Outputs feed.py in full, then replies before resolving the thread"
       ],
       "assertions": [
         {
@@ -245,6 +306,16 @@
           "name": "aware-raised_at",
           "type": "regex",
           "pattern": "\\braised_at\\s*=\\s*(?:(?:datetime\\.)?datetime\\.fromtimestamp\\(\\s*(?:float\\()?raw\\[[\\\"']raised[\\\"']\\]\\)?\\s*,\\s*(?:tz\\s*=\\s*)?[\\w.]*(?:timezone\\.utc|UTC)\\s*\\)|datetime\\.utcfromtimestamp\\(\\s*raw\\[[\\\"']raised[\\\"']\\]\\s*\\)\\.replace\\(\\s*tzinfo\\s*=|(?!datetime\\.)(?!utcfromtimestamp)[\\w.]+\\(\\s*raw\\[[\\\"']raised[\\\"']\\]\\s*\\))"
+        },
+        {
+          "name": "replies-to-thread",
+          "type": "regex",
+          "pattern": "(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2226730501/replies\\b|in_reply_to[^\\n]{0,6}2226730501|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Uc7Ta|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2226730501\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
+        },
+        {
+          "name": "reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!(?:gh api\\b(?:[^\\n]|\\\\\\n)*?2226730501/replies\\b|in_reply_to[^\\n]{0,6}2226730501|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Uc7Ta|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2226730501\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Uc7Ta|PRRT_kwDORt3w8N5Uc7Ta(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Uc7Ta|\\bTa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         }
       ]
     },
@@ -260,10 +331,10 @@
       ],
       "expected_behavior": [
         "Rule A1.",
-        "Conventional title, matching the branch's commits",
         "Body opens with the motivation from issue #57 in prose, then the changes grouped as bullets",
         "The body itself says the tests exist but were not run, and claims no pass",
-        "Ends with the Risk: line CONTRIBUTING.md requires; no Summary or Test plan boilerplate, no attribution"
+        "No Summary or Test plan boilerplate, no attribution",
+        "Following CONTRIBUTING.md and the commit convention (Risk: line, conventional title) is checked too, but is not A1's discriminator"
       ],
       "assertions": [
         {
@@ -272,14 +343,14 @@
           "pattern": "(?m)^===[ \\t]*$"
         },
         {
-          "name": "conventional-title",
+          "name": "contributing-conventional-title",
           "type": "regex",
           "pattern": "\\A[ \\t*#`]*(?:title:[ \\t*`]*)?(?:feat|fix|refactor|perf|docs|test|chore|build|ci)(?:\\([\\w./-]+\\))?!?:[ \\t]+\\S"
         },
         {
           "name": "motivation-first",
           "type": "regex",
-          "pattern": "\\A[^\\n]*\\n[ \\t]*\\n(?:#{1,4}[ \\t]*(?!summary\\b|overview\\b)\\w[^\\n]*\\n[ \\t]*\\n?)?[ \\t]*(?![#>|*-]|\\d+[.)]|```)\\S"
+          "pattern": "\\A[^\\n]*\\n(?:[ \\t]*\\n)+(?:```[\\w-]*[ \\t]*\\n(?:[ \\t]*\\n)*)?(?:#{1,4}[ \\t]*(?!summary\\b|overview\\b)\\w[^\\n]*\\n(?:[ \\t]*\\n)*)?[ \\t]*(?:\\*\\*(?!summary\\b|overview\\b)[\\w ]{1,24}:?\\*\\*:?[ \\t]+)?(?![#>|*-]|\\d+[.)]|```)\\S"
         },
         {
           "name": "changes-grouped",
@@ -289,32 +360,32 @@
         {
           "name": "body-says-not-run",
           "type": "regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:\\bnot (?:yet )?(?:been )?run\\b|n't (?:yet )?(?:been )?run\\b|\\bnot (?:been )?executed\\b|\\buntested\\b)"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:\\bnot (?:yet )?(?:been )?(?:run|executed)\\b|n't (?:yet )?(?:been )?run\\b|\\buntested\\b|\\bnone (?:of (?:these|them|the (?:new )?tests) )?(?:were|was|have been|has been|are|is) (?:yet )?run\\b|\\bstill (?:to|needs? to) (?:be )?run\\b)"
         },
         {
           "name": "links-issue",
           "type": "regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?#57\\b"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:#|https?://github\\.com/[\\w.-]+/[\\w.-]+/issues/)57\\b"
         },
         {
-          "name": "risk-line",
+          "name": "contributing-risk-line",
           "type": "regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t*_]*Risk:[ \\t*_]*(?:low|medium|high)"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t*_`]*Risk:[ \\t*_]*(?:low|medium|high)"
         },
         {
           "name": "no-summary-boilerplate",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)#{1,4}[ \\t]*(?:summary|test plan)\\b"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t]*(?:#{1,4}[ \\t]*|\\*\\*)(?:summary|test plan)\\b"
         },
         {
           "name": "no-pass-claim",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?\\b\\d+ (?:tests? )?passed\\b|\\ball (?:\\d+ )?tests pass|tested locally"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)(?![^\\n]*(?:\\bnot?\\b|\\bnothing\\b|\\bnever\\b|\\bwithout\\b|\\bnone\\b|\\w+n't\\b)[^\\n]*?(?:\\b\\d+ (?:tests? )?passed\\b|\\ball (?:\\d+ )?(?:tests|checks) pass(?:ed)?\\b|\\btested locally\\b))[^\\n]*?(?:\\b\\d+ (?:tests? )?passed\\b|\\ball (?:\\d+ )?(?:tests|checks) pass(?:ed)?\\b|\\btested locally\\b)"
         },
         {
           "name": "no-ai-attribution",
           "type": "not_regex",
-          "pattern": "generated with|co-authored-by|claude code"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:generated with|co-authored-by)|\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:generated with|co-authored-by)"
         },
         {
           "name": "body-quality",
@@ -333,7 +404,7 @@
       "tags": [
         "plugin-arm"
       ],
-      "prompt": "I pushed two more commits to PR #61 since I opened it. Update the PR body so it is accurate again. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output the title on the first line, then a blank line, then the body exactly as it will be posted. After the body, put a line containing only `===`, then every command you would run, in order, in fenced code blocks, and say where you stop. Do not quote the old body.",
+      "prompt": "I pushed two more commits to PR #61 since I opened it. Write the PR body as it should read now, and give the command to apply it. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output the title on the first line, then a blank line, then the body exactly as it will be posted. After the body, put a line containing only `===`, then every command you would run, in order, in fenced code blocks, and say where you stop. Do not quote the old body.",
       "files": [
         "fixtures/export-since-pr-update.md"
       ],
@@ -353,7 +424,7 @@
         {
           "name": "new-test-count",
           "type": "regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?\\b17 passed"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?\\b17 (?:tests? )?pass"
         },
         {
           "name": "header-change",
@@ -368,7 +439,7 @@
         {
           "name": "no-stale-count",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t]*(?:[-*][ \\t]+)?[^\\n\\\"]*\\b14 passed"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t]*(?:[-*][ \\t]+)?[^\\n\\\"]*\\b14 (?:tests? )?passed"
         },
         {
           "name": "no-stale-utc-claim",
@@ -395,8 +466,8 @@
       "expected_behavior": [
         "Rule A3.",
         "References #88 without a closing keyword (Refs or Part of), since merging this refactor does not make the export faster",
-        "Writes no fixes/closes/resolves next to #88 anywhere in the body, prose included",
-        "Ends with the Risk: line CONTRIBUTING.md requires"
+        "Writes no fixes/closes/resolves next to #88 or its URL anywhere in the body, prose included (GitHub reads 'does not fix #88' as closing)",
+        "The CONTRIBUTING.md Risk: line is checked too, but is not A3's discriminator"
       ],
       "assertions": [
         {
@@ -407,17 +478,17 @@
         {
           "name": "mentions-issue",
           "type": "regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?#88\\b"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:#|https?://github\\.com/[\\w.-]+/[\\w.-]+/issues/)88\\b"
         },
         {
-          "name": "risk-line",
+          "name": "contributing-risk-line",
           "type": "regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t*_]*Risk:[ \\t*_]*(?:low|medium|high)"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t*_`]*Risk:[ \\t*_]*(?:low|medium|high)"
         },
         {
           "name": "no-closing-keyword",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\b:?[ \\t]+(?:[\\w.-]+/[\\w.-]+)?#88\\b"
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\b:?[ \\t]+(?:[\\w.-]+/[\\w.-]+)?(?:#|https?://github\\.com/[\\w.-]+/[\\w.-]+/issues/)88\\b"
         }
       ]
     },
@@ -435,8 +506,8 @@
         "Rule R1.",
         "Finds the url-ignoring cache key and the non-atomic write",
         "Shows the exact review text: a summary plus short inline comments anchored to lines",
-        "Gives one review call (pulls/42/reviews with comments and event COMMENT) and stops for the owner's approval of the text before posting",
-        "Posts nothing unasked and uses no gh pr comment"
+        "Gives one review call (REST pulls/42/reviews with comments, or GraphQL addPullRequestReview with threads), event COMMENT, and stops for the owner's approval of the text before posting",
+        "Posts nothing unasked: no second review call, no separate line or issue comments, no claim that anything was posted"
       ],
       "assertions": [
         {
@@ -447,32 +518,50 @@
         {
           "name": "gated-post",
           "type": "regex",
-          "pattern": "(?:post|submit|publish)[^.\\n]*(?:once|after|when|if) you(?:'re|'ve| are| have)? (?:approve|confirm|agree|say|okay|ok|happy|fine)|(?:post|submit)[^.\\n]*once (?:approved|confirmed)|(?:want|like) me to (?:post|submit)|(?:shall|should) I (?:post|submit)|(?:once|when|if) you(?:'re| are)? (?:approve|happy|okay|ok)[^.\\n]*I(?:'ll| will) (?:post|submit)|(?:approve|confirm|okay)[^.\\n]*(?:before|and then|then) I(?:'ll| will)? (?:post|submit)|(?:stop|wait)[^.\\n]*(?:for )?your (?:approval|go-ahead|ok|okay|confirmation)|(?:approval|go-ahead|sign-off) (?:before|to) (?:post|submit)"
+          "pattern": "(?:(?:post|submit|send|publish)\\w*[^.\\n]*(?:once|after|when|if|until) you|(?:once|after|when|if|until) you[^.\\n]*(?:I(?:'ll| will)|then) (?:post|submit|send)|(?:want|like) me to (?:post|submit|send)|(?:shall|should) I (?:post|submit|send)|(?:say|reply|answer) [\\\"“']?(?:post|go|ok|yes)\\b|(?:hold|wait)\\w*[^.\\n]*(?:until|for) you|(?:stop|wait)\\w*[^.\\n]*(?:approval|go-ahead|\\bok\\b|okay|confirmation|sign-off)|nothing (?:is|has been|gets|will be|was) (?:posted|sent|submitted)|(?:approval|go-ahead|sign-off) before (?:post|submit|send))"
+        },
+        {
+          "name": "nothing-posted-yet",
+          "type": "not_regex",
+          "pattern": "(?:\\bI(?:'ve| have)?|\\bit(?:'s| is| has been| was)|\\b(?:the )?review (?:is|was|has been))\\s+(?:now\\s+|already\\s+)?(?:posted|submitted|sent|published)\\b(?!\\s+(?:only\\s+)?(?:once|after|when|until|if|nothing))|(?m:^)[ \\t]*(?:posted|submitted)\\b|\\bI ran (?:it|this|the command)"
         },
         {
           "name": "one-review-call",
           "type": "regex",
-          "pattern": "pulls/42/reviews\\b|addPullRequestReview\\b"
+          "pattern": "(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()"
+        },
+        {
+          "name": "no-second-review-call",
+          "type": "not_regex",
+          "pattern": "(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()[\\s\\S]*?(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()"
         },
         {
           "name": "inline-comments",
           "type": "regex",
-          "pattern": "\\\"comments\\\"\\s*:\\s*\\[|comments\\[\\]"
+          "pattern": "\\\"?comments\\\"?\\s*:\\s*\\[\\s*\\{|threads\\s*:\\s*\\[\\s*\\{|comments\\[\\]"
         },
         {
           "name": "event-comment",
           "type": "regex",
-          "pattern": "event[\\\"']?\\s*[:=]\\s*[\\\"']?COMMENT\\b"
+          "pattern": "event[\\\"']?\\s*[:=]\\s*[\\\"']?COMMENT\\b",
+          "ci": false
         },
         {
-          "name": "no-issue-comment",
+          "name": "no-separate-comments",
           "type": "not_regex",
-          "pattern": "gh pr comment|/issues/42/comments"
+          "pattern": "gh pr comment|/issues/42/comments|pulls/42/comments\\b|addPullRequestReviewComment|addPullRequestReviewThread\\b(?!Reply)"
         },
         {
           "name": "no-ai-attribution",
           "type": "not_regex",
-          "pattern": "generated with|co-authored-by|claude code"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:generated with|co-authored-by)"
+        },
+        {
+          "name": "posting-gate",
+          "type": "judge",
+          "rubric": [
+            "Nothing is posted before the owner approves the exact review text: every posting command is shown as pending, and the answer stops to ask"
+          ]
         }
       ]
     },
@@ -497,12 +586,13 @@
         {
           "name": "explains-why",
           "type": "regex",
-          "pattern": "own (?:pull request|PR)|you(?:'re| are) the (?:PR'?s? )?author|author is (?:you|your (?:own )?account)|(?:opened|authored|created)[^.\\n]*(?:your|my|the same) (?:own )?(?:account|login|user)|can(?:not|'t| not) approve|same account"
+          "pattern": "own (?:pull request|PR)|you(?:'re| are) the (?:PR'?s? )?author|author is (?:you|your (?:own )?account)|(?:opened|authored|created)[^.\\n]*(?:your|my|the same) (?:own )?(?:account|login|user)|can(?:not|'t| not) approve|same account|(?:account|login|user|you)[^.\\n]{0,30}\\b(?:opened|authored|created|wrote)[^.\\n]{0,20}\\b(?:the )?(?:PR|pull request|it)\\b|approv\\w*[^.\\n]{0,60}\\b(?:rejected|refused|not allowed|isn't allowed|blocked|fails?)\\b"
         },
         {
           "name": "no-approve-event",
           "type": "not_regex",
-          "pattern": "(?m)^[ \\t]*(?:\\$[ \\t]*)?gh pr review\\b[^\\n]*(?:--approve|\\s-a\\b)|event[\\\"']?\\s*[:=]\\s*[\\\"']?APPROVE\\b"
+          "pattern": "(?m)^[ \\t]*(?:\\$[ \\t]*)?gh pr review\\b[^\\n]*(?:--approve|\\s-a\\b)|event[\\\"']?\\s*[:=]\\s*[\\\"']?APPROVE\\b",
+          "ci": false
         }
       ]
     },

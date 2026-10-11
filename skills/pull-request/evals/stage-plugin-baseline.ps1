@@ -52,7 +52,9 @@ $glue = "**Harness glue (not plugin text).** These are the enabled commit-comman
     "pr-review-toolkit commands (marketplace build $build), verbatim below. Use the one the request " +
     "calls for. A context line marked as expanded was run by the host before you saw it; its output " +
     "is in the input file under a heading with the same command. You cannot launch subagents here: " +
-    "where a command says to use an agent, apply that agent's instructions (agents/) yourself."
+    "where a command says to use an agent, apply that agent's instructions (agents/) yourself. You " +
+    "cannot call tools either: where a command says to make tool calls and send no other text, write " +
+    "the commands you would run as text, in the format the request asks for."
 $skill = @('---', 'name: pr-plugins', "description: `"$($descriptions -join ' ')`"", '---', '', '# PR plugins', '', $glue, '') + $sections
 
 $null = New-Item -ItemType Directory -Path $Destination -Force

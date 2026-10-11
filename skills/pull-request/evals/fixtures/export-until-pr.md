@@ -6,47 +6,8 @@
   opened by me (`rowan-ashby`) for issue #70 ("backfill: export a closed window,
   `--since A --until B`, with a reading at A excluded and a reading at B included").
 - Copilot has reviewed the PR head, `c9a40f6`. CI passed on it (`pytest`, 9 tests).
-- The sections below were captured from the PR head.
-
-## gh api graphql (pullRequest 71 reviewThreads)
-
-```json
-{
-  "data": {
-    "repository": {
-      "pullRequest": {
-        "number": 71,
-        "headRefOid": "c9a40f6",
-        "author": {
-          "login": "rowan-ashby"
-        },
-        "reviewThreads": {
-          "nodes": []
-        }
-      }
-    }
-  }
-}
-```
-
-## gh api repos/kestrel-tools/tidewater/pulls/71/reviews
-
-```json
-[
-  {
-    "id": 2981100001,
-    "node_id": "PRR_kwDORt3w8N6mQ1aA",
-    "user": {
-      "login": "copilot-pull-request-reviewer[bot]",
-      "type": "Bot"
-    },
-    "body": "## Pull request overview\n\nThis PR adds an `--until` option to `tidewater export` so a backfill can stop at a chosen instant, mirroring `--since`.\n\n<details>\n<summary>Show a summary per file</summary>\n\n| File | Description |\n| ---- | ----------- |\n| src/tidewater/export.py | Adds the `until` cutoff to `export_readings`. |\n| src/tidewater/cli.py | Adds the `--until` flag and its help text. |\n| tests/test_export.py | Covers readings after the cutoff. |\n</details>\n\nCopilot reviewed 3 out of 3 changed files in this pull request and generated no comments.\n\n<details>\n<summary>Comments suppressed due to low confidence (1)</summary>\n\n**src/tidewater/export.py:24**\n* The `--until` help text and the docstring say the cutoff is inclusive (\"up to and including\"), but the `>=` comparison skips a reading taken exactly at `until`. A backfill that passes the next run's `--since` instant as `--until` will silently drop that boundary reading.\n</details>",
-    "state": "COMMENTED",
-    "commit_id": "c9a40f6",
-    "submitted_at": "2026-10-10T08:31:17Z"
-  }
-]
-```
+- You can't call GitHub from here. The responses to the `gh` calls for this PR are saved as
+  `gh-*.json` files, one per call, named after it; read whichever ones you need.
 
 ## git diff main...HEAD
 
