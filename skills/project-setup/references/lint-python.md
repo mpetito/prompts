@@ -1,12 +1,12 @@
 # Python lint, line-count check and CI
 
-Inferred defaults: the owner set no Python caps, so these mirror the TypeScript
-numbers in [lint-typescript.md](lint-typescript.md). Every rule fails the run; ruff has no warning
-level.
+Every default here is **inferred**: the owner set no Python caps, so these mirror the TypeScript
+numbers in [lint-typescript.md](lint-typescript.md), and the thread ruled on the rest within
+that. Every rule fails the run; ruff has no warning level.
 
 Contents: [ruff config](#ruff-config) · [Module length](#module-length) ·
 [Existing violations](#existing-violations) · [CI job](#ci-job) ·
-[Duplication and commit hook](#duplication-and-commit-hook)
+[Commit hook](#commit-hook) · [Helper scripts](#helper-scripts)
 
 ## ruff config
 
@@ -21,13 +21,16 @@ max-complexity = 10
 
 [tool.ruff.lint.pylint]
 max-args = 4
+max-branches = 12
+max-statements = 50
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["PLR0915"]
 ```
 
 - C901 caps complexity at 10 and PLR0913 caps arguments at 4.
-- PLR0912 (branches) and PLR0915 (statements) keep ruff's own defaults: the owner set no number.
+- PLR0912 and PLR0915 cap branches at 12 and statements at 50, ruff's own defaults, written out
+  so they show (inferred).
 - ANN401 bans `Any` in annotations; FIX and TD ban TODO, FIXME, XXX and HACK comments.
 - Tests skip the statement cap, as TypeScript tests skip the function-length cap.
 
@@ -88,11 +91,38 @@ if __name__ == "__main__":
 
 ## Existing violations
 
-ruff has no suppressions file (a baseline is requested in
-[astral-sh/ruff#1149](https://github.com/astral-sh/ruff/issues/1149)). `ruff check --add-noqa`
-writes a `# noqa` comment per violation, the Python form of `eslint-disable`. Before
-bootstrapping a Python repository that already breaks these caps, ask the owner how to hold the
-existing violations; never raise a cap to get green.
+Inferred. ruff has no suppressions file (a baseline is requested in
+[astral-sh/ruff#1149](https://github.com/astral-sh/ruff/issues/1149)), so the baseline lives in
+`per-file-ignores`: one entry per file that breaks a cap today, listing only the rules it breaks.
+Never `ruff check --add-noqa` or an inline `# noqa`; never raise a cap.
+
+Generate the entries with `scripts/ruff_baseline.py`:
+
+```python
+"""Print a per-file-ignores baseline from ruff's JSON output on stdin."""
+
+import json
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+codes: defaultdict[str, set[str]] = defaultdict(set)
+for violation in json.load(sys.stdin):
+    path = Path(violation["filename"]).resolve().relative_to(Path.cwd())
+    codes[path.as_posix()].add(violation["code"])
+for path, rules in sorted(codes.items()):
+    print(f'"{path}" = {json.dumps(sorted(rules))}')
+```
+
+```bash
+uv run ruff check --output-format json --exit-zero | uv run python scripts/ruff_baseline.py
+```
+
+Paste the output under `[tool.ruff.lint.per-file-ignores]`, after a comment
+`# Baseline at bootstrap: entries may only be removed.` The baseline may only shrink: after a
+fix, delete that file's entry (or one rule from it) and rerun `ruff check`. It is coarser than
+ESLint's counts: a listed file can gain more violations of a listed rule, so review rejects any
+change that adds an entry or a rule to one.
 
 ## CI job
 
@@ -105,14 +135,38 @@ The TypeScript workflow's `changes` job and pinned checkout apply unchanged
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run python scripts/check_module_lines.py
+      - run: npx --yes jscpd@5.4.1 --min-tokens 50 --threshold <N> src
       - run: uv run pytest
 ```
 
 Add the project's type checker as a step; swap `uv run` for the project's runner if it has
-another.
+another. jscpd runs through `npx` in CI only (inferred), with the threshold set from its first
+report as in [lint-typescript.md](lint-typescript.md#duplication); GitHub's Ubuntu runners
+include Node.
 
-## Duplication and commit hook
+## Commit hook
 
-Both confirmed defaults run on Node: jscpd ([lint-typescript.md](lint-typescript.md#duplication))
-and husky plus lint-staged running `ruff format` on staged `*.py` files. In a Python-only
-repository, ask the owner before adding Node or a different hook tool.
+Inferred. A Python-only repository uses the [pre-commit](https://pre-commit.com/) framework with
+ruff's hooks instead of husky, fixing formatting at commit. `.pre-commit-config.yaml`:
+
+```yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.0
+    hooks:
+      - id: ruff-format
+```
+
+```bash
+uv add --dev pre-commit
+uv run pre-commit install
+```
+
+Keep `rev` at the ruff version the project pins. A repository that already has Node keeps husky
+plus lint-staged ([lint-typescript.md](lint-typescript.md#commit-hook)), running `ruff format`
+on staged `*.py` files.
+
+## Helper scripts
+
+Inferred. In a Python repository, helper scripts under `scripts/` may be Python (as the two
+above are); they run on Linux CI and on Windows alike.
