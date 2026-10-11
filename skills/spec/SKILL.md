@@ -30,8 +30,9 @@ Ground both in the codebase and the docs; the `specs/` layout is
    the steps that depend on it waits for the owner's answer.
 5. **plan.md says how:** ordered steps, each a `- [ ] N.` checkbox (or the checkbox form the
    project's existing plans use) that starts with the file paths it touches and ends
-   `Check: <command or test>`, a check that can fail. For example: ``- [ ] 3. `src/report.ts`,
-   `test/report.test.ts`: group totals by currency. Check: `npm test` passes the new test.``
+   `Check: <command or test>`, a check that can fail. For example: ``- [ ] 3. `app/session.py`,
+   `tests/test_session.py`: expire idle sessions after 30 minutes. Check:
+   `pytest tests/test_session.py` passes the new expiry test.``
 6. Review spec.md and plan.md with [plan-review](../plan-review/SKILL.md) before any code is
    written. A plan with several lanes seeds an
    [agent-orchestration](../agent-orchestration/SKILL.md) build instead of the section below.
