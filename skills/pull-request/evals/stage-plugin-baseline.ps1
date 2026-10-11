@@ -11,7 +11,7 @@ repository, so the plugins' third-party text is never committed. It holds:
   Each host-expanded context line (!`cmd`) becomes a pointer to the fixture section headed
   `## cmd`, and review-pr's "$ARGUMENTS" becomes "" (its default: every review aspect).
 - agents/: the pr-review-toolkit agents, verbatim.
-The suite's cases tagged plugin-arm (A1-A3, R1) are the ones this arm is compared on; the
+The suite's cases tagged plugin-arm (A1, R1) are the ones this arm is compared on; the
 runner runs the arm on every case, so read only those.
 .PARAMETER Destination
 The folder to write. Defaults to $CLAUDE_JOB_DIR/tmp/plugin-baseline/pr-plugins. Its SKILL.md
