@@ -72,7 +72,7 @@ suppressions at error.
 
 - The trim path (step 8) and the labelled-override convention have no eval case; the archived
   harborview fixture would supply one.
-- The 30-day load target (readmission item 5) is bootstrapping a project with the skill.
+- The 30-day load target (readmission item 5) is bootstrapping a project the owner chose with the skill.
 - `../code-style/SKILL.md` resolves once the code-style build lands.
 - ESLint doesn't report suppression entries for deleted files until `--prune-suppressions`.
 - The case-2 judge marks REVIEW.md "Check hardest" items as restated rules, although

@@ -8,7 +8,7 @@ The skill is short (73 body lines), does one job, uses a numbered four-step work
 
 | Item | Status | Note |
 | --- | --- | --- |
-| Description is specific and includes key terms | pass | Names the walk, the friction checklist and the sample-before-pipeline rule, with concrete trigger phrases. Some examples use one project's terms (a milestone id, a screen name and a piece of copy). |
+| Description is specific and includes key terms | pass | Names the walk, the friction checklist and the sample-before-pipeline rule, with concrete trigger phrases. Some examples use one project's terms (a milestone id, a screen name, a copy type). |
 | Description includes both what the Skill does and when to use it | pass | 'Gate complete on…' then 'Use whenever… Load it before writing the status that says done', plus a Not-for clause. |
 | SKILL.md body is under 500 lines | pass | 73 lines. |
 | Additional details are in separate files (if needed) | not-applicable | Single file; nothing needs splitting at 73 lines. |
@@ -57,14 +57,14 @@ health probe, and the owner then found the gaps on first use
    Fix: Use <date -u> on both lines. Also say where the per-step records from step 1 ('path step · observed · screenshot or quote') go, for example 'attach the step records below this block', so the strict template and the step-1 record format do not conflict.
 
 6. **low** · Writing effective descriptions (specific triggers that generalise across the contexts where the skill is used) · SKILL.md frontmatter description
-   > call the milestone complete, deploy the settings page to dev, check the first-run experience, draft the tag list or the onboarding copy
+   > call [milestone id] complete, deploy [screen name] to dev, check the first-run experience, draft the tag list or the [copy type]
 
-   Fix: Replace the project-specific examples with generic ones ('call the milestone complete', 'deploy the settings page to staging', 'draft the onboarding copy'). The skill is symlinked into every project, so its trigger phrases should match how any owner-facing build is described, not one repository. (about 5 tokens saved)
+   Fix: Replace the project-specific examples (the milestone id, the screen name, the copy type) with generic ones ('call the milestone complete', 'deploy the settings page to staging', 'draft the onboarding copy'). The skill is symlinked into every project, so its trigger phrases should match how any owner-facing build is described, not one repository. (about 5 tokens saved)
 
 7. **low** · Evaluation and iteration / Build evaluations first (checklist: at least three evaluations) · skills/owner-acceptance/ (no evals/)
    > Anything less is "built and reviewed", which is a different status.
 
-   Fix: Add an evals/shared-benchmark.json with about three fixture cases. For example: a lane with green CI and approvals asks for a 'complete' status (expect 'built and reviewed' plus the walk). A 70-item taxonomy is about to be generated (expect 8 to 10 samples first). Onboarding copy is waiting on an absent owner (expect no self-applying default). Add near-miss trigger negatives from review and autonomous-loops.
+   Fix: Add an evals/shared-benchmark.json with about three fixture cases. For example: a lane with green CI and approvals asks for a 'complete' status (expect 'built and reviewed' plus the walk). A 70-item taxonomy is about to be generated (expect 8 to 10 samples first). Legal copy is waiting on an absent owner (expect no self-applying default). Add near-miss trigger negatives from review and autonomous-loops.
 
 ## Strengths
 

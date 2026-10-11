@@ -23,11 +23,12 @@ the bar. The evidence that set it is in [2026-10-09/](2026-10-09/).
 A skill enters `skills/` only when all five hold. Start from the archived text and its review in
 [2026-10-09/reviews/](2026-10-09/reviews/), never from a blank file.
 
-1. **A recorded gap.** An entry in [candidates.md](candidates.md): the date, the project, the
-   session, what the model did wrong without the skill, and the wrong output quoted. A skill
-   nobody missed stays archived. The first readmissions skip this item: the maintainer accepts
-   their gaps as known (skill-authoring, readmitted 2026-10-09, is one). The other four
-   items still apply.
+1. **A recorded gap.** An entry in [candidates.md](candidates.md): the date, the kind of gap,
+   what the model did wrong without the skill in "a project" (or a count of projects), and the
+   wrong output quoted. Project names, session ids and PR links go to the private evidence store
+   `~/dev/prompts-evidence`, never into this repository. A skill nobody missed stays archived.
+   The first readmissions skip this item: the maintainer accepts their gaps as known
+   (skill-authoring, readmitted 2026-10-09, is one). The other four items still apply.
 2. **Three behaviour evals** in the `skill-eval-harness` manifest format used by
    `scripts/run-skill-eval.ps1`, each with a fixture trap, each failing without the skill and
    passing with it. Trigger cases come after, not instead. Use `archive/skills/pr-authoring/evals/`
@@ -54,7 +55,7 @@ skill:
 - One checklist, inside the procedure. No Common Issues or Pitfalls table whose rows restate the
   body; keep only rows with a symptom the body does not state, such as an exact error string.
 - Keep the rule, drop the story. Build anecdotes go to a `references/evidence.md` the skill
-  never asks the model to load.
+  never asks the model to load, told without project names, session ids or PR links.
 - Prefer a script with one fixed-format output line over prose for any fragile sequence.
 - Descriptions under about 900 characters, with plain-language triggers and a "Not for …
   (sibling)" clause written from the negative eval cases.
@@ -69,10 +70,12 @@ Most orchestration rules are a decision at one wake with state on disk, so they 
 1. Anything mechanised (scripts, hooks) gets an ordinary test, no model needed.
 2. Single-wake decisions get snapshot fixtures: a state file, a decision queue with an expired
    default, a meter reading, a reviewer hand-back, an interim notification. The assertion is
-   the next action. Real snapshots exist in the session transcripts.
+   the next action. Real snapshots exist in the session transcripts; build a fixture from one
+   with names, ids and paths replaced, and keep the transcript reference in the private store.
 3. Script-plus-skill paths that cost a merge if wrong get a mocked `gh` in a sandbox.
 4. The build itself is the eval: compactions, median context, idle gaps, rounds per lane,
-   decision latency, from the transcripts (`2026-10-09/build-retrospective.md` is the
-   first baseline).
+   decision latency, from the transcripts
+   ([2026-10-09/build-retrospective.md](2026-10-09/build-retrospective.md) is the first
+   baseline).
 
 A rule that fits none of these becomes a measured signal or is dropped.

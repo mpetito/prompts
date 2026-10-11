@@ -4,6 +4,10 @@ Copy this into each reader's prompt, after a first paragraph that names the proj
 orchestration doc path and the output path. The paragraph below describes one build's shape; edit it to
 match the transcript being read.
 
+The readers' findings and the report name the project. When they feed the prompts configuration
+repository, project names, session ids and PR links go to the private evidence store
+(`~/dev/prompts-evidence`); what lands in that repository says "a project" or a count.
+
 You are reading one chunk of a condensed Claude Code session transcript from the project named in your
 prompt. In these sessions Claude Code (Opus) acted as **orchestrator/coordinator**
 of a multi-agent build: it wrote lane briefs, delegated implementation to Codex (`codex exec`,

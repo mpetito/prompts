@@ -5,7 +5,7 @@
 # rotate and stop. The Claude meter is not on disk; read it from the harness's usage view and apply the same rule.
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
-# Rotate from 70%, keeping the last 30% for finishing the lanes already running. In a past orchestrated build
+# Rotate from 70%, keeping the last 30% for finishing the lanes already running. In a past week-long build
 # (docs/skill-audit/2026-10-09) the coordinators' context re-reads were the largest token cost, so a fresh
 # thread lowers the burn rate without lowering any model.
 switch=70

@@ -291,7 +291,7 @@
         {
           "name": "copy-from-content-source",
           "type": "not_regex",
-          "pattern": "(?s)##[^\\n]*\\.spec\\.ts[^\\n]*\\n\\s*`{3,}[^\\n]*\\n(?:(?!`{3}).)*?[\\\"'`/](?:Lost in the static|Back to the home page|See the schedule|That page went off|Off the air|Ways back)"
+          "pattern": "(?s)##[^\\n]*\\.spec\\.ts[^\\n]*\\n\\s*`{3,}[^\\n]*\\n(?:(?!`{3}).)*?[\\\"'`/](?:Lost in the static|Tune back in|See the schedule|That page went off|Off the air|Ways back)"
         },
         {
           "name": "copy-free-contract",
