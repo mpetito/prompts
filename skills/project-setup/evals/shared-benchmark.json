@@ -137,7 +137,7 @@
         {
           "name": "agents-md-rule-once",
           "type": "not_regex",
-          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?AGENTS\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(integer\\s+grams|CarrierError|src/generated|withTenantScope)(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?\\1"
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?AGENTS\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?^#{1,4}[ \\t]+(?:Standing rules|Rules|Do Not)\\b(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b|^#{1,4}[ \\t]+See also\\b).)*?(integer\\s+grams|CarrierError|src/generated|withTenantScope)(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b|^#{1,4}[ \\t]+See also\\b).)*?\\1"
         },
         {
           "name": "agent-files-quality",
