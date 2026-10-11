@@ -55,7 +55,7 @@ scenarios, for $0.76 and 184k Codex tokens.
 
 | # | Rule | Owner's evidence | Unaided model | Home |
 | --- | --- | --- | --- | --- |
-| R1 | The review skill makes the judgment. Then show the exact review text and post only after the owner approves that text, as one review: summary plus inline comments in a single API call, event COMMENT unless the owner picks one. | Agreed scope item 3. The owner's own review voice is short inline questions and directives ("Why not use zod here?", "Not properly scoped."), with empty-body approvals (G). | P: neither offered a gated post. The code-review plugin posts without asking and adds an attribution footer. | skill step linking review |
+| R1 | The review skill makes the judgment. Then show the exact review text and post only after the owner approves that text, as one review: summary plus inline comments in a single API call, event COMMENT unless the owner picks one. | Agreed scope item 3. The owner's own review voice is short inline questions and directives ("Why not use zod here?", "Not properly scoped."), with empty-body approvals (G). | P: neither offered a gated post. The code-review plugin posts without asking, with a footer of its own. | skill step linking review |
 | R2 | Your own account can't approve a PR it opened: post the verdict as a comment. | "I commented that I approved it since I cannot approve my own PRs" (S1, 2026-09-27T16:46:04Z); "Approved!" (G) | untested | skill, if its trap fails |
 
 ### Dropped or owned elsewhere
@@ -85,8 +85,9 @@ The owner's machines have pwsh, but Copilot hosts may not, so the skill also nam
 ## The plugin comparison (bar item 4)
 
 - No plugin answers review threads, so F1-F6 have no competitor.
-- A1-A3 are compared against `commit-commands` (commit-push-pr). Its body is "Summary + Test plan"
-  plus an attribution footer.
+- A1-A3 are compared against `commit-commands` (commit-push-pr). Its command gives no body
+  template; its README describes "Summary + Test plan", and the attribution footer comes from
+  Claude Code's own PR guidance, not the plugin.
 - R1 is compared against `code-review` (which posts without asking) and `pr-review-toolkit`
   (which never posts).
 - How the plugins are staged for the run is decision D1.
