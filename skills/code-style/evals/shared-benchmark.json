@@ -13,16 +13,6 @@
   ],
   "cases": [
     {
-      "id": "TODO-trig-placeholder",
-      "kind": "trigger",
-      "split": "tune",
-      "prompt": "Tidy up the style of the function I just wrote before I commit it.",
-      "expected_behavior": [
-        "TODO: placeholder. The trigger matrix rejects a manifest with no trigger case, so this one stands in until the skill's description is written. Replace it with real should-fire and near-miss should-not-fire cases."
-      ],
-      "assertions": []
-    },
-    {
       "id": "r1-second-rejection-alert",
       "split": "tune",
       "prompt": "In consent_review.ts, when a profile's consent is rejected for the second time, post a message to the ops channel naming the profile, so someone can reach out to the creator. Use `opsAlerts.post(text: string)`, imported as `{ opsAlerts }` from `./ops-alerts`. Only the second rejection alerts, not the third or later ones. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
@@ -382,6 +372,86 @@
           "pattern": "(?m)^\\s*try:|^\\s*except\\b|ZeroDivisionError\\s*[:)]|\\bimport logging\\b|\\blogg(?:ing|er)\\.\\w+\\(|^\\s*print\\(|\\bif\\b[^\\n]*\\bis (?:not )?None\\b|^\\s*(?:if|assert)\\s+(?:not\\s+)?\\w*(?:count|units)\\w*\\b|\\bif\\s+\\w*(?:count|units)\\w*\\s+else\\b|max\\(\\s*\\w*(?:count|units)\\w*\\s*,\\s*1\\s*\\)|isinstance\\((?:subtotal|rate|item|order|amount)|\\bor\\s+1\\b|==\\s*0\\b|^\\s*if\\s+not\\s+\\w+\\.items\\b"
         }
       ]
+    },
+    {
+      "id": "trig-terse-pagination-fix",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Fix the off-by-one in the pagination helper.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-reject-empty-email",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The signup form lets people submit with a blank email address; make it refuse that and show an error next to the field.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-prune-old-backups",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Make the nightly backup job also delete archives older than 30 days.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-context-shared-date-helper",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We have copied the same date-formatting logic into three report pages and they have started to drift, so pull it into one shared function and point all three pages at it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-dark-mode-toggle",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a dark mode toggle to the settings page that remembers each user's choice between visits.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-uncommitted",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Look over my uncommitted changes and tell me whether they are safe to merge.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing local changes for a merge verdict belongs to review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-plan-review",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Before anyone writes code, poke holes in this design doc for the export service and tell me what will be expensive to change later.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing a plan or design before code exists belongs to plan-review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-skill-authoring",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our deploy runbook keeps getting re-explained to agents; turn it into a skill with a good description so it fires on the right requests.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing a skill belongs to skill-authoring."
+      ],
+      "assertions": []
     }
   ],
   "ablations": []
