@@ -96,27 +96,14 @@ Inferred. ruff has no suppressions file (a baseline is requested in
 `per-file-ignores`: one entry per file that breaks a cap today, listing only the rules it breaks.
 Never `ruff check --add-noqa` or an inline `# noqa`; never raise a cap.
 
-Generate the entries with `scripts/ruff_baseline.py`:
-
-```python
-"""Print a per-file-ignores baseline from ruff's JSON output on stdin."""
-
-import json
-import sys
-from collections import defaultdict
-from pathlib import Path
-
-codes: defaultdict[str, set[str]] = defaultdict(set)
-for violation in json.load(sys.stdin):
-    path = Path(violation["filename"]).resolve().relative_to(Path.cwd())
-    codes[path.as_posix()].add(violation["code"])
-for path, rules in sorted(codes.items()):
-    print(f'"{path}" = {json.dumps(sorted(rules))}')
-```
+Generate the entries once with this skill's [ruff_baseline.py](../scripts/ruff_baseline.py),
+run from the target repository's root (the script stays in the skill, not in the repository):
 
 ```bash
-uv run ruff check --output-format json --exit-zero | uv run python scripts/ruff_baseline.py
+uv run ruff check --output-format json --exit-zero | python3 <this skill's folder>/scripts/ruff_baseline.py
 ```
+
+It exits 1 and lists the files when ruff reports a syntax error; fix those first.
 
 Paste the output under `[tool.ruff.lint.per-file-ignores]`, after a comment
 `# Baseline at bootstrap: entries may only be removed.` The baseline may only shrink: after a
@@ -126,17 +113,25 @@ change that adds an entry or a rule to one.
 
 ## CI job
 
-The TypeScript workflow's `changes` job and pinned checkout apply unchanged
-([lint-typescript.md](lint-typescript.md#ci-job)); the `ci` job's steps become:
+The TypeScript workflow's checkout and fail-closed diff step apply unchanged
+([lint-typescript.md](lint-typescript.md#ci-job)); the steps after them become, each gated the
+same way:
 
 ```yaml
-      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
-      - run: uv sync --locked
-      - run: uv run ruff check
-      - run: uv run ruff format --check
-      - run: uv run python scripts/check_module_lines.py
-      - run: npx --yes jscpd@5.4.1 --min-tokens 50 --threshold <N> src
-      - run: uv run pytest
+      - if: steps.diff.outputs.code == 'true'
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+      - if: steps.diff.outputs.code == 'true'
+        run: uv sync --locked
+      - if: steps.diff.outputs.code == 'true'
+        run: uv run ruff check
+      - if: steps.diff.outputs.code == 'true'
+        run: uv run ruff format --check
+      - if: steps.diff.outputs.code == 'true'
+        run: uv run python scripts/check_module_lines.py
+      - if: steps.diff.outputs.code == 'true'
+        run: npx --yes jscpd@5.4.1 --min-tokens 50 --threshold <N> src
+      - if: steps.diff.outputs.code == 'true'
+        run: uv run pytest
 ```
 
 Add the project's type checker as a step; swap `uv run` for the project's runner if it has
@@ -168,5 +163,5 @@ on staged `*.py` files.
 
 ## Helper scripts
 
-Inferred. In a Python repository, helper scripts under `scripts/` may be Python (as the two
-above are); they run on Linux CI and on Windows alike.
+Inferred. In a Python repository, helper scripts under `scripts/` may be Python (as
+`check_module_lines.py` is); they run on Linux CI and on Windows alike.

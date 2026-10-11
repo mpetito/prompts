@@ -10,20 +10,20 @@ agent files are written or trimmed; configs and templates live in `references/`.
 
 Two ideas carry the whole skill. A limit a linter can enforce is config that fails CI, never a
 sentence in AGENTS.md. A rule an agent must follow lives in exactly one file, AGENTS.md, and every
-other agent file points to it. How to write code under the limits is
-[code-style](../code-style/SKILL.md)'s job, not this skill's.
+other agent file points to it. Code that breaks a limit: never relax a limit; decompose the code
+([code-style](../code-style/SKILL.md)).
 
 ## Procedure
 
 | Path | Steps |
 | --- | --- |
-| New project | 1-8, then 10 |
-| Bootstrap an existing project | 1-8, then 10; step 3 holds its existing violations |
-| Trim an existing AGENTS.md or CLAUDE.md | 1, 9, then 10 |
+| New project | 1-7, then 9 |
+| Bootstrap an existing project | 1-7, then 9; step 3 holds its existing violations |
+| Trim an existing AGENTS.md or CLAUDE.md | 1, 8, then 9 |
 
 1. **Survey.** Read the agent files that exist (AGENTS.md, CLAUDE.md,
    `.github/copilot-instructions.md`, REVIEW.md, CONTRIBUTING.md), the lint config, CI workflows,
-   commit hooks and package manifest. Run the build, lint and test commands and note what passes.
+   commit hooks and package manifest.
    For the codebase facts AGENTS.md needs (commands, layout, conventions), Claude Code's `/init`
    explores and drafts them ([docs](https://code.claude.com/docs/en/memory#set-up-a-project-claude-md));
    move what it writes into AGENTS.md (step 6).
@@ -54,34 +54,31 @@ other agent file points to it. How to write code under the limits is
    scripts. Templates: [agent-files.md](references/agent-files.md#specs).
 6. **Write AGENTS.md** from [the template](references/agent-files.md#agentsmd): Commands, Where
    things live, Sources of truth, Standing rules, Do Not, See also. It is the one home for every
-   rule; copy each command from a run that worked.
+   rule.
 7. **Write the files that point at it.** On every new or bootstrapped repository, create all four:
    - CLAUDE.md: `@AGENTS.md` plus Claude-only lines ([template](references/agent-files.md#claudemd)).
-   - `.github/copilot-instructions.md`: review guidance only. It links AGENTS.md and `specs/`,
-     lists review priorities, then "What not to flag". It never restates an AGENTS.md rule, not
-     even as a review item; name the AGENTS.md section instead. Copilot code review stays on
-     ([template](references/agent-files.md#githubcopilot-instructionsmd)).
+   - `.github/copilot-instructions.md`: links AGENTS.md, REVIEW.md and `specs/`, and keeps only
+     the finding format and Copilot-only noise; "What not to flag" points to REVIEW.md's Do not
+     report. It never restates an AGENTS.md rule or a REVIEW.md section, not even as a review
+     item. Copilot code review stays on ([template](references/agent-files.md#githubcopilot-instructionsmd)).
    - REVIEW.md, by [review-scope.md](../review/references/review-scope.md#derive-it); its
      "Do not report" names the gates from steps 2-4.
    - CONTRIBUTING.md: the commit and PR policy and the exact check commands
      ([template](references/agent-files.md#contributingmd)).
    Specs are reviewed with [plan-review](../plan-review/SKILL.md) before code is written.
-8. **Run everything once.** Lint, typecheck, format check, duplication and tests pass locally;
-   push a branch and confirm the CI job runs.
-9. **Trim an existing file.** Measure it (`wc -l AGENTS.md CLAUDE.md`) against the hosts' limits:
+8. **Trim an existing file.** Measure it (`wc -l AGENTS.md CLAUDE.md`) against the hosts' limits:
    [Claude Code](https://code.claude.com/docs/en/memory#write-effective-instructions),
    [Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md),
    [Copilot](https://docs.github.com/en/copilot/tutorials/customize-code-review). Move each kind
    of content to its home by [the routing table](references/agent-files.md#trimming-and-nesting),
    turn any lint-enforceable rule into config, delete explanations of the language or framework,
-   rerun every remaining command, and report unlabelled contradictions between nested files.
-10. **Check, fix, repeat** until every item holds:
+   and report unlabelled contradictions between nested files.
+9. **Check, fix, repeat** until every item holds:
     - [ ] Lint exits 0 with every rule at `error`; no threshold looser than step 2; no new
       `warn`, `eslint-disable` or `# noqa`.
-    - [ ] Every command in AGENTS.md and CONTRIBUTING.md ran as written.
     - [ ] Each rule appears in one file; CLAUDE.md, if present, contains `@AGENTS.md`.
     - [ ] REVIEW.md and CONTRIBUTING.md exist; `specs/` is at the root; the lint script has
       `--max-warnings 0`.
-    - [ ] copilot-instructions.md has a "What not to flag" section and repeats no AGENTS.md rule.
-    - [ ] Every relative link in the agent files resolves.
+    - [ ] copilot-instructions.md has a "What not to flag" section and repeats no AGENTS.md rule
+      or REVIEW.md section.
     - [ ] Each agent file is within its host's limit.
