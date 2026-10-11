@@ -79,7 +79,7 @@ Do not write these from memory; the canonical guidance lives in the tree:
 | Authoring | Source |
 | --- | --- |
 | `SKILL.md` files and skill folders | [skills/skill-authoring/SKILL.md](skills/skill-authoring/SKILL.md), plus the readmission bar above |
-| `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md` | [archive/skills/agents-md-authoring/SKILL.md](archive/skills/agents-md-authoring/SKILL.md) |
+| `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md` | [skills/project-setup/SKILL.md](skills/project-setup/SKILL.md) |
 | Cross-tool portability rules | [Cross-Tool Authoring Notes](README.md#cross-tool-authoring-notes) |
 | Claude-only frontmatter keys | [Host-Specific Frontmatter](README.md#host-specific-frontmatter) |
 | Worker model selection | [docs/agent-model-selection.md](docs/agent-model-selection.md) |

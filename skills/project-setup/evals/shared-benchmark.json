@@ -1,0 +1,284 @@
+{
+  "version": 2,
+  "skill_name": "project-setup",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "bootstrap-lint-existing-violations",
+      "split": "holdout",
+      "prompt": "Using the input file, add the limits the lead asks for to the repository it describes. Output one level-2 heading per file that contains only its repo-relative path, followed by the file's full contents in a fenced code block. After the files, add a section headed `## Notes` with any command to run once and anything left for later. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/tallyforge-lint-bootstrap.md"
+      ],
+      "expected_behavior": [
+        "complexity, max-lines-per-function and max-lines are added at error severity, at the agreed numbers (10, 60, 300)",
+        "Test files keep a file cap of their own (max-lines 800), not an exemption",
+        "The 14 existing violations are held in ESLint bulk suppressions (eslint --suppress-all, eslint-suppressions.json), not by warn, a raised threshold, an ignored path or eslint-disable comments",
+        "pnpm lint fails on any warning (--max-warnings 0)",
+        "The suppressions file is named as debt to burn down; new code meets the limits at once"
+      ],
+      "assertions": [
+        {
+          "name": "bulk-suppressions",
+          "type": "regex",
+          "pattern": "(?m)^\\s*[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'\\n]*--suppress-(?:all|rule)\\b|^\\s*(?:-\\s*)?(?:run:\\s*)?(?:\\$\\s*)?(?:pnpm|npx|yarn|npm|bunx|eslint)\\b(?:[^\\n]*\\\\\\n)*[^\\n]*?--suppress-(?:all|rule)\\b|`(?:pnpm|npx|yarn|npm|bunx|eslint)\\b[^`\\n]*--suppress-(?:all|rule)\\b|`[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'`\\n]*--suppress-(?:all|rule)\\b"
+        },
+        {
+          "name": "complexity-error-10",
+          "type": "regex",
+          "pattern": "(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?10\\b"
+        },
+        {
+          "name": "no-warn-severity",
+          "type": "not_regex",
+          "pattern": ":\\s*\\[?\\s*[\"']warn[\"']|:\\s*\\[\\s*1\\s*,"
+        },
+        {
+          "name": "no-relaxed-complexity",
+          "type": "not_regex",
+          "pattern": "(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*(?:\\[\\s*)?(?:[\"']off[\"']|0\\b)|(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*\\[\\s*[^,\\]\\s]+\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?(?:1[1-9]|[2-9]\\d|\\d{3,})\\b"
+        },
+        {
+          "name": "no-inline-disable",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*(?://|/\\*)\\s*eslint-disable"
+        },
+        {
+          "name": "no-ignored-source",
+          "type": "not_regex",
+          "pattern": "ignores[\"']?\\s*:\\s*\\[[^\\]]*[\"'](?:\\./)?src/"
+        },
+        {
+          "name": "test-files-max-lines-800",
+          "type": "regex",
+          "pattern": "(?s)files[\"']?\\s*:\\s*(?:\\[[^\\]]*(?:test|spec)[^\\]]*\\]|[\\w$.]*(?:test|spec)[\\w$.]*)(?:(?!files[\"']?\\s*:).){0,600}?[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b|[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b(?:(?!files[\"']?\\s*:)(?!\\}\\s*,\\s*\\{).){0,400}?files[\"']?\\s*:\\s*(?:\\[[^\\]]*(?:test|spec)[^\\]]*\\]|[\\w$.]*(?:test|spec)[\\w$.]*)"
+        },
+        {
+          "name": "lint-fails-on-warnings",
+          "type": "regex",
+          "pattern": "(?m)^\\s*[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'\\n]*--max-warnings[= ]+0\\b|^\\s*(?:-\\s*)?(?:run:\\s*)?(?:\\$\\s*)?(?:pnpm|npx|yarn|npm|bunx|eslint)\\b(?:[^\\n]*\\\\\\n)*[^\\n]*?--max-warnings[= ]+0\\b|`(?:pnpm|npx|yarn|npm|bunx|eslint)\\b[^`\\n]*--max-warnings[= ]+0\\b|`[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'`\\n]*--max-warnings[= ]+0\\b"
+        },
+        {
+          "name": "bootstrap-quality",
+          "type": "judge",
+          "rubric": [
+            "Every new limit is at error severity from the first commit; none is a warning, raised above the lead's trial numbers, or turned off for the existing hot-spot files",
+            "The existing violations are recorded with ESLint bulk suppressions (a suppressions file plus the command that creates it), not with eslint-disable comments or ignore globs",
+            "The answer says the suppressions file must only shrink, and that fixing a suppressed function means pruning it (eslint --prune-suppressions)",
+            "Test files get their own looser line limits rather than a blanket exemption from linting"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "agent-files-claude-codex-copilot",
+      "split": "holdout",
+      "prompt": "Using the input file, make the repository work for Codex and GitHub Copilot as well as Claude Code. Write every agent instruction file it should have, in full. Output one level-2 heading per file that contains only its repo-relative path, followed by the file's full contents in a fenced code block. After the files, add a section headed `## Notes` naming any existing file to delete or change and why. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/parcelpost-claude-only.md"
+      ],
+      "expected_behavior": [
+        "AGENTS.md becomes the canonical file holding the commands, layout and rules once",
+        "CLAUDE.md is reduced to an @AGENTS.md import plus the Claude-only lines (edit hook, /release-notes, plan mode for src/tenancy/); never a copy or a symlink",
+        "The PR checklist moves to a root REVIEW.md, the one home for review scope, which Copilot code review also reads",
+        ".github/copilot-instructions.md links AGENTS.md and REVIEW.md and restates neither; its What not to flag section points to REVIEW.md's Do not report and adds only noise Copilot alone raises",
+        "Copilot code review stays on; the noise is fixed through the instructions file"
+      ],
+      "assertions": [
+        {
+          "name": "agents-md-written",
+          "type": "regex",
+          "pattern": "(?im)^#{2,3}[ \\t]*`?(?:\\./)?AGENTS\\.md`?[ \\t]*$"
+        },
+        {
+          "name": "claude-md-imports-agents-md",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?CLAUDE\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?@(?:\\./)?AGENTS\\.md"
+        },
+        {
+          "name": "claude-md-thin",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?CLAUDE\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).){0,1500}(?:^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b|\\Z)"
+        },
+        {
+          "name": "no-symlink-or-copy",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*(?:\\$\\s*)?(?:ln\\s+-s\\b|cp\\s+[^\\n]*CLAUDE\\.md)"
+        },
+        {
+          "name": "copilot-points-to-agents-md",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?AGENTS\\.md"
+        },
+        {
+          "name": "copilot-says-what-not-to-flag",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\b(?:not|never|avoid|skip|don't|no need to)\\b[^\\n]{0,30}?\\b(?:flag|comment|nitpick|report|raise)\\w*|^(?:#{1,4}|[ \\t]*(?:[-*+]|\\d+[.)]))[ \\t]+(?:\\*\\*)?ignore\\b)"
+        },
+        {
+          "name": "copilot-no-restated-rules",
+          "type": "not_regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\binteger\\s+(?:grams|millim)|\\bmap\\w*[^\\n]{0,40}?\\bCarrierError\\b|\\bCarrierError\\b[^\\n]{0,20}?\\bwith\\s+a\\s+code|\\bnever\\s+(?:hand[- ])?edit\\w*[^\\n]{0,40}?src/generated|\\bdependenc\\w*[^\\n]{0,30}?without\\s+(?:asking|approval))"
+        },
+        {
+          "name": "review-md-written",
+          "type": "regex",
+          "pattern": "(?im)^#{2,3}[ \\t]*`?(?:\\./)?REVIEW\\.md`?[ \\t]*$"
+        },
+        {
+          "name": "agents-md-rule-once",
+          "type": "not_regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?AGENTS\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?^#{1,4}[ \\t]+(?:Standing rules|Rules|Do Not)\\b(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b|^#{1,4}[ \\t]+See also\\b).)*?(integer\\s+grams|CarrierError|src/generated|withTenantScope)(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b|^#{1,4}[ \\t]+See also\\b).)*?\\1"
+        },
+        {
+          "name": "agent-files-quality",
+          "type": "judge",
+          "rubric": [
+            "Each rule (tenant scoping, integer units, CarrierError mapping, no edits to src/generated/, no new dependency without asking) is written once, in AGENTS.md, and not repeated in CLAUDE.md or the Copilot file",
+            "CLAUDE.md holds only an @AGENTS.md import and the Claude-only notes (edit hook, /release-notes, plan mode before src/tenancy/)",
+            "The PR checklist lives in REVIEW.md; the Copilot file links AGENTS.md and REVIEW.md, restates neither the rules nor the checklist, and keeps only a What not to flag section and Copilot-specific guidance",
+            "Copilot code review is kept on; the answer does not recommend turning it off"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "new-project-setup",
+      "split": "holdout",
+      "prompt": "Using the input file, set the repository up for agentic development. Write every file you would add or change, in full. Output one level-2 heading per file that contains only its repo-relative path, followed by the file's full contents in a fenced code block. After the files, add a section headed `## Notes` with anything the team must do by hand. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/brightwell-new-repo.md"
+      ],
+      "expected_behavior": [
+        "An ESLint flat config with size and complexity caps at error: complexity 10, max-depth 4, max-params 4, max-lines-per-function 60, max-lines 300",
+        "Design records go under root specs/NNN-slug/ (spec.md, plan.md), not docs/design",
+        "AGENTS.md is canonical and CLAUDE.md imports it with @AGENTS.md",
+        ".github/copilot-instructions.md is review guidance with what not to flag; Copilot review on",
+        "CONTRIBUTING.md states the exact check commands, so process does not live in agent memory",
+        "CI runs lint, typecheck and format check on every PR"
+      ],
+      "assertions": [
+        {
+          "name": "size-caps-configured",
+          "type": "regex",
+          "pattern": "(?s)(?=.*[\"']max-lines[\"']\\s*:)(?=.*[\"']max-lines-per-function[\"']\\s*:)(?=.*[\"']max-params[\"']\\s*:)(?=.*(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*)"
+        },
+        {
+          "name": "max-lines-300",
+          "type": "regex",
+          "pattern": "[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?300\\b"
+        },
+        {
+          "name": "complexity-error-10",
+          "type": "regex",
+          "pattern": "(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?10\\b"
+        },
+        {
+          "name": "max-params-error-4",
+          "type": "regex",
+          "pattern": "[\"'](?:@typescript-eslint/)?max-params[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?4\\b"
+        },
+        {
+          "name": "review-md-written",
+          "type": "regex",
+          "pattern": "(?im)^#{2,3}[ \\t]*`?(?:\\./)?REVIEW\\.md`?[ \\t]*$"
+        },
+        {
+          "name": "specs-root-numbered",
+          "type": "regex",
+          "pattern": "(?<![\\w/.-])specs/(?:\\d{3}|n{3}|<[^>\\n]*>)-"
+        },
+        {
+          "name": "no-design-docs-under-docs",
+          "type": "not_regex",
+          "pattern": "(?im)^#{2,3}[ \\t]*`?(?:\\./)?docs/(?:design|specs?|adr|decisions|rfcs?|plans?)/"
+        },
+        {
+          "name": "claude-md-imports-agents-md",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?CLAUDE\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?@(?:\\./)?AGENTS\\.md"
+        },
+        {
+          "name": "copilot-says-what-not-to-flag",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\b(?:not|never|avoid|skip|don't|no need to)\\b[^\\n]{0,30}?\\b(?:flag|comment|nitpick|report|raise)\\w*|^(?:#{1,4}|[ \\t]*(?:[-*+]|\\d+[.)]))[ \\t]+(?:\\*\\*)?ignore\\b)"
+        },
+        {
+          "name": "contributing-has-check-commands",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?CONTRIBUTING\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?\\bpnpm\\s+(?:run\\s+)?(?:lint|check)\\b"
+        },
+        {
+          "name": "setup-quality",
+          "type": "judge",
+          "rubric": [
+            "The ESLint config caps complexity, nesting depth, parameters, function length and file length, every rule at error, and lint runs with --max-warnings 0",
+            "Design work has a home at the repo root (specs/ with numbered folders holding a spec and a plan), separate from docs/ for current truth",
+            "There is one canonical AGENTS.md; CLAUDE.md imports it rather than copying it; the Copilot file is review guidance that says what not to flag",
+            "CONTRIBUTING.md (or an equivalent committed file) states the exact check commands and the PR process, and CI runs those checks on every PR"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-bootstrap-repo-for-agents",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Set this repo up so Claude Code, Codex and Copilot all work well in it: agent instruction files, lint limits and CI checks.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-add-lint-caps-existing-repo",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Our TypeScript repo has no complexity or file-length limits. Add them to the ESLint config without blocking every PR on the old code.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-claude-md-for-codex",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We only have a CLAUDE.md. Make the repo's agent instructions work for Codex too, without keeping two copies.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-skill-md",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a SKILL.md for our release procedure so agents can load it on demand.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a SKILL.md belongs to skill-authoring."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-code-under-lint-caps",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write the CSV import parser in src/import/parse.ts. The lint config caps functions at 60 lines and complexity at 10, so keep it within them.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing code under existing lint limits belongs to code-style."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
