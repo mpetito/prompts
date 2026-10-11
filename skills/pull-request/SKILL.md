@@ -8,8 +8,8 @@ description: "Work a GitHub pull request: answer review feedback on your own PR 
 Role: worker. Loaded by the session or subagent that owns a pull request, Claude or Codex; this
 file stays under about 120 lines.
 
-Branch, commit and PR policy come from the project's CONTRIBUTING.md and, where it is silent, from
-the convention its `git log` shows; a PR title follows the commit convention. The two scripts in
+Branch, commit and PR policy come from the project's CONTRIBUTING.md; a PR title follows the
+commit convention. The two scripts in
 `scripts/` in this skill's folder need PowerShell 7; on a host without `pwsh`, run the raw `gh api`
 calls shown with them.
 
