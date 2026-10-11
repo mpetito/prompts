@@ -57,6 +57,11 @@
           "pattern": "ignores[\"']?\\s*:\\s*\\[[^\\]]*[\"'](?:\\./)?src/"
         },
         {
+          "name": "test-files-keep-file-cap",
+          "type": "not_regex",
+          "pattern": "[\"']max-lines[\"']\\s*:\\s*(?:\\[\\s*)?(?:[\"']off[\"']|0\\b)"
+        },
+        {
           "name": "lint-fails-on-warnings",
           "type": "regex",
           "pattern": "--max-warnings[= ]+0\\b"
@@ -84,6 +89,7 @@
         "AGENTS.md becomes the canonical file holding the commands, layout and rules once",
         "CLAUDE.md is reduced to an @AGENTS.md import plus the Claude-only lines (edit hook, /release-notes, plan mode for src/tenancy/); never a copy or a symlink",
         ".github/copilot-instructions.md is review guidance: it points to AGENTS.md, lists review priorities from the PR checklist, and says what not to flag (formatting, src/generated/)",
+        "The PR checklist moves to a root REVIEW.md, which every reviewer reads",
         "Copilot code review stays on; the noise is fixed through the instructions file"
       ],
       "assertions": [
@@ -116,6 +122,16 @@
           "name": "copilot-says-what-not-to-flag",
           "type": "regex",
           "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?\\b(?:not|never|avoid|skip|don't|no need to)\\b[^\\n]{0,30}?\\b(?:flag|comment|nitpick)\\w*"
+        },
+        {
+          "name": "copilot-no-restated-rules",
+          "type": "not_regex",
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\binteger\\s+(?:grams|millim)|\\bCarrierError\\b|\\bnever\\s+(?:hand[- ])?edit\\w*[^\\n]{0,40}?src/generated|\\bdependenc\\w*[^\\n]{0,30}?without\\s+(?:asking|approval))"
+        },
+        {
+          "name": "review-md-written",
+          "type": "regex",
+          "pattern": "(?im)^#{2,3}[ \\t]*`?(?:\\./)?REVIEW\\.md`?[ \\t]*$"
         },
         {
           "name": "agent-files-quality",
