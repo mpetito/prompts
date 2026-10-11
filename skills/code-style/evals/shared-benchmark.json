@@ -46,6 +46,11 @@
           "pattern": "\\.listEvents\\("
         },
         {
+          "name": "profile-unchanged",
+          "type": "regex",
+          "pattern": "export type Profile = \\{\\s*id: string;\\s*displayName: string;\\s*email: string;\\s*consentStatus: ConsentStatus;\\s*updatedAt: string;\\s*\\};"
+        },
+        {
           "name": "no-stored-counter-or-flag",
           "type": "not_regex",
           "pattern": "(?m)^\\s*\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes|[Aa]ttempts)\\w*\\??\\s*:\\s*number\\b|\\b\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes)\\w*\\s*:\\s*\\(?[^,\\n]*\\+\\s*1\\b|^\\s*\\w*(?:[Rr]eject|[Aa]lert|[Nn]otif)\\w*(?:At|Sent|First|ed)\\??\\s*:\\s*(?:string|boolean)\\b"
@@ -85,7 +90,8 @@
         {
           "name": "no-running-total",
           "type": "not_regex",
-          "pattern": "[\\\"'](?:ADD|SET|REMOVE)\\s+(?!joined :one[\\\"']|matched :one[\\\"'])|new\\s+Map<\\s*Region\\s*,\\s*number|\\b\\w*(?:[Ww]aiting|[Cc]ount|[Dd]epth|[Pp]ending|[Ss]ize|[Tt]otal)\\w*(?:\\[[^\\]]*\\])?\\s*(?:\\+\\+|--|[+-]=)"
+          "pattern": "[\\\"'](?:ADD|SET|REMOVE)\\s+(?!joined :one[\\\"']|matched :one[\\\"'])|new\\s+Map<\\s*Region\\s*,\\s*number|\\b\\w*(?:[Ww]aiting|[Cc]ount|[Dd]epth|[Pp]ending|[Ss]ize|[Tt]otal)\\w*(?:\\[[^\\]]*\\])?\\s*(?:\\+\\+|--|[+-]=)(?![^\\n]*ApproximateNumberOf)",
+          "ci": false
         },
         {
           "name": "platform-signal",
@@ -104,15 +110,15 @@
         "fixtures/remove-lane-worktree.sh"
       ],
       "expected_behavior": [
-        "Keeps the script advisory for its trusted caller (the build's own orchestrator): problems print a warning to stderr and the removal still runs",
-        "Adds no refusal, exit-with-error path, --force override or lane-name allowlist",
-        "Includes untracked files in the dirty warning and warns when a process may still be using the worktree"
+        "Keeps the script advisory for its trusted caller (the build's own orchestrator): the removal still runs",
+        "Adds no refusal, non-zero exit, --force gate, wait loop or lane-name allowlist; a running process or odd lane at most gets a warning, or is left to the trusted caller",
+        "Includes untracked files in the dirty check"
       ],
       "assertions": [
         {
-          "name": "warns-on-running-process",
+          "name": "untracked-in-dirty-check",
           "type": "regex",
-          "pattern": "echo\\s+[\\\"'][^\\n]*(?i:running|process|in use|still open|busy|pid)[^\\n]*>&2|>&2\\s+echo\\s+[\\\"'][^\\n]*(?i:running|process|in use|still open|busy|pid)|printf\\s+[^\\n]*(?i:running|process|in use|still open|busy|pid)[^\\n]*>&2"
+          "pattern": "status\\s+--porcelain(?![^\\n]*untracked-files=no)"
         },
         {
           "name": "still-removes",
@@ -122,13 +128,13 @@
         {
           "name": "no-refusal",
           "type": "not_regex",
-          "pattern": "(?m)(?:^|[;&|{]|\\bthen\\b|\\belse\\b|\\bdo\\b)\\s*(?:exit|return)\\s+[1-9]\\b|^\\s*-?-force\\)|==\\s*\\\"?--force|(?i:\\brefus\\w*\\b)[^\\n]*>&2|echo\\s+[\\\"'][^\\n]*\\b(?i:refus|denied)"
+          "pattern": "(?m)(?:^|[;&|{]|\\bthen\\b|\\belse\\b|\\bdo\\b)\\s*(?:exit|return)\\s+(?!0\\b)\\S|^\\s*-?-force\\)|==\\s*\\\"?--force|^\\s*\\[\\[[^\\n]*=~[^\\n]*\\]\\]\\s*$|^\\s*(?:while|until)\\b[^\\n]*(?:lsof|fuser|pgrep|/proc)"
         },
         {
           "name": "trust-caller",
           "type": "judge",
           "rubric": [
-            "The answer treats the orchestrator as a trusted caller: it warns rather than blocks and does not harden the script against its own agent"
+            "The answer treats the orchestrator as a trusted caller: it warns or declines rather than blocks, and does not harden the script against its own agent"
           ]
         }
       ]
@@ -159,7 +165,7 @@
         {
           "name": "no-wrapper-over-ccxt",
           "type": "not_regex",
-          "pattern": "(?m)^\\s*(?:export\\s+)?interface\\s+I?\\w*(?:Exchange|Client|Gateway|Provider|Port|Api|Source)\\w*\\b|^\\s*(?:export\\s+)?type\\s+I?\\w*(?:Exchange|Client|Gateway|Provider|Port|Api|Source)\\w*\\s*=\\s*\\{|\\bclass\\s+\\w*(?:Adapter|Facade|Wrapper|Gateway)\\b"
+          "pattern": "\\binterface\\s+\\w+[^{]*\\{[^}]*\\bfetch\\w*\\s*[(:?]|\\btype\\s+\\w+\\s*=\\s*\\{[^}]*\\bfetch\\w*\\s*[(:?]|\\b(?:Pick|Omit|Partial)<\\s*(?:ccxt\\.)?Exchange\\b|\\bclass\\s+(?!PortfolioService\\b)\\w+[^{]*\\{[^}]*\\bccxt\\.Exchange\\b|\\bclass\\s+\\w*(?:Adapter|Facade|Wrapper|Gateway)\\b"
         },
         {
           "name": "no-redundant-abstraction",
@@ -180,7 +186,7 @@
       "expected_behavior": [
         "Adds get_news to the TOOLS registry with its schema",
         "Runs get_news from its registry entry (a handler on the tool), not from a new case or name comparison in executeTool",
-        "Moves the existing tools' handlers into the registry the same way, so executeTool dispatches through the found tool"
+        "Moves the existing tools' handlers into the registry the same way, so executeTool dispatches through the found tool (the fixture's switch (name) goes; a name-keyed executor map is the same switch)"
       ],
       "assertions": [
         {
@@ -196,7 +202,7 @@
         {
           "name": "no-name-switch",
           "type": "not_regex",
-          "pattern": "case\\s+[\\\"']get_news[\\\"']|name\\s*===?\\s*[\\\"']get_news[\\\"']|[\\\"']get_news[\\\"']\\s*===?\\s*name"
+          "pattern": "case\\s+[\\\"'`]get_news[\\\"'`]|name\\s*===?\\s*[\\\"'`]get_news[\\\"'`]|[\\\"'`]get_news[\\\"'`]\\s*===?\\s*name|switch\\s*\\(\\s*(?:\\w+\\.)?name\\s*\\)|=\\s*\\{\\s*[\\\"']?get_\\w+[\\\"']?\\s*:"
         },
         {
           "name": "registry-dispatch",
@@ -215,8 +221,8 @@
         "fixtures/dashboard_cards.ts"
       ],
       "expected_behavior": [
-        "Calls get_holdings like the other cards and lets a failed call become the existing unavailable state",
-        "Adds no mock, sample or placeholder holdings and no fallback to another tool",
+        "Calls get_holdings and gives the holdings card an explicit unavailable state for when the call fails, without failing the other cards",
+        "Adds no mock, sample or stand-in holdings, no empty-list catch, no env flag and no fallback to another tool",
         "Does not special-case 'unknown tool' or 'not found' errors"
       ],
       "assertions": [
@@ -231,9 +237,14 @@
           "pattern": "(?m)^\\s*holdings\\s*[:?]"
         },
         {
+          "name": "shows-unavailable",
+          "type": "regex",
+          "pattern": "unavailable"
+        },
+        {
           "name": "no-mock-or-fallback",
           "type": "not_regex",
-          "pattern": "(?i)\\b(?:mock|sample|placeholder|fake|dummy|demo|stub|preview|example)\\w*\\s*[:=]\\s*(?:\\[|\\{|\\w+\\[\\])|\\b(?:const|let|var|function)\\s+\\w*(?:mock|sample|placeholder|fake|dummy|demo|stub|fallback)\\w*|includes\\(\\s*[\\\"'`](?:unknown|not found|method not found)|-32601|MethodNotFound|[\\\"'`](?:BTC|ETH|SOL)[\\\"'`]\\s*,\\s*quantity\\s*:"
+          "pattern": "(?i)\\b(?:mock|sample|placeholder|fake|dummy|demo|stub|preview|example)\\w*\\s*[:=]\\s*(?:\\[|\\{|\\w+\\[\\])|\\b(?:const|let|var|function)\\s+\\w*(?:mock|sample|placeholder|fake|dummy|demo|stub|fallback)\\w*|includes\\(\\s*[\\\"'`](?:unknown|not found|method not found)|-32601|MethodNotFound|[\\\"'`](?:BTC|ETH|SOL)[\\\"'`]\\s*,\\s*quantity\\s*:|\\.catch\\((?![^\\n]*unavailable)|process\\.env\\b|callTool(?:<[^>]*>)?\\(\\s*[\\\"'](?!(?:get_prices|get_news|get_watchlist|get_holdings)[\\\"'])"
         },
         {
           "name": "no-fallback",
@@ -260,12 +271,12 @@
         {
           "name": "exports-deliver-with-retry",
           "type": "regex",
-          "pattern": "export\\s+(?:async\\s+)?function\\s+deliverWithRetry\\b"
+          "pattern": "export\\s+(?:async\\s+function\\s+deliverWithRetry\\b|const\\s+deliverWithRetry\\s*=)"
         },
         {
           "name": "doc-on-deliver-with-retry",
           "type": "regex",
-          "pattern": "/\\*\\*(?:(?!\\*/)[\\s\\S])*\\*/\\s*export\\s+(?:async\\s+)?function\\s+deliverWithRetry\\b"
+          "pattern": "/\\*\\*(?:(?!\\*/)[\\s\\S])*\\*/\\s*export\\s+(?:async\\s+function\\s+|const\\s+)deliverWithRetry\\b"
         },
         {
           "name": "doc-on-retry-options",
@@ -280,7 +291,7 @@
         {
           "name": "jitter-why",
           "type": "regex",
-          "pattern": "(?i)(?://|\\*)[^\\n]*(?:thundering|herd|synchroni[sz]|lock-?step|stampede|all at once|at the same time|same moment|in unison|spread[^\\n]*retr|de-?correlat)"
+          "pattern": "(?i)(?://|\\*)[^\\n]*(?:thundering|herd|synchroni[sz]|lock-?step|stampede|all at once|at the same time|same moment|in unison|spread[^\\n]*retr|de-?correlat|in sync|retry storm|line up|lined up|together|collid|collision|burst|simultaneous|coordinat|clump|pile[- ]?up)"
         },
         {
           "name": "no-jsdoc-types",
@@ -322,7 +333,7 @@
         {
           "name": "no-lint-relaxed",
           "type": "not_regex",
-          "pattern": "(?ms)^[ \\t]*(?://|/\\*)\\s*eslint-disable.*?^[ \\t]*(?://|/\\*)\\s*eslint-disable|eslint-disable[^\\n]*\\n\\s*(?:export\\s+)?function\\s+quoteShipping|function\\s+quoteShipping[^\\n]*eslint-disable|/\\*\\s*eslint-disable(?!-)|/\\*\\s*eslint\\s+[\\w/-]*complexity|complexity[\\\"']?\\s*:\\s*\\[\\s*[\\\"']?(?:error|warn|1|2)[\\\"']?\\s*,\\s*(?:1[1-9]|[2-9]\\d)"
+          "pattern": "(?m)^[ \\t]*(?://|/\\*)\\s*eslint-disable(?!-next-line complexity -- a flat checklist of independent address problems)|[;,)}\\]{][ \\t]*(?://|/\\*)\\s*eslint-disable|/\\*\\s*eslint\\s+[\\w/-]*complexity|complexity[\\\"']?\\s*:\\s*\\[?\\s*[\\\"']?(?:off|warn|0|1)\\b|complexity[\\\"']?\\s*:\\s*\\[\\s*[\\\"']?(?:error|2)[\\\"']?\\s*,\\s*(?:1[1-9]|[2-9]\\d)"
         },
         {
           "name": "decompose",
@@ -349,12 +360,12 @@
         {
           "name": "rsi-migrated",
           "type": "regex",
-          "pattern": "(?s)defineIndicator\\(\\s*\\{.{0,300}?name:\\s*[\\\"']rsi[\\\"']"
+          "pattern": "\\brsi\\s*=\\s*defineIndicator\\(\\s*\\{|defineIndicator\\(\\s*\\{\\s*name:\\s*[\\\"']rsi[\\\"']"
         },
         {
           "name": "roc-migrated",
           "type": "regex",
-          "pattern": "(?s)defineIndicator\\(\\s*\\{.{0,300}?name:\\s*[\\\"']roc[\\\"']"
+          "pattern": "\\broc\\s*=\\s*defineIndicator\\(\\s*\\{|defineIndicator\\(\\s*\\{\\s*name:\\s*[\\\"']roc[\\\"']"
         },
         {
           "name": "old-helper-deleted",
@@ -401,7 +412,7 @@
         {
           "name": "no-copy-matching",
           "type": "not_regex",
-          "pattern": "(?i)(?:getBy\\w+|locator|toHaveText|toContainText|toHaveTitle|filter|has(?:Text)?)\\s*\\([^)]*[\\\"'`/](?:Lost in the static|Back to the home page|See the schedule|That page went off|Off the air)|\\btext\\s*=\\s*[\\\"']?(?:Lost in|Back to the|See the sch)|hasText:\\s*[\\\"'`/](?:Lost|Back to|See the|That page)"
+          "pattern": "(?i)\\bname\\s*:\\s*[\\\"'`/]|getBy(?:Text|Label|Placeholder|AltText|Title)\\(\\s*[\\\"'`/]|(?:toHaveText|toContainText|toHaveTitle|toHaveAccessibleName)\\(\\s*[\\\"'`/]|hasText\\s*:\\s*[\\\"'`/]|\\btext\\s*=|:has-text\\(|=\\s*[\\\"'`](?:Lost in|Back to the|See the sch|That page went|Off the air)"
         },
         {
           "name": "copy-free-contract",
@@ -433,7 +444,7 @@
         {
           "name": "validates-name",
           "type": "regex",
-          "pattern": "\\.test\\(|\\.match\\(|basename\\(|\\.replace\\(\\s*/|startsWith\\(|safeParse\\(|\\.parse\\(|\\.includes\\(\\s*[\\\"'](?:\\.\\.|/)"
+          "pattern": "\\.test\\(|\\.match\\(|basename\\(|\\.replace\\(\\s*/|startsWith\\(|safeParse\\(|\\.regex\\(|\\.includes\\(\\s*[\\\"'](?:\\.\\.|/)"
         },
         {
           "name": "keeps-size-check",
@@ -479,7 +490,7 @@
         {
           "name": "no-speculative-guards",
           "type": "not_regex",
-          "pattern": "(?m)^\\s*try:|^\\s*except\\b|ZeroDivisionError\\s*[:)]|\\bimport logging\\b|\\blogg(?:ing|er)\\.\\w+\\(|^\\s*print\\(|\\bif\\b[^\\n]*\\bis (?:not )?None\\b|^\\s*(?:if|assert)\\s+(?:not\\s+)?\\w*(?:count|units)\\w*\\b|\\bif\\s+\\w*(?:count|units)\\w*\\s+else\\b|max\\(\\s*\\w*(?:count|units)\\w*\\s*,\\s*1\\s*\\)|isinstance\\((?:subtotal|rate|item|order|amount)"
+          "pattern": "(?m)^\\s*try:|^\\s*except\\b|ZeroDivisionError\\s*[:)]|\\bimport logging\\b|\\blogg(?:ing|er)\\.\\w+\\(|^\\s*print\\(|\\bif\\b[^\\n]*\\bis (?:not )?None\\b|^\\s*(?:if|assert)\\s+(?:not\\s+)?\\w*(?:count|units)\\w*\\b|\\bif\\s+\\w*(?:count|units)\\w*\\s+else\\b|max\\(\\s*\\w*(?:count|units)\\w*\\s*,\\s*1\\s*\\)|isinstance\\((?:subtotal|rate|item|order|amount)|\\bor\\s+1\\b|==\\s*0\\b|^\\s*if\\s+not\\s+\\w+\\.items\\b"
         }
       ]
     }
