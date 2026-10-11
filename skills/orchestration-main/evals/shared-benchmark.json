@@ -163,6 +163,100 @@
       ]
     },
     {
+      "id": "pos-wake-after-fork",
+      "split": "tune",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block. Read the input file, but do not run commands; everything you need is in it.",
+      "files": [
+        "fixtures/wake-after-fork.md"
+      ],
+      "expected_behavior": [
+        "thread.sh check reported MOVED, so MAIN adopts the thread under its new name, shopfront-main-2, before anything else",
+        "MAIN then steers the thread to read its new address with state.sh main",
+        "The D5 decision that arrived only through the inbox goes to the owner as an owner-before item with a recommendation; the checkout link is shared",
+        "Nothing is sent to the stale socket"
+      ],
+      "assertions": [
+        {
+          "name": "adopts-thread",
+          "type": "regex",
+          "pattern": "thread\\.sh adopt shopfront --main\\s+[\"']?shopfront-main-2"
+        },
+        {
+          "name": "steers-new-address",
+          "type": "regex",
+          "pattern": "(?is)SendMessage to shopfront:.{0,300}?STEER:[^\\n]{0,200}(?:moved|state\\.sh main)"
+        },
+        {
+          "name": "surfaces-d5",
+          "type": "regex",
+          "pattern": "(?i)\\bD5\\b"
+        },
+        {
+          "name": "shares-checkout-link",
+          "type": "regex",
+          "pattern": "dev\\.shopfront\\.example/checkout"
+        },
+        {
+          "name": "no-stale-socket",
+          "type": "not_regex",
+          "pattern": "SendMessage to uds:/run/user/1000/cc-socks/41022"
+        },
+        {
+          "name": "catch-up-quality",
+          "type": "judge",
+          "rubric": [
+            "The thread is adopted under the session's new name before the steer that tells it to re-read MAIN's address",
+            "D5 (an email provider with a monthly cost) is put to the owner as needing their approval, with a recommendation",
+            "The reply to the owner is short: the decision first, then what they can click"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-finish-local-build",
+      "split": "tune",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block. Read the input file, but do not run commands; everything you need is in it.",
+      "files": [
+        "fixtures/finish-local-build.md"
+      ],
+      "expected_behavior": [
+        "With local landing and the owner's go-ahead, MAIN runs thread.sh integrate shopfront, and thread.sh close shopfront either now (the archive keeps the pending diff) or once the owner has answered about the diff",
+        "The agents/researcher.md diff is not applied: the owner approved merging, not that change, so MAIN asks about it",
+        "No hand-made git merge, worktree removal or branch deletion"
+      ],
+      "assertions": [
+        {
+          "name": "integrates",
+          "type": "regex",
+          "pattern": "thread\\.sh integrate shopfront"
+        },
+        {
+          "name": "closes-after-integrate",
+          "type": "regex",
+          "pattern": "(?s)thread\\.sh integrate shopfront.*thread\\.sh close shopfront"
+        },
+        {
+          "name": "no-manual-merge",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*git (?:-C \\S+ )?(?:merge|worktree remove|branch -[dD])\\b"
+        },
+        {
+          "name": "asks-about-agent-diff",
+          "type": "regex",
+          "pattern": "(?i)researcher"
+        },
+        {
+          "name": "finish-quality",
+          "type": "judge",
+          "rubric": [
+            "integrate runs through thread.sh; close runs through thread.sh after it, either now or deferred until the owner answers about the diff (the archive keeps the diff either way)",
+            "The agents/researcher.md diff is shown or summarised and put to the owner for approval, not applied",
+            "The reply is short and tells the owner what was merged where"
+          ]
+        }
+      ]
+    },
+    {
       "id": "trig-terse-run-build",
       "kind": "trigger",
       "split": "tune",

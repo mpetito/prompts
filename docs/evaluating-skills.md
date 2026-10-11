@@ -37,6 +37,7 @@ Every run lands in `.eval-runs/<skill>/<timestamp>/` (gitignored).
 | A new or readmitted skill | `-Runs 3 -TriggerRuns 3` |
 | An agent definition under `agents/` | `-AgentDefinition <name> -Runs 3` (see Agents) |
 | Anything, while iterating | `-Runs 1 -SkipJudge -SkipTrigger`; confirm with `-Runs 3` |
+| Only newly added cases | Mark them `"split": "holdout"`, run with `-Split holdout`, regrade with the same `-Split`, then set them back to `tune` |
 
 One run is noisy; decide on three. `-Runs 3` means three runs per arm per case.
 

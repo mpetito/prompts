@@ -167,6 +167,54 @@
           ]
         }
       ]
+    },
+    {
+      "id": "pos-land-local",
+      "split": "tune",
+      "prompt": "You are the orchestration thread described in the input file, and it is your turn. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Read the input file, but do not run commands; everything you need is in it.",
+      "files": [
+        "fixtures/land-local-approved.md"
+      ],
+      "expected_behavior": [
+        "LANDING is local, so the approved head lands with land-local.sh lane/signup-web 7e41c0a, checked with the repository's CI steps",
+        "No pull request, no push and no land.sh",
+        "The turn is recorded with state.sh and MAIN hears STATUS: working"
+      ],
+      "assertions": [
+        {
+          "name": "lands-locally",
+          "type": "regex",
+          "pattern": "land-local\\.sh\\s+lane/signup-web\\s+7e41c0a"
+        },
+        {
+          "name": "runs-repo-ci",
+          "type": "regex",
+          "pattern": "land-local\\.sh(?:[^\\n]|\\\\\\n)*?--check(?:[^\\n]|\\\\\\n)*?npm (?:test|run lint)"
+        },
+        {
+          "name": "no-pr-landing",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*(?:\\S*/)?land\\.sh\\s|^\\s*gh pr (?:create|merge)|^\\s*git (?:-C \\S+ )?push"
+        },
+        {
+          "name": "reports-to-main",
+          "type": "regex",
+          "pattern": "(?s)SendMessage to main-7f.{0,300}?STATUS: working"
+        },
+        {
+          "name": "records-state",
+          "type": "regex",
+          "pattern": "state\\.sh (?:log|set)"
+        },
+        {
+          "name": "landing-quality",
+          "type": "judge",
+          "rubric": [
+            "The approved commit 7e41c0a is landed locally with land-local.sh and the repository's CI command, not by a pull request or a push",
+            "The thread records the landing and tells MAIN in the protocol's format"
+          ]
+        }
+      ]
     }
   ]
 }
