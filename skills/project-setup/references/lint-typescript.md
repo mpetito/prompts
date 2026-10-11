@@ -14,7 +14,13 @@ suppressions instead. Adjust the `files` globs to the repository's layout, nothi
 pnpm add -D eslint @eslint/js typescript-eslint eslint-plugin-sonarjs eslint-plugin-jsdoc globals jscpd prettier husky lint-staged
 ```
 
-Bulk suppressions need ESLint 9.24.0 or later.
+Bulk suppressions need ESLint 9.24.0 or later. The CI job reads the Node version from `.nvmrc`
+and the pnpm version from the `packageManager` field, so record both:
+
+```bash
+node --version > .nvmrc
+npm pkg set packageManager="pnpm@$(pnpm --version)"
+```
 
 ## ESLint config
 
@@ -30,7 +36,7 @@ import tseslint from 'typescript-eslint';
 
 const codeFiles = ['**/*.{js,mjs,cjs,ts,mts,cts,tsx}'];
 const tsFiles = ['**/*.{ts,mts,cts,tsx}'];
-const testFiles = ['**/*.test.{ts,tsx}', '**/test/**/*.{ts,tsx}'];
+const testFiles = ['**/*.{test,spec}.{ts,tsx}', '**/{test,tests}/**/*.{ts,tsx}'];
 const sourceFiles = ['src/**/*.{ts,mts,tsx}'];
 
 export default defineConfig(
@@ -132,9 +138,12 @@ Architecture bans (a layer that must not import another) go in the same file as
 ## Existing violations
 
 On a repository that already breaks the thresholds, keep every rule at `error` and record what is
-there today ([ESLint bulk suppressions](https://eslint.org/docs/latest/use/suppressions)):
+there today ([ESLint bulk suppressions](https://eslint.org/docs/latest/use/suppressions)).
+Unused `eslint-disable` comments report as warnings that suppressions do not hold, so delete them
+first:
 
 ```bash
+pnpm exec eslint . --fix --fix-type directive
 pnpm exec eslint . --suppress-all
 git add eslint-suppressions.json
 ```
@@ -150,14 +159,16 @@ git add eslint-suppressions.json
 [jscpd](https://github.com/kucherenko/jscpd) reports copy-pasted blocks across files;
 `sonarjs/no-identical-functions` catches identical functions within one. Run
 `pnpm exec jscpd --min-tokens 50 src` once, then set `--threshold` in `check:dup` to the
-percentage that first report shows, so it fails only when duplication grows. Unverified: the
-exit code on a clone below the threshold; confirm on the first run.
+"Duplicated lines" percentage that first report shows, so it fails only when duplication grows.
+On jscpd 5.4.1 the threshold compares duplicated lines, not tokens: with no `--threshold` it
+exits 0 even when it finds clones, and it exits 1 once that percentage exceeds the threshold.
 
 ## CI job
 
 `.github/workflows/ci.yml`. A skipped workflow leaves a required check pending and blocks the
 merge ([GitHub docs](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks)),
-so docs-only PRs skip the job, not the workflow: a skipped job reports success.
+so a docs-only PR skips the steps of one job instead. The diff step fails the job when it cannot
+compute the diff, so the check never passes without running.
 
 ```yaml
 name: CI
@@ -171,10 +182,9 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  changes:
+  ci:
     runs-on: ubuntu-latest
-    outputs:
-      code: ${{ steps.diff.outputs.code }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -184,31 +194,31 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ -z "$BASE" ] || git diff --name-only "$BASE" HEAD | grep -qvE '\.md$|^docs/|^specs/'; then
-            echo "code=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "code=false" >> "$GITHUB_OUTPUT"
+          code=true
+          if [ -n "$BASE" ]; then
+            files=$(git diff --name-only "$BASE" HEAD)
+            if ! printf '%s\n' "$files" | grep -qvE '\.md$|^docs/|^specs/'; then code=false; fi
           fi
-  ci:
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+      - if: steps.diff.outputs.code == 'true'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - if: steps.diff.outputs.code == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm check:dup
-      - run: pnpm test
+      - if: steps.diff.outputs.code == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.diff.outputs.code == 'true'
+        run: pnpm typecheck
+      - if: steps.diff.outputs.code == 'true'
+        run: pnpm lint
+      - if: steps.diff.outputs.code == 'true'
+        run: pnpm format:check
+      - if: steps.diff.outputs.code == 'true'
+        run: pnpm check:dup
+      - if: steps.diff.outputs.code == 'true'
+        run: pnpm test
 ```
 
 Make `ci` the required check in branch protection. Pin actions by commit SHA; look one up with

@@ -7,12 +7,17 @@ Contents: [Who reads what](#who-reads-what) · [AGENTS.md](#agentsmd) · [CLAUDE
 
 ## Who reads what
 
-| File | Read by |
+| Reader | Reads |
 | --- | --- |
-| `AGENTS.md` | Codex; Copilot cloud agent and code review; Claude Code only when no `CLAUDE.md` exists in the directory or above it |
-| `CLAUDE.md` | Claude Code; the code-review plugin (CLAUDE.md files only); Copilot, root file only |
-| `.github/copilot-instructions.md` | Copilot code review, cloud agent and Chat; the only file VS Code code review reads |
-| `REVIEW.md` | Claude Code managed Code Review, Copilot code review, the review skill |
+| Claude Code | `CLAUDE.md`; by default `AGENTS.md` only when no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists in the directory or above it |
+| Claude Code managed Code Review, the review skill | `REVIEW.md` |
+| The code-review plugin | `CLAUDE.md` files only |
+| Codex | `AGENTS.md`; never `CLAUDE.md` |
+| Copilot code review on GitHub.com | `.github/copilot-instructions.md`, `AGENTS.md`, root `CLAUDE.md`, `REVIEW.md` |
+| Copilot cloud agent on GitHub.com | `.github/copilot-instructions.md`, `AGENTS.md`, root `CLAUDE.md` |
+| Copilot Chat on GitHub.com | `.github/copilot-instructions.md` |
+| Copilot code review in VS Code and Visual Studio | `.github/copilot-instructions.md` only |
+| Copilot Chat in VS Code | `.github/copilot-instructions.md`, `AGENTS.md` |
 
 Sources: [Claude Code memory](https://code.claude.com/docs/en/memory#agents-md),
 [Codex AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md),
@@ -26,8 +31,8 @@ No `.github/instructions/` path-specific files unless the owner asks for them.
 
 ## AGENTS.md
 
-The one home for every rule an agent follows here. 50 to 115 lines. Every command is copied from
-a run that worked; every path exists.
+The one home for every rule an agent follows here. Observed in the owner's repos: 71 to 113
+lines.
 
 ~~~~markdown
 # <Project> agent instructions
@@ -42,6 +47,7 @@ a run that worked; every path exists.
 | Typecheck | `pnpm typecheck` |
 | Lint | `pnpm lint` |
 | Format check | `pnpm format:check` |
+| Duplication | `pnpm check:dup` |
 | Test | `pnpm test` |
 
 ## Where things live
@@ -49,14 +55,13 @@ a run that worked; every path exists.
 | Path | Contents |
 | --- | --- |
 | `src/` | <...> |
-| `specs/` | Dated specs and plans, `NNN-slug/spec.md` and `plan.md` |
+| `specs/` | Specs and plans, one numbered folder each |
 | `docs/` | Current truth and the decision log |
 | `scripts/` | Helper scripts, run through package scripts |
 
 ## Sources of truth
 
-- `docs/` describes the system as it is; a behaviour change updates its doc in the same PR.
-- <Which spec or ruling wins when two disagree.>
+- <Which spec, doc or ruling wins when two disagree.>
 
 ## Standing rules
 
@@ -64,7 +69,8 @@ a run that worked; every path exists.
 
 ## Do Not
 
-- Never relax a lint rule or threshold, add `eslint-disable`, or set a rule to `warn`; change the code.
+- Never relax a lint rule or threshold, add an inline disable (`eslint-disable`, `# noqa`), or set
+  a rule to `warn`; change the code.
 - Never weaken, skip or delete a test to get green.
 - <A project prohibition, each naming the alternative.>
 
@@ -95,33 +101,30 @@ undocumented. Check one review on the repository before relying on it.
 ## .github/copilot-instructions.md
 
 Copilot code review stays on; this file shapes it. It is review guidance for developing the
-project (never runtime instructions for the product's own agents), and it points to AGENTS.md
-rather than restating it. 26 to 60 lines.
+project (never runtime instructions for the product's own agents). Copilot code review on
+GitHub.com also reads AGENTS.md and REVIEW.md, so this file links them and keeps only what
+Copilot alone needs: the finding format and noise only Copilot raises. It restates no AGENTS.md
+rule and no REVIEW.md section. IDE review sees only this file, and the owner's review runs on
+GitHub.com PRs. Observed in the owner's repos: 26 to 60 lines.
 
 ~~~~markdown
-# <Project> review priorities
+# <Project> review guidance for Copilot
 
-Review against [AGENTS.md](../AGENTS.md) and the specs in [specs/](../specs/). For each finding,
-name the path, the concrete failure and the rule or contract it breaks.
-
-## Review priorities
-
-- <The repository's riskiest paths: data loss, access, money, secrets, concurrency.>
-- <Contracts others build on: exported types, endpoints, schemas, config keys.>
-- Tests that cannot fail for the regression they claim to cover.
+Review against [AGENTS.md](../AGENTS.md), [REVIEW.md](../REVIEW.md) and the specs in
+[specs/](../specs/). For each finding, name the path, the concrete failure and the AGENTS.md
+rule, REVIEW.md entry or spec section it breaks.
 
 ## What not to flag
 
-- Formatting, and anything lint, typecheck or CI already enforces.
-- Generated, vendored and lock files.
-- Prose style in docs; report factual contradictions only.
+- Anything REVIEW.md lists under Do not report.
+- <Noise Copilot has raised on this repository's PRs that REVIEW.md does not cover.>
 ~~~~
 
 ## REVIEW.md
 
 Write it by [Derive it](../../review/references/review-scope.md#derive-it) and its
 [Template](../../review/references/review-scope.md#template). At setup, its "Do not report"
-section lists the lint and CI gates just installed.
+section lists the lint and CI gates just installed; it is the one home for that list.
 
 ## CONTRIBUTING.md
 
@@ -135,7 +138,7 @@ The process agents and people both follow, so no one relies on memories.
 Run before every push; CI runs the same:
 
 ```bash
-pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
+pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:dup && pnpm test
 ```
 
 ## Commits and pull requests
@@ -143,7 +146,7 @@ pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
 - One topic per branch; open a PR against `main`; never push to `main`.
 - <Commit message convention.>
 - A behaviour change updates its doc in `docs/` in the same PR.
-- New work starts as `specs/NNN-slug/spec.md`, reviewed before code.
+- New work starts as `specs/NNN-slug/spec.md` and `plan.md`, reviewed before code.
 ~~~~
 
 ## specs/
@@ -171,7 +174,7 @@ of content to its home, then link to it:
 | Commit and PR process | CONTRIBUTING.md |
 | What review checks hardest | REVIEW.md |
 | A multi-step procedure | a skill |
-| A rule a linter can enforce | the lint config, plus one line in AGENTS.md |
+| A rule a linter can enforce | the lint config |
 | Explanations of the language or framework | nowhere |
 
 Add a nested AGENTS.md only where a directory's commands or conventions differ from the root's.
