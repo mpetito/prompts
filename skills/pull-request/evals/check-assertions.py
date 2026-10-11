@@ -7,7 +7,10 @@ For every behaviour case in shared-benchmark.json:
   input is not failed by the input;
 - the planted answers in planted/<case id>/ grade as labelled: every right*.md passes every
   objective assertion, and every wrong*.md fails at least one. A case needs one right and
-  two wrong answers.
+  two wrong answers;
+- a judge-wrong*.md is a wrong answer that only phrasing shows, so only a judge criterion is
+  meant to catch it. Its case must carry a judge assertion; the check reports whether the
+  objective assertions catch it too, and requires nothing more.
 
 Grading goes through skill_benchmark.assertion_result, so patterns are matched exactly as in
 a run (case-insensitively unless an assertion sets "ci": false). No model is called. Run it
@@ -52,12 +55,17 @@ def main():
         answers = sorted((HERE / "planted" / cid).glob("*.md"))
         rights = [p for p in answers if p.name.startswith("right")]
         wrongs = [p for p in answers if p.name.startswith("wrong")]
+        judged = [p for p in answers if p.name.startswith("judge-wrong")]
+        if judged and not any(a["type"] == "judge" for a in case["assertions"]):
+            problems.append(f"{cid}: judge-wrong answers but no judge assertion")
         if len(rights) < 1 or len(wrongs) < 2:
             problems.append(f"{cid}: needs 1 right and 2 wrong planted answers, has {len(rights)} and {len(wrongs)}")
         print(f"{cid} ({len(objective)} objective assertions)")
         for path in answers:
             failed = failed_names(objective, path.read_text(encoding="utf-8"))
-            if path in rights:
+            if path in judged:
+                verdict = "judge only" if not failed else "also objective"
+            elif path in rights:
                 right_total += 1
                 right_ok += not failed
                 verdict = "ok" if not failed else "WRONGLY FAILS"
@@ -68,7 +76,9 @@ def main():
             if verdict in ("WRONGLY FAILS", "NOT CAUGHT"):
                 problems.append(f"{cid}/{path.name}: {verdict}")
             print(f"  {path.name:<34} {verdict:<14} {', '.join(failed)}")
-    print(f"\nwrong answers caught: {caught} of {wrong_total}; right answers passing: {right_ok} of {right_total}")
+    judged_total = sum(1 for _ in HERE.glob("planted/*/judge-wrong*.md"))
+    print(f"\nwrong answers caught: {caught} of {wrong_total}; right answers passing: {right_ok} of {right_total}; "
+          f"left to a judge: {judged_total}")
     for p in problems:
         print(f"PROBLEM {p}")
     return 1 if problems else 0
