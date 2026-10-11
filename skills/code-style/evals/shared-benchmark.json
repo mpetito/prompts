@@ -108,7 +108,7 @@
         {
           "name": "untracked-in-dirty-check",
           "type": "regex",
-          "pattern": "status\\s+--porcelain(?![^\\n]*untracked-files=no)"
+          "pattern": "status\\s+--porcelain(?![^\\n]*untracked-files=no\\b)"
         },
         {
           "name": "still-removes",
@@ -118,7 +118,7 @@
         {
           "name": "no-refusal",
           "type": "not_regex",
-          "pattern": "(?m)(?:^|[;&|{]|\\bthen\\b|\\belse\\b|\\bdo\\b)\\s*(?:exit|return)\\s+(?!0\\b)\\S|^\\s*-?-force\\)|==\\s*\\\"?--force|^\\s*\\[\\[[^\\n]*=~[^\\n]*\\]\\]\\s*$|^\\s*(?:while|until)\\b[^\\n]*(?:lsof|fuser|pgrep|/proc)"
+          "pattern": "(?m)(?:^|[;&|{]|\\bthen\\b|\\belse\\b|\\bdo\\b)\\s*(?:exit|return)\\s+(?!0\\b|!)\\S|^\\s*-?-force\\)|==\\s*\\\"?--force|^\\s*\\[\\[[^\\n]*=~[^\\n]*\\]\\]\\s*$|^\\s*(?:while|until)\\b[^\\n]*(?:lsof|fuser|pgrep|/proc)"
         },
         {
           "name": "trust-caller",
@@ -145,7 +145,7 @@
         {
           "name": "registered",
           "type": "regex",
-          "pattern": "name:\\s*[\\\"']get_news[\\\"']"
+          "pattern": "name:\\s*[\\\"']get_news[\\\"']|defineTool\\(\\s*[\\\"']get_news[\\\"']"
         },
         {
           "name": "calls-fetch-news",
@@ -202,7 +202,7 @@
         {
           "name": "jitter-why",
           "type": "regex",
-          "pattern": "(?i)(?://|\\*)[^\\n]*(?:thundering|herd|synchroni[sz]|lock-?step|stampede|all at once|at the same time|same moment|in unison|spread[^\\n]*retr|de-?correlat|in sync|retry storm|line up|lined up|together|collid|collision|burst|simultaneous|coordinat|clump|pile[- ]?up)"
+          "pattern": "(?i)(?://|\\*)[^\\n]*(?:thundering|herd|synchroni[sz]|lock-?step|stampede|all at once|at the same time|same moment|in unison|spread[^\\n]*retr|de-?correlat|in sync|retry storm|line up|lined up|together|collid|collision|burst|simultaneous|coordinat|clump|pile[- ]?up|\\ball\\b[^\\n]*\\bat once\\b)"
         },
         {
           "name": "no-jsdoc-types",
@@ -450,6 +450,26 @@
       "prompt": "Our deploy runbook keeps getting re-explained to agents; turn it into a skill with a good description so it fires on the right requests.",
       "expected_behavior": [
         "The skill should NOT trigger: writing a skill belongs to skill-authoring."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-project-setup",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Set up ESLint for this repo with a complexity limit of 10 and a max file length of 300 lines, and fail CI when they are exceeded.",
+      "expected_behavior": [
+        "The skill should NOT trigger: setting up linters and thresholds belongs to project-setup."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-explain-code",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Where is pagination handled in this codebase, and how does it decide the page size? Just explain it, don't change anything.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a read-only question about how code works writes no code."
       ],
       "assertions": []
     }

@@ -8,26 +8,25 @@ description: "Write or change code in the owner's pragmatic style: the least mec
 Role: worker. Loaded once per lane by Claude subagents and Codex before they write code; under 120 lines.
 
 Project conventions always win over the owner's personal style: "project conventions always win
-over my own personal style preferences." A convention is what the repository writes down
-(AGENTS.md, REVIEW.md, lint and compiler config) or does on purpose throughout. Inferred: code
-that merely lacks something, such as doc comments, is not a convention against adding it.
+over my own personal style preferences."
 
 ## Rules
 
 Each rule is the owner's; quoted text is the owner's own words.
 
-1. **Least mechanism:** no stored field, counter, flag, job or policy before a real need; derive it from data
-   already recorded. A lagging source is no reason to copy it (inferred). "A monitoring metric added _later_ would suffice."
-2. **Use what exists first:** a platform signal (queue depth, an existence check), the dependency's API,
-   a stock tool, a shared helper. "The queue length is itself a signal."
+1. **Least mechanism:** no stored field, counter, flag, job or policy until a real need shows; derive it from data already
+   recorded. A lagging source is no reason to copy it or add a second read path; read it before your own write (inferred).
+2. **Use what exists first:** a platform signal (queue depth, an existence check), the dependency's API, a stock tool,
+   a shared helper. "We have a queue. The queue length is itself a signal of back pressure if we need it."
 3. **Trust your own agents, scripts and services:** warn; never refuse, allowlist or gate them. "The orchestrator
    is not an adversary we're defending against." Outside input (a request, a user) is still validated where it enters.
 4. **Registry dispatch:** "There should be no need for switch statements based on tool name. That's the
-   purpose of a registry." Each entry carries its handler; move existing cases in; no name-keyed executor map.
-5. **Comments:** every file you touch opens with a short purpose header, added if missing. "Public contracts should
-   have doc comments": limits, units, errors, no type tags. "Algorithms should have comments explaining why"; no narration.
-6. **Delete what a change replaces,** even if exported: old helper, shim, alias, legacy path, and no note about it.
-   "We don't need to maintain backwards compatibility." (Scope: pre-release and internal code.)
+   purpose of a registry." Each entry carries its handler; move existing cases in; no second name-to-handler map beside it.
+5. **Comments:** "Public contracts should have doc comments" stating limits, units and errors, without type tags,
+   "and algorithms should have comments explaining why"; never narrate. A module you create, or whose public
+   contract you add or change, opens with a short purpose header.
+6. **In pre-release or internal code, delete what a change replaces,** even if exported: old helper, shim, alias, legacy path,
+   and no note about it. "We don't need to maintain backwards compatibility." A published API keeps its deprecation path.
 7. **Tests never match copy:** "I'd rather not rely on content text matching for test contract." Locate by role
    or test id; import expected text from the content source, and match no text it lacks, labels included.
 
