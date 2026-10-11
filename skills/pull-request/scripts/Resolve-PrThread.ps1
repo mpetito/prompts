@@ -1,29 +1,30 @@
 <#
 .SYNOPSIS
-Resolves a PR review thread; optionally posts a reply first (reply-then-resolve in one call).
+Replies to a pull request review thread, then resolves it; never resolves without the reply.
+
+.DESCRIPTION
+Posts -Body as a reply on the thread (addPullRequestReviewThreadReply), then resolves it
+(resolveReviewThread). Throws, leaving the thread open, if the reply fails. On success prints
+exactly one line: `resolved <thread id> <reply url>`. Requires an authenticated gh CLI.
 
 .EXAMPLE
-./Resolve-PrThread.ps1 -ThreadId PRRT_kwDO... -Body "Fixed in commit abc1234."
-./Resolve-PrThread.ps1 -ThreadId PRRT_kwDO...   # resolve only
+./Resolve-PrThread.ps1 -ThreadId PRRT_kwDO... -Body 'Fixed in 4be91c2: ...'
 #>
 [CmdletBinding()]
 param(
+    # The thread's node id, PRRT_...
     [Parameter(Mandatory)][string]$ThreadId,
-    [string]$Body
+    [Parameter(Mandatory)][string]$Body
 )
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'PrCommon.psm1') -Force
 
-if ($Body) {
-    & (Join-Path $PSScriptRoot 'Send-PrThreadReply.ps1') -ThreadId $ThreadId -Body $Body | Out-Null
-}
+$reply = 'mutation($id: ID!, $body: String!) { addPullRequestReviewThreadReply(input: {pullRequestReviewThreadId: $id, body: $body}) { comment { url } } }'
+$raw = gh api graphql -f "query=$reply" -f "id=$ThreadId" -f "body=$Body"
+if ($LASTEXITCODE -ne 0) { throw "Reply to $ThreadId failed; the thread was left open: $raw" }
+$url = ($raw | ConvertFrom-Json).data.addPullRequestReviewThreadReply.comment.url
 
-$mutation = @'
-mutation($threadId: ID!) {
-  resolveReviewThread(input: { threadId: $threadId }) {
-    thread { id isResolved }
-  }
-}
-'@
-$resp = Invoke-GhGraphQL -Query $mutation -StringFields @{ threadId = $ThreadId }
-$resp.data.resolveReviewThread.thread | ConvertTo-Json
+$resolve = 'mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }'
+$raw = gh api graphql -f "query=$resolve" -f "id=$ThreadId"
+if ($LASTEXITCODE -ne 0) { throw "Replied on $ThreadId ($url) but resolving it failed: $raw" }
+
+"resolved $ThreadId $url"

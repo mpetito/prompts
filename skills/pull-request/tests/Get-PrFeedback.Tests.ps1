@@ -1,83 +1,78 @@
-# Offline regression checks; no GitHub access or external test framework required.
+# Offline checks for Get-PrFeedback.ps1 against a mocked gh; no GitHub access or test framework.
 $ErrorActionPreference = 'Stop'
-$collector = Join-Path $PSScriptRoot '../Get-PrFeedback.ps1'
-$global:prFeedbackTestScenario = 'populated'
-$global:prFeedbackTestCalls = [System.Collections.Generic.List[string]]::new()
-$global:prFeedbackTestBody = @'
+$collector = Join-Path $PSScriptRoot '../scripts/Get-PrFeedback.ps1'
+$global:ghScenario = 'populated'
+$global:ghCalls = [System.Collections.Generic.List[string]]::new()
+$suppressedBody = @'
 ## Review
 <details>
-<summary>Suppressed comments (1)</summary>
-src/example.ts:12 — Check the existing guard before adding another.
+<summary>Comments suppressed due to low confidence (1)</summary>
+src/export.py:41 - `until` is exclusive here but inclusive in the CLI help.
 </details>
 '@
 
+function New-ThreadPage([object[]]$Nodes, [bool]$More) {
+    @{ data = @{ repository = @{ pullRequest = @{ reviewThreads = @{
+        pageInfo = @{ hasNextPage = $More; endCursor = 'c1' }; nodes = $Nodes } } } } }
+}
+function New-Thread([string]$Id, [bool]$Resolved, [bool]$Outdated) {
+    @{ id = $Id; isResolved = $Resolved; isOutdated = $Outdated; path = 'src/a.py'; line = 3
+       comments = @{ nodes = @(@{ databaseId = 501; author = @{ login = 'copilot-pull-request-reviewer' }; body = 'Check this.'; url = 'u' }) } }
+}
+
+# Stands in for gh; any call it does not recognise throws, so the network is never reached.
 function gh {
     $call = $args -join ' '
-    $global:prFeedbackTestCalls.Add($call)
+    $global:ghCalls.Add($call)
     $global:LASTEXITCODE = 0
-    if ($args[0] -eq 'api' -and $args[1] -eq 'graphql') {
-        return '{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}}'
-    }
-    if ($call -match '/pulls/123/reviews') {
-        if ($global:prFeedbackTestScenario -eq 'failure') {
-            $global:LASTEXITCODE = 1
-            return 'API unavailable'
+    if ($call -match '^api graphql ') {
+        switch ($global:ghScenario) {
+            'threads-fail' { $global:LASTEXITCODE = 1; return 'HTTP 502' }
+            'not-found' { return ConvertTo-Json -Depth 12 -InputObject @(@{ data = @{ repository = @{ pullRequest = $null } } }) }
+            'body-only' { return ConvertTo-Json -Depth 12 -InputObject @(New-ThreadPage @() $false) }
         }
-        if ($global:prFeedbackTestScenario -eq 'empty') { return '[[]]' }
-        $reviews = @(
-            @{
-                id = 100; user = @{ login = 'copilot-pull-request-reviewer[bot]' }; state = 'COMMENTED'
-                submitted_at = '2026-09-11T12:00:00Z'; commit_id = 'abc123'
-                html_url = 'https://github.com/example/repo/pull/123#pullrequestreview-100'
-                body = $global:prFeedbackTestBody
-            },
-            @{
-                id = 101; user = @{ login = 'human' }; state = 'DISMISSED'
-                submitted_at = '2026-09-11T12:01:00Z'; commit_id = 'older'
-                html_url = 'https://github.com/example/repo/pull/123#pullrequestreview-101'
-                body = 'Earlier context'
-            }
-        )
-        if ($global:prFeedbackTestScenario -eq 'single') {
-            return ConvertTo-Json -InputObject @(,@($reviews[0])) -Depth 6
-        }
-        return ConvertTo-Json -InputObject @(@($reviews[0]), @($reviews[1])) -Depth 6
+        $pages = @(
+            (New-ThreadPage @((New-Thread 'PRRT_open' $false $true), (New-Thread 'PRRT_done' $true $false)) $true),
+            (New-ThreadPage @(, (New-Thread 'PRRT_page2' $false $false)) $false))
+        return ConvertTo-Json -Depth 12 -InputObject $pages
     }
-    if ($call -match '^pr checks ') { return '[]' }
-    if ($call -match '/code-scanning/alerts') { return '[]' }
-    throw "Unexpected gh invocation: $call"
+    if ($call -match '^api repos/example/repo/pulls/123/reviews ') {
+        if ($global:ghScenario -eq 'reviews-fail') { $global:LASTEXITCODE = 1; return 'HTTP 502' }
+        $copilot = @{ id = 100; user = @{ login = 'copilot-pull-request-reviewer[bot]' }; state = 'COMMENTED'
+                      commit_id = 'abc123'; html_url = 'https://example.test/r100'; body = $suppressedBody }
+        $human = @{ id = 101; user = @{ login = 'human' }; state = 'COMMENTED'; commit_id = 'def456'
+                    html_url = 'https://example.test/r101'; body = 'Looks fine.' }
+        return ConvertTo-Json -Depth 6 -InputObject @(@(, $copilot), @(, $human))
+    }
+    throw "Unexpected gh call (network refused): $call"
 }
 
-function Assert-True([bool]$Condition, [string]$Message) {
-    if (-not $Condition) { throw $Message }
+function Assert([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
+function Expect-Failure([string]$Scenario, [string]$Pattern) {
+    $global:ghScenario = $Scenario
+    try { & $collector -Pr 123 -Repo example/repo | Out-Null } catch {
+        if ($_.Exception.Message -notmatch $Pattern) { throw }
+        return
+    }
+    throw "Scenario $Scenario must throw, not report no feedback."
 }
 
 $result = & $collector -Pr 123 -Repo example/repo | ConvertFrom-Json
-Assert-True ($result.reviews.Count -eq 2) 'Must retain all reviews, including dismissed context.'
-Assert-True ($result.reviews[0].body -ceq $global:prFeedbackTestBody) 'Must preserve the full suppressed section verbatim.'
-Assert-True ($result.reviews[0].id -eq 100 -and $result.reviews[0].commitId -eq 'abc123') 'Must retain review provenance.'
-Assert-True ($result.reviews[0].url -match 'pullrequestreview-100$') 'Must retain the review link.'
-Assert-True ($result.summary.reviews -eq 2 -and $result.unresolvedThreads.Count -eq 0) 'Body-only feedback must remain visible with zero threads.'
-Assert-True ($result.failingChecks.Count -eq 0 -and $result.codeScanningAlerts.Count -eq 0) 'Must preserve existing feedback fields.'
-Assert-True ([bool]($global:prFeedbackTestCalls | Where-Object { $_ -match '/reviews --paginate --slurp' })) 'Must fetch all review pages as one JSON value.'
-Assert-True ([bool]($global:prFeedbackTestCalls | Where-Object { $_ -match '^api --method GET .*/code-scanning/alerts' })) 'Scanning filters must use GET, not implicit POST.'
+Assert ($result.threads.threadId -join ',' -eq 'PRRT_open,PRRT_page2') 'Must keep unresolved threads from every page and drop resolved ones.'
+Assert ($result.threads[0].isOutdated -eq $true) 'Must carry isOutdated.'
+Assert ($result.threads[0].comments[0].id -eq 501) 'Must carry the comment databaseId for REST replies.'
+Assert ($result.reviews.Count -eq 2) 'Must keep reviews from every page.'
+Assert ($result.reviews[0].body -ceq $suppressedBody) 'Must keep the suppressed section verbatim.'
+Assert ($result.reviews[0].commitId -eq 'abc123' -and $result.reviews[0].url -eq 'https://example.test/r100') 'Must keep review provenance.'
+Assert (@($global:ghCalls | Where-Object { $_ -match '^api graphql --paginate --slurp ' }).Count -eq 1) 'Threads must be fetched with --paginate --slurp.'
+Assert (@($global:ghCalls | Where-Object { $_ -match '/reviews --paginate --slurp$' }).Count -eq 1) 'Reviews must be fetched with --paginate --slurp.'
 
-$global:prFeedbackTestScenario = 'single'
+$global:ghScenario = 'body-only'
 $result = & $collector -Pr 123 -Repo example/repo | ConvertFrom-Json
-Assert-True ($result.reviews -is [array] -and $result.reviews.Count -eq 1) 'One review must serialize as a flat array.'
-Assert-True ($result.reviews[0].author -eq 'copilot-pull-request-reviewer[bot]') 'Must map the API author field.'
+Assert ($result.threads -is [array] -and $result.threads.Count -eq 0) 'No threads must serialize as an empty array.'
+Assert ($result.reviews.Count -eq 2) 'Body-only feedback must stay visible with zero threads.'
 
-$global:prFeedbackTestScenario = 'empty'
-$result = & $collector -Pr 123 -Repo example/repo | ConvertFrom-Json
-Assert-True ($result.reviews -is [array] -and $result.reviews.Count -eq 0) 'No reviews must serialize as an empty array.'
-Assert-True ($result.summary.reviews -eq 0) 'Empty review count must be zero.'
-
-$global:prFeedbackTestScenario = 'failure'
-$failed = $false
-try { & $collector -Pr 123 -Repo example/repo | Out-Null }
-catch {
-    if ($_.Exception.Message -notmatch 'Could not collect review bodies') { throw }
-    $failed = $true
-}
-Assert-True $failed 'Review retrieval failure must not masquerade as no feedback.'
-Write-Output 'PASS: full review bodies, provenance, pagination flags, empty results, and retrieval failure.'
+Expect-Failure 'threads-fail' 'Could not collect review threads'
+Expect-Failure 'reviews-fail' 'Could not collect review bodies'
+Expect-Failure 'not-found' 'was not found'
+Write-Output 'PASS Get-PrFeedback: paginated threads and reviews, suppressed bodies, body-only feedback, three failure paths.'

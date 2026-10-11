@@ -1,63 +1,85 @@
 <#
 .SYNOPSIS
-Aggregates PR feedback in one call: unresolved review threads, complete review bodies,
-failing CI checks (with log excerpts), and open code-scanning alerts. JSON output shaped for
-the pr-feedback skill's collection step.
+Collects a pull request's feedback in one call: every unresolved review thread and every review
+body, verbatim, so findings in a body's collapsed "suppressed" section stay visible.
+
+.DESCRIPTION
+Threads come from GraphQL and reviews from REST, both through `gh api --paginate --slurp`, so no
+page is dropped. Each thread carries its id (PRRT_..., for resolveReviewThread), isOutdated, path,
+line and up to 100 comments, each with its REST databaseId (for .../comments/<id>/replies).
+Throws when either fetch fails or the pull request is not found: a failed fetch is never reported
+as "no feedback". Requires an authenticated gh CLI.
 
 .EXAMPLE
-./Get-PrFeedback.ps1 -Pr 123
+./Get-PrFeedback.ps1 -Pr 123 -Repo owner/name
 #>
 [CmdletBinding()]
 param(
+    # Defaults to the pull request of the current branch.
     [int]$Pr,
-    [string]$Repo,
-    [int]$LogTailLines = 50
+    # owner/name; defaults to the current repository.
+    [string]$Repo
 )
 $ErrorActionPreference = 'Stop'
-Import-Module (Join-Path $PSScriptRoot 'PrCommon.psm1') -Force
 
-$ctx = Resolve-PrContext -Repo $Repo -Pr $Pr
+if (-not $Repo) {
+    $Repo = gh repo view --json nameWithOwner -q .nameWithOwner
+    if ($LASTEXITCODE -ne 0 -or -not $Repo) { throw 'Could not resolve the repository; pass -Repo owner/name.' }
+}
+if (-not $Pr) {
+    $Pr = gh pr view --json number -q .number
+    if ($LASTEXITCODE -ne 0 -or -not $Pr) { throw 'Could not resolve the pull request; pass -Pr <number>.' }
+}
+$owner, $name = $Repo -split '/', 2
 
-$threads = Get-PrReviewThreads -Context $ctx -Unresolved
-
-# Suppressed findings can live inside a review body rather than in review threads.
-$reviewsRaw = gh api "repos/$($ctx.Repo)/pulls/$($ctx.Pr)/reviews" --paginate --slurp
-if ($LASTEXITCODE -ne 0) { throw "Could not collect review bodies for $($ctx.Repo)#$($ctx.Pr)." }
-$reviews = @(foreach ($page in ($reviewsRaw | ConvertFrom-Json)) {
-    foreach ($review in $page) {
+$query = @'
+query($owner: String!, $name: String!, $pr: Int!, $endCursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $pr) {
+      reviewThreads(first: 100, after: $endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id isResolved isOutdated path line
+          comments(first: 100) { nodes { databaseId author { login } body url } }
+        }
+      }
+    }
+  }
+}
+'@
+$raw = gh api graphql --paginate --slurp -f "query=$query" -f "owner=$owner" -f "name=$name" -F "pr=$Pr"
+if ($LASTEXITCODE -ne 0) { throw "Could not collect review threads for ${Repo}#${Pr}: $raw" }
+$threads = foreach ($page in ($raw | ConvertFrom-Json)) {
+    $pull = $page.data.repository.pullRequest
+    if (-not $pull) { throw "Pull request ${Repo}#${Pr} was not found." }
+    foreach ($t in $pull.reviewThreads.nodes) {
+        if ($t.isResolved) { continue }
         [pscustomobject]@{
-            id          = $review.id
-            author      = $review.user.login
-            state       = $review.state
-            submittedAt = $review.submitted_at
-            commitId    = $review.commit_id
-            url         = $review.html_url
-            body        = $review.body
+            threadId   = $t.id
+            isOutdated = $t.isOutdated
+            path       = $t.path
+            line       = $t.line
+            comments   = @($t.comments.nodes | ForEach-Object {
+                [pscustomobject]@{ id = $_.databaseId; author = $_.author.login; body = $_.body; url = $_.url }
+            })
         }
     }
-})
+}
 
-$checkFailures = & (Join-Path $PSScriptRoot 'Get-PrCheckFailures.ps1') `
-    -Pr $ctx.Pr -Repo $ctx.Repo -LogTailLines $LogTailLines | ConvertFrom-Json
-
-# Code-scanning alerts on the PR head; tolerate repos without code scanning enabled
-$alerts = @()
-$alertsRaw = gh api --method GET "repos/$($ctx.Repo)/code-scanning/alerts" --paginate `
-    -f ref="refs/pull/$($ctx.Pr)/head" -f state=open `
-    --jq '[.[] | {number, rule: .rule.id, severity: .rule.severity, description: .rule.description, path: .most_recent_instance.location.path, line: .most_recent_instance.location.start_line, url: .html_url}]' 2>$null
-if ($LASTEXITCODE -eq 0 -and $alertsRaw) { $alerts = @($alertsRaw | ConvertFrom-Json) }
+$raw = gh api "repos/$Repo/pulls/$Pr/reviews" --paginate --slurp
+if ($LASTEXITCODE -ne 0) { throw "Could not collect review bodies for ${Repo}#${Pr}: $raw" }
+$reviews = foreach ($page in ($raw | ConvertFrom-Json)) {
+    foreach ($r in $page) {
+        [pscustomobject]@{
+            id = $r.id; author = $r.user.login; state = $r.state; commitId = $r.commit_id
+            url = $r.html_url; body = $r.body
+        }
+    }
+}
 
 [pscustomobject]@{
-    repo               = $ctx.Repo
-    pr                 = $ctx.Pr
-    unresolvedThreads  = @($threads)
-    reviews            = @($reviews)
-    failingChecks      = @($checkFailures)
-    codeScanningAlerts = @($alerts)
-    summary            = [pscustomobject]@{
-        unresolvedThreads  = @($threads).Count
-        reviews            = @($reviews).Count
-        failingChecks      = @($checkFailures).Count
-        codeScanningAlerts = @($alerts).Count
-    }
-} | ConvertTo-Json -Depth 7
+    repo    = $Repo
+    pr      = $Pr
+    threads = @($threads)
+    reviews = @($reviews)
+} | ConvertTo-Json -Depth 6
