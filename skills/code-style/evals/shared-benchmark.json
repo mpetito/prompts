@@ -23,6 +23,48 @@
       "assertions": []
     },
     {
+      "id": "r1-second-rejection-alert",
+      "split": "tune",
+      "prompt": "In consent_review.ts, when a profile's consent is rejected for the second time, post a message to the ops channel naming the profile, so someone can reach out to the creator. Use `opsAlerts.post(text: string)`, imported as `{ opsAlerts }` from `./ops-alerts`. Only the second rejection alerts, not the third or later ones. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
+      "files": [
+        "fixtures/consent_review.ts"
+      ],
+      "expected_behavior": [
+        "Counts the profile's consent_rejected events from the existing event log (store.listEvents) to detect the second rejection, for example by counting earlier rejections before appending, since the first one is long indexed",
+        "Adds no rejection counter, first-rejection marker or alerted flag to Profile or to the updateProfile patch",
+        "Posts the alert with opsAlerts.post only when the count is exactly two"
+      ],
+      "assertions": [
+        {
+          "name": "alert-posted",
+          "type": "regex",
+          "pattern": "opsAlerts\\.post\\("
+        },
+        {
+          "name": "reads-event-log",
+          "type": "regex",
+          "pattern": "\\.listEvents\\("
+        },
+        {
+          "name": "profile-unchanged",
+          "type": "regex",
+          "pattern": "export type Profile = \\{\\s*id: string;\\s*displayName: string;\\s*email: string;\\s*consentStatus: ConsentStatus;\\s*updatedAt: string;\\s*\\};"
+        },
+        {
+          "name": "no-stored-counter-or-flag",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes|[Aa]ttempts)\\w*\\??\\s*:\\s*number\\b|\\b\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes)\\w*\\s*:\\s*\\(?[^,\\n]*\\+\\s*1\\b|^\\s*\\w*(?:[Rr]eject|[Aa]lert|[Nn]otif)\\w*(?:At|Sent|First|ed)\\??\\s*:\\s*(?:string|boolean)\\b"
+        },
+        {
+          "name": "least-mechanism",
+          "type": "judge",
+          "rubric": [
+            "The change derives 'second rejection' from data the module already records instead of storing new state on the profile"
+          ]
+        }
+      ]
+    },
+    {
       "id": "r2-waitlist-cap",
       "split": "tune",
       "prompt": "In waitlist_intake.ts, cap each region's waitlist at 1000 waiting parties: `joinWaitlist` must throw `WaitlistFullError` when the region already has 1000 parties waiting. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
