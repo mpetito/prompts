@@ -32,7 +32,8 @@ No `.github/instructions/` path-specific files unless the owner asks for them.
 ## AGENTS.md
 
 The one home for every rule an agent follows here. Observed in the owner's repos: 71 to 113
-lines.
+lines. Each rule appears once, in one section: a never-rule goes under Do Not only, and Standing
+rules holds only positive rules.
 
 ~~~~markdown
 # <Project> agent instructions
@@ -65,14 +66,14 @@ lines.
 
 ## Standing rules
 
-- <A rule specific to this repository, with the path or doc it protects.>
+- <A positive rule (what to do here), with the path or doc it protects; never-rules go under Do Not.>
 
 ## Do Not
 
 - Never relax a lint rule or threshold, add an inline disable (`eslint-disable`, `# noqa`), or set
   a rule to `warn`; change the code.
 - Never weaken, skip or delete a test to get green.
-- <A project prohibition, each naming the alternative.>
+- <A never-rule, naming the alternative; it goes here only, never also under Standing rules.>
 
 ## See also
 
