@@ -17,7 +17,7 @@ no file and no commit name a personal project, and that project-specific evidenc
   lists live only in the store.
 - **History:** every commit's content, paths and messages rewritten with `git filter-repo`
   (replacements, whole-file replacement for the four docs dense with project detail, one path
-  rename, one path removal). Commit counts, authors and dates unchanged; signatures dropped;
+  rename, one path removal). Commit counts and dates unchanged, and authors too apart from the five re-authored commits below; signatures dropped;
   every hash changed; SHAs cited in current docs updated from the commit map. Fully merged
   branches were deleted instead of rewritten. A bundle of the original history is the rollback,
   kept only in the private store.
