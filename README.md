@@ -26,6 +26,7 @@ lists readmitted skills only.
 | [project-setup](skills/project-setup/SKILL.md) | `/project-setup` | Set a repository up, or bootstrap an existing one, for agents: size and complexity caps as lint config with CI and a commit hook, and the files agents read (AGENTS.md, CLAUDE.md, copilot-instructions.md, REVIEW.md, CONTRIBUTING.md, `specs/`) |
 | [code-style](skills/code-style/SKILL.md) | loaded by workers before they write code | Steer code toward the owner's pragmatic style: least mechanism, reuse what exists, trust your own callers, registry dispatch, contract-level comments, delete what a change replaces, tests that never match copy |
 | [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |
+| [pull-request](skills/pull-request/SKILL.md) | `/pull-request` | Work a pull request: answer review feedback on your own PR (check each claim, fix what is right, reply to every thread, resolve or leave it open), open a PR or update its description, and post a review of someone else's PR once you approve the text |
 
 ## Agents
 
@@ -66,7 +67,7 @@ Keeping it here rather than in `~/.claude` puts it under version control alongsi
 
 The coding path is `code-style` → `review`, including bug fixes and refactors without a spec.
 `code-style` holds the personal style rules (project conventions win); `review` judges the
-diff. Worker briefs name the skill because Codex does not load this file. `pr-feedback`
+diff. Worker briefs name the skill because Codex does not load this file. `pull-request`
 collects full review bodies as well as threads and verifies visible and suppressed Copilot
 claims before accepting changes. These routes are explicit in skill bodies for other hosts,
 which do not load this Claude-only global file.
@@ -117,8 +118,8 @@ tokens; shortening, extending or removing a skill is judged by rerunning the sam
 
 ```sh
 uv tool install skill-eval-harness
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pr-authoring -Runs 3       # one skill
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pr-authoring -TriggerOnly  # description edits
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pull-request -Runs 3       # one skill
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pull-request -TriggerOnly  # description edits
 pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Regrade .eval-runs/<skill>/<timestamp>
 ```
 
@@ -129,9 +130,9 @@ results, what each arm can see, and how to evaluate an agent definition (`-Agent
 Authoring rules for a suite: each case produces text from a fixture under `evals/fixtures/`,
 because a headless run has no shell or network; every assertion traces to a rule in the skill
 that a model without the skill plausibly breaks, with a trap for it in the fixture; and trigger
-negatives are near-misses from adjacent tasks. `archive/skills/pr-authoring/evals/` is the reference
-suite. A skill with `disable-model-invocation: true` (such as `pr-consolidate`) never fires on
-its own by design, so it carries no trigger suite.
+negatives are near-misses from adjacent tasks. `skills/pull-request/evals/` is the reference
+suite. A skill with `disable-model-invocation: true` (such as `agent-orchestration`) never fires
+on its own by design, so it carries no trigger suite.
 
 ## Setup
 
@@ -171,9 +172,8 @@ Linux and macOS need no elevation when writing your own home directory. Run as y
 
 [Codex](https://learn.chatgpt.com/docs/build-skills) and
 [OpenCode](https://opencode.ai/docs/skills/) both discover `~/.agents/skills`.
-Skills are linked individually, including the shared `pr-scripts` helper directory, so the
-destination remains a real directory and client-managed entries stay local. Global Claude
-instructions and agents keep their Claude-specific formats.
+Skills are linked individually, so the destination remains a real directory and client-managed
+entries stay local. Global Claude instructions and agents keep their Claude-specific formats.
 
 The installer honors `CLAUDE_CONFIG_DIR` for Claude destinations and `CODEX_HOME` when migrating
 old Codex links. Shared skills remain under the user's `~/.agents/skills`, independent of
@@ -229,9 +229,9 @@ Skills here target the lowest common denominator so they work everywhere:
 - Directory names match the frontmatter `name`
 - Tool references are described as capabilities (e.g. "Context7 docs", "IDE diagnostics") rather than literal tool IDs, which differ per host
 - Cross-references are **skill-relative** (`../other-skill/SKILL.md`), never repo-root-relative — the tree is symlinked into user-level folders where no repo root exists
-- `archive/skills/pr-scripts/` holds shared PowerShell helpers rather than a skill. It is linked alongside the skills because sibling-relative references from PR skills depend on it; having no `SKILL.md`, it never enters a tool's skill catalog. `README.md` there is the script inventory; `REFERENCE.md` is the shared agent-facing usage, decision matrix, and reply templates that `pr-feedback`, `pr-resolve`, and `pr-review` all link to
 - `instructions/CLAUDE.md` is the user-level global instruction file, linked only into Claude Code for the same reason. It loads into every session in every project, so keep it short and keep every line load-bearing
 - `agents/` is Claude Code's subagent format and is deliberately **not** cross-tool — other hosts use incompatible agent formats, so the setup script links it into Claude Code only. Keep agent bodies host-generic and project-agnostic (no employer, stack, or repository specifics) so they behave the same in every project. Agents may depend on a readmitted skill two ways — a relative path such as `../skills/<name>/…`, which resolves in both the repository and `~/.claude/`, and a `skills:` frontmatter entry naming a skill to preload; while the collection is archived, agents carry what they need inline. `researcher` also names specific documentation MCP servers in its `tools` list; adjust that line on a machine where those servers are not configured
+- A skill's helper scripts live in its own `scripts/` folder, with their tests beside them, so they link with the skill; `pull-request` keeps its two PowerShell helpers there
 
 Codex custom agents use standalone TOML files under `~/.codex/agents/` (or `.codex/agents/` for one repository), so the Claude Markdown files in `agents/` cannot be linked there directly. If Codex equivalents are added later, keep them in a separate source folder and link those TOML files into `~/.codex/agents/`; share behavioral instructions deliberately, but translate model, reasoning, sandbox, MCP, and skill settings to Codex's schema.
 
@@ -249,9 +249,9 @@ not break portability. Several skills set them:
 
 | Key                        | Used for                                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------------------------- |
-| `model`                    | Pinning a cheaper tier on mechanical skills (`commit`, `tt`, `story`, `pr-resolve`, `pr-authoring`) |
+| `model`                    | Pinning a cheaper tier on mechanical skills (`tt`, `story`)                                         |
 | `effort`                   | Tuning reasoning depth without changing model tier                                                  |
-| `disable-model-invocation` | User-typed `/name` only (`pr-consolidate`, whose merges are destructive)                            |
+| `disable-model-invocation` | No automatic loading (`agent-orchestration`, which only the `orchestrator` agent loads)             |
 
 Skills that are _consumed inside another task_ rather than invoked directly — the standards and
 pattern skills — deliberately set no `model`, so they inherit whatever the calling workflow uses.

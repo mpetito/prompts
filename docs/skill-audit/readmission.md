@@ -31,14 +31,14 @@ A skill enters `skills/` only when all five hold. Start from the archived text a
    (skill-authoring, readmitted 2026-10-09, is one). The other four items still apply.
 2. **Three behaviour evals** in the `skill-eval-harness` manifest format used by
    `scripts/run-skill-eval.ps1`, each with a fixture trap, each failing without the skill and
-   passing with it. Trigger cases come after, not instead. Use `archive/skills/pr-authoring/evals/`
-   as the reference suite.
+   passing with it. Trigger cases come after, not instead. Use `skills/pull-request/evals/` as
+   the reference suite.
 3. **One consumer role**, named in the first line of the body: orchestrator (loaded once per
    session; may be long), worker (loaded once per lane by subagents or Codex; under about 120
    lines), human (slash-invoked; short, procedural) or domain reference (loaded when a project
    needs it; progressive disclosure into `references/`). The line budget follows the role.
-4. **No overlap** with the harness, an enabled plugin, or a sibling skill. commit, review and
-   pr-review must beat the official plugins on the same fixtures (`-Baseline`, see
+4. **No overlap** with the harness, an enabled plugin, or a sibling skill. The review and
+   pull-request skills must beat the official plugins on the same fixtures (`-Baseline`, see
    [evaluating-skills.md](../evaluating-skills.md)) or stay archived. A rule has one home.
 5. **Loads within 30 days** of readmission, measured by `python3 scripts/skill-usage.py`, or
    it returns to the archive. Run the script monthly.
