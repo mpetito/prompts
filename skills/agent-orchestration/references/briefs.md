@@ -32,6 +32,7 @@ Long version: <results path>
 
 ```markdown
 # <lane>: <one-line goal>
+Load the code-style skill before you write code.
 Why: <the owner's or the spec's words, verbatim, with the source>
 Worktree: `git worktree add -b <branch> ../<repo>-wt-<lane> <LANE-BASE from state.sh thread>`; base `<sha>` when sent.
 Owns: <paths>. Never touch: <paths> (owned by <lane>; message the thread with evidence instead).
