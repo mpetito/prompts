@@ -133,6 +133,11 @@ both arms are pointed at every file. A case cannot test whether a skill makes th
 a file unprompted, such as a repository's `REVIEW.md`; test what the skill does once it has read
 it, or what it does when the file is absent.
 
+Claude arms still load the user's `~/.claude/CLAUDE.md`: `--setting-sources project` does not
+exclude it (probe, 2026-10-11). `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` would block it; the runner
+keeps it because Claude subagents load it in real use too. Read a Claude `without_skill` arm as
+"the owner's global instructions, no skill". Codex arms never see it.
+
 ## Agents
 
 `-AgentDefinition <name>` evaluates `agents/<name>.md` instead of a skill. Its suite lives in
