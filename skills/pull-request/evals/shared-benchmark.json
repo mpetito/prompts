@@ -230,7 +230,7 @@
         "fixtures/station-metadata-pr.md"
       ],
       "expected_behavior": [
-        "Rule F5.",
+        "Rule F3.",
         "Re-checks both outdated threads at the head instead of treating isOutdated as addressed",
         "Finds the full yaml.Loader still in _read_stations and switches it to the safe loader, in code",
         "Answers the file-handle thread as fixed by 7d3e0aa's with block; replies before resolving each thread"

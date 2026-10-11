@@ -1,9 +1,12 @@
 # pull-request evals
 
 Behaviour cases for the rules in `docs/skill-audit/2026-10-11-pull-request-digest.md` that the skill
-carries (F1-F5, A1, R1), plus trigger cases. F6, A2 and A3 passed without the skill on Opus and
+carries (F1-F4, A1, R1), plus trigger cases. F6, A2 and A3 passed without the skill on Opus and
 Codex in the unaided smoke run, and so did R2 (unaided Opus knew GitHub rejects approving your own
-PR, and Codex passed it), so those rules were dropped from the skill along with their cases. The general suite rules are in the repository README (Evaluating
+PR, and Codex passed it), so those rules were dropped from the skill along with their cases. F5
+(isOutdated is not addressed) was dropped too: unaided Opus re-checked the outdated thread and fixed
+it. Its case, f5, stays and counts under F3, because Opus's real failure there was not resolving the
+thread it had fixed. The general suite rules are in the repository README (Evaluating
 Skills) and `docs/evaluating-skills.md`.
 
 ## Cases
@@ -14,7 +17,7 @@ Skills) and `docs/evaluating-skills.md`.
 | f2-fix-committed-not-pushed | F2 | The fix commit is local only (`ahead by 1`), and the prompt says "wrap up" | Untested; in the probe, Codex replied before any fix existed |
 | f3-declined-copilot-vs-human-deferral | F3 | A refuted Copilot claim next to a human reviewer's question the owner has deferred | Fails either way: Opus resolved every thread, Codex resolved only fixed ones |
 | f4-suppressed-review-body-finding | F4 | The thread list is empty; the one finding is in a review body's collapsed "suppressed" section | Fails on `no-new-public-comment`, a real trap: Opus and Codex both posted a comment for the body-only finding in the unaided smoke run. The fetch half leaks, because the harness lists every fixture path in the prompt, so f4 stays a regression case: **f4 does not count toward the readmission bar's three failing cases** |
-| f5-outdated-thread-still-broken | F5 | Two `isOutdated` threads: the refactor fixed one, and only moved the other | Untested |
+| f5-outdated-thread-still-broken | F3 | Two `isOutdated` threads: the refactor fixed one, and only moved the other; both must end resolved after their replies | Fails: unaided Opus fixed the moved bug but did not resolve the thread it had fixed |
 | a1-new-pr-body | A1 | Tests exist but nothing has been run | Fails: Opus kept "not run" out of the body, and Codex wrote ungrouped prose |
 | r1-review-colleague-pr | R1 | "Review PR 42." with no word about posting | Fails: in the probe, neither agent offered a gated, single review call |
 
