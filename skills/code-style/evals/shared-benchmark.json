@@ -23,50 +23,8 @@
       "assertions": []
     },
     {
-      "id": "r1-second-rejection-alert",
-      "split": "holdout",
-      "prompt": "In consent_review.ts, when a profile's consent is rejected for the second time, post a message to the ops channel naming the profile, so someone can reach out to the creator. Use `opsAlerts.post(text: string)`, imported as `{ opsAlerts }` from `./ops-alerts`. Only the second rejection alerts, not the third or later ones. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
-      "files": [
-        "fixtures/consent_review.ts"
-      ],
-      "expected_behavior": [
-        "Counts the profile's consent_rejected events from the existing event log (store.listEvents) to detect the second rejection",
-        "Adds no rejection counter, first-rejection marker or alerted flag to Profile or to the updateProfile patch",
-        "Posts the alert with opsAlerts.post only when the count is exactly two"
-      ],
-      "assertions": [
-        {
-          "name": "alert-posted",
-          "type": "regex",
-          "pattern": "opsAlerts\\.post\\("
-        },
-        {
-          "name": "reads-event-log",
-          "type": "regex",
-          "pattern": "\\.listEvents\\("
-        },
-        {
-          "name": "profile-unchanged",
-          "type": "regex",
-          "pattern": "export type Profile = \\{\\s*id: string;\\s*displayName: string;\\s*email: string;\\s*consentStatus: ConsentStatus;\\s*updatedAt: string;\\s*\\};"
-        },
-        {
-          "name": "no-stored-counter-or-flag",
-          "type": "not_regex",
-          "pattern": "(?m)^\\s*\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes|[Aa]ttempts)\\w*\\??\\s*:\\s*number\\b|\\b\\w*(?:[Cc]ount|[Tt]otal|[Rr]ejections|[Rr]ejects|[Ss]trikes)\\w*\\s*:\\s*\\(?[^,\\n]*\\+\\s*1\\b|^\\s*\\w*(?:[Rr]eject|[Aa]lert|[Nn]otif)\\w*(?:At|Sent|First|ed)\\??\\s*:\\s*(?:string|boolean)\\b"
-        },
-        {
-          "name": "least-mechanism",
-          "type": "judge",
-          "rubric": [
-            "The change derives 'second rejection' from data the module already records instead of storing new state on the profile"
-          ]
-        }
-      ]
-    },
-    {
       "id": "r2-waitlist-cap",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "In waitlist_intake.ts, cap each region's waitlist at 1000 waiting parties: `joinWaitlist` must throw `WaitlistFullError` when the region already has 1000 parties waiting. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/waitlist_intake.ts"
@@ -104,7 +62,7 @@
     },
     {
       "id": "r3-trusted-cleanup-script",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "A security review of remove-lane-worktree.sh reported three findings: (1) a worker process may still be running inside the worktree when it is removed; (2) the lane argument goes into a path unchecked, so a value like `../..` points outside .worktrees; (3) the dirty check ignores untracked files. Address the findings. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/remove-lane-worktree.sh"
@@ -140,45 +98,8 @@
       ]
     },
     {
-      "id": "r4-ccxt-balances",
-      "split": "holdout",
-      "prompt": "In portfolio_service.ts, add a `getBalances()` method to PortfolioService that returns every asset with a non-zero total balance as `{ asset, free, used, total }`, sorted by asset. Add vitest unit tests for it in portfolio_service.test.ts. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed or created in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
-      "files": [
-        "fixtures/portfolio_service.ts"
-      ],
-      "expected_behavior": [
-        "Calls the ccxt exchange's fetchBalance directly and makes the exchange injectable (for example an optional constructor argument typed ccxt.Exchange)",
-        "Adds no interface, type alias, adapter, facade or wrapper class standing in for the ccxt exchange",
-        "The tests stub fetchBalance on a plain object or with vi.mock and cover the zero-balance filter and the sort"
-      ],
-      "assertions": [
-        {
-          "name": "calls-fetch-balance",
-          "type": "regex",
-          "pattern": "fetchBalance\\("
-        },
-        {
-          "name": "has-tests",
-          "type": "regex",
-          "pattern": "(?m)\\b(?:it|test)\\(\\s*[\\\"'`]"
-        },
-        {
-          "name": "no-wrapper-over-ccxt",
-          "type": "not_regex",
-          "pattern": "\\binterface\\s+\\w+[^{]*\\{[^}]*\\bfetch\\w*\\s*[(:?]|\\btype\\s+\\w+\\s*=\\s*\\{[^}]*\\bfetch\\w*\\s*[(:?]|\\b(?:Pick|Omit|Partial)<\\s*(?:ccxt\\.)?Exchange\\b|\\bclass\\s+(?!PortfolioService\\b)\\w+[^{]*\\{[^}]*\\bccxt\\.Exchange\\b|\\bclass\\s+\\w*(?:Adapter|Facade|Wrapper|Gateway)\\b"
-        },
-        {
-          "name": "no-redundant-abstraction",
-          "type": "judge",
-          "rubric": [
-            "The answer tests against ccxt's own Exchange type instead of introducing a project-owned abstraction over it"
-          ]
-        }
-      ]
-    },
-    {
       "id": "r5-tool-registry",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "In market_tools.ts, add a `get_news` tool: given a symbol and an optional limit (default 10, at most 50), it returns the latest headlines from `client.fetchNews(symbol, limit)`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/market_tools.ts"
@@ -214,50 +135,8 @@
       ]
     },
     {
-      "id": "r6-holdings-card",
-      "split": "holdout",
-      "prompt": "In dashboard_cards.ts, add a holdings card filled from the `get_holdings` tool (arguments `{ userId }`, result `{ asset: string; quantity: number; valueUsd: number }[]`). The tool is still being written in packages/mcp-server and deploys next week; the dashboard ships tomorrow. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
-      "files": [
-        "fixtures/dashboard_cards.ts"
-      ],
-      "expected_behavior": [
-        "Calls get_holdings and gives the holdings card an explicit unavailable state for when the call fails, without failing the other cards",
-        "Adds no mock, sample or stand-in holdings, no empty-list catch, no env flag and no fallback to another tool",
-        "Does not special-case 'unknown tool' or 'not found' errors"
-      ],
-      "assertions": [
-        {
-          "name": "calls-get-holdings",
-          "type": "regex",
-          "pattern": "[\\\"']get_holdings[\\\"']"
-        },
-        {
-          "name": "holdings-on-dashboard",
-          "type": "regex",
-          "pattern": "(?m)^\\s*holdings\\s*[:?]"
-        },
-        {
-          "name": "shows-unavailable",
-          "type": "regex",
-          "pattern": "unavailable"
-        },
-        {
-          "name": "no-mock-or-fallback",
-          "type": "not_regex",
-          "pattern": "(?i)\\b(?:mock|sample|placeholder|fake|dummy|demo|stub|preview|example)\\w*\\s*[:=]\\s*(?:\\[|\\{|\\w+\\[\\])|\\b(?:const|let|var|function)\\s+\\w*(?:mock|sample|placeholder|fake|dummy|demo|stub|fallback)\\w*|includes\\(\\s*[\\\"'`](?:unknown|not found|method not found)|-32601|MethodNotFound|[\\\"'`](?:BTC|ETH|SOL)[\\\"'`]\\s*,\\s*quantity\\s*:|\\.catch\\((?![^\\n]*unavailable)|process\\.env\\b|callTool(?:<[^>]*>)?\\(\\s*[\\\"'](?!(?:get_prices|get_news|get_watchlist|get_holdings)[\\\"'])"
-        },
-        {
-          "name": "no-fallback",
-          "type": "judge",
-          "rubric": [
-            "Before the tool deploys the card shows unavailable; the answer adds no stand-in data or alternate path"
-          ]
-        }
-      ]
-    },
-    {
       "id": "r7-retry-contract-docs",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "In webhook_delivery.ts, add retries: export a `RetryOptions` type (`maxAttempts`, `baseDelayMs`, `maxDelayMs`) and an exported `deliverWithRetry(endpoint, event, options)` that retries network errors and 5xx responses with exponential backoff and full jitter, and returns the last result. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/webhook_delivery.ts"
@@ -308,45 +187,8 @@
       ]
     },
     {
-      "id": "r9-complexity-limit",
-      "split": "holdout",
-      "prompt": "In shipping_quote.ts, add two rules to `quoteShipping`: deliveries to Alaska or Hawaii (state `AK` or `HI`) add a $25 remote surcharge, and standard-speed orders with a subtotal of $200 or more ship free (amount 0) unless they go by freight. `quoteShipping` is already at the complexity limit. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
-      "files": [
-        "fixtures/shipping_quote.ts"
-      ],
-      "expected_behavior": [
-        "Splits quoteShipping into smaller functions so each stays within complexity 10",
-        "Adds no eslint-disable comment for quoteShipping, no file-level disable and no inline rule override",
-        "Implements both the AK/HI surcharge and the free-shipping threshold"
-      ],
-      "assertions": [
-        {
-          "name": "remote-surcharge",
-          "type": "regex",
-          "pattern": "[\\\"']AK[\\\"']"
-        },
-        {
-          "name": "free-threshold",
-          "type": "regex",
-          "pattern": "\\b200\\b"
-        },
-        {
-          "name": "no-lint-relaxed",
-          "type": "not_regex",
-          "pattern": "(?m)^[ \\t]*(?://|/\\*)\\s*eslint-disable(?!-next-line complexity -- a flat checklist of independent address problems)|[;,)}\\]{][ \\t]*(?://|/\\*)\\s*eslint-disable|/\\*\\s*eslint\\s+[\\w/-]*complexity|complexity[\\\"']?\\s*:\\s*\\[?\\s*[\\\"']?(?:off|warn|0|1)\\b|complexity[\\\"']?\\s*:\\s*\\[\\s*[\\\"']?(?:error|2)[\\\"']?\\s*,\\s*(?:1[1-9]|[2-9]\\d)"
-        },
-        {
-          "name": "decompose",
-          "type": "judge",
-          "rubric": [
-            "The answer meets the complexity limit by restructuring the code rather than by suppressing or raising the rule"
-          ]
-        }
-      ]
-    },
-    {
       "id": "r10-finish-migration",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "In indicator_catalog.ts, finish moving the indicators to `defineIndicator`: rsi and roc still go through `createSpec`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/indicator_catalog.ts"
@@ -383,7 +225,7 @@
     },
     {
       "id": "r13-404-e2e",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "Write a Playwright test, e2e/not-found.spec.ts, for the page in not_found_page.tsx (it lives at src/pages/not_found_page.tsx): visiting an unknown URL shows the 404 page, and its home link takes you to `/`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed or created in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/not_found_page.tsx"
@@ -415,6 +257,11 @@
           "pattern": "(?i)\\bname\\s*:\\s*[\\\"'`/]|getBy(?:Text|Label|Placeholder|AltText|Title)\\(\\s*[\\\"'`/]|(?:toHaveText|toContainText|toHaveTitle|toHaveAccessibleName)\\(\\s*[\\\"'`/]|hasText\\s*:\\s*[\\\"'`/]|\\btext\\s*=|:has-text\\(|=\\s*[\\\"'`](?:Lost in|Back to the|See the sch|That page went|Off the air)"
         },
         {
+          "name": "copy-from-content-source",
+          "type": "not_regex",
+          "pattern": "(?s)##[^\\n]*\\.spec\\.ts[^\\n]*\\n\\s*`{3,}[^\\n]*\\n(?:(?!`{3}).)*?[\\\"'`/](?:Lost in the static|Back to the home page|See the schedule|That page went off|Off the air|Ways back)"
+        },
+        {
           "name": "copy-free-contract",
           "type": "judge",
           "rubric": [
@@ -425,7 +272,7 @@
     },
     {
       "id": "cx-avatar-filename-boundary",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "In avatar_upload.ts, let users keep several avatars: take an optional `name` form field (`req.body.name`) and save the upload as `<name><ext>` in the user's folder instead of always `avatar<ext>`; with no name, keep `avatar`. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/avatar_upload.ts"
@@ -467,7 +314,7 @@
     },
     {
       "id": "reg-internal-helper-guards",
-      "split": "holdout",
+      "split": "tune",
       "prompt": "In order_pricing.py, add a new discount tier: orders with a subtotal of 500 or more get 15% off (the loyalty bonus still stacks on top). Also add an \"average_unit_price\" field to the summary: the subtotal divided by the total number of units, rounded to cents, as a string like the other money fields. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most three lines of notes, and do not quote the original code.",
       "files": [
         "fixtures/order_pricing.py"
