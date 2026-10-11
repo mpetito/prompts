@@ -32,10 +32,14 @@ no file and no commit name a personal project, and that project-specific evidenc
   docs the hand scrub had cleaned on the tip. Fixed as a class: whole-file replacement for the
   dense docs, and a check that no line the scrub removed survives anywhere in history.
 - A review caught a `set -e` gap: `test A && test B` does not abort when `A` fails.
+- Nobody caught, until the final post-apply look: a reviewer's `cp -a` scratch copy of a linked
+  worktree kept its `.git` pointer, so the reviewer's test identity went into the live repo's
+  config and five commits carried it. Re-authored locally before the push (same trees), and
+  recorded in `candidates.md` as a fix for the orchestration brief guidance.
 
 ## Cost
 
-Nine Opus workers (inventory, research, plan review, scrub author and reviewer, dry-run author and
+Nine Opus workers plus one owner-approved re-author pass (inventory, research, plan review, scrub author and reviewer, dry-run author and
 reviewer, final verify), about 1.5M worker tokens, no eval spend. Four review rounds landed fixes;
 the rewrite itself takes under two seconds.
 
