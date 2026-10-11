@@ -24,6 +24,7 @@ lists readmitted skills only.
 | [firecrawl](skills/firecrawl/SKILL.md) | `/firecrawl` | Pull many pages with Firecrawl: a bounded crawl or a checked keyless scrape to files, and fields across pages as JSON |
 | [orchestration-main](skills/orchestration-main/SKILL.md) | `/orchestration-main` | Run a multi-agent build from your own session: launch, steer and rotate orchestration threads, and keep your decisions in front of you |
 | [project-setup](skills/project-setup/SKILL.md) | `/project-setup` | Set a repository up, or bootstrap an existing one, for agents: size and complexity caps as lint config with CI and a commit hook, and the files agents read (AGENTS.md, CLAUDE.md, copilot-instructions.md, REVIEW.md, CONTRIBUTING.md, `specs/`) |
+| [code-style](skills/code-style/SKILL.md) | loaded by workers before they write code | Steer code toward the owner's pragmatic style: least mechanism, reuse what exists, trust your own callers, registry dispatch, contract-level comments, delete what a change replaces, tests that never match copy |
 | [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |
 
 ## Agents
