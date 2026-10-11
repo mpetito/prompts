@@ -91,36 +91,6 @@
       ]
     },
     {
-      "id": "r3-safety-claim",
-      "split": "tune",
-      "prompt": "Write the spec and plan for the feature described in the input file. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.",
-      "files": [
-        "fixtures/allergen-badges-request.md"
-      ],
-      "expected_behavior": [
-        "The 'Nut-free kitchen - safe for nut allergies' badge text is a numbered open question for the owner to confirm, not a requirement"
-      ],
-      "assertions": [
-        {
-          "name": "spec-written",
-          "type": "regex",
-          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
-        },
-        {
-          "name": "safety-claim-is-open-question",
-          "type": "regex",
-          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+|(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b|\\d{1,2}[.):](?=[ \\t*]|$)))(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+|(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b|\\d{1,2}[.):](?=[ \\t*]|$))))[\\s\\S])*?(?:nut[- ]free|safe for (?:people with )?nut|nut allerg|(?:green|safety) badge))(?=(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+|(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b|\\d{1,2}[.):](?=[ \\t*]|$))))[\\s\\S])*?(?:confirm\\w*|verif\\w*|unconfirmed|unproven|untested|not (?:yet )?(?:been )?(?:confirmed|verified|checked|shown|proven)|is (?:that|this|it) (?:true|guaranteed|always)|can (?:we|tally) (?:rely|count|assume)|\\brely\\b|guarantee\\w*|evidence|have you (?:seen|checked)|\\bdo (?:all|every)\\b|food[- ]safety|fryer|cross[- ]?(?:contact|contaminat)|legal|liabil|sign[- ]?off|approv\\w*|review\\w*))"
-        },
-        {
-          "name": "safety-claim-not-adopted",
-          "type": "judge",
-          "rubric": [
-            "The spec does not require the badge to read 'safe for nut allergies' as settled copy; the claim waits on the owner's confirmation, and the shared-fryer note is raised against it"
-          ]
-        }
-      ]
-    },
-    {
       "id": "r4-what-how",
       "split": "tune",
       "prompt": "The input file is a snapshot of a git repository: every file's path and full contents. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.\n\nThe repository owner asks:\n\n> We need tally to handle expenses in more than one currency. Add a currency column in src/parser.ts by changing parseRow() so each Expense carries its currency, and make the totals take it into account. Our bank's CSV exports always include an ISO 4217 code in the fifth column, so every row will have one. Two things I haven't decided yet: whether the totals should convert everything to USD (we would need to pull exchange rates from somewhere) or just show one subtotal per currency, and whether the new column in the table output should be headed \"Currency\" or \"CCY\". Write the spec and plan for this.",
@@ -168,65 +138,36 @@
       ]
     },
     {
-      "id": "r5-resume-unticked-step",
+      "id": "r5-tick-order",
       "split": "tune",
-      "prompt": "The input file is a snapshot of a git repository and its terminal: every file's path and contents, the recent history, and the output of the last commands run. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: list your next two actions, in the order you would take them, as a numbered list (1. and 2.), where an action is one change to the repository's files. For each action, say which plan step it serves, and give the path and full new contents of every file it changes.\n\nThe repository owner asks:\n\n> Carry on with spec 011.",
+      "prompt": "The input file is a snapshot of a git repository and its terminal: every file's path and contents, the recent history, and the output of the last commands run. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: the complete ordered list of every edit you will make to the repository's files to finish the plan, plan.md edits included, nothing skipped. Give one edit per line as a numbered list (1., 2., ...); start each line with the path of the one file that edit changes, then say what the edit does and which plan step it serves. Do not give file contents.\n\nThe repository owner asks:\n\n> Carry on with spec 011.",
       "files": [
-        "fixtures/tally-011-resume.md"
+        "fixtures/tally-011-tick-order.md"
       ],
       "expected_behavior": [
-        "Sees that step 4 is already done (its tests are in the last commit and npm test passes) and ticks it in plan.md as the first action, without redoing it",
-        "The next work is step 5 (README), not step 6; plan.md keeps its steps unchanged (no re-plan)"
+        "Lists every remaining edit, steps 5 to 8, in plan order",
+        "Ticks each step in plan.md after that step's last file edit and before the next step's first file edit, never in a batch after the code"
       ],
       "assertions": [
         {
-          "name": "first-action-ticks-4",
+          "name": "every-step-edited",
           "type": "regex",
-          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?(?:\\[x\\][ \\t]*4\\.|\\btick\\w*\\b[^\\n]{0,60}?\\b(?:step[ \\t]*)?4\\b|\\bstep[ \\t]*4\\b[^\\n]{0,60}?\\b(?:tick\\w*|check(?:ed)?[ \\t]+off|mark\\w*)\\b|\\bmark\\w*[^\\n]{0,30}?\\bstep[ \\t]*4\\b)"
+          "pattern": "(?m)\\A(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/totals\\.ts|test/totals\\.test\\.ts)\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/format\\.ts|test/format\\.test\\.ts)\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*README\\.md\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*package\\.json\\b)"
         },
         {
-          "name": "step-5-next",
+          "name": "every-step-ticked",
           "type": "regex",
-          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?3[.):])[\\s\\S])*?(?:\\bstep[ \\t]*5\\b|README\\.md)|^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*README\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
+          "pattern": "(?m)\\A(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)5\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)6\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)7\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)8\\b)"
         },
         {
-          "name": "plan-intact",
-          "type": "regex",
-          "pattern": "\\[x\\][ \\t]*4\\.[ \\t]*`test/parser\\.test\\.ts`[\\s\\S]*?\\[[ x]\\][ \\t]*5\\.[ \\t]*`README\\.md`[\\s\\S]*?\\[ \\][ \\t]*6\\.[ \\t]*`src/totals\\.ts`[\\s\\S]*?\\[ \\][ \\t]*7\\.[ \\t]*`src/format\\.ts`[\\s\\S]*?\\[ \\][ \\t]*8\\.[ \\t]*`README\\.md`"
-        }
-      ]
-    },
-    {
-      "id": "r5-tick-before-next-step",
-      "split": "tune",
-      "prompt": "The input file is a snapshot of a git repository and its terminal: every file's path and contents, the recent history, and the output of the last commands run. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: list your next two actions, in the order you would take them, as a numbered list (1. and 2.), where an action is one change to the repository's files. For each action, say which plan step it serves, and give the path and full new contents of every file it changes.\n\nThe repository owner asks:\n\n> Carry on with spec 011.",
-      "files": [
-        "fixtures/tally-011-step-landed.md"
-      ],
-      "expected_behavior": [
-        "Sees that step 5 has landed in the working tree and its check passed, and ticks it in plan.md as the first action, in the same change as the README edit",
-        "Starts step 6 only after that tick"
-      ],
-      "assertions": [
-        {
-          "name": "first-action-ticks-5",
-          "type": "regex",
-          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?(?:\\[x\\][ \\t]*5\\.|\\btick\\w*\\b[^\\n]{0,60}?\\b(?:step[ \\t]*)?5\\b|\\bstep[ \\t]*5\\b[^\\n]{0,60}?\\b(?:tick\\w*|check(?:ed)?[ \\t]+off|mark\\w*)\\b|\\bmark\\w*[^\\n]{0,30}?\\bstep[ \\t]*5\\b)"
-        },
-        {
-          "name": "no-step-6-in-first-action",
+          "name": "tick-before-next-step",
           "type": "not_regex",
-          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?1[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):])[\\s\\S])*?^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*(?:src/totals\\.ts|test/totals\\.test\\.ts|src/format\\.ts)[`*_]*:?[ \\t]*=*[ \\t]*$"
+          "pattern": "(?m)(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/format\\.ts|test/format\\.test\\.ts)\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)5\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*README\\.md\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)6\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*package\\.json\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)7\\b)"
         },
         {
-          "name": "second-action-is-step-6",
-          "type": "regex",
-          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?2[.):](?:(?!^[ \\t]*(?:#{1,4}[ \\t]+)?(?:\\*\\*)?(?:action[ \\t]*)?3[.):])[\\s\\S])*?(?:\\bstep[ \\t]*6\\b|src/totals\\.ts|CategoryTotal|sumByCategory)"
-        },
-        {
-          "name": "plan-shows-5-ticked-6-open",
-          "type": "regex",
-          "pattern": "\\[x\\][ \\t]*5\\.[ \\t]*`README\\.md`[^\\[]*\\[ \\][ \\t]*6\\."
+          "name": "no-edit-after-own-tick",
+          "type": "not_regex",
+          "pattern": "(?m)(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)5\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/totals\\.ts|test/totals\\.test\\.ts)\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)6\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/format\\.ts|test/format\\.test\\.ts)\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)7\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*README\\.md\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)8\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*package\\.json\\b)"
         }
       ]
     },

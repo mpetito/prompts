@@ -29,15 +29,11 @@ A small command-line tool that reads an expense CSV export and prints totals by 
 
 ## Input format
 
-A header row, then one expense per line. The fifth column, an ISO 4217 currency code, is
-optional:
+A header row, then one expense per line:
 
-    date,description,category,amount,currency
-    2026-03-01,Coffee,food,3.50,EUR
+    date,description,category,amount
+    2026-03-01,Coffee,food,3.50
     2026-03-02,Train,travel,12.00
-
-A row without a code, or with an empty one, is in USD. Codes are case-insensitive. A code that
-is not three letters stops the run with an error naming its line.
 
 Category aliases (for example `groceries` -> `food`) are applied before totalling.
 
@@ -143,18 +139,19 @@ Spec: [spec.md](spec.md)
   Check: `npm test` passes.
 - [x] 4. `test/parser.test.ts`: tests for a present code, a missing column (USD), and an invalid
   code rejected with its line number. Check: `npm test` passes with the three new tests.
-- [ ] 5. `README.md`: document the optional fifth column and the USD default under "Input format".
-  Check: the README sample rows match what `parseRow()` accepts.
 
 ## Phase 2: totals and output
 
-- [ ] 6. `src/totals.ts`: `CategoryTotal` gains `currency`; `sumByCategory()` groups by
-  category and currency, sorted by category then currency. Check: a new test in
-  `test/totals.test.ts` with two currencies in one category.
-- [ ] 7. `src/format.ts`: `formatTable()` adds a `Currency` column; `formatJson()` adds a
-  `currency` field to each entry. Check: a new `test/format.test.ts` covers both.
-- [ ] 8. `README.md`: update the usage section to show the currency in the output. Check:
-  `npm test` passes.
+- [ ] 5. `src/totals.ts`, `test/totals.test.ts`: `CategoryTotal` gains `currency`;
+  `sumByCategory()` groups by category and currency, sorted by category then currency. Check: a
+  new test in `test/totals.test.ts` with two currencies in one category passes under `npm test`.
+- [ ] 6. `src/format.ts`, `test/format.test.ts`: `formatTable()` adds a `Currency` column;
+  `formatJson()` adds a `currency` field to each entry. Check: a new `test/format.test.ts`
+  covering both passes under `npm test`.
+- [ ] 7. `README.md`: document the optional fifth column and the USD default under "Input format",
+  and show the currency in the usage output. Check: the README sample rows parse with
+  `parseFile()`, and `npm test` passes.
+- [ ] 8. `package.json`: bump the version to 0.5.0. Check: `npm test` prints `tally@0.5.0`.
 ````
 
 ### specs/011-multi-currency-totals/spec.md
@@ -388,58 +385,13 @@ test("sums by category, sorted by name", () => {
 
 ```text
 $ git log --oneline
-444aa93 011 step 4: parser tests pass
-490ac43 parser tests for the currency column
+490ac43 011 step 4: parser tests for the currency column
 c5eaec3 011 steps 1-3: parse the currency column
 5ee826a spec 011: multi-currency totals
 4910287 tally 0.4.0
 
 $ git status --short
- M README.md
-
-$ git diff
-diff --git a/README.md b/README.md
-index 4d2a39d..63aafb7 100644
---- a/README.md
-+++ b/README.md
-@@ -9,12 +9,16 @@ A small command-line tool that reads an expense CSV export and prints totals by
- 
- ## Input format
- 
--A header row, then one expense per line:
-+A header row, then one expense per line. The fifth column, an ISO 4217 currency code, is
-+optional:
- 
--    date,description,category,amount
--    2026-03-01,Coffee,food,3.50
-+    date,description,category,amount,currency
-+    2026-03-01,Coffee,food,3.50,EUR
-     2026-03-02,Train,travel,12.00
- 
-+A row without a code, or with an empty one, is in USD. Codes are case-insensitive. A code that
-+is not three letters stops the run with an error naming its line.
-+
- Category aliases (for example `groceries` -> `food`) are applied before totalling.
- 
- ## Development
-
-$ node --input-type=module -e "import { readFileSync } from 'node:fs'; import { parseFile } from './src/parser.ts'; console.log(parseFile(readFileSync('readme-sample.csv', 'utf8')))"   # the README sample rows
-[
-  {
-    date: '2026-03-01',
-    description: 'Coffee',
-    category: 'food',
-    amountCents: 350,
-    currency: 'EUR'
-  },
-  {
-    date: '2026-03-02',
-    description: 'Train',
-    category: 'travel',
-    amountCents: 1200,
-    currency: 'USD'
-  }
-]
+(clean)
 
 $ npm test
 
