@@ -10,55 +10,54 @@ file stays under about 120 lines.
 
 Branch, commit and PR policy come from the project's CONTRIBUTING.md and, where it is silent, from
 the convention its `git log` shows; a PR title follows the commit convention. The two scripts in
-`scripts/` need PowerShell 7; on a host without `pwsh`, run the raw `gh api` calls shown with them.
-Waiting for CI or for Copilot's review belongs to the pr-watch agent.
+`scripts/` in this skill's folder need PowerShell 7; on a host without `pwsh`, run the raw `gh api`
+calls shown with them.
 
 ## Answer review feedback on your own PR
 
-1. Fetch every unresolved thread (id, `isOutdated`, comments with their REST `databaseId`) and
-   every review body: `pwsh scripts/Get-PrFeedback.ps1 -Pr <n>`, or
+1. Fetch every unresolved thread (id, `isOutdated`, comments with their REST `fullDatabaseId`)
+   and every review body: `pwsh <skill dir>/scripts/Get-PrFeedback.ps1 -Pr <n>`, or
 
    ```sh
    gh api graphql --paginate --slurp -f owner=<owner> -f name=<repo> -F pr=<n> -f query='
      query($owner:String!,$name:String!,$pr:Int!,$endCursor:String){repository(owner:$owner,name:$name){
        pullRequest(number:$pr){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor}
-         nodes{id isResolved isOutdated path line comments(first:100){nodes{databaseId author{login} body}}}}}}}'
+         nodes{id isResolved isOutdated path line comments(first:100){nodes{fullDatabaseId author{login} body}}}}}}}' &&
    gh api repos/<owner>/<repo>/pulls/<n>/reviews --paginate
    ```
 
-   A failed fetch is an error to report, never "no feedback".
-2. Read the review bodies too, including Copilot's collapsed "suppressed" section. An empty
-   thread list is not "no feedback"; a body-only finding gets no new public comment.
-3. Verify each claim against the code and docs before accepting it; reject with the evidence.
+   A failed fetch is an error to report, never "no feedback". Read the review bodies too,
+   including Copilot's collapsed "suppressed" section. An empty thread list is not "no feedback";
+   a body-only finding gets no new public comment.
+2. Verify each claim against the code and docs before accepting it; reject with the evidence.
    Declining a blanket guard is [code-style](../code-style/SKILL.md)'s "trust your callers".
-4. GitHub's `isOutdated` means the line moved, not that the point was addressed; re-check it at
-   the head.
-5. A claim that stays ambiguous after you check the code and docs goes to
+3. A claim that stays ambiguous after you check the code and docs goes to
    [model-council](../model-council/SKILL.md) (or the owner); don't decide it alone. Leave its
    thread open until it is settled.
-6. Commit the fixes, run the project's checks, and `git push`.
-7. Reply only after the fix is pushed, citing the pushed SHA; reply before you resolve, never
+4. Commit the fixes, run the project's checks, and `git push`.
+5. Reply only after the fix is pushed, citing the pushed SHA; reply before you resolve, never
    resolve silently.
-8. Reply to every thread. Resolve threads you fixed, and Copilot threads you declined with
+6. Reply to every thread. Resolve threads you fixed, and Copilot threads you declined with
    evidence. A human reviewer's disagreement or deferral stays open for that reviewer.
-   - Reply, then resolve: `pwsh scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body '<reply>'`
+   - Reply, then resolve: `pwsh <skill dir>/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body '<reply>'`
      (it never resolves when the reply fails), or
 
      ```sh
-     gh api repos/<owner>/<repo>/pulls/<n>/comments/<first comment databaseId>/replies -f body='<reply>'
+     gh api repos/<owner>/<repo>/pulls/<n>/comments/<first comment fullDatabaseId>/replies -f body='<reply>' &&
      gh api graphql -f id=PRRT_... -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}'
      ```
 
    - Reply and leave open: the `.../replies` call alone.
-9. Report each thread's end state, and each body-only finding with what you did about it.
+7. Report each thread's end state, and each body-only finding with what you did about it.
 
 ## Open or update a PR
 
 - Body, kept short: the motivation first, in plain prose; then the changes grouped by purpose;
   then validation that lists only what was actually run, with results, and says in the body what
   was not run. No Summary boilerplate, no filler lines.
-- Write the body to a file, then `gh pr create --title '<title>' --body-file body.md`, or
-  `gh pr edit <n> --body-file body.md` for an update.
+- Write the body to a temporary file outside the repository, then
+  `gh pr create --title '<title>' --body-file <file>`, or `gh pr edit <n> --body-file <file>` for
+  an update.
 
 ## Review someone else's PR
 

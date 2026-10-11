@@ -32,6 +32,8 @@ Assert ($out.Count -eq 1 -and $out[0] -ceq 'resolved PRRT_x https://example.test
 Assert ($global:ghCalls.Count -eq 2) 'Must make exactly two calls.'
 Assert ($global:ghCalls[0] -match 'addPullRequestReviewThreadReply' -and $global:ghCalls[0] -match 'id=PRRT_x' -and $global:ghCalls[0] -match 'body=Fixed in 4be91c2\.') 'Must reply first, on the thread, with the body.'
 Assert ($global:ghCalls[1] -match 'resolveReviewThread' -and $global:ghCalls[1] -match 'id=PRRT_x') 'Must resolve second.'
+Assert ($global:ghCalls[0] -match 'addPullRequestReviewThreadReply\(input: \{pullRequestReviewThreadId: \$id, body: \$body\}\)') 'The reply must pass the thread id and body as its input.'
+Assert ($global:ghCalls[1] -match 'resolveReviewThread\(input: \{threadId: \$id\}\)') 'The resolve must pass the thread id as its input.'
 
 $message = Invoke-Case 'reply'
 Assert ($message -match 'left open') 'A failed reply must throw.'

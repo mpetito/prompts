@@ -6,9 +6,9 @@ body, verbatim, so findings in a body's collapsed "suppressed" section stay visi
 .DESCRIPTION
 Threads come from GraphQL and reviews from REST, both through `gh api --paginate --slurp`, so no
 page is dropped. Each thread carries its id (PRRT_..., for resolveReviewThread), isOutdated, path,
-line and up to 100 comments, each with its REST databaseId (for .../comments/<id>/replies).
-Throws when either fetch fails or the pull request is not found: a failed fetch is never reported
-as "no feedback". Requires an authenticated gh CLI.
+line and up to 100 comments, each with its REST fullDatabaseId as a string (for
+.../comments/<id>/replies). Throws when either fetch fails, a missing pull request included: a
+failed fetch is never reported as "no feedback". Requires an authenticated gh CLI.
 
 .EXAMPLE
 ./Get-PrFeedback.ps1 -Pr 123 -Repo owner/name
@@ -40,7 +40,7 @@ query($owner: String!, $name: String!, $pr: Int!, $endCursor: String) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id isResolved isOutdated path line
-          comments(first: 100) { nodes { databaseId author { login } body url } }
+          comments(first: 100) { nodes { fullDatabaseId author { login } body url } }
         }
       }
     }
@@ -50,9 +50,7 @@ query($owner: String!, $name: String!, $pr: Int!, $endCursor: String) {
 $raw = gh api graphql --paginate --slurp -f "query=$query" -f "owner=$owner" -f "name=$name" -F "pr=$Pr"
 if ($LASTEXITCODE -ne 0) { throw "Could not collect review threads for ${Repo}#${Pr}: $raw" }
 $threads = foreach ($page in ($raw | ConvertFrom-Json)) {
-    $pull = $page.data.repository.pullRequest
-    if (-not $pull) { throw "Pull request ${Repo}#${Pr} was not found." }
-    foreach ($t in $pull.reviewThreads.nodes) {
+    foreach ($t in $page.data.repository.pullRequest.reviewThreads.nodes) {
         if ($t.isResolved) { continue }
         [pscustomobject]@{
             threadId   = $t.id
@@ -60,7 +58,7 @@ $threads = foreach ($page in ($raw | ConvertFrom-Json)) {
             path       = $t.path
             line       = $t.line
             comments   = @($t.comments.nodes | ForEach-Object {
-                [pscustomobject]@{ id = $_.databaseId; author = $_.author.login; body = $_.body; url = $_.url }
+                [pscustomobject]@{ id = $_.fullDatabaseId; author = $_.author.login; body = $_.body; url = $_.url }
             })
         }
     }
