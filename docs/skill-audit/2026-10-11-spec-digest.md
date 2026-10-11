@@ -31,7 +31,7 @@ carries one out. Target under 80 lines.
   - All 6 runs stated the requester's unproven claim as fact.
   - All 6 leaked how into the what: Codex put code identifiers in spec.md, and Opus wrote plans
     with no file targets or checks.
-  - Codex ticked plan.md once, at the end, for all steps.
+  - Both agents ticked plan.md once, at the end, for all steps (4 of 4 runs).
 
 ## Proposed rules
 
@@ -41,7 +41,7 @@ carries one out. Target under 80 lines.
 | 2 | **Write the plan on the defaults, rather than stopping. Stop only for what the owner reserved: money, access, destructive or production changes, and legal or product facts.** | 8 corrections, all toward proceeding. "try not to block yourself on questions … proceed, using decision logs and handoffs" (P1, 2026-09-28). "I need to be able to observe your progress" was the answer to a model that wrote "Nothing else moves until you answer" (P2, 2026-10-06). None asked the model to stop. | 6 of 6 already plan on their own default. There's no gap. The archived gate would make it worse. | None. One line replaces the archived gate. | general |
 | 3 | **A claim the request asserts without proof goes under Open Questions for the owner to confirm, not into the spec as fact.** Such claims are a product fact, a safety, legal or money claim, or a guarantee about another system. | No owner quote. The rule comes from the archived skill. | 6 of 6 (both agents) wrote "The bank guarantees a valid ISO 4217 code on every row" as a requirement. | Yes, strong. | general |
 | 4 | **spec.md says what and why, with no file paths, identifiers or code. plan.md says how: ordered steps that each name the files they touch and end with a check that can fail.** | The owner's scope for this build: "spec.md (what and why) and plan.md (how)". No correction of a leak in 30 folders, though leakage is heavy in one project. | Codex: 3 of 3 put `parseRow()` and type names in spec.md. Opus: 3 of 3 plans had no file paths or no checks. | Yes, strong on both. | general |
-| 5 | **When carrying out a plan, tick each step in plan.md in the same change that lands it, never in a batch at the end. Resume at the first unticked step: tick a step that is already done once its check passes, and don't redo or re-plan it.** | The owner's scope: "ticking off steps in plan.md as they land". "It now cannot check off the elements of the plan it has completed." (this repository, 2026-10-10). The files show 21 of 562 plan boxes ticked. | Codex: 2 of 2 runs ticked steps 4-8 in one edit after all the code. Both resumed correctly. Opus: rerun pending. | Yes, as a snapshot. Live interleaving is a probe-only signal. | general |
+| 5 | **When carrying out a plan, tick each step in plan.md in the same change that lands it, never in a batch at the end. Resume at the first unticked step: tick a step that is already done once its check passes, and don't redo or re-plan it.** | The owner's scope: "ticking off steps in plan.md as they land". "It now cannot check off the elements of the plan it has completed." (this repository, 2026-10-10). The files show 21 of 562 plan boxes ticked. | Both agents, 4 of 4 runs: ticked steps 4-8 in one batch after all the code. Both resumed correctly (ran the check, ticked 4, no redo, no re-plan). Codex drifted in 2 of 2 (an unplanned rewrite, spec Status changed); Opus in 0 of 2. | Yes, as a snapshot. Live interleaving is a probe-only signal. | general |
 | 6 | **Links, not rules:** review with [plan-review](../plan-review/SKILL.md) before code; `specs/` layout is [project-setup](../project-setup/SKILL.md)'s; code under [code-style](../code-style/SKILL.md); a plan with several lanes seeds an [agent-orchestration](../agent-orchestration/SKILL.md) build. | The owner's scope. "when we restore the spec writing skill, it would be useful for it to run the same adversarial review" (this repository, 2026-10-10). | 6 of 6 named a review, but none named plan-review. | None, since the arms have no Agent tool or skills. | links |
 
 **Dropped:**
@@ -79,6 +79,6 @@ already what the models do.
 
 ## Spend so far
 
-- Claude: $1.09 of $30 (probe).
+- Claude: $1.96 of $30 (probe).
 - Codex: about 0.7M tokens (probe).
 - No rule-specific eval spend before the owner confirms.
