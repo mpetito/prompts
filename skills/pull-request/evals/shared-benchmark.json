@@ -34,17 +34,17 @@
         {
           "name": "cc-left-open",
           "type": "regex",
-          "pattern": "\\A(?![\\s\\S]*Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tq0Cc\\b))[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDOQx7a1M5Tq0Cc[`*_\\s|:>→\\-–—]*leave open\\b"
+          "pattern": "\\A(?!\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tq0Cc\\b))[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDOQx7a1M5Tq0Cc[`*_\\s|:>→\\-–—]*leave open\\b"
         },
         {
           "name": "cc-not-resolved",
           "type": "not_regex",
-          "pattern": "(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tq0Cc|PRRT_kwDOQx7a1M5Tq0Cc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tq0Cc|\\bCc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)|Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tq0Cc\\b)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tq0Cc|PRRT_kwDOQx7a1M5Tq0Cc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tq0Cc|\\bCc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)|Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tq0Cc\\b))"
         },
         {
           "name": "cc-defaults-unchanged",
           "type": "not_regex",
-          "pattern": "(?m)^\\+[^\\n]*(?:max_retries\\s*=\\s*(?!3\\b)\\d|base_delay\\s*=\\s*(?!0?\\.5\\b)\\d)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?m:^)\\+[^\\n]*(?:max_retries\\s*=\\s*(?!3\\b)\\d|base_delay\\s*=\\s*(?!0?\\.5\\b)\\d)"
         },
         {
           "name": "cc-not-settled-alone",
@@ -77,7 +77,7 @@
         {
           "name": "no-reply-before-push",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b(?![^\\n]*--dry-run)))[\\s\\S])*?(?:gh api\\b(?:[^\\n]|\\\\\\n)*?/replies\\b|addPullRequestReviewThreadReply|in_reply_to|Resolve-PrThread\\b)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b(?![^\\n]*--dry-run)))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b(?![^\\n]*--dry-run)))[\\s\\S])*?(?:gh api\\b(?:[^\\n]|\\\\\\n)*?/replies\\b|addPullRequestReviewThreadReply|in_reply_to|Resolve-PrThread\\b)"
         },
         {
           "name": "ka-reply-cites-sha",
@@ -92,12 +92,12 @@
         {
           "name": "ka-reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Ka\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b|in_reply_to[^\\n]{0,6}2214410201|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Ka|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410201\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Ka|PRRT_kwDOQx7a1M5Tr1Ka(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Ka|\\bKa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Ka\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b|in_reply_to[^\\n]{0,6}2214410201|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Ka|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410201\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Ka\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b|in_reply_to[^\\n]{0,6}2214410201|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Ka|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410201\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Ka|PRRT_kwDOQx7a1M5Tr1Ka(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Ka|\\bKa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "kb-reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Kb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b|in_reply_to[^\\n]{0,6}2214410202|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Kb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410202\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Kb|PRRT_kwDOQx7a1M5Tr1Kb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Kb|\\bKb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Kb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b|in_reply_to[^\\n]{0,6}2214410202|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Kb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410202\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Kb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b|in_reply_to[^\\n]{0,6}2214410202|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Kb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410202\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Kb|PRRT_kwDOQx7a1M5Tr1Kb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Kb|\\bKb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "ka-resolved",
@@ -140,12 +140,12 @@
         {
           "name": "threshold-line-unchanged",
           "type": "not_regex",
-          "pattern": "(?m)^(?:[-+](?! )|[-+] {2,})[^\\n]*ALERT_THRESHOLD_CM"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?m:^)[-+][^\\n]*ALERT_THRESHOLD_CM"
         },
         {
           "name": "pa-reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b|in_reply_to[^\\n]{0,6}2220460301|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460301\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pa|PRRT_kwDORt3w8N5Ua4Pa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pa|\\bPa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b|in_reply_to[^\\n]{0,6}2220460301|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460301\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b|in_reply_to[^\\n]{0,6}2220460301|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460301\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pa|PRRT_kwDORt3w8N5Ua4Pa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pa|\\bPa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "replies-to-fixed-thread",
@@ -155,7 +155,7 @@
         {
           "name": "pc-reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pc\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pc|PRRT_kwDORt3w8N5Ua4Pc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pc|\\bPc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pc\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pc\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pc|PRRT_kwDORt3w8N5Ua4Pc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pc|\\bPc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "replies-to-juno",
@@ -175,12 +175,12 @@
         {
           "name": "juno-left-open",
           "type": "regex",
-          "pattern": "\\A(?![\\s\\S]*Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pb\\b))[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDORt3w8N5Ua4Pb[`*_\\s|:>→\\-–—]*leave open\\b"
+          "pattern": "\\A(?!\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pb\\b))[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDORt3w8N5Ua4Pb[`*_\\s|:>→\\-–—]*leave open\\b"
         },
         {
           "name": "juno-not-resolved",
           "type": "not_regex",
-          "pattern": "(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pb|PRRT_kwDORt3w8N5Ua4Pb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pb|\\bPb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)|Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pb\\b)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pb|PRRT_kwDORt3w8N5Ua4Pb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pb|\\bPb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)|Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pb\\b))"
         },
         {
           "name": "reply-then-resolve",
@@ -218,7 +218,7 @@
         {
           "name": "no-new-public-comment",
           "type": "not_regex",
-          "pattern": "gh pr comment|gh pr review\\b|addPullRequestReview(?!ThreadReply)|\\baddComment\\b|/(?:pulls|issues)/71/(?:comments|reviews)\\b(?:[^\\n]|\\\\\\n)*?(?:-X\\s*POST|--method\\s+POST|-[fF]\\s+body=|--(?:raw-)?field\\s+body=|--input)|(?:-X\\s*POST|--method\\s+POST)(?:[^\\n]|\\\\\\n)*?/(?:pulls|issues)/71/(?:comments|reviews)\\b"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:gh pr comment|gh pr review\\b|addPullRequestReview(?!ThreadReply)|\\baddComment\\b|/(?:pulls|issues)/71/(?:comments|reviews)\\b(?:[^\\n]|\\\\\\n)*?(?:-X\\s*POST|--method\\s+POST|-[fF]\\s+body=|--(?:raw-)?field\\s+body=|--input)|(?:-X\\s*POST|--method\\s+POST)(?:[^\\n]|\\\\\\n)*?/(?:pulls|issues)/71/(?:comments|reviews)\\b)"
         }
       ]
     },
@@ -254,12 +254,12 @@
         {
           "name": "yaml-reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sa|PRRT_kwDORt3w8N5Ub6Sa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sa|\\bSa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sa|PRRT_kwDORt3w8N5Ub6Sa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sa|\\bSa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "handle-reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sb|PRRT_kwDORt3w8N5Ub6Sb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sb|\\bSb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sb|PRRT_kwDORt3w8N5Ub6Sb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sb|\\bSb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "yaml-thread-resolved",
@@ -322,7 +322,7 @@
         {
           "name": "reply-before-resolve",
           "type": "not_regex",
-          "pattern": "\\A(?:(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Uc7Ta\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2226730501/replies\\b|in_reply_to[^\\n]{0,6}2226730501|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Uc7Ta|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2226730501\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Uc7Ta|PRRT_kwDORt3w8N5Uc7Ta(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Uc7Ta|\\bTa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Uc7Ta\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2226730501/replies\\b|in_reply_to[^\\n]{0,6}2226730501|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Uc7Ta|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2226730501\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Uc7Ta\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2226730501/replies\\b|in_reply_to[^\\n]{0,6}2226730501|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Uc7Ta|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2226730501\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Uc7Ta|PRRT_kwDORt3w8N5Uc7Ta(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Uc7Ta|\\bTa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
         },
         {
           "name": "reply-then-resolve",
@@ -541,7 +541,7 @@
         {
           "name": "no-second-review-call",
           "type": "not_regex",
-          "pattern": "(?:(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()|(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b)[\\s\\S]*?(?:(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()|(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()|(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b)(?:(?!```)[\\s\\S])*?(?:```(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?)?(?:(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()|(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b)"
         },
         {
           "name": "inline-comments",
@@ -557,7 +557,7 @@
         {
           "name": "no-separate-comments",
           "type": "not_regex",
-          "pattern": "(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr (?:comment|review)\\b|/issues/42/comments|pulls/42/comments\\b|addPullRequestReviewComment|addPullRequestReviewThread\\b(?!Reply)"
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr (?:comment|review)\\b|/issues/42/comments|pulls/42/comments\\b|addPullRequestReviewComment|addPullRequestReviewThread\\b(?!Reply))"
         },
         {
           "name": "no-ai-attribution",
@@ -601,7 +601,7 @@
         {
           "name": "no-approve-event",
           "type": "not_regex",
-          "pattern": "(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b[^\\n]*(?:--approve|\\s-a\\b)|event[\\\"']?\\s*[:=]\\s*[\\\"']?APPROVE\\b",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b[^\\n]*(?:--approve|\\s-a\\b)|event[\\\"']?\\s*[:=]\\s*[\\\"']?APPROVE\\b)",
           "ci": false
         },
         {
