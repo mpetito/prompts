@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "skill_name": "code-style",
+  "skill_paths": ["SKILL.md"],
+  "variants": ["with_skill", "without_skill"],
+  "optional_variants": ["old_skill"],
+  "cases": [
+    {
+      "id": "TODO-trig-placeholder",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Tidy up the style of the function I just wrote before I commit it.",
+      "expected_behavior": [
+        "TODO: placeholder. The trigger matrix rejects a manifest with no trigger case, so this one stands in until the skill's description is written. Replace it with real should-fire and near-miss should-not-fire cases."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
