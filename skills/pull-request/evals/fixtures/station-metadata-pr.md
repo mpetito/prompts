@@ -36,6 +36,7 @@
                   {
                     "id": "PRRC_kwDORt3w8N6Kf4Sa",
                     "databaseId": 2223660401,
+                    "fullDatabaseId": "2223660401",
                     "author": { "login": "copilot-pull-request-reviewer" },
                     "body": "`yaml.load` with the full `yaml.Loader` builds arbitrary Python objects from tags such as `!!python/object/apply`. The station file is edited by hand, so a bad edit can run code when the importer starts. Load it with PyYAML's safe loader instead.",
                     "createdAt": "2026-10-09T11:05:40Z"
@@ -55,6 +56,7 @@
                   {
                     "id": "PRRC_kwDORt3w8N6Kf4Sb",
                     "databaseId": 2223660402,
+                    "fullDatabaseId": "2223660402",
                     "author": { "login": "copilot-pull-request-reviewer" },
                     "body": "The file opened here is never closed. Use a `with` block.",
                     "createdAt": "2026-10-09T11:05:40Z"

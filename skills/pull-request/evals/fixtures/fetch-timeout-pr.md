@@ -32,6 +32,7 @@
                   {
                     "id": "PRRC_kwDOQx7a1M6Hd2Ka",
                     "databaseId": 2214410201,
+                    "fullDatabaseId": "2214410201",
                     "author": { "login": "copilot-pull-request-reviewer" },
                     "body": "`timeout` is accepted by `fetch_manifest` but never passed to `client.get`, so a hung manifest server still blocks the worker forever. Pass it through: `client.get(url, timeout=timeout)`.",
                     "createdAt": "2026-10-09T09:14:52Z"
@@ -50,6 +51,7 @@
                   {
                     "id": "PRRC_kwDOQx7a1M6Hd2Kb",
                     "databaseId": 2214410202,
+                    "fullDatabaseId": "2214410202",
                     "author": { "login": "copilot-pull-request-reviewer" },
                     "body": "The docstring says the timeout is in seconds, but the default is `5000`, which reads like milliseconds. As written, the default waits over 80 minutes.",
                     "createdAt": "2026-10-09T09:14:52Z"

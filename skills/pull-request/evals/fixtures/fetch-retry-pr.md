@@ -36,6 +36,7 @@
                   {
                     "id": "PRRC_kwDOQx7a1M6Hc1Aa",
                     "databaseId": 2210450101,
+                    "fullDatabaseId": "2210450101",
                     "author": {
                       "login": "copilot-pull-request-reviewer"
                     },
@@ -56,6 +57,7 @@
                   {
                     "id": "PRRC_kwDOQx7a1M6Hc1Bb",
                     "databaseId": 2210450102,
+                    "fullDatabaseId": "2210450102",
                     "author": {
                       "login": "copilot-pull-request-reviewer"
                     },
@@ -76,6 +78,7 @@
                   {
                     "id": "PRRC_kwDOQx7a1M6Hc1Cc",
                     "databaseId": 2210450103,
+                    "fullDatabaseId": "2210450103",
                     "author": {
                       "login": "copilot-pull-request-reviewer"
                     },
@@ -96,6 +99,7 @@
                   {
                     "id": "PRRC_kwDOQx7a1M6Hc1Dd",
                     "databaseId": 2210450104,
+                    "fullDatabaseId": "2210450104",
                     "author": {
                       "login": "copilot-pull-request-reviewer"
                     },

@@ -35,6 +35,7 @@
                   {
                     "id": "PRRC_kwDORt3w8N6Je3Pa",
                     "databaseId": 2220460301,
+                    "fullDatabaseId": "2220460301",
                     "author": { "login": "copilot-pull-request-reviewer" },
                     "body": "`os.environ.get(\"ALERT_THRESHOLD_CM\")` returns `None` when the variable is unset, and `float(None)` raises `TypeError` when the module is imported. Guard the missing variable before converting it.",
                     "createdAt": "2026-10-09T16:40:03Z"
@@ -53,6 +54,7 @@
                   {
                     "id": "PRRC_kwDORt3w8N6Je3Pb",
                     "databaseId": 2220460302,
+                    "fullDatabaseId": "2220460302",
                     "author": { "login": "juno-okafor" },
                     "body": "Should this be per station rather than one global value? PIER-1 sits a lot higher than the river gauges, so one number will either page all night for PIER-1 or never page for the river.",
                     "createdAt": "2026-10-09T17:02:44Z"
@@ -72,6 +74,7 @@
                   {
                     "id": "PRRC_kwDORt3w8N6Je3Pc",
                     "databaseId": 2220460303,
+                    "fullDatabaseId": "2220460303",
                     "author": { "login": "copilot-pull-request-reviewer" },
                     "body": "`page_on_call` takes `station_id`, but this passes `station=`; the call raises `TypeError` the first time a level crosses the threshold.",
                     "createdAt": "2026-10-09T16:40:03Z"
