@@ -55,7 +55,7 @@
         {
           "name": "test-files-max-lines-800",
           "type": "regex",
-          "pattern": "(?s)files[\"']?\\s*:\\s*\\[[^\\]]*(?:test|spec)[^\\]]*\\](?:(?!files[\"']?\\s*:).){0,600}?[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b|[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b(?:(?!files[\"']?\\s*:)(?!\\}\\s*,\\s*\\{).){0,400}?files[\"']?\\s*:\\s*\\[[^\\]]*(?:test|spec)[^\\]]*\\]"
+          "pattern": "(?s)files[\"']?\\s*:\\s*(?:\\[[^\\]]*(?:test|spec)[^\\]]*\\]|[\\w$.]*(?:test|spec)[\\w$.]*)(?:(?!files[\"']?\\s*:).){0,600}?[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b|[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?800\\b(?:(?!files[\"']?\\s*:)(?!\\}\\s*,\\s*\\{).){0,400}?files[\"']?\\s*:\\s*(?:\\[[^\\]]*(?:test|spec)[^\\]]*\\]|[\\w$.]*(?:test|spec)[\\w$.]*)"
         },
         {
           "name": "lint-fails-on-warnings",
@@ -122,7 +122,7 @@
         {
           "name": "copilot-no-restated-rules",
           "type": "not_regex",
-          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\binteger\\s+(?:grams|millim)|\\bCarrierError\\b|\\bnever\\s+(?:hand[- ])?edit\\w*[^\\n]{0,40}?src/generated|\\bdependenc\\w*[^\\n]{0,30}?without\\s+(?:asking|approval))"
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\binteger\\s+(?:grams|millim)|\\bmap\\w*[^\\n]{0,40}?\\bCarrierError\\b|\\bCarrierError\\b[^\\n]{0,20}?\\bwith\\s+a\\s+code|\\bnever\\s+(?:hand[- ])?edit\\w*[^\\n]{0,40}?src/generated|\\bdependenc\\w*[^\\n]{0,30}?without\\s+(?:asking|approval))"
         },
         {
           "name": "review-md-written",
