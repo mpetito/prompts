@@ -1,6 +1,6 @@
 ---
 name: skill-authoring
-description: "Write, review, split or fix an agent skill: a SKILL.md folder with optional references/ and scripts/. Use when turning a runbook, doc or repeated workflow into a skill; when a skill does not fire, fires on the wrong requests, or needs its description rewritten; when a SKILL.md has grown too long and should become a short procedure plus reference files; or when checking a skill's frontmatter, links or model settings before merge. Not for AGENTS.md, CLAUDE.md or copilot-instructions.md (always-loaded project context), committing or opening a PR for skill edits, or running and benchmarking a skill's evals."
+description: "Write, review, split or fix an agent skill: a SKILL.md folder with optional references/ and scripts/. Use when turning a runbook, doc or repeated workflow into a skill; when a skill does not fire, fires on the wrong requests, or needs its description rewritten; when a SKILL.md has grown too long and should become a short procedure plus reference files; or when checking a skill's frontmatter, links or model settings before merge. Not for AGENTS.md, CLAUDE.md or copilot-instructions.md (project-setup), committing or opening a PR for skill edits, or running and benchmarking a skill's evals."
 ---
 
 # Skill authoring

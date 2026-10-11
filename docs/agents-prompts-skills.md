@@ -117,7 +117,7 @@ Research, PR review/authorship, upgrades, authoring guidance, autonomous loops, 
 
 | Skill                | Scope                                                      |
 | -------------------- | ---------------------------------------------------------- |
-| `agents-md-authoring`| AGENTS.md / CLAUDE.md always-loaded project context        |
+| `project-setup`      | AGENTS.md / CLAUDE.md project context (was `agents-md-authoring`) |
 | `skill-authoring`    | SKILL.md on-demand procedures, frontmatter, and splitting  |
 
 `playwright-e2e-monorepo` was renamed `playwright-e2e`: monorepo wiring is one section of a
