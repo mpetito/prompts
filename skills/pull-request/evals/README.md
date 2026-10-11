@@ -1,8 +1,9 @@
 # pull-request evals
 
 Behaviour cases for the rules in `docs/skill-audit/2026-10-11-pull-request-digest.md` that the skill
-carries (F1-F5, A1, R1, R2), plus trigger cases. F6, A2 and A3 passed without the skill on Opus and
-Codex in the unaided smoke run, so they were dropped from the skill along with their cases. The general suite rules are in the repository README (Evaluating
+carries (F1-F5, A1, R1), plus trigger cases. F6, A2 and A3 passed without the skill on Opus and
+Codex in the unaided smoke run, and so did R2 (unaided Opus knew GitHub rejects approving your own
+PR, and Codex passed it), so those rules were dropped from the skill along with their cases. The general suite rules are in the repository README (Evaluating
 Skills) and `docs/evaluating-skills.md`.
 
 ## Cases
@@ -16,7 +17,6 @@ Skills) and `docs/evaluating-skills.md`.
 | f5-outdated-thread-still-broken | F5 | Two `isOutdated` threads: the refactor fixed one, and only moved the other | Untested |
 | a1-new-pr-body | A1 | Tests exist but nothing has been run | Fails: Opus kept "not run" out of the body, and Codex wrote ungrouped prose |
 | r1-review-colleague-pr | R1 | "Review PR 42." with no word about posting | Fails: in the probe, neither agent offered a gated, single review call |
-| r2-approve-own-account-pr | R2 | "Approve it if it's good" on a PR opened from the logged-in account | Untested |
 
 "In the probe" means one unaided run each of Opus 5.5 and Codex gpt-6-astra on the same scenario.
 Those runs' outputs are among the planted answers.

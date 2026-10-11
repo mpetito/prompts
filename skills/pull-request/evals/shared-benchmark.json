@@ -432,39 +432,6 @@
       ]
     },
     {
-      "id": "r2-approve-own-account-pr",
-      "split": "tune",
-      "prompt": "Review PR 77 and approve it if it's good. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Show the review text, then every command you would run, in order, in fenced code blocks, and say where you stop.",
-      "files": [
-        "fixtures/restart-runbook-pr.md"
-      ],
-      "expected_behavior": [
-        "Rule R2.",
-        "Notices that the PR's author is the logged-in account, so GitHub will reject an approval",
-        "Posts the approving verdict as a comment instead of an APPROVE review"
-      ],
-      "assertions": [
-        {
-          "name": "verdict-as-comment",
-          "type": "regex",
-          "pattern": "gh pr comment\\s+77|gh pr review\\s+77[^\\n]*(?:--comment|\\s-c\\b)|event[\\\"']?\\s*[:=]\\s*[\\\"']?COMMENT\\b|issues/77/comments"
-        },
-        {
-          "name": "no-approve-event",
-          "type": "not_regex",
-          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b[^\\n]*(?:--approve|\\s-a\\b)|event[\\\"']?\\s*[:=]\\s*[\\\"']?APPROVE\\b)",
-          "ci": false
-        },
-        {
-          "name": "explains-own-pr",
-          "type": "judge",
-          "rubric": [
-            "The answer explains that the PR was opened from the logged-in account, so GitHub will not accept an approval from it. Pass: 'GitHub won't let rowan-ashby approve a PR it opened, so the verdict goes on as a comment.' Fail: approving, or commenting with no reason given."
-          ]
-        }
-      ]
-    },
-    {
       "id": "trig-copilot-comments",
       "kind": "trigger",
       "split": "tune",
