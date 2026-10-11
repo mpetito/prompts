@@ -13,6 +13,7 @@ format is [skill-eval-harness](https://github.com/adewale/skill-eval-harness) (t
 - Write and fix assertions
 - What each arm can see
 - Agents
+- Running on Codex
 - Speed and cost
 
 ## Setup
@@ -44,7 +45,7 @@ One run is noisy; decide on three. `-Runs 3` means three runs per arm per case.
 Measure a skill on the model and effort it will run on: `-Model opus -Effort high` for the
 orchestration skills. `-Effort` reaches the answer and trigger runs, every arm alike, through the
 Claude wrapper (the installed harness's `run-agent` has no effort option); the judge keeps its
-default so verdicts stay comparable.
+default so verdicts stay comparable. For Codex, see Running on Codex.
 
 ## Compare against an earlier revision or a competing skill
 
@@ -157,6 +158,31 @@ found the same defects; the output contract and the one-claim rule separated the
 
 Not supported yet: delegation evals (whether a main session hands work to the agent), and
 Codex, since agent definitions are Claude Code's format.
+
+## Running on Codex
+
+`-Agent codex` runs every arm through `codex exec` with the user config ignored, so nothing in
+`~/.codex/config.toml` applies. Checked with codex-cli 0.160.0 on a ChatGPT login (2026-10-10):
+
+- **Pass a Codex model.** `-Model` and `-JudgeModel` go to Codex unchanged, and their default,
+  `sonnet`, fails: "The 'sonnet' model is not supported when using Codex with a ChatGPT
+  account." Use, for example, `-Model gpt-6-astra`, and `-JudgeModel gpt-6-astra` unless you
+  pass `-SkipJudge`.
+- **Pass `-Effort`.** Without it Codex runs at reasoning effort `none`. `-Effort` reaches the
+  answer runs only (as `-c model_reasoning_effort=<level>`); the trigger and judge runs stay at
+  `none`.
+- **Word the case prompt so Codex can read.** Codex has no file-read tool, only a read-only
+  shell. Under "do not run any commands" or "read the input file, but do not run commands" it
+  refused to read the skill and the fixture in both arms and asked for them to be pasted, which
+  scores as a failure in both. "Read the input file; a read-only command such as cat is fine for
+  that, but do not change any file or run anything else" worked on Codex and on Opus. Every
+  existing suite forbids commands in some form, so before trusting its Codex results, check the
+  outputs for a request to paste the files.
+- **Cost is tokens, not dollars.** The summary prints `cost USD n/a`; each run's
+  `metadata.json` has the token counts, and the ChatGPT plan meter is the only spend signal.
+- **Isolation differs.** The skill is mounted at `skills/root-0/SKILL.md` and named in the task
+  prompt, the same as for Claude. Codex can also run read-only shell commands, which Claude arms
+  cannot, and the account's `codex_apps` connector stays visible.
 
 ## Speed and cost
 
