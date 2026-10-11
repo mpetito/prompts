@@ -19,6 +19,7 @@ lists readmitted skills only.
 | --- | --- | --- |
 | [skill-authoring](skills/skill-authoring/SKILL.md) | `/skill-authoring` | Write, review, split or fix a skill folder |
 | [review](skills/review/SKILL.md) | `/review` | Review a code change adversarially: size it by defect risk and blast radius, prove its tests can fail, give a verdict, and keep the repository's `REVIEW.md` scope brief current |
+| [spec](skills/spec/SKILL.md) | `/spec` | Write a spec (what and why) and plan (how) with numbered open questions and their defaults, then carry the plan out, ticking each step as it lands |
 | [plan-review](skills/plan-review/SKILL.md) | `/plan-review` | Review a plan, spec or design before work starts: cuts, blast radius, contracts, overlap, owner questions |
 | [model-council](skills/model-council/SKILL.md) | `/model-council` | Settle one bounded technical decision by debate between a Claude and a Codex member: consensus, or `no consensus` with each position for the human |
 | [firecrawl](skills/firecrawl/SKILL.md) | `/firecrawl` | Pull many pages with Firecrawl: a bounded crawl or a checked keyless scrape to files, and fields across pages as JSON |
@@ -64,7 +65,8 @@ Each agent defines a strict output contract so the caller can assess its evidenc
 
 Keeping it here rather than in `~/.claude` puts it under version control alongside the agents it routes to, so the routing table and the agent definitions cannot drift apart.
 
-The coding path is `code-style` → `review`, including bug fixes and refactors without a spec.
+Work with a spec runs `spec` → `plan-review` → `spec` (carrying out the plan under
+`code-style`) → `review`; bug fixes and refactors without a spec run `code-style` → `review`.
 `code-style` holds the personal style rules (project conventions win); `review` judges the
 diff. Worker briefs name the skill because Codex does not load this file. `pr-feedback`
 collects full review bodies as well as threads and verifies visible and suppressed Copilot
@@ -102,7 +104,9 @@ Reusable prompt fragments for specialized workflows.
 ## Workflows
 
 The slash-command workflows this section used to list (`/spec → /implement → /review → /commit`
-and the others) depended on archived skills. The archived text is in `archive/skills/`, and
+and the others) depended on archived skills. `spec` is readmitted and covers
+`implement` too: work with a spec runs `spec` → `plan-review` → `spec` (carrying out the plan
+under `code-style`) → `review`. The archived text is in `archive/skills/`, and
 the usage data in `docs/skill-audit/2026-10-09/usage.md` shows which of them ran in the last
 60 days before the archive.
 
