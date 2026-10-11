@@ -30,7 +30,12 @@
         {
           "name": "bulk-suppressions",
           "type": "regex",
-          "pattern": "--suppress-(?:all|rule)\\b|eslint-suppressions\\.json"
+          "pattern": "(?m)^\\s*[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'\\n]*--suppress-(?:all|rule)\\b|^\\s*(?:-\\s*)?(?:run:\\s*)?(?:\\$\\s*)?(?:pnpm|npx|yarn|npm|bunx|eslint)\\b(?:[^\\n]*\\\\\\n)*[^\\n]*?--suppress-(?:all|rule)\\b|`(?:pnpm|npx|yarn|npm|bunx|eslint)\\b[^`\\n]*--suppress-(?:all|rule)\\b|`[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'`\\n]*--suppress-(?:all|rule)\\b"
+        },
+        {
+          "name": "complexity-error-10",
+          "type": "regex",
+          "pattern": "(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?10\\b"
         },
         {
           "name": "no-warn-severity",
@@ -60,7 +65,7 @@
         {
           "name": "lint-fails-on-warnings",
           "type": "regex",
-          "pattern": "--max-warnings[= ]+0\\b"
+          "pattern": "(?m)^\\s*[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'\\n]*--max-warnings[= ]+0\\b|^\\s*(?:-\\s*)?(?:run:\\s*)?(?:\\$\\s*)?(?:pnpm|npx|yarn|npm|bunx|eslint)\\b(?:[^\\n]*\\\\\\n)*[^\\n]*?--max-warnings[= ]+0\\b|`(?:pnpm|npx|yarn|npm|bunx|eslint)\\b[^`\\n]*--max-warnings[= ]+0\\b|`[\\\"'][\\w:.-]+[\\\"']\\s*:\\s*[\\\"'][^\\\"'`\\n]*--max-warnings[= ]+0\\b"
         },
         {
           "name": "bootstrap-quality",
@@ -117,7 +122,7 @@
         {
           "name": "copilot-says-what-not-to-flag",
           "type": "regex",
-          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?\\b(?:not|never|avoid|skip|don't|no need to)\\b[^\\n]{0,30}?\\b(?:flag|comment|nitpick)\\w*"
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\b(?:not|never|avoid|skip|don't|no need to)\\b[^\\n]{0,30}?\\b(?:flag|comment|nitpick|report|raise)\\w*|^(?:#{1,4}|[ \\t]*(?:[-*+]|\\d+[.)]))[ \\t]+(?:\\*\\*)?ignore\\b)"
         },
         {
           "name": "copilot-no-restated-rules",
@@ -168,6 +173,21 @@
           "pattern": "[\"']max-lines[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?300\\b"
         },
         {
+          "name": "complexity-error-10",
+          "type": "regex",
+          "pattern": "(?<![\\w/-])[\"']?complexity[\"']?\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?10\\b"
+        },
+        {
+          "name": "max-params-error-4",
+          "type": "regex",
+          "pattern": "[\"'](?:@typescript-eslint/)?max-params[\"']\\s*:\\s*\\[\\s*(?:[\"']error[\"']|2)\\s*,\\s*(?:\\{[^}]*?[\"']?max[\"']?\\s*:\\s*)?4\\b"
+        },
+        {
+          "name": "review-md-written",
+          "type": "regex",
+          "pattern": "(?im)^#{2,3}[ \\t]*`?(?:\\./)?REVIEW\\.md`?[ \\t]*$"
+        },
+        {
           "name": "specs-root-numbered",
           "type": "regex",
           "pattern": "(?<![\\w/.-])specs/(?:\\d{3}|n{3}|<[^>\\n]*>)-"
@@ -185,7 +205,7 @@
         {
           "name": "copilot-says-what-not-to-flag",
           "type": "regex",
-          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?\\b(?:not|never|avoid|skip|don't|no need to)\\b[^\\n]{0,30}?\\b(?:flag|comment|nitpick)\\w*"
+          "pattern": "(?ims)^#{2,3}[ \\t]*`?(?:\\./)?\\.github/copilot-instructions\\.md`?[ \\t]*$(?:(?!^#{2,3}[ \\t]*`?[\\w-]*[./][\\w./-]*`?[ \\t]*$|^##[ \\t]+Notes\\b).)*?(?:\\b(?:not|never|avoid|skip|don't|no need to)\\b[^\\n]{0,30}?\\b(?:flag|comment|nitpick|report|raise)\\w*|^(?:#{1,4}|[ \\t]*(?:[-*+]|\\d+[.)]))[ \\t]+(?:\\*\\*)?ignore\\b)"
         },
         {
           "name": "contributing-has-check-commands",
