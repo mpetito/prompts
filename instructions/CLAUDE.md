@@ -18,9 +18,11 @@ the readmitted ones. A skill returns only through the readmission bar in
 
 When a task goes wrong in a way an instruction would have prevented, or you find yourself
 re-deriving a procedure or a fact a skill used to carry, record it in
-`docs/skill-audit/candidates.md` in that repository: the date, the project, what went wrong,
-and the archived skill (if any) that covered it. That ledger is the only way a skill earns
-its way back.
+`docs/skill-audit/candidates.md` in that repository: the date, what went wrong, and the
+archived skill (if any) that covered it. That repository is public and project-agnostic: write
+"a project", never a project's name, session id or pull request link; that detail goes to the
+private evidence store `~/dev/prompts-evidence`. That ledger is the only way a skill earns its
+way back.
 
 - Project conventions always win over my own personal style preferences. Before writing or
   changing code, load the `code-style` skill; a brief that delegates implementation names it
