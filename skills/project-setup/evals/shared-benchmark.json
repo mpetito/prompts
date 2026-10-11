@@ -84,8 +84,8 @@
       "expected_behavior": [
         "AGENTS.md becomes the canonical file holding the commands, layout and rules once",
         "CLAUDE.md is reduced to an @AGENTS.md import plus the Claude-only lines (edit hook, /release-notes, plan mode for src/tenancy/); never a copy or a symlink",
-        ".github/copilot-instructions.md is review guidance: it points to AGENTS.md, lists review priorities from the PR checklist, and says what not to flag (formatting, src/generated/)",
-        "The PR checklist moves to a root REVIEW.md, which every reviewer reads",
+        "The PR checklist moves to a root REVIEW.md, the one home for review scope, which Copilot code review also reads",
+        ".github/copilot-instructions.md links AGENTS.md and REVIEW.md and restates neither; its What not to flag section points to REVIEW.md's Do not report and adds only noise Copilot alone raises",
         "Copilot code review stays on; the noise is fixed through the instructions file"
       ],
       "assertions": [
@@ -135,7 +135,7 @@
           "rubric": [
             "Each rule (tenant scoping, integer units, CarrierError mapping, no edits to src/generated/, no new dependency without asking) is written once, in AGENTS.md, and not repeated in CLAUDE.md or the Copilot file",
             "CLAUDE.md holds only an @AGENTS.md import and the Claude-only notes (edit hook, /release-notes, plan mode before src/tenancy/)",
-            "The Copilot file is review guidance (what to check on a PR and what not to flag, such as formatting and src/generated/), not a copy of the coding rules",
+            "The PR checklist lives in REVIEW.md; the Copilot file links AGENTS.md and REVIEW.md, restates neither the rules nor the checklist, and keeps only a What not to flag section and Copilot-specific guidance",
             "Copilot code review is kept on; the answer does not recommend turning it off"
           ]
         }
