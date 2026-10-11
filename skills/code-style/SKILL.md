@@ -28,8 +28,8 @@ Each rule is the owner's; quoted text is the owner's own words.
    have doc comments": limits, units, errors, no type tags. "Algorithms should have comments explaining why"; no narration.
 6. **Delete what a change replaces,** even if exported: old helper, shim, alias, legacy path, and no note about it.
    "We don't need to maintain backwards compatibility." (Scope: pre-release and internal code.)
-7. **Tests never match copy:** "I'd rather not rely on content text matching for test contract." Locate by
-   role or test id; import any expected text from the content source, never paste it.
+7. **Tests never match copy:** "I'd rather not rely on content text matching for test contract." Locate by role
+   or test id; import expected text from the content source, and match no text it lacks, labels included.
 
 ## Procedure
 
