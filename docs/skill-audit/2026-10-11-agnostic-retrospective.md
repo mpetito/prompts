@@ -18,8 +18,9 @@ no file and no commit name a personal project, and that project-specific evidenc
 - **History:** every commit's content, paths and messages rewritten with `git filter-repo`
   (replacements, whole-file replacement for the four docs dense with project detail, one path
   rename, one path removal). Commit counts and dates unchanged, and authors too apart from the five re-authored commits below; signatures dropped;
-  every hash changed; SHAs cited in current docs updated from the commit map. Fully merged
-  branches were deleted instead of rewritten. A bundle of the original history is the rollback,
+  every hash changed; SHAs cited in current docs updated from the commit map. AI co-author
+  trailers and session links were then stripped from every message, on the owner's call. Fully
+  merged branches were deleted instead of rewritten. A bundle of the original history is the rollback,
   kept only in the private store.
 
 ## What the reviews caught
@@ -31,7 +32,9 @@ no file and no commit name a personal project, and that project-specific evidenc
 - The dry-run review found that a names-only rewrite leaves product detail in the history of
   docs the hand scrub had cleaned on the tip. Fixed as a class: whole-file replacement for the
   dense docs, and a check that no line the scrub removed survives anywhere in history.
-- A review caught a `set -e` gap: `test A && test B` does not abort when `A` fails.
+- A review caught a `set -e` gap: `test A && test B` does not abort when `A` fails. A mutant
+  caught another: a PASS/FAIL helper fed `$(...)` reports the wrong exit status, so one sanity
+  gate could never fail; the gates that mattered were confirmed independently.
 - Nobody caught, until the final post-apply look: a reviewer's `cp -a` scratch copy of a linked
   worktree kept its `.git` pointer, so the reviewer's test identity went into the live repo's
   config and five commits carried it. Re-authored locally before the push (same trees), and
