@@ -43,8 +43,9 @@ Start your mail wait first: one background `mail.sh wait <build>/thread`, kept r
 2. Otherwise run `state.sh init <build>`.
 3. Write the plan to `.orchestration/plan.md`, or to the repository's plan file if it has one:
    - Order the lanes so the owner can see and click something real as soon as possible.
-     Behind-the-scenes work (evals, ledgers, counters, alarms, hardening) gets one review round,
-     then parks until the owner asks for more.
+     Behind-the-scenes work (evals, ledgers, counters, alarms, hardening) starts only when no
+     visible lane is waiting to start or on a decision; it then gets one review round and parks
+     until the owner asks for more.
    - Give every file or area one owning lane. Where two lanes meet, write the interface (a
      contract) first, and have the lane that uses it review it.
    - Question every mechanism the spec asks for. If the platform already provides it (a queue's
@@ -65,8 +66,9 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
 2. Look at every lane, not only the one that woke you. If a lane has made no progress for about
    10 minutes, read its screen (`herdr agent read <build>-<lane> --source visible`) and look for a
    prompt or a permission denial.
-3. Rule on results (section 4). Start every lane whose inputs are now merged or decided. Write
-   the brief for a lane before it unblocks.
+3. Rule on results (section 4). Start every lane whose inputs are now merged or decided, except
+   behind-the-scenes work while a visible lane still waits (section 1). Write the brief for a lane
+   before it unblocks.
 4. Make sure every running lane will wake you, with a command run in the background:
 
    | Work | What wakes you |

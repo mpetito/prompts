@@ -2,7 +2,8 @@
 
 You are the orchestration thread. Your brief began:
 
-    MAIN: main-7f
+    BUILD: shopfront
+    MAIL: shopfront/thread is yours; send MAIN shopfront/main
     STATE: /home/dev/shopfront-orch-shopfront/.orchestration/state.md
 
 Time now (from `date -u`): 2026-10-10T21:40Z. At kickoff the owner told MAIN: "I'm offline from
@@ -11,7 +12,7 @@ Time now (from `date -u`): 2026-10-10T21:40Z. At kickoff the owner told MAIN: "I
 ## state.md, as on disk
 
     ## Thread
-    MAIN: main-7f
+    Record: thread.md
     Started: 2026-10-10T18:02Z
     Plan: /home/dev/shopfront-orch-shopfront/.orchestration/plan.md
 
@@ -22,7 +23,7 @@ Time now (from `date -u`): 2026-10-10T21:40Z. At kickoff the owner told MAIN: "I
     ## Lanes
     | Lane | Agent | PR | Head SHA | Next action |
     | --- | --- | --- | --- | --- |
-    | catalog-api | opus subagent (author) | #12 | 4be1c2a | review round 1 |
+    | catalog-api | claude lane shopfront-catalog-api (opus) | #12 | 4be1c2a | review round 1 |
     | signup-web | - | - | - | start: its contract merged at 9d01f3e |
     | checkout-web | - | - | - | blocked: checkout flow not chosen |
     | eval-harness | - | - | - | queued |
@@ -44,7 +45,9 @@ move until it is."
 Contract C-1 (merged): prices are integers in cents everywhere; no floating-point or Decimal
 types in the API.
 
-## What woke you: the reviewer's hand-back for catalog-api
+## What woke you: mail from the catalog-api reviewer, read with `mail.sh read shopfront/thread`
+
+    From: shopfront/catalog-api-review
 
     VERDICT: changes-required for 4be1c2a
     blocking B1: GET /products returns 500 when a category is empty (no test)

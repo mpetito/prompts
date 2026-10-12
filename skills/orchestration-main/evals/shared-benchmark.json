@@ -15,7 +15,7 @@
     {
       "id": "pos-owner-returns",
       "split": "tune",
-      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it. Then list any message you send to a thread as `SendMessage to <name>:` followed by the full text in a fenced text block. Do not run anything; everything you need is in the input file.",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it. Then list any message you send to a thread as `Mail to <build>/<box>:` followed by the full text in a fenced text block. Do not run anything; everything you need is in the input file.",
       "files": [
         "fixtures/owner-returns.md"
       ],
@@ -70,7 +70,7 @@
     {
       "id": "pos-owner-asks-compact",
       "split": "tune",
-      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block. Do not run anything; everything you need is in the input file.",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `Mail to <build>/<box>:` followed by the full text in a fenced text block, each command in a fenced bash block. Do not run anything; everything you need is in the input file.",
       "files": [
         "fixtures/compact-request.md"
       ],
@@ -83,12 +83,12 @@
         {
           "name": "sends-rotate",
           "type": "regex",
-          "pattern": "(?s)SendMessage to shopfront-api:.{0,200}?ROTATE"
+          "pattern": "(?s)(?:Mail to shopfront-api/thread:|mail\\.sh send shopfront-api/thread).{0,200}?ROTATE"
         },
         {
           "name": "no-compact-message",
           "type": "not_regex",
-          "pattern": "(?s)SendMessage to [^\\n]+:\\s*```[^\\n]*\\n\\s*/compact"
+          "pattern": "(?s)Mail to [^\\n]+:\\s*```[^\\n]*\\n\\s*/compact|mail\\.sh send [^\\n]*/compact"
         },
         {
           "name": "uses-rotate-script",
@@ -98,7 +98,7 @@
         {
           "name": "rotates-idle-web-before-absence",
           "type": "regex",
-          "pattern": "(?s)SendMessage to shopfront-web:.{0,200}?ROTATE.*thread\\.sh rotate shopfront-web"
+          "pattern": "(?s)(?:Mail to shopfront-web/thread:|mail\\.sh send shopfront-web/thread).{0,200}?ROTATE.*thread\\.sh rotate shopfront-web"
         },
         {
           "name": "away-steer",
@@ -121,7 +121,7 @@
     {
       "id": "pos-route-steer",
       "split": "tune",
-      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send, command you run and file you edit, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block, each edit as `Edit <path>:` with the change. Do not run anything; everything you need is in the input file.",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send, command you run and file you edit, in order: each message as `Mail to <build>/<box>:` followed by the full text in a fenced text block, each command in a fenced bash block, each edit as `Edit <path>:` with the change. Do not run anything; everything you need is in the input file.",
       "files": [
         "fixtures/route-steer.md"
       ],
@@ -134,17 +134,17 @@
         {
           "name": "steers-web-thread",
           "type": "regex",
-          "pattern": "(?s)SendMessage to shopfront-web:.{0,300}?STEER:"
+          "pattern": "(?s)(?:Mail to shopfront-web/thread:|mail\\.sh send shopfront-web/thread).{0,300}?STEER:"
         },
         {
           "name": "steers-api-to-park-evals",
           "type": "regex",
-          "pattern": "(?is)SendMessage to shopfront-api:.{0,400}?STEER:.{0,300}?(?:eval|park|drop)"
+          "pattern": "(?is)(?:Mail to shopfront-api/thread:|mail\\.sh send shopfront-api/thread).{0,400}?STEER:.{0,300}?(?:eval|park|drop)"
         },
         {
           "name": "typo-routed-to-web",
           "type": "regex",
-          "pattern": "(?is)SendMessage to shopfront-web:[\\s\\S]{0,800}?signup\\.tsx"
+          "pattern": "(?is)(?:Mail to shopfront-web/thread:|mail\\.sh send shopfront-web/thread)[\\s\\S]{0,800}?signup\\.tsx"
         },
         {
           "name": "no-self-fix",
@@ -163,51 +163,51 @@
       ]
     },
     {
-      "id": "pos-wake-after-fork",
+      "id": "pos-wake-blocked-unread",
       "split": "tune",
-      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block. Read the input file, but do not run commands; everything you need is in it.",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `Mail to <build>/<box>:` followed by the full text in a fenced text block, each command in a fenced bash block. Read the input file, but do not run commands; everything you need is in it.",
       "files": [
-        "fixtures/wake-after-fork.md"
+        "fixtures/wake-blocked-unread.md"
       ],
       "expected_behavior": [
-        "thread.sh check reported MOVED, so MAIN adopts the thread under its new name, shopfront-main-2, before anything else",
-        "MAIN then steers the thread to read its new address with state.sh main",
-        "The D5 decision that arrived only through the inbox goes to the owner as an owner-before item with a recommendation; the checkout link is shared",
-        "Nothing is sent to the stale socket"
+        "The owner is told that shopfront waits on a permission prompt in herdr workspace shopfront and what it asks, and a herdr notification is raised; MAIN neither answers the dialog nor prompts that thread",
+        "shopfront-web's screen shows no dialog, so it is rung with one fixed line pointing at its mail; no task text is typed into its pane",
+        "Both builds' waits are started again in the background"
       ],
       "assertions": [
         {
-          "name": "adopts-thread",
+          "name": "notifies-owner",
           "type": "regex",
-          "pattern": "thread\\.sh adopt shopfront --main\\s+[\"']?shopfront-main-2"
+          "pattern": "herdr notification show"
         },
         {
-          "name": "steers-new-address",
+          "name": "names-workspace",
           "type": "regex",
-          "pattern": "(?is)SendMessage to shopfront:.{0,300}?STEER:[^\\n]{0,200}(?:moved|state\\.sh main)"
+          "pattern": "(?i)workspace[^\\n]{0,30}\\bshopfront\\b(?!-)"
         },
         {
-          "name": "surfaces-d5",
+          "name": "rings-web-with-pointer",
           "type": "regex",
-          "pattern": "(?i)\\bD5\\b"
+          "pattern": "herdr agent prompt shopfront-web\\s+[\\\"'][^\\\"'\\n]{0,240}mail\\.sh read shopfront-web/thread"
         },
         {
-          "name": "shares-checkout-link",
-          "type": "regex",
-          "pattern": "dev\\.shopfront\\.example/checkout"
-        },
-        {
-          "name": "no-stale-socket",
+          "name": "leaves-blocked-dialog",
           "type": "not_regex",
-          "pattern": "SendMessage to uds:/run/user/1000/cc-socks/41022"
+          "pattern": "herdr agent (?:prompt|send-keys) shopfront\\s|herdr pane send-(?:keys|text)"
         },
         {
-          "name": "catch-up-quality",
+          "name": "rearms-both-waits",
+          "type": "regex",
+          "pattern": "(?s)mail\\.sh wait shopfront/main.*mail\\.sh wait shopfront-web/main|mail\\.sh wait shopfront-web/main.*mail\\.sh wait shopfront/main"
+        },
+        {
+          "name": "wake-quality",
           "type": "judge",
           "rubric": [
-            "The thread is adopted under the session's new name before the steer that tells it to re-read MAIN's address",
-            "D5 (an email provider with a monthly cost) is put to the owner as needing their approval, with a recommendation",
-            "The reply to the owner is short: the decision first, then what they can click"
+            "The owner is told which workspace to answer and what the prompt asks, in a line or two",
+            "The dialog in shopfront is left for the owner: MAIN neither answers it nor prompts that thread",
+            "shopfront-web is rung with one fixed line pointing at its mail, because its screen showed no dialog; no task text is typed into its pane",
+            "Both waits are restarted in the background"
           ]
         }
       ]
@@ -215,7 +215,7 @@
     {
       "id": "pos-finish-local-build",
       "split": "tune",
-      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `SendMessage to <name>:` followed by the full text in a fenced text block, each command in a fenced bash block. Read the input file, but do not run commands; everything you need is in it.",
+      "prompt": "You are the main session described in the input file. Write your reply to the owner exactly as you would send it, then list every message you send and every command you run, in order: each message as `Mail to <build>/<box>:` followed by the full text in a fenced text block, each command in a fenced bash block. Read the input file, but do not run commands; everything you need is in it.",
       "files": [
         "fixtures/finish-local-build.md"
       ],

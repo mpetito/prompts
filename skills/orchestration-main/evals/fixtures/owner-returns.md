@@ -1,10 +1,10 @@
-# Snapshot: main session `main-7f`, the owner just came back
+# Snapshot: main session, the owner just came back
 
 Time now: 2026-10-11T09:20Z. The owner wrote: "Back. What do you need from me?"
 
-## Messages from threads while the owner was away, oldest first
+## Mail from the threads while the owner was away, from `mail.sh read <build>/main`, oldest first
 
-1. From shopfront-api, 23:10Z:
+1. From shopfront-api/thread, 23:10Z:
 
        STATUS: working - catalog-api round 2 merged
        Changed: api/src/products/list.ts, api/src/products/price.ts, api/src/products/cursor.ts,
@@ -23,23 +23,23 @@ Time now: 2026-10-11T09:20Z. The owner wrote: "Back. What do you need from me?"
        Budget: Claude 41%, Codex 18%
        Next wake: on D2 or at its deadline
 
-2. From shopfront-web, 01:40Z:
+2. From shopfront-web/thread, 01:40Z:
 
        STATUS: done - signup works end to end on dev
        Try it: https://dev.shopfront.example/signup (create an account, land on the catalog)
 
-3. From shopfront-api, 02:05Z:
+3. From shopfront-api/thread, 02:05Z:
 
        STATUS: need-decision - D2 payment provider for checkout
        Options: Stripe (cards today, tax later) | Paddle (merchant of record, 2 days more)
        Default: Stripe, applies at 2026-10-11T12:00Z
        Blocks: checkout-api only
 
-4. From shopfront-api, 04:00Z:
+4. From shopfront-api/thread, 04:00Z:
 
        STATUS: working - D3 default applied: product images use S3 Standard storage
 
-5. From shopfront-web, 06:30Z:
+5. From shopfront-web/thread, 06:30Z:
 
        STATUS: need-decision - D4 enable paid CI runners ($200/month) to cut e2e time from 40 to 12 minutes
        Options: enable | keep free runners

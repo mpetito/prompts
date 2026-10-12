@@ -15,7 +15,7 @@
     {
       "id": "pos-wake-decision-and-lanes",
       "split": "tune",
-      "prompt": "You are the orchestration thread described in the input file, and it is your turn. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Do not run anything; everything you need is in the input file.",
+      "prompt": "You are the orchestration thread described in the input file, and it is your turn. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `Mail to <build>/<box>:` followed by the full message text in a fenced text block; each subagent you start as `Agent:` followed by its model and a one-paragraph brief; and each lane you start as its command in a fenced bash block, followed by its brief as `Brief <path>:` in a fenced text block. Do not run anything; everything you need is in the input file.",
       "files": [
         "fixtures/wake-decision-and-lanes.md"
       ],
@@ -29,7 +29,7 @@
         {
           "name": "decision-request-to-main",
           "type": "regex",
-          "pattern": "(?s)SendMessage to main-7f.{0,400}?STATUS: need-decision"
+          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.sh send shopfront/main).{0,400}?STATUS: need-decision"
         },
         {
           "name": "decision-has-default-and-deadline",
@@ -39,12 +39,12 @@
         {
           "name": "no-blocking-question-tool",
           "type": "not_regex",
-          "pattern": "AskUserQuestion"
+          "pattern": "(?m)^\\s*AskUserQuestion\\b|AskUserQuestion\\s*\\("
         },
         {
           "name": "starts-signup-web",
           "type": "regex",
-          "pattern": "(?is)Agent:[^\\n]{0,200}signup-web|signup-web[^\\n]{0,120}\\bAgent:"
+          "pattern": "(?is)Agent:[^\\n]{0,200}signup-web|signup-web[^\\n]{0,120}\\bAgent:|lane\\.sh\\s+shopfront\\s+signup-web\\b"
         },
         {
           "name": "arms-deadline-timer",
@@ -54,7 +54,7 @@
         {
           "name": "records-through-state-helper",
           "type": "regex",
-          "pattern": "state\\.sh (?:log|set)"
+          "pattern": "state\\.sh (?:log|set)|state\\.sh\\b[\\s\\S]{0,400}?\\$\\{?\\w+\\}? (?:log|set)\\b"
         },
         {
           "name": "turn-quality",
@@ -71,14 +71,14 @@
     {
       "id": "pos-rotate-with-lanes-in-flight",
       "split": "tune",
-      "prompt": "You are the orchestration thread described in the input file, and the message has just arrived. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Do not run anything; everything you need is in the input file.",
+      "prompt": "You are the orchestration thread described in the input file, and the message has just arrived. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `Mail to <build>/<box>:` followed by the full message text in a fenced text block; each subagent you start as `Agent:` followed by its model and a one-paragraph brief; and each lane you start as its command in a fenced bash block, followed by its brief as `Brief <path>:` in a fenced text block. Do not run anything; everything you need is in the input file.",
       "files": [
         "fixtures/rotate-with-lanes-in-flight.md"
       ],
       "expected_behavior": [
         "No new work starts; the RESUME section is written through the state helper",
-        "RESUME lists what dies with the session (the subagent, both background tasks, the Codex lane) with how to restart each",
-        "A STATUS: rotating message goes to MAIN, and the turn ends; nothing tries to compact"
+        "RESUME lists what stops with the session (the plan-review subagent, the background tasks and the mail wait) with how to restart each, and the lanes that keep running as herdr agents",
+        "A STATUS: rotating message goes to MAIN by mail, and the turn ends; nothing tries to compact"
       ],
       "assertions": [
         {
@@ -102,6 +102,11 @@
           "pattern": "(?m)^\\s*/compact"
         },
         {
+          "name": "no-new-lanes",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*(?:\\S*/)?lane\\.sh\\s"
+        },
+        {
           "name": "no-new-workers",
           "type": "not_regex",
           "pattern": "(?im)^\\s*\\**Agent:[\\s*]*(?!none\\b|no\\b|nothing\\b)[A-Za-z]"
@@ -110,9 +115,10 @@
           "name": "rotation-quality",
           "type": "judge",
           "rubric": [
-            "The running subagent a7c1 is either waited for or recorded as to be relaunched with its brief path",
+            "The running plan-review subagent b2f9 is either waited for or recorded as to be relaunched with its brief path",
             "RESUME carries the PR heads, the D2 default and deadline, and the owner's approval quoted with its time",
-            "The Codex lane's fate after the session stops is addressed (left running or restarted, with the command)",
+            "The catalog-api and checkout-api lanes are recorded as still running as herdr agents, to be watched again, not restarted",
+            "RESUME lists the mail wait with its watch list among what the new thread restarts",
             "The turn ends after the rotating message; nothing new is launched"
           ]
         }
@@ -121,7 +127,7 @@
     {
       "id": "pos-steer-outranks-plan",
       "split": "tune",
-      "prompt": "You are the orchestration thread described in the input file, and the message has just arrived. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Do not run anything; everything you need is in the input file.",
+      "prompt": "You are the orchestration thread described in the input file, and the message has just arrived. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `Mail to <build>/<box>:` followed by the full message text in a fenced text block; each subagent you start as `Agent:` followed by its model and a one-paragraph brief; and each lane you start as its command in a fenced bash block, followed by its brief as `Brief <path>:` in a fenced text block. Do not run anything; everything you need is in the input file.",
       "files": [
         "fixtures/steer-outranks-plan.md"
       ],
@@ -134,7 +140,7 @@
         {
           "name": "status-working-to-main",
           "type": "regex",
-          "pattern": "(?s)SendMessage to main-7f.{0,300}?STATUS: working"
+          "pattern": "(?s)(?:Mail to shopfront-web/main:|mail\\.sh send shopfront-web/main).{0,300}?STATUS: working"
         },
         {
           "name": "parks-ledger-and-evals",
@@ -149,12 +155,12 @@
         {
           "name": "typo-to-worker",
           "type": "regex",
-          "pattern": "(?is)Agent:[^\\n]{0,200}(?:opus|sonnet)[\\s\\S]{0,800}?signup\\.tsx"
+          "pattern": "(?is)Agent:[^\\n]{0,200}(?:opus|sonnet)[\\s\\S]{0,1500}?signup\\.tsx|lane\\.sh\\s+shopfront-web\\s+signup-web\\b[^\\n]*--model\\s+\\S+"
         },
         {
           "name": "no-rate-limit-lane",
           "type": "not_regex",
-          "pattern": "(?i)Agent:[^\\n]{0,160}rate-limit"
+          "pattern": "(?i)(?:Agent:|lane\\.sh)[^\\n]{0,160}rate-limit"
         },
         {
           "name": "steer-quality",
@@ -171,7 +177,7 @@
     {
       "id": "pos-land-local",
       "split": "tune",
-      "prompt": "You are the orchestration thread described in the input file, and it is your turn. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `SendMessage to <name>:` followed by the full message text in a fenced text block; and each worker you start as `Agent:` followed by its model and a one-paragraph brief. Read the input file, but do not run commands; everything you need is in it.",
+      "prompt": "You are the orchestration thread described in the input file, and it is your turn. List, in order, every action you take this turn. Write each shell command in a fenced bash block; each message you send as `Mail to <build>/<box>:` followed by the full message text in a fenced text block; each subagent you start as `Agent:` followed by its model and a one-paragraph brief; and each lane you start as its command in a fenced bash block, followed by its brief as `Brief <path>:` in a fenced text block. Read the input file, but do not run commands; everything you need is in it.",
       "files": [
         "fixtures/land-local-approved.md"
       ],
@@ -199,12 +205,12 @@
         {
           "name": "reports-to-main",
           "type": "regex",
-          "pattern": "(?s)SendMessage to main-7f.{0,300}?STATUS: working"
+          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.sh send shopfront/main).{0,300}?STATUS: working"
         },
         {
           "name": "records-state",
           "type": "regex",
-          "pattern": "state\\.sh (?:log|set)"
+          "pattern": "state\\.sh (?:log|set)|state\\.sh\\b[\\s\\S]{0,400}?\\$\\{?\\w+\\}? (?:log|set)\\b"
         },
         {
           "name": "landing-quality",
@@ -212,6 +218,57 @@
           "rubric": [
             "The approved commit 7e41c0a is landed locally with land-local.sh and the repository's CI command, not by a pull request or a push",
             "The thread records the landing and tells MAIN in the protocol's format"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-wake-on-mail",
+      "split": "tune",
+      "prompt": "You are the orchestration thread described in the input file, and your mail wait has just ended. List, in order, every action you take this turn. Write each shell command in a fenced bash block, saying whether it runs in the background; each message you send as `Mail to <build>/<box>:` followed by the full message text in a fenced text block; and each subagent you start as `Agent:` followed by its model and a one-paragraph brief. Do not run anything; where a command's output matters, the input file gives it.",
+      "files": [
+        "fixtures/wake-on-mail.md"
+      ],
+      "expected_behavior": [
+        "mail.sh read shopfront/thread runs first, then the next mail wait starts in the background watching both lanes, before anything is acted on",
+        "MAIN's question is answered by mail from shopfront/thread with a STATUS first line",
+        "catalog-web's hand-back is acted on: its review is started or queued with a brief"
+      ],
+      "assertions": [
+        {
+          "name": "reads-before-rearming",
+          "type": "regex",
+          "pattern": "(?s)mail\\.sh read shopfront/thread.*?mail\\.sh wait shopfront/thread"
+        },
+        {
+          "name": "rearm-watches-both-lanes",
+          "type": "regex",
+          "pattern": "mail\\.sh wait shopfront/thread[^\\n]*--watch[^\\n]*(?:shopfront-catalog-web[^\\n]*shopfront-checkout-api|shopfront-checkout-api[^\\n]*shopfront-catalog-web)"
+        },
+        {
+          "name": "answers-main-by-mail",
+          "type": "regex",
+          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.sh send shopfront/main).{0,300}?STATUS: "
+        },
+        {
+          "name": "no-sendmessage",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*SendMessage to\\b|SendMessage\\s*\\("
+        },
+        {
+          "name": "no-question-tool",
+          "type": "not_regex",
+          "pattern": "(?m)^\\s*AskUserQuestion\\b|AskUserQuestion\\s*\\("
+        },
+        {
+          "name": "wake-quality",
+          "type": "judge",
+          "rubric": [
+            "The new wait is started in the background before acting on the mail, never in the foreground",
+            "MAIN's question gets a short STATUS answer by mail, sent as shopfront/thread",
+            "The answer to MAIN's QUESTION is sent without --quiet; routine news may be quiet",
+            "catalog-web's hand-back is acted on: a review is started or queued with a brief, not left unread",
+            "Nothing is typed into a lane's pane except, at most, a one-line pointer to a brief"
           ]
         }
       ]

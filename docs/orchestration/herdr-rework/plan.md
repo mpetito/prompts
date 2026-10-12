@@ -124,12 +124,17 @@ every new assertion is shown to fail against a planted mutant before its step is
   `UNREAD` rings the thread after reading its screen with `herdr agent read`; rotation and a quiet thread use herdr state. Check: `grep -n
   'ListAgents\|adopt\|MOVED\|claude attach\|notify_when_idle\|background session\|--main'
   skills/orchestration-main/SKILL.md` prints nothing.
-- [ ] 10. `skills/orchestration-main/evals/`, `skills/agent-orchestration/evals/`: replace
+- [x] 10. `skills/orchestration-main/evals/`, `skills/agent-orchestration/evals/`: replace
   `wake-after-fork` with a wake on `BLOCKED`; move every `SendMessage to …` assertion and the
   `cross-session-message`, `MAIN-SOCKET` and `codex-exec.sh` fixture text to mail; add a thread
   case "woken by `MAIL`: read, re-arm the wait in the background, reply with `mail.sh send`".
   Run both suites once on Opus with `scripts/run-skill-eval.ps1`. Check: each suite passes with
-  the skill, and each new case fails without it.
-- [ ] 11. Commit and push hygiene. Check: after each `git commit`, `verify.sh . names.txt
+  the skill, and each new case fails without it. (2026-10-12, Opus at high effort, judged by Opus:
+  orchestration-main with the skill 1.00 objective, judge mean 0.88, without 0.27, triggers 6/6;
+  agent-orchestration with the skill 1.00 after a regrade that widened two state-helper patterns,
+  judge 0.93, without 0.49. The first run found the thread starting background work while visible
+  lanes waited; the skill now says when such work may start. agent-orchestration has no trigger
+  cases, by design, so it runs with -SkipTrigger.)
+- [x] 11. Commit and push hygiene. Check: after each `git commit`, `verify.sh . names.txt
   names-cs.txt` from `~/dev/prompts-evidence` reports `total=0`, and `git log -1
   --format='%an <%ae>%n%b'` shows the owner's global identity and no attribution trailer.

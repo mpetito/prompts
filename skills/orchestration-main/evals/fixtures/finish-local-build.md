@@ -1,10 +1,10 @@
-# Snapshot: main session `main-7f`, a thread reports done
+# Snapshot: main session, a thread reports done
 
 Time now: 2026-10-11T16:30Z. When the build was launched, `thread.sh launch` printed:
 
-    LAUNCHED shopfront 5c1d2e3f base=feature/storefront@1a2b3c4 landing=local
+    LAUNCHED shopfront base=feature/storefront@1a2b3c4 landing=local
 
-## Message from shopfront, 16:25Z
+## Mail from shopfront/thread, 16:25Z
 
     STATUS: done - storefront complete: signup, catalog and checkout merged on orchestration/shopfront at 9f8e7d6
     Check: https://dev.shopfront.example (sign up, browse, check out with test card 4242 4242 4242 4242)
