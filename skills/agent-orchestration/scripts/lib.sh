@@ -39,9 +39,8 @@ resolve_state() {
 }
 
 # The thread record, .orchestration/thread.md in the coordination worktree: one "Key: value" line per field, written
-# by MAIN's thread.sh (launch, rotate, adopt) and read by the thread's scripts and hooks: MAIN's address (MAIN,
-# MAIN-SOCKET), the owner's checkout (CHECKOUT), and the build's base and landing mode (BASE, BASE-REF, LANE-BASE,
-# LANDING).
+# by MAIN's thread.sh launch and read by the thread's scripts and hooks: the build (BUILD), the owner's checkout
+# (CHECKOUT), and the build's base and landing mode (BASE, BASE-REF, LANE-BASE, LANDING).
 record_value() {
   # record_value <file> <key>: the value of the first "<key>: value" line, trimmed, or nothing, also when the file is
   # missing, so callers under set -e and pipefail carry on.
@@ -50,15 +49,6 @@ record_value() {
 }
 
 thread_field() { record_value "$1/.orchestration/thread.md" "$2"; }
-
-main_name() {
-  # main_name <coordination worktree root>: MAIN's session name from the thread record, or from the MAIN: line of
-  # a state file written before the record existed.
-  local name
-  name=$(thread_field "$1" MAIN)
-  [ -n "$name" ] || name=$(record_value "$1/.orchestration/state.md" MAIN)
-  printf '%s' "$name"
-}
 
 # session_top <cwd>: the coordination worktree of this session: the git root of the folder the session started in
 # ($CLAUDE_PROJECT_DIR, which a cd never moves), else of <cwd>.

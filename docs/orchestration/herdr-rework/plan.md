@@ -70,15 +70,17 @@ every new assertion is shown to fail against a planted mutant before its step is
   `thread.sh close`. Append the results to the spike document; findings that change steps 6-10
   update this plan first. Check: every probe's result is recorded, and there is no agent, workspace,
   `../prompts-orch-<probe>` worktree or `mail/<probe>` folder left for the probe.
-- [ ] 6. `agents/orchestrator.md`, `agents/lane.md`, `skills/agent-orchestration/hooks/guard-message.sh`,
-  `skills/agent-orchestration/scripts/check-message.sh`, `skills/agent-orchestration/tests/run.sh`
-  (owner approval): one change that drops the `SendMessage` hook, updates the description (a
-  herdr agent, not a background session) and deletes both scripts and their tests, with lib.sh's
-  `main_name` and its MAIN and MAIN-SOCKET record notes; adds
-  `agents/lane.md`, the Claude lane agent, running guard-bash and guard-writes as a lane (no
-  model pin; `lane.sh` passes it); with it, the settings rule from step 4. Send the owner the exact diff; apply it only on their approval.
-  Check: run.sh passes; `grep -rn 'check-message\|guard-message\|SendMessage' skills agents`
-  prints nothing; the commit body quotes the approval.
+- [x] 6. `agents/orchestrator.md`, `agents/lane.md`, `skills/agent-orchestration/hooks/guard-message.sh`,
+  `skills/agent-orchestration/scripts/check-message.sh`, `skills/agent-orchestration/scripts/lib.sh`,
+  `skills/agent-orchestration/tests/run.sh` (owner approval): the orchestrator's description says it
+  is a herdr agent and its `SendMessage` hook goes; guard-message.sh, check-message.sh, lib.sh's
+  `main_name` and their tests are deleted; `agents/lane.md` is the Claude lane agent, running
+  guard-bash and guard-writes with `--lane` (no model pin; `lane.sh` passes it). The settings rule
+  `Bash(~/.claude/skills/agent-orchestration/scripts/lane.sh:*)` is the owner's to add: Claude
+  Code's classifier refuses an agent editing its own settings. Check: run.sh passes; `grep -rn
+  'check-message\|guard-message\|SendMessage\|main_name' skills/*/scripts skills/*/hooks
+  skills/*/tests agents` prints nothing (the docs and evals follow in steps 8 and 10); the commit
+  body quotes the approval.
 - [ ] 7. `skills/agent-orchestration/references/herdr.md`, `skills/agent-orchestration/scripts/finish-lane.sh`,
   `skills/agent-orchestration/hooks/guard-bash.sh`, `skills/agent-orchestration/tests/run.sh`: a
   short herdr reference for threads: the lanes' wake contract (the thread's wait watches its

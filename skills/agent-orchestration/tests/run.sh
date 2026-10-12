@@ -80,36 +80,6 @@ esac
 MOCK
 chmod +x "$tmp/bin/"*
 
-# --- check-message.sh --------------------------------------------------------------------------------------
-cm() { printf '%s' "$2" | "$here/scripts/check-message.sh" "$1"; }
-[ "$(cm --up 'STATUS: working - lane A started')" = OK ] || fail "check-message rejected a plain status"
-cm --up 'Lane A started' | grep -q '^BAD first line' || fail "check-message accepted a message without STATUS"
-cm --up 'STATUS: thinking - hmm' | grep -q '^BAD' || fail "check-message accepted an unknown state"
-cm --up 'STATUS: working – en dash' | grep -q '^BAD' || fail "check-message accepted an en dash separator"
-cm --up "$(printf 'STATUS: done - x\n%.0s' 1 2 3 4 5 6 7 8 9 10 11)" | grep -q '^BAD 11 lines' || fail "check-message accepted 11 lines"
-[ "$(cm --up "$(printf 'STATUS: done - x\n\n\n')")" = OK ] || fail "check-message counted trailing blank lines"
-cm --up 'STATUS: need-decision - drink?
-Default: tea
-applies at 2026-10-10T03:45Z' | grep -q 'without an Options' || fail "check-message accepted a decision without Options"
-cm --up 'STATUS: need-decision - drink?
-Options: tea | coffee
-applies at 2026-10-10T03:45Z' | grep -q 'without a Default' || fail "check-message accepted a decision without Default"
-cm --up 'STATUS: need-decision - drink?
-Options: tea | coffee
-Default: tea' | grep -q "applies at" || fail "check-message accepted a decision without a deadline"
-[ "$(cm --up 'STATUS: need-decision - drink?
-Options: tea | coffee
-Default: tea, applies at 2026-10-10T03:45:10Z')" = OK ] || fail "check-message rejected a deadline with seconds"
-[ "$(cm --up 'STATUS: need-decision - spend $40?
-Options: yes | no
-Default: none, owner-before')" = OK ] || fail "check-message rejected an owner-before decision"
-for good in 'STEER: ship signup first' 'DECISION D3: coffee' 'ROTATE' 'ROTATE: write RESUME' 'QUESTION: is lane B blocked?'; do
-  [ "$(cm --down "$good")" = OK ] || fail "check-message --down rejected: $good"
-done
-cm --down 'Please rotate now' | grep -q '^BAD' || fail "check-message --down accepted a free-form message"
-cm --up '' | grep -q '^BAD empty' || fail "check-message accepted an empty message"
-set +e; printf x | "$here/scripts/check-message.sh" --sideways >/dev/null 2>&1; [ $? -eq 2 ] || fail "check-message accepted an unknown flag"; set -e
-
 # --- state.sh and decisions.sh: resolution from the git worktree ---------------------------------------------
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
 mkdir -p "$tmp/plain" "$tmp/coord/sub"
@@ -412,7 +382,7 @@ git -C "$gwapp" worktree add -q "$gwapp/.claude/worktrees/agent-x" -b agent-x
 gwc=$(realpath "$HOME/gw/app-orch-b"); gwl=$(realpath "$HOME/gw/app-wt-lane-a"); gwn="$gwapp/.claude/worktrees/agent-x"
 mkdir -p "$gwc/.orchestration" "$gwc/sub"
 printf '# state\n' > "$gwc/.orchestration/state.md"
-printf '%s\n' '# record' 'MAIN: Main one' "MAIN-SOCKET: uds:$tmp/main-1.sock" "CHECKOUT: $gwapp" > "$gwc/.orchestration/thread.md"
+printf '%s\n' '# record' 'BUILD: b1' "CHECKOUT: $gwapp" > "$gwc/.orchestration/thread.md"
 git init -q "$tmp/nostate"
 denied() { jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null; }
 reason() { jq -r '.hookSpecificOutput.permissionDecisionReason'; }
@@ -448,31 +418,6 @@ writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes did not fall back to
 printf 'CHECKOUT: %s\n' "$gwapp" >> "$gwc/.orchestration/thread.md"
 [ -z "$(writes "$tmp/plain" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from outside git"
 [ -z "$(writes "$tmp/nostate" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from a worktree with no thread files"
-
-# --- guard-message.sh ----------------------------------------------------------------------------------------
-msg() { jq -n --arg cwd "$1" --arg to "$2" --arg m "$3" '{cwd:$cwd,tool_input:{to:$to,message:$m}}' | with_agent | "$here/hooks/guard-message.sh"; }
-ob="$gwc/.orchestration/outbox.md"
-msg "$gwc" "Main one" "lane A is done" | denied || fail "guard-message allowed a malformed message to MAIN"
-msg "$gwc/sub" "Main one [25f79e]" "lane A is done" | denied || fail "guard-message ignored a MAIN address with a ref"
-msg "$gwc" "Main one" "lane A is done" | reason | grep -q 'first line must be' || fail "guard-message reason did not carry check-message's reason"
-[ ! -f "$ob" ] || fail "guard-message copied a refused message to the outbox"
-[ -z "$(msg "$gwc" "Main one" "STATUS: done - lane A merged")" ] || fail "guard-message denied a valid message"
-grep -Eq "^=== $utc to Main one #[0-9a-f]{12}$" "$ob" && grep -qx 'STATUS: done - lane A merged' "$ob" || fail "guard-message did not copy the message to the outbox"
-# The same message resent to the socket after the name failed goes through and is copied once.
-[ -z "$(msg "$gwc" "uds:$tmp/main-1.sock" "STATUS: done - lane A merged")" ] || fail "guard-message denied MAIN's socket"
-[ "$(grep -c '^=== ' "$ob")" = 1 ] || fail "guard-message copied a resend twice"
-[ -z "$(msg "$gwc" "uds:$tmp/main-1.sock" "STATUS: working - lane B started")" ] || fail "guard-message denied a second message"
-[ "$(grep -c '^=== ' "$ob")" = 2 ] || fail "guard-message did not copy a new message"
-# A status line to any other address is the stale-address mistake.
-msg "$gwc" "uds:/run/stale.sock" "STATUS: working - x" | denied || fail "guard-message allowed a status to a stale socket"
-msg "$gwc" "uds:/run/stale.sock" "STATUS: working - x" | reason | grep -q 'state.sh main' || fail "guard-message did not say where MAIN's address is"
-msg "$gwc" prompts-9d "STATUS: working - x" | denied || fail "guard-message allowed a status to an old name"
-[ "$(grep -c '^=== ' "$ob")" = 2 ] || fail "guard-message copied a refused message"
-[ -z "$(msg "$gwc" worker-a "anything goes")" ] || fail "guard-message checked a message to a worker"
-CLAUDE_PROJECT_DIR="$gwc" msg "$tmp/plain" "Main one" "lane A is done" | denied || fail "guard-message lost the session after a cd"
-[ -z "$(AGENT=w1 msg "$gwc" "Main one" "lane A is done")" ] || fail "guard-message checked a worker's message"
-[ -z "$(msg "$tmp/nostate" "Main one" "lane A is done")" ] || fail "guard-message checked a session with no state file"
-[ -z "$(msg "$tmp/plain" "Main one" "lane A is done")" ] || fail "guard-message checked a session outside git"
 
 # --- guard-timestamps.py -------------------------------------------------------------------------------------
 printf 'state at 10:00Z\n' > "$gwc/.orchestration/notes.md"
