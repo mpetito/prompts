@@ -565,6 +565,25 @@ printf '=== 2026-10-10T14:00Z to Main two #ba9876543210\nSTATUS: working - d1\n\
 (cd "$tmp/plain" && "$thread" check --all) | grep -q '^INBOX t-c 2026-10-10T14:00Z' || fail "thread.sh check missed a new outbox entry"
 for t in t-a-r2 t-b2 t-d t-s t-s2; do "$thread" adopt "$t" --main 'Main two' >/dev/null; done
 [ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check did not print OK with nothing to catch up on"
+# A thread whose session waits on the owner is reported from claude agents --json; a working one is not.
+idc=$(awk -F'\t' '$1=="t-c" {print $2}' "$ORCHESTRATION_HOME/threads.tsv")
+printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"waiting","waitingFor":"permission prompt"}]' "$idc" > "$MOCK_DIR/agents.json"
+(cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c permission prompt: ' || fail "thread.sh check did not report a blocked thread: $(cat "$tmp/check.out")"
+printf '[{"sessionId":"%s-0000","name":"t-c","state":"working","status":"busy","waitingFor":null}]' "$idc" > "$MOCK_DIR/agents.json"
+[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a working thread"
+# A local git identity that differs from the global one is reported once per repository; an equal one is not.
+printf '[user]\n\temail = owner@example.com\n' > "$HOME/.gitconfig"
+git -C "$app" config user.email test@example.com
+out=$(cd "$tmp/plain" && "$thread" check --all)
+[ "$(printf '%s\n' "$out" | grep -c '^IDENTITY ')" = 1 ] && printf '%s\n' "$out" | grep -q "^IDENTITY $app user.email=test@example.com (global owner@example.com): " \
+  || fail "thread.sh check did not report a local git identity once: $out"
+git -C "$app" config user.name tester
+(cd "$tmp/plain" && "$thread" check --all) | grep -q "^IDENTITY $app user.name=tester (global none): " || fail "thread.sh check did not report a local name with no global one"
+git -C "$app" config --unset user.name
+git -C "$app" config user.email owner@example.com
+[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a local identity equal to the global one"
+git -C "$app" config --unset user.email
+rm "$HOME/.gitconfig"
 # A thread with no record at all (launched before records existed) is reported, not fatal.
 mkdir -p "$tmp/proj/legacy-orch/.orchestration"
 printf 't-old\tdeadbeef\told\t%s\t%s\tm\t2026-10-10T00:00Z\n' "$app" "$tmp/proj/legacy-orch" >> "$ORCHESTRATION_HOME/threads.tsv"
