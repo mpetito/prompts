@@ -232,12 +232,17 @@ case "$cmd" in
     # The new pane opens first, so closing the old one never leaves the build's workspace empty.
     read -r pane ws < <(new_pane "$build" "$wt" "$ws" 2>"$reg.err") || { reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "no pane for the new thread: $reason"; }
     rm -f "$reg.err"
-    [ -z "$old" ] || herdr pane close "$old" >/dev/null 2>&1 || true
+    if [ -n "$old" ]; then
+      herdr pane close "$old" >/dev/null 2>&1 || true
+      [ -z "$(agent_pane "$build")" ] || { herdr pane close "$pane" >/dev/null 2>&1 || true; fail "the old thread still runs in $old, so nothing was started; close it, then rotate again"; }
+    fi
     put_row "$build" "$(row "$build" "$main" "$wt" "$ws" "$(utc_now)")"
     brief_text "$build" "$state" "Resume: read STATE first and continue from its RESUME section without redoing finished work." \
       > "$wt/.orchestration/rotate-brief.md"
-    waiting=$(start_thread "$build" "$pane" "$wt/.orchestration/rotate-brief.md" 2>"$reg.err") \
-      || { reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "the old thread was closed but the new one did not start: $reason; run thread.sh rotate $build --force"; }
+    if ! waiting=$(start_thread "$build" "$pane" "$wt/.orchestration/rotate-brief.md" 2>"$reg.err"); then
+      reason=$(cat "$reg.err"); rm -f "$reg.err"; herdr pane close "$pane" >/dev/null 2>&1 || true
+      fail "the new thread did not start: $reason; ${old:+the old one was closed; }run thread.sh rotate $build --force"
+    fi
     rm -f "$reg.err"
     [ -z "$waiting" ] || { echo "BLOCKED $build $waiting"; exit 0; }
     echo "ROTATED $build" ;;
@@ -323,6 +328,9 @@ case "$cmd" in
         [ -z "$unlanded" ] || fail "$branch holds work that ${ref#refs/*/} lacks in: $unlanded(integrate or land it, or pass --force)"
       fi
     fi
+    [ -n "$ws" ] || ws=$( { herdr agent get "$build" 2>/dev/null || true; } | jq -r '.result.agent.workspace_id // empty')
+    # Closing the workspace ends the thread and any lane still in it, so none sends mail after the archive.
+    [ -z "$ws" ] || herdr workspace close "$ws" >/dev/null 2>&1 || true
     pane=$(agent_pane "$build")
     [ -z "$pane" ] || herdr pane close "$pane" >/dev/null 2>&1 || true
     archive="$home/archive/$build-$(date -u +%Y%m%dT%H%M%SZ)"
@@ -334,7 +342,6 @@ case "$cmd" in
     reason=$(archive_ignored "$wt" "$archive" .orchestration 2>&1 >/dev/null) || fail "${reason##*$'\n'} (archive at $archive)"
     git -C "$repo" worktree remove --force "$wt" || fail "git worktree remove $wt failed; the archive is at $archive"
     git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
-    [ -z "$ws" ] || herdr workspace close "$ws" >/dev/null 2>&1 || true
     [ -z "$name" ] || delete_row "$name"
     lanes=$(git -C "$repo" worktree list --porcelain | sed -n "s#^worktree \($(dirname "$repo")/$(basename "$repo")-wt-[^/]*\)\$#\1#p" | tr '\n' ' ')
     echo "CLOSED $build archive=$archive${lanes:+ lanes still present: $lanes}" ;;

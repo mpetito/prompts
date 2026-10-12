@@ -14,7 +14,7 @@
 set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 now=$(utc_now)
-usage() { sed -n '2,11p' "$0" >&2; exit 1; }
+usage() { sed -n '2,13p' "$0" >&2; exit 1; }
 resolve() { file=$(resolve_state "$PWD" ORCHESTRATION_STATE) || exit 1; }
 need_file() { resolve; [ -f "$file" ] || { echo "no state file at $file; start one with state.sh init" >&2; exit 1; }; }
 backup() {

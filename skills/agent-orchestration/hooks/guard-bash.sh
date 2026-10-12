@@ -44,7 +44,7 @@ if [ "$background" != true ] && [ -z "$worker" ]; then
   if printf '%s' "$cmd" | grep -Eq "${at}(until|while)([[:space:]]|$)" && printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_-])sleep[[:space:]]'; then
     wait_reason="loops on sleep in the foreground"
   fi
-  if printf '%s' "$cmd" | grep -Eq "${at}[^[:space:]]*mail\.sh[[:space:]]+wait([[:space:]]|$)"; then
+  if printf '%s' "$cmd" | grep -Eq "${at}(bash[[:space:]]+)?[^[:space:]]*mail\.sh[[:space:]]+wait([[:space:]]|$)"; then
     wait_reason="waits on mail in the foreground"
   fi
   if [ -n "$wait_reason" ]; then

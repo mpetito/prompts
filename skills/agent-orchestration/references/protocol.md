@@ -72,7 +72,7 @@ STATUS: <working|need-decision|blocked|rotating|done> - <one-line summary>
 
 | State | When | Quiet |
 | --- | --- | --- |
-| `working` | A lane started, merged or changed course; a default applied; a steer was acted on | yes |
+| `working` | A lane started, merged or changed course; a default applied; a steer was acted on | yes, except an answer to `QUESTION` or `DECISION` |
 | `need-decision` | The owner must choose; the rest is a decision request (below) | no |
 | `blocked` | Nothing can move without MAIN or the owner; say what would unblock it | no |
 | `rotating` | After `ROTATE`: RESUME is written and the thread is about to stop | no |
@@ -124,7 +124,8 @@ before the owner is away for a long time.
    running.
 3. It writes RESUME with `state.sh resume` (checklist in [state-file.md](state-file.md)), stops its
    mail wait, sends `STATUS: rotating - <lanes in flight>, <open decisions>`, and ends its turn.
-4. MAIN runs `thread.sh rotate <build>`. It refuses a RESUME older than 15 minutes, opens a new tab
+4. MAIN stops the build's wait and runs `thread.sh rotate <build>`, then starts the wait again. The
+   script refuses a RESUME older than 15 minutes, opens a new tab
    in the build's workspace, closes the old thread's pane, and starts the new thread under the same
    name, so the mail carries over.
 5. The new thread's first message is `STATUS: working - resumed from RESUME …`.

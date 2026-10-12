@@ -43,7 +43,9 @@ send() {
       --from) need_value "$1" $#; from=$2; shift 2 ;;
       --file) need_value "$1" $#; file=$2; shift 2 ;;
       --quiet) quiet=.quiet; shift ;;
-      *) text=$1; shift ;;
+      --*) usage ;;
+      # One argument is the whole message: an unquoted one would arrive as its last word.
+      *) [ -z "$text" ] || usage; text=$1; shift ;;
     esac
   done
   [ -n "$from" ] || usage

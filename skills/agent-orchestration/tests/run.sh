@@ -197,7 +197,17 @@ printf 'STATUS: working - three\n' | "$mail" send b1/main --from b1/lane-a >/dev
 "$mail" send main --from b1/thread x >/dev/null 2>&1 && fail "mail.sh accepted an address without a build"
 "$mail" send b1/main --from b1/thread '  ' >/dev/null 2>&1 && fail "mail.sh sent an empty message"
 printf '\n' | "$mail" send b1/main --from b1/thread >/dev/null 2>&1 && fail "mail.sh sent an empty message from stdin"
+"$mail" send b1/main --from b1/thread STATUS: working - unquoted >/dev/null 2>&1 && fail "mail.sh sent an unquoted message, keeping only its last word"
+"$mail" send b1/main --from b1/thread --quite "STATUS: done - typo" >/dev/null 2>&1 && fail "mail.sh accepted an unknown option"
+printf 'STATUS: done - typo\n' | "$mail" send b1/main --from b1/thread --quite >/dev/null 2>&1 && fail "mail.sh sent an unknown option as the message"
 [ -z "$(ls -A "$box/b1/main/tmp")" ] || fail "mail.sh left a half-written message in tmp/"
+# A message reaches new/ only by a rename from tmp/, so a reader never sees half of one.
+mkdir -p "$tmp/mvlog"; printf '#!/usr/bin/env bash
+echo "$*" >> "%s"
+exec /bin/mv "$@"
+' "$tmp/mvlog/log" > "$tmp/mvlog/mv"; chmod +x "$tmp/mvlog/mv"
+PATH="$tmp/mvlog:$PATH" "$mail" send b9/main --from b9/thread "STATUS: working - renamed" >/dev/null
+grep -Eq "^$box/b9/main/tmp/([^ ]+) $box/b9/main/new/\1$" "$tmp/mvlog/log" || fail "mail.sh did not publish by renaming from tmp/ into new/: $(cat "$tmp/mvlog/log" 2>/dev/null)"
 "$mail" wait b1/main --timeout 0 | grep -qx 'MAIL 3' || fail "mail.sh wait did not count three messages"
 "$mail" read b1/main > "$tmp/read.out"
 [ "$(grep '^STATUS' "$tmp/read.out" | tr '\n' ' ')" = "STATUS: working - one STATUS: done - two STATUS: working - three " ] || fail "mail.sh read did not print the messages oldest first: $(cat "$tmp/read.out")"
@@ -294,7 +304,7 @@ jq '(.result.agents[] | select(.name == "lb")) += {pane_id: "w7:p1"}' "$MOCK_DIR
 : > "$MOCK_DIR/herdr.log"
 out=$("$lane" lb api "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 || true)
 [[ $out =~ ^LANE\ lb-api\ pane=w7:p[0-9]+\ kind=codex$ ]] || fail "lane.sh printed: $out"
-grep -qx "tab create --workspace w7 --cwd $tmp/lanewt --label api --no-focus" "$MOCK_DIR/herdr.log" || fail "lane.sh did not open a tab for the lane in the thread's workspace: $(cat "$MOCK_DIR/herdr.log")"
+grep -qx "tab create --workspace w7 --cwd $tmp/lanewt --label api --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" || fail "lane.sh did not open a tab for the lane in the thread's workspace: $(cat "$MOCK_DIR/herdr.log")"
 [ "$(tr '\n' '|' < "$MOCK_DIR/start-lb-api.args")" = "--approve-for-me|--add-dir|$ORCHESTRATION_HOME/mail/lb|--model|m1|" ] || fail "lane.sh started Codex with: $(cat "$MOCK_DIR/start-lb-api.args")"
 [ -d "$ORCHESTRATION_HOME/mail/lb" ] || fail "lane.sh did not create the mail folder it lets Codex write"
 grep -qx "agent prompt lb-api Read $tmp/lane-brief.md and follow it." "$MOCK_DIR/herdr.log" || fail "lane.sh did not hand the lane its brief"
@@ -382,6 +392,7 @@ bash_note 'while ! curl -s localhost; do sleep 2; done' | advised 'loops on slee
 [ -z "$(bash_note 'sleep 45' false worker-1)" ] || fail "guard-bash advised a worker on a foreground wait"
 [ -z "$(LANE=1 bash_note 'sleep 45')" ] || fail "guard-bash advised a lane session on a foreground wait"
 bash_note '~/.claude/skills/agent-orchestration/scripts/mail.sh wait b1/thread --timeout 600' | advised 'waits on mail in the foreground' || fail "guard-bash should advise on a foreground mail wait"
+bash_note 'bash ~/.claude/skills/agent-orchestration/scripts/mail.sh wait b1/thread' | advised 'waits on mail in the foreground' || fail "guard-bash missed a foreground mail wait run through bash"
 [ -z "$(bash_note '~/.claude/skills/agent-orchestration/scripts/mail.sh wait b1/thread' true)" ] || fail "guard-bash noted a background mail wait"
 [ -z "$(bash_note '~/.claude/skills/agent-orchestration/scripts/mail.sh read b1/thread')" ] || fail "guard-bash noted a mail read"
 [ -z "$(bash_note 'until curl -s localhost; do sleep 2; done' false worker-1)" ] || fail "guard-bash advised a worker's wait loop"
@@ -548,6 +559,22 @@ grep -qx "Read $wta/.orchestration/rotate-brief.md and follow it." "$MOCK_DIR/st
   && grep -qx 'Resume: read STATE first and continue from its RESUME section without redoing finished work.' "$wta/.orchestration/rotate-brief.md" \
   || fail "thread.sh rotate brief is wrong"
 [ "$(row_of t-a | cut -f1-4)" = "t-a	$app	$wta	$wsa" ] || fail "thread.sh rotate changed the build, worktree or workspace: $(row_of t-a)"
+# The new pane opens before the old one closes, so the build's workspace is never left empty.
+[ "$(grep -n "^tab create --workspace $wsa " "$MOCK_DIR/herdr.log" | head -1 | cut -d: -f1)" -lt "$(grep -n "^pane close $olda$" "$MOCK_DIR/herdr.log" | head -1 | cut -d: -f1)" ] \
+  || fail "thread.sh rotate closed the old pane before opening the new one"
+# A new thread held at a startup prompt is reported; one that fails to start has its pane closed.
+[ "$(MOCK_HERDR=notready "$thread" rotate t-a --force || true)" = "BLOCKED t-a waiting on a startup prompt: answer it in workspace t-a" ] || fail "thread.sh rotate mishandled a startup prompt"
+jq '(.result.agents[] | select(.name == "t-a") | .agent_status) = "idle"' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
+before=$(wc -l < "$MOCK_DIR/herdr.log")
+out=$(MOCK_HERDR=startfail "$thread" rotate t-a --force || true)
+[[ $out == "FAILED the new thread did not start: agent_start_failed: the agent exited; the old one was closed; run thread.sh rotate t-a --force" ]] || fail "thread.sh rotate printed: $out"
+[ "$(tail -n +"$((before + 1))" "$MOCK_DIR/herdr.log" | grep -c '^pane close ')" = 2 ] && [ -z "$(thread_pane t-a)" ] || fail "thread.sh rotate left the new pane of a failed start"
+"$thread" rotate t-a --force >/dev/null
+# An old thread that won't close is reported as still running, and nothing new starts beside it.
+keep=$(thread_pane t-a)
+out=$(MOCK_HERDR=closefail "$thread" rotate t-a --force || true)
+[ "$out" = "FAILED the old thread still runs in $keep, so nothing was started; close it, then rotate again" ] && [ "$(thread_pane t-a)" = "$keep" ] \
+  || fail "thread.sh rotate claimed to replace a thread it could not close: $out"
 # A thread whose agent and workspace are gone restarts in a new workspace.
 out=$(MOCK_HERDR=notab "$thread" rotate signup --force || true)
 [ "$out" = "ROTATED signup" ] && [ -n "$(thread_pane signup)" ] || fail "thread.sh rotate --force did not restart a stopped thread: $out"
@@ -684,7 +711,9 @@ out=$("$thread" close --worktree "$tmp/proj/app-orch-z" --base main --force || t
 [[ $out =~ ^FAILED\ refusing:\ git\ status\ failed\ in\ .*app-orch-z.*nothing\ was\ removed\ \(archive\ at\ [^$'\n']*\)$ ]] || fail "thread.sh close carried on, or printed more than one line, when git status failed: $out"
 [ -d "$tmp/proj/app-orch-z" ] || fail "thread.sh close removed a worktree it could not list"
 cp "$tmp/z.index.bak" "$idx"
+jq '.result.agents += [{name: "z", agent_status: "idle", pane_id: "w88:p1"}]' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
 "$thread" close --worktree "$tmp/proj/app-orch-z" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
+grep -qx 'workspace close w88' "$MOCK_DIR/herdr.log" || fail "thread.sh close --worktree left the build's workspace open"
 "$thread" close --worktree "$app" | grep -q 'is on .*, not orchestration/<build>' || fail "thread.sh closed a checkout that is not a coordination worktree"
 "$thread" close t-nope | grep -q '^FAILED no thread for build t-nope' || fail "thread.sh closed an unknown thread"
 

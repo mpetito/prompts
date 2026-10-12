@@ -7,6 +7,8 @@
 # Codex runs with --approve-for-me, so its automatic reviewer grants its approvals (commits in the worktree's
 # protected git directory among them), and --add-dir on the build's mail folder; --network lets its sandbox reach the
 # network. Claude runs the lane agent definition, which carries the guard hooks a subagent worker inherits.
+# A non-default ORCHESTRATION_HOME is passed to the lane's tab; Codex's sandbox doesn't see the pane's environment, so
+# a Codex lane's brief then gives its send command as ORCHESTRATION_HOME=<home> mail.sh send ....
 # Prints one line: LANE <name> pane=<pane> kind=<kind>, BLOCKED <name> <reason> (started, but waiting on a startup
 # prompt the owner must answer; send the pointer prompt once it is idle), or FAILED <reason> with exit 1.
 set -euo pipefail
@@ -49,7 +51,8 @@ run() {
 }
 ws=$( { herdr agent get "$build" 2>/dev/null || true; } | jq -r '.result.agent.workspace_id // empty')
 [ -n "$ws" ] || fail "no live thread named $build to put the lane beside; run lane.sh from the build's thread"
-out=$(run tab create --workspace "$ws" --cwd "$wt" --label "$lane" --no-focus) || fail "herdr tab create: $out"
+env=(); [ -z "${ORCHESTRATION_HOME:-}" ] || env=(--env "ORCHESTRATION_HOME=$ORCHESTRATION_HOME")
+out=$(run tab create --workspace "$ws" --cwd "$wt" --label "$lane" --no-focus "${env[@]}") || fail "herdr tab create: $out"
 pane=$(jq -r '.result.root_pane.pane_id' <<<"$out")
 if ! out=$(run agent start "$name" --kind "$kind" --pane "$pane" --timeout 120000 -- "${args[@]}"); then
   case $out in

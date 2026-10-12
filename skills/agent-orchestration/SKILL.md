@@ -80,7 +80,8 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
    and every other lane.
 5. Record what changed with `state.sh log` and `state.sh set`.
 6. Tell MAIN what changed, one message per change, with `mail.sh send <build>/main --from
-   <build>/thread`; routine `working` news goes `--quiet`. If nothing changed, send nothing.
+   <build>/thread`; routine `working` news goes `--quiet`, but never an answer to MAIN's
+   `QUESTION` or `DECISION`. If nothing changed, send nothing.
 
 ## 3. MAIN and decisions
 

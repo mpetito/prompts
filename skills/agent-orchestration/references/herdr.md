@@ -55,7 +55,8 @@ Update its brief file, then, once the lane is idle, prompt it with one line:
 
 ## End a lane
 
-When its work is merged or dropped: close its pane with `herdr pane close <pane>`, then run
+When its work is merged or dropped: restart your mail wait without the lane in `--watch` (or it
+reports the close as `GONE`), close its pane with `herdr pane close <pane>`, then run
 `finish-lane.sh`, which refuses while an agent still runs in the worktree. A lane agent lives for one
 lane; never start a long-lived agent inside a lane worktree, because removing the worktree breaks it.
 

@@ -122,8 +122,10 @@ fresh context.
 1. Send `ROTATE`.
 2. Wait for `STATUS: rotating - …`. Rotating earlier leaves an old RESUME, and `thread.sh rotate`
    refuses one older than 15 minutes.
-3. Run `thread.sh rotate <build>`. It prints `ROTATED <build>` (or `BLOCKED`, as for a launch). The
-   new thread keeps the name and the mailboxes, so the build's wait carries on.
+3. Stop the build's wait, then run `thread.sh rotate <build>`. It prints `ROTATED <build>` (or
+   `BLOCKED`, as for a launch). Then start the build's wait again: the new thread keeps the name
+   and the mailboxes. A wait left running would report the old thread `GONE` while the new one
+   starts.
 
 ## 6. A thread goes quiet or stops
 
