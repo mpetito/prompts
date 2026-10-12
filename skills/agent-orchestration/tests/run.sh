@@ -332,7 +332,7 @@ bash_note 'while ! curl -s localhost; do sleep 2; done' | advised 'loops on slee
 [ -z "$(bash_note 'sleep 45' false worker-1)" ] || fail "guard-bash advised a worker on a foreground wait"
 [ -z "$(bash_note 'until curl -s localhost; do sleep 2; done' false worker-1)" ] || fail "guard-bash advised a worker's wait loop"
 bash_note 'pkill -f vite' false worker-1 | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null || fail "guard-bash let a worker pkill"
-bash_note 'git worktree remove ../wt' false worker-1 | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'plain directory' || fail "guard-bash did not point a worker at plain-directory copies"
+bash_note 'git worktree remove ../wt' false worker-1 | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'git clone --no-local' || fail "guard-bash did not point a worker at a clone for throwaway copies"
 jq -n '{tool_input:{command:"sleep 45"}}' | "$here/hooks/guard-bash.sh" | advised 'sleeps 45 s' || fail "guard-bash should advise on a foreground sleep when the input has no cwd"
 
 # --- hooks fixture: the owner's checkout, a coordination worktree, a lane worktree, a nested worktree -----------

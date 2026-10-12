@@ -23,7 +23,7 @@ if printf '%s' "$cmd" | grep -Eq "${at}(pkill|killall)([[:space:]]|$)"; then
   deny "pkill and killall match by pattern or name across every lane on this machine, and have killed the caller's own shell and another lane's server. Stop a process by PID: find it with 'ss -ltnp' or 'pgrep -a', read its command line, then 'kill <pid>'."
 fi
 if printf '%s' "$cmd" | grep -Eq "${at}git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+worktree[[:space:]]+remove"; then
-  deny "Raw worktree removal has deleted lane evidence before it was archived. Use ~/.claude/skills/agent-orchestration/scripts/finish-lane.sh ../<repo>-wt-<lane> <archive dir>, which archives the scratch directory and ignored files such as .eval-runs, refuses while an agent runs there, then removes the worktree. For a throwaway copy, use a plain directory (git archive or cp -a), not a worktree."
+  deny "Raw worktree removal has deleted lane evidence before it was archived. Use ~/.claude/skills/agent-orchestration/scripts/finish-lane.sh ../<repo>-wt-<lane> <archive dir>, which archives the scratch directory and ignored files such as .eval-runs, refuses while an agent runs there, then removes the worktree. For a throwaway copy, use \`git clone --no-local\` or \`git archive\`, never \`cp -a\` of a worktree."
 fi
 # Lane evidence lives in the coordination worktree's .orchestration/briefs and results, a lane worktree keeps its
 # scratch in .orchestration/tmp until finish-lane.sh archives it, and .orchestration/lanes holds evidence from
