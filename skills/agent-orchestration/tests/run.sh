@@ -155,6 +155,7 @@ cat > legacy/state.md <<'STATE'
 | --- | --- | --- | --- | --- |
 | alpha | codex | #1 | abc1234 | review |
 | beta | opus | #2 | def5678 | land |
+| scripts | - | - | - | brief |
 
 ## Log
 
@@ -172,6 +173,11 @@ tail -1 legacy/state.md | grep -q 'kept below the log' || fail "state.sh log wro
 "$here/scripts/state.sh" set beta "Head SHA" 9999999 >/dev/null
 grep -q '^| beta | opus | #2 | 9999999 | land |$' legacy/state.md || fail "state.sh set did not replace the cell"
 grep -q '^| alpha | codex | #1 | abc1234 | review |$' legacy/state.md || fail "state.sh set touched another row"
+# A lane not yet started has "-" cells; the separator row never matches a lane.
+"$here/scripts/state.sh" set scripts Agent opus >/dev/null || fail "state.sh set refused a lane whose Agent cell is -"
+grep -q '^| scripts | opus | - | - | brief |$' legacy/state.md || fail "state.sh set did not update a lane whose Agent cell was -"
+grep -qx '| --- | --- | --- | --- | --- |' legacy/state.md || fail "state.sh set changed the separator row"
+grep -q '^| beta | opus | #2 | 9999999 | land |$' legacy/state.md || fail "state.sh set on scripts touched another row"
 "$here/scripts/state.sh" set gamma "Head SHA" 1 >/dev/null 2>&1 && fail "state.sh set accepted an unknown lane"
 "$here/scripts/state.sh" set beta Nope 1 >/dev/null 2>&1 && fail "state.sh set accepted an unknown column"
 "$here/scripts/state.sh" backup >/dev/null

@@ -66,7 +66,7 @@ case "${1:-}" in
           for (i = 2; i < n; i++) if (trim(cells[i]) == col) target = i
           header = 1
           if (!target) { print "no column " col > "/dev/stderr"; exit 2 }
-        } else if (trim(cells[2]) == lane && cells[3] !~ /^[ -]+$/) {
+        } else if (trim(cells[2]) == lane) {
           cells[target] = " " val " "
           line = ""
           for (i = 2; i < n; i++) line = line "|" cells[i]
