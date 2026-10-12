@@ -1,0 +1,12 @@
+{
+  "number": 71,
+  "title": "feat(export): add --until to stop a backfill at an instant",
+  "state": "OPEN",
+  "isDraft": false,
+  "author": {
+    "login": "rowan-ashby"
+  },
+  "headRefName": "feature/export-until",
+  "headRefOid": "c9a40f6",
+  "body": "Adds `export --until <instant>` so a backfill can export a closed window, `--since A --until B`.\n\nRefs #70\n\nValidation: `pytest`, 9 passed.\n\nRisk: low - `--until` is opt-in."
+}

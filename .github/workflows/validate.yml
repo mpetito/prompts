@@ -29,8 +29,10 @@ jobs:
         run: ./tests/Setup.Tests.ps1
       - name: Check MCP installation with mocked CLIs
         run: ./tests/Mcp.Tests.ps1
-      - name: Check existing PR feedback helpers
-        run: ./archive/skills/pr-scripts/tests/Get-PrFeedback.Tests.ps1
+      - name: Check the pull-request feedback script with a mocked gh
+        run: ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
+      - name: Check the pull-request thread script with a mocked gh
+        run: ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
       - name: Check orchestration scripts and hooks
         if: runner.os == 'Linux'
         shell: bash

@@ -1,0 +1,538 @@
+{
+  "version": 2,
+  "skill_name": "pull-request",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "f1-retry-defaults-tradeoff",
+      "split": "tune",
+      "prompt": "Address the Copilot review on my PR #18: say what you'd change, draft the reply to each thread, and give the commands in the order you'd run them. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
+      "files": [
+        "fixtures/fetch-retry-pr.md"
+      ],
+      "expected_behavior": [
+        "Rule F1.",
+        "Fixes the exhaustion off-by-one (Aa) and refutes the 5xx claim (Bb) from the vendored code",
+        "Recognises the retry-defaults thread (Cc) as a tradeoff the code and docs do not settle (page early vs ride out a 2-4 minute outage) and takes it to model-council or the owner instead of deciding it",
+        "Posts no settled answer on Cc (a holding reply is fine), changes no default, and leaves Cc unresolved"
+      ],
+      "assertions": [
+        {
+          "name": "fixes-off-by-one",
+          "type": "regex",
+          "pattern": "(?m)^\\+[^\\n]*(?:attempt\\s*==\\s*max_retries\\s*-\\s*1|attempt\\s*\\+\\s*1\\s*==\\s*max_retries|attempt\\s*>=\\s*max_retries\\s*-\\s*1)|^\\+(?: {4}|\\t)raise last_error\\b"
+        },
+        {
+          "name": "cc-left-open",
+          "type": "regex",
+          "pattern": "\\A(?!\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tq0Cc\\b))[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDOQx7a1M5Tq0Cc[`*_\\s|:>→\\-–—]*leave open\\b"
+        },
+        {
+          "name": "cc-not-resolved",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tq0Cc|PRRT_kwDOQx7a1M5Tq0Cc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tq0Cc|\\bCc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)|Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tq0Cc\\b))"
+        },
+        {
+          "name": "cc-defaults-unchanged",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?m:^)\\+[^\\n]*(?:max_retries\\s*=\\s*(?!3\\b)\\d|base_delay\\s*=\\s*(?!0?\\.5\\b)\\d)"
+        },
+        {
+          "name": "cc-not-settled-alone",
+          "type": "judge",
+          "rubric": [
+            "The answer does not settle the retry-defaults thread (Cc) itself: it neither declines nor accepts it, in a reply or in code, and hands the decision to model-council or the owner. Pass: 'I lean toward keeping the defaults, but it's your call', with Cc left open and at most a holding reply such as 'Holding this one until it's decided'. Fail: posting 'Keeping the current defaults until we see more outages' on Cc, or saying 'no need for a second opinion' and declining it."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f2-fix-committed-not-pushed",
+      "split": "tune",
+      "eval_intent": "regression",
+      "prompt": "I fixed both of Copilot's comments on my PR #23 in my last commit. Wrap up the two review threads. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
+      "files": [
+        "fixtures/fetch-timeout-pr.md"
+      ],
+      "expected_behavior": [
+        "Rule F3.",
+        "A regression case for F3's reply-then-resolve ordering; rule F2 itself passed unaided and was dropped",
+        "Pushes 4be91c2 first: git status shows the branch is ahead of origin, so the fix is not on the PR yet",
+        "Then replies on each thread citing the pushed SHA",
+        "Resolves each thread only after its reply"
+      ],
+      "assertions": [
+        {
+          "name": "pushes",
+          "type": "regex",
+          "pattern": "(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b(?![^\\n]*--dry-run))"
+        },
+        {
+          "name": "no-reply-before-push",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b(?![^\\n]*--dry-run)))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?m:(?:^|&&|;|\\|\\|)[ \\t]*(?:\\$[ \\t]*)?git push\\b(?![^\\n]*--dry-run)))[\\s\\S])*?(?:gh api\\b(?:[^\\n]|\\\\\\n)*?/replies\\b|addPullRequestReviewThreadReply|in_reply_to|Resolve-PrThread\\b)"
+        },
+        {
+          "name": "ka-reply-cites-sha",
+          "type": "regex",
+          "pattern": "(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Ka\\b)(?:[^\\n]|`\\n)*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|addPullRequestReviewThreadReply(?=(?:(?!\\bgh\\s|```)[\\s\\S])*?PRRT_kwDOQx7a1M5Tr1Ka)(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410201\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b[^\\n]*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse))"
+        },
+        {
+          "name": "kb-reply-cites-sha",
+          "type": "regex",
+          "pattern": "(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Kb\\b)(?:[^\\n]|`\\n)*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|addPullRequestReviewThreadReply(?=(?:(?!\\bgh\\s|```)[\\s\\S])*?PRRT_kwDOQx7a1M5Tr1Kb)(?:(?!\\bgh\\s|```)[\\s\\S])*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse)|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410202\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b[^\\n]*?(?:4be91c2|\\$\\{?\\w*sha\\b|\\$\\(git rev-parse))"
+        },
+        {
+          "name": "ka-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Ka\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b|in_reply_to[^\\n]{0,6}2214410201|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Ka|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410201\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Ka\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410201/replies\\b|in_reply_to[^\\n]{0,6}2214410201|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Ka|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410201\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Ka|PRRT_kwDOQx7a1M5Tr1Ka(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Ka|\\bKa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "kb-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Kb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b|in_reply_to[^\\n]{0,6}2214410202|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Kb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410202\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDOQx7a1M5Tr1Kb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2214410202/replies\\b|in_reply_to[^\\n]{0,6}2214410202|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDOQx7a1M5Tr1Kb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2214410202\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDOQx7a1M5Tr1Kb|PRRT_kwDOQx7a1M5Tr1Kb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDOQx7a1M5Tr1Kb|\\bKb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "ka-resolved",
+          "type": "regex",
+          "pattern": "\\A[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDOQx7a1M5Tr1Ka[`*_\\s|:>→\\-–—]*resolve\\b"
+        },
+        {
+          "name": "kb-resolved",
+          "type": "regex",
+          "pattern": "\\A[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDOQx7a1M5Tr1Kb[`*_\\s|:>→\\-–—]*resolve\\b"
+        },
+        {
+          "name": "reply-then-resolve",
+          "type": "judge",
+          "rubric": [
+            "Every thread that ends resolved gets its own reply first, and no thread is resolved silently, however the commands are written. Pass: reply on each thread, then a resolve loop. Fail: a resolve helper defined in an earlier block, or a query file such as -f query=@resolve.graphql, run before the replies."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f3-declined-copilot-vs-human-deferral",
+      "split": "tune",
+      "prompt": "Answer the review on my PR #64: reply to each thread and give the commands in the order you'd run them. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
+      "files": [
+        "fixtures/alert-threshold-pr.md"
+      ],
+      "expected_behavior": [
+        "Rule F3.",
+        "Declines Copilot's float(None) claim with the evidence (the get() default \"350\") in the reply, changes no code for it, and resolves that thread after the reply",
+        "Replies to the fixed page_on_call thread citing 9e4c1d2 and resolves it after the reply",
+        "Replies to Juno's per-station question with the deferral to issue #65 and leaves that thread open for Juno"
+      ],
+      "assertions": [
+        {
+          "name": "pa-reply-has-evidence",
+          "type": "regex",
+          "pattern": "(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pa\\b)(?:[^\\n]|`\\n)*?350|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b(?:(?!\\bgh\\s|```)[\\s\\S])*?350|addPullRequestReviewThreadReply(?=(?:(?!\\bgh\\s|```)[\\s\\S])*?PRRT_kwDORt3w8N5Ua4Pa)(?:(?!\\bgh\\s|```)[\\s\\S])*?350|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460301\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b[^\\n]*?350)"
+        },
+        {
+          "name": "threshold-line-unchanged",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?m:^)[-+][^\\n]*ALERT_THRESHOLD_CM"
+        },
+        {
+          "name": "pa-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b|in_reply_to[^\\n]{0,6}2220460301|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460301\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460301/replies\\b|in_reply_to[^\\n]{0,6}2220460301|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460301\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pa|PRRT_kwDORt3w8N5Ua4Pa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pa|\\bPa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "replies-to-fixed-thread",
+          "type": "regex",
+          "pattern": "(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pc\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
+        },
+        {
+          "name": "pc-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pc\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pc\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460303/replies\\b|in_reply_to[^\\n]{0,6}2220460303|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pc|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460303\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pc|PRRT_kwDORt3w8N5Ua4Pc(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pc|\\bPc\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "replies-to-juno",
+          "type": "regex",
+          "pattern": "(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2220460302/replies\\b|in_reply_to[^\\n]{0,6}2220460302|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ua4Pb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2220460302\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
+        },
+        {
+          "name": "copilot-decline-resolved",
+          "type": "regex",
+          "pattern": "\\A[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDORt3w8N5Ua4Pa[`*_\\s|:>→\\-–—]*resolve\\b"
+        },
+        {
+          "name": "fixed-thread-resolved",
+          "type": "regex",
+          "pattern": "\\A[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDORt3w8N5Ua4Pc[`*_\\s|:>→\\-–—]*resolve\\b"
+        },
+        {
+          "name": "juno-left-open",
+          "type": "regex",
+          "pattern": "\\A(?!\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pb\\b))[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDORt3w8N5Ua4Pb[`*_\\s|:>→\\-–—]*leave open\\b"
+        },
+        {
+          "name": "juno-not-resolved",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ua4Pb|PRRT_kwDORt3w8N5Ua4Pb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ua4Pb|\\bPb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)|Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ua4Pb\\b))"
+        },
+        {
+          "name": "reply-then-resolve",
+          "type": "judge",
+          "rubric": [
+            "Every thread that ends resolved gets its own reply first, and no thread is resolved silently, however the commands are written. Pass: reply on each thread, then a resolve loop. Fail: a resolve helper defined in an earlier block, or a query file such as -f query=@resolve.graphql, run before the replies."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f4-suppressed-review-body-finding",
+      "split": "tune",
+      "prompt": "Copilot has reviewed my PR #71. Handle its feedback. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
+      "files": [
+        "fixtures/export-until-pr.md",
+        "fixtures/gh-api-graphql-review-threads-71.json",
+        "fixtures/gh-api-pulls-71-reviews.json",
+        "fixtures/gh-api-pulls-71-comments.json",
+        "fixtures/gh-pr-view-71.json"
+      ],
+      "expected_behavior": [
+        "Rule F4.",
+        "Reads the review bodies, not just the empty thread list, and finds the suppressed --until boundary finding (this half leaks: the harness lists every fixture path)",
+        "Fixes the comparison so a reading at until is kept (>)",
+        "Posts no new PR comment or review for a body-only finding"
+      ],
+      "assertions": [
+        {
+          "name": "fixes-boundary",
+          "type": "regex",
+          "pattern": "(?m)^\\+[^\\n]*(?:taken_at\\s*>\\s*until\\b|until\\s*<\\s*(?:r\\.)?taken_at\\b)"
+        },
+        {
+          "name": "no-new-public-comment",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:gh pr comment|gh pr review\\b|addPullRequestReview(?!ThreadReply)|\\baddComment\\b|/(?:pulls|issues)/71/(?:comments|reviews)\\b(?:[^\\n]|\\\\\\n)*?(?:-X\\s*POST|--method\\s+POST|-[fF]\\s+body=|--(?:raw-)?field\\s+body=|--input)|(?:-X\\s*POST|--method\\s+POST)(?:[^\\n]|\\\\\\n)*?/(?:pulls|issues)/71/(?:comments|reviews)\\b)"
+        }
+      ]
+    },
+    {
+      "id": "f5-outdated-thread-still-broken",
+      "split": "tune",
+      "prompt": "Answer the open Copilot threads on my PR #66. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
+      "files": [
+        "fixtures/station-metadata-pr.md"
+      ],
+      "expected_behavior": [
+        "Rule F3.",
+        "Re-checks both outdated threads at the head instead of treating isOutdated as addressed",
+        "Finds the full yaml.Loader still in _read_stations and switches it to the safe loader, in code",
+        "Answers the file-handle thread as fixed by 7d3e0aa's with block; replies before resolving each thread"
+      ],
+      "assertions": [
+        {
+          "name": "fixes-unsafe-load",
+          "type": "regex",
+          "pattern": "(?m)^\\+[^\\n]*(?:safe_load\\(|\\bC?SafeLoader\\b)"
+        },
+        {
+          "name": "replies-yaml-thread",
+          "type": "regex",
+          "pattern": "(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
+        },
+        {
+          "name": "replies-handle-thread",
+          "type": "regex",
+          "pattern": "(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b)"
+        },
+        {
+          "name": "yaml-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sa\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660401/replies\\b|in_reply_to[^\\n]{0,6}2223660401|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sa|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660401\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sa|PRRT_kwDORt3w8N5Ub6Sa(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sa|\\bSa\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "handle-reply-before-resolve",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)(?!(?:Resolve-PrThread(?:\\.ps1)?\\b(?=(?:[^\\n]|`\\n)*?-ThreadId\\s+[\\\"']?PRRT_kwDORt3w8N5Ub6Sb\\b)|gh api\\b(?:[^\\n]|\\\\\\n)*?2223660402/replies\\b|in_reply_to[^\\n]{0,6}2223660402|addPullRequestReviewThreadReply(?:(?!\\bgh\\s|```)[\\s\\S]){0,600}?PRRT_kwDORt3w8N5Ub6Sb|for\\s+\\w+\\s+in\\s+[^\\n;]*\\b2223660402\\b[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,300}?/replies\\b))[\\s\\S])*?(?:resolveReviewThread(?:(?!\\bgh\\s|```)[\\s\\S]){0,400}?PRRT_kwDORt3w8N5Ub6Sb|PRRT_kwDORt3w8N5Ub6Sb(?:(?!\\bgh\\s|```)[\\s\\S]){0,200}?resolveReviewThread|for\\s+\\w+\\s+in\\s+[^\\n;]*(?:PRRT_kwDORt3w8N5Ub6Sb|\\bSb\\b)[^\\n;]*;?\\s*(?:\\n\\s*)?do\\b[\\s\\S]{0,400}?resolveReviewThread)"
+        },
+        {
+          "name": "yaml-thread-resolved",
+          "type": "regex",
+          "pattern": "\\A[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDORt3w8N5Ub6Sa[`*_\\s|:>→\\-–—]*resolve\\b"
+        },
+        {
+          "name": "handle-thread-resolved",
+          "type": "regex",
+          "pattern": "\\A[\\s\\S]*?(?m:^)[^\\n]*PRRT_kwDORt3w8N5Ub6Sb[`*_\\s|:>→\\-–—]*resolve\\b"
+        },
+        {
+          "name": "reply-then-resolve",
+          "type": "judge",
+          "rubric": [
+            "Every thread that ends resolved gets its own reply first, and no thread is resolved silently, however the commands are written. Pass: reply on each thread, then a resolve loop. Fail: a resolve helper defined in an earlier block, or a query file such as -f query=@resolve.graphql, run before the replies."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a1-new-pr-body",
+      "split": "tune",
+      "tags": [
+        "plugin-arm"
+      ],
+      "prompt": "Open a pull request for this branch: write the title and body, and give the commands you'd run. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output the title on the first line, then a blank line, then the body exactly as it will be posted. After the body, put a line containing only `===`, then every command you would run, in order, in fenced code blocks, and say where you stop.",
+      "files": [
+        "fixtures/export-since-branch.md"
+      ],
+      "expected_behavior": [
+        "Rule A1.",
+        "Body opens with the motivation from issue #57 in prose, then the changes grouped as bullets",
+        "The body itself says the tests exist but were not run, and claims no pass",
+        "No Summary or Test plan boilerplate, no attribution",
+        "The title follows the repository's commit convention (a skill rule since D4)",
+        "Following CONTRIBUTING.md (the Risk: line) is checked too, but is not A1's discriminator"
+      ],
+      "assertions": [
+        {
+          "name": "body-then-separator",
+          "type": "regex",
+          "pattern": "(?m)^===[ \\t]*$"
+        },
+        {
+          "name": "conventional-title",
+          "type": "regex",
+          "pattern": "\\A[ \\t*#`]*(?:title:[ \\t*`]*)?(?:feat|fix|refactor|perf|docs|test|chore|build|ci)(?:\\([\\w./-]+\\))?!?:[ \\t]+\\S"
+        },
+        {
+          "name": "motivation-first",
+          "type": "regex",
+          "pattern": "\\A[^\\n]*\\n(?:[ \\t]*\\n)+(?:```[\\w-]*[ \\t]*\\n(?:[ \\t]*\\n)*)?(?:#{1,4}[ \\t]*(?!summary\\b|overview\\b)\\w[^\\n]*\\n(?:[ \\t]*\\n)*)?[ \\t]*(?:\\*\\*(?!summary\\b|overview\\b)[\\w ]{1,24}:?\\*\\*:?[ \\t]+)?(?![#>|*-]|\\d+[.)]|```)\\S"
+        },
+        {
+          "name": "changes-grouped",
+          "type": "regex",
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?\\n[ \\t]*[-*][ \\t]+\\S"
+        },
+        {
+          "name": "body-says-not-run",
+          "type": "regex",
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:\\bnot (?:yet )?(?:been )?(?:run|executed)\\b|n't (?:yet )?(?:been )?run\\b|\\buntested\\b|\\bnone (?:of (?:these|them|the (?:new )?tests) )?(?:were|was|have been|has been|are|is) (?:yet )?run\\b|\\bstill (?:to|needs? to) (?:be )?run\\b|\\b(?:no|nothing|none)\\b[^.\\n]{0,40}\\b(?:been )?(?:run|executed)\\b)"
+        },
+        {
+          "name": "links-issue",
+          "type": "regex",
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:#|https?://github\\.com/[\\w.-]+/[\\w.-]+/issues/)57\\b"
+        },
+        {
+          "name": "contributing-risk-line",
+          "type": "regex",
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t*_`]*Risk:[ \\t*_]*(?:low|medium|high)"
+        },
+        {
+          "name": "no-summary-boilerplate",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?m:^)[ \\t]*(?:#{1,4}[ \\t]*|\\*\\*)(?:summary|test plan)\\b"
+        },
+        {
+          "name": "no-pass-claim",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:(?<=[\\n,;:.])|(?<![\\s\\S]))(?![^\\n,;:.]*(?:\\bnot?\\b|\\bnothing\\b|\\bnever\\b|\\bwithout\\b|\\bnone\\b|\\w+n't\\b)[^\\n,;:.]*?\\b\\d+ (?:tests? )?passed\\b)[^\\n,;:.]*?\\b\\d+ (?:tests? )?passed\\b"
+        },
+        {
+          "name": "no-ai-attribution",
+          "type": "not_regex",
+          "pattern": "\\A(?:(?!\\n===[ \\t]*\\n)[\\s\\S])*?(?:generated with|co-authored-by)|\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:generated with|co-authored-by)"
+        },
+        {
+          "name": "body-quality",
+          "type": "judge",
+          "rubric": [
+            "The body opens with why the change exists (the nightly full re-export, duplicates counted twice) in plain prose before any list",
+            "Changes are grouped by behaviour, each with the guarantee it gives, not listed file by file",
+            "No filler: no restated title, no generic closing line, no section that only says there is nothing to say"
+          ]
+        },
+        {
+          "name": "validation-honest",
+          "type": "judge",
+          "rubric": [
+            "Validation in the body claims only what was actually run, and says in the body what was not run. Pass: 'New tests cover the cutoff; they have not been run yet, and CI has not run.' Fail: 'lint not run; pytest: 12 passed' when nothing was run, or a body that says nothing about testing."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r1-review-colleague-pr",
+      "split": "tune",
+      "tags": [
+        "plugin-arm"
+      ],
+      "prompt": "Review PR 42. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Show the review text, then every command you would run, in order, in fenced code blocks, and say where you stop.",
+      "files": [
+        "fixtures/manifest-cache-pr.md"
+      ],
+      "expected_behavior": [
+        "Rule R1.",
+        "Finds the url-ignoring cache key and the non-atomic write",
+        "Shows the exact review text: a summary plus short inline comments anchored to lines",
+        "Gives one review call (REST pulls/42/reviews with comments, or GraphQL addPullRequestReview with threads), event COMMENT, and stops for the owner's approval of the text before posting",
+        "Posts nothing unasked: no second review call, no separate line or issue comments, no claim that anything was posted"
+      ],
+      "assertions": [
+        {
+          "name": "one-review-call",
+          "type": "regex",
+          "pattern": "(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()"
+        },
+        {
+          "name": "no-second-review-call",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()|(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b)(?:(?!```)[\\s\\S])*?(?:```(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?)?(?:(?:gh api(?=(?:[^\\n]|\\\\\\n)*?pulls/42/reviews\\b)(?=(?:[^\\n]|\\\\\\n)*?(?:\\s-[fF]\\s|\\s--(?:raw-)?field\\b|\\s--input\\b|-X\\s*POST|--method\\s+POST))|addPullRequestReview\\s*\\()|(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr review\\b)"
+        },
+        {
+          "name": "inline-comments",
+          "type": "regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:\\\"?comments\\\"?\\s*:\\s*\\[\\s*\\{|threads\\s*:\\s*\\[\\s*\\{|comments\\[\\])"
+        },
+        {
+          "name": "event-comment",
+          "type": "regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?event[\\\"']?\\s*[:=]\\s*[\\\"']?COMMENT\\b",
+          "ci": false
+        },
+        {
+          "name": "no-separate-comments",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:(?m:^)[ \\t]*(?:\\$[ \\t]*)?(?:\\w+=\\S*[ \\t]+)*gh pr (?:comment|review)\\b|/issues/42/comments|pulls/42/comments\\b|addPullRequestReviewComment|addPullRequestReviewThread\\b(?!Reply))"
+        },
+        {
+          "name": "no-ai-attribution",
+          "type": "not_regex",
+          "pattern": "\\A(?:[^`]|`(?!``))*?(?:```[^\\n]*\\n(?:(?!```)[\\s\\S])*?```(?:[^`]|`(?!``))*?)*?```[^\\n]*\\n(?:(?!```)[\\s\\S])*?(?:generated with|co-authored-by)"
+        },
+        {
+          "name": "finds-defects",
+          "type": "judge",
+          "rubric": [
+            "The review names the cache key that ignores url and the non-atomic cache write. Pass: 'every URL shares manifest.json' and 'a concurrent worker can read a truncated file'. Fail: only the write, or only style points."
+          ]
+        },
+        {
+          "name": "posting-gate",
+          "type": "judge",
+          "rubric": [
+            "Nothing is posted before the owner approves the exact review text: every posting command is shown as pending, and the answer stops to ask. Pass: 'Nothing is posted yet. Say post and I will send it exactly as written.' Fail: 'I ran it: the review is posted', or running gh pr review before asking."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-copilot-comments",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Copilot left six comments on my PR. Go through them, fix the ones that are right, and answer every thread.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-reply-resolve-threads",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Reply to the review threads on PR #31 and resolve the ones we've fixed.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-open-pr",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Open a pull request for this branch with a proper description.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-refresh-pr-body",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The last two commits changed the approach, so bring the PR description up to date.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-post-review-after-ok",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review PR 52, and once I've okayed your comments, post them on the PR.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-review-local-diff",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my uncommitted changes for bugs before I commit them.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing a local diff belongs to review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-wait-for-ci",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Wait for CI on PR #40 to finish and tell me if any check fails.",
+      "expected_behavior": [
+        "The skill should NOT trigger: waiting on CI belongs to the pr-watch agent."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-model-debate",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Have Claude and Codex debate whether the manifest cache should use a file lock or a queue, and tell me where they land.",
+      "expected_behavior": [
+        "The skill should NOT trigger: settling a decision by debate belongs to model-council."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-just-commit",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Just commit the staged changes with a sensible message.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a plain commit is not a pull request."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-contributing",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a CONTRIBUTING.md for this repo saying how to name branches and title pull requests.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing CONTRIBUTING.md belongs to project-setup."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
