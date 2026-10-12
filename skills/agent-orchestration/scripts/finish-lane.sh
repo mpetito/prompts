@@ -30,23 +30,8 @@ if [ -d "$wt/$scratch" ]; then
   cp -a "$wt/$scratch/." "$archive/"
   echo "archived $wt/$scratch to $archive"
 fi
-# git status leaves ignored files out, and the forced removal below deletes them, so archive them first. Dependency
-# and cache folders are rebuilt from the lockfiles and are left behind.
-skip='(^|/)(node_modules|\.venv|venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.terraform|cdk\.out[^/]*|\.next|\.turbo|\.cache|dist|build|target)/?$'
 # A failed listing would archive nothing and still remove the worktree, so it stops everything.
-listing=$(mktemp)
-trap 'rm -f "$listing"' EXIT
-git -C "$wt" status --porcelain=v1 -z --ignored=matching > "$listing" \
-  || { echo "refusing: git status failed in $wt, so its ignored files can't be archived; nothing was removed" >&2; exit 1; }
-while IFS= read -r -d '' entry; do
-  [ "${entry:0:3}" = '!! ' ] || continue
-  path=${entry:3}
-  case "$path" in "$scratch"|"$scratch/"*) continue ;; esac
-  [[ $path =~ $skip ]] && continue
-  mkdir -p "$archive/ignored"
-  (cd "$wt" && cp -a --parents -- "${path%/}" "$archive/ignored/")
-  echo "archived ignored $path to $archive/ignored"
-done < "$listing"
+archive_ignored "$wt" "$archive" "$scratch" || exit 1
 # Untracked output names the first unignored ancestor, so ".orchestration/" may stand for the scratch dir.
 leftover=$(git -C "$wt" status --porcelain | while IFS= read -r line; do
   path=${line:3}

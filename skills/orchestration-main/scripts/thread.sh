@@ -15,8 +15,11 @@
 # STOPPED <name> <id>, ROTATED <old> -> <new> <id>, ADOPTED <name> main=<name> socket=<address>,
 # INTEGRATED <name> <branch>@<sha> (fast-forward|merge), CLOSED <build> archive=<dir>, or FAILED <reason> with
 # exit 1. close ends a build: it refuses while the build branch holds work the base lacks, archives
-# .orchestration/ under $ORCHESTRATION_HOME/archive/, and removes the worktree, branch and session. check prints MOVED and
-# INBOX lines, or OK; list and decisions print one line per thread or item, or NONE.
+# .orchestration/ under $ORCHESTRATION_HOME/archive/<build>-<stamp>/ and the worktree's other ignored files (not
+# dependency or cache folders) under its ignored/, and removes the worktree, branch and session. check prints MOVED,
+# BLOCKED (the thread's session waits on the owner, per claude agents --json), INBOX and IDENTITY (a repository's
+# local git config sets user.name or user.email apart from the global one) lines, or OK; list and decisions print
+# one line per thread or item, or NONE.
 # The base defaults to the checkout's current branch. Landing is pr when the base is on origin with nothing
 # unpushed, else local: lanes merge into orchestration/<build>, and integrate brings that branch into the base.
 # Each thread's .orchestration/thread.md records MAIN's name and socket ($CLAUDE_CODE_MESSAGING_SOCKET), the
@@ -32,7 +35,7 @@ resume_max_age_minutes=15
 home=${ORCHESTRATION_HOME:-$HOME/.orchestration}
 reg="$home/threads.tsv"
 fail() { echo "FAILED $*"; exit 1; }
-usage() { sed -n '2,26p' "$0" >&2; exit 1; }
+usage() { sed -n '2,29p' "$0" >&2; exit 1; }
 ensure_registry() {
   mkdir -p "$home"
   [ -f "$reg" ] || printf 'name\tid\tbuild\trepo\tworktree\tmain\tlaunched\n' > "$reg"
@@ -70,6 +73,29 @@ start_session() {
     echo "claude exited $code: $(printf '%s\n' "$out" | grep -m1 . || echo 'no output')" >&2; return 1
   fi
   echo "$id"
+}
+live_sessions() {
+  # live_sessions: the JSON array from claude agents --json, the supported way to read session state from outside
+  # Claude Code, or nothing when the call fails or prints something else.
+  local out
+  out=$(claude_env claude agents --json 2>/dev/null || true)
+  if printf '%s' "$out" | jq -e 'type == "array"' >/dev/null 2>&1; then printf '%s' "$out"; fi
+}
+session_of() {
+  # session_of <live sessions> <registry id>: the live entry whose sessionId starts with the id, or null.
+  printf '%s' "$1" | jq --arg id "$2" '[.[] | select((.sessionId // "") | startswith($id))][0]'
+}
+identity_warnings() {
+  # identity_warnings <repo>: an IDENTITY line for each of user.name and user.email that the repository's local
+  # config (the common .git/config, shared by its linked worktrees) sets apart from the global value. A copied
+  # worktree's git config once wrote a test identity there, and commits on main took it.
+  local key mine global
+  for key in user.name user.email; do
+    mine=$(git -C "$1" config --local --get "$key" 2>/dev/null || true)
+    global=$(git config --global --get "$key" 2>/dev/null || true)
+    [ -n "$mine" ] && [ "$mine" != "$global" ] || continue
+    echo "IDENTITY $1 $key=$mine (global ${global:-none}): a local git identity; remove it with git -C $1 config --unset $key unless the owner set it"
+  done
 }
 # brief_text <main> <state> <body>: the header lines, a blank line, then the body. One printf, because a command
 # substitution would strip the blank line that separates them.
@@ -270,18 +296,31 @@ case "$cmd" in
     # Only this repository's threads, unless --all or outside git: other main sessions own the rest.
     here=""
     if [ "$all" = 0 ] && c=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then here=$(dirname "$(realpath -m "$c")"); fi
-    sock=$(main_socket); printed=0
-    while IFS=$'\t' read -r name _ _ repo wt main_name _; do
+    sock=$(main_socket); printed=0; repos=""
+    live=$(live_sessions)
+    while IFS=$'\t' read -r name id _ repo wt main_name _; do
       [ -n "$name" ] || continue
       [ -z "$here" ] || [ "$repo" = "$here" ] || continue
+      repos+="$repo"$'\n'
       rec=$(thread_field "$wt" MAIN-SOCKET)
       if [ -n "$sock" ] && [ "$rec" != "$sock" ]; then
         echo "MOVED $name main=$main_name recorded=${rec:-none} this=$sock: if you are its main session now, run thread.sh adopt $name --main <your name>"
         printed=1
       fi
+      # A blocked session waits on a permission prompt or a question in its own session, so it can't send word.
+      waiting=""
+      [ -z "$live" ] || waiting=$(session_of "$live" "$id" | jq -r 'select(.state == "blocked") | if (.waitingFor // "") == "" then "blocked" else .waitingFor end')
+      if [ -n "$waiting" ]; then
+        echo "BLOCKED $name $waiting: it can't message you while it waits; tell the owner to answer it in the session"
+        printed=1
+      fi
       out=$(inbox "$wt" "$name")
       if [ -n "$out" ]; then printf '%s\n' "$out"; printed=1; fi
     done <<< "$rows"
+    while IFS= read -r repo; do
+      out=$(identity_warnings "$repo")
+      if [ -n "$out" ]; then printf '%s\n' "$out"; printed=1; fi
+    done < <(printf '%s' "$repos" | sort -u)
     [ "$printed" = 1 ] || echo OK ;;
   integrate)
     [ $# -eq 1 ] || usage
@@ -353,6 +392,9 @@ case "$cmd" in
     archive="$home/archive/$build-$(date -u +%Y%m%dT%H%M%SZ)"
     mkdir -p "$archive"
     [ ! -d "$wt/.orchestration" ] || cp -a "$wt/.orchestration/." "$archive/"
+    # The forced removal deletes what git ignores (eval runs, agent memory), so archive it first. stdout carries
+    # only the CLOSED or FAILED line, so the per-file lines and git's own diagnostics are dropped.
+    reason=$(archive_ignored "$wt" "$archive" .orchestration 2>&1 >/dev/null) || fail "${reason##*$'\n'} (archive at $archive)"
     git -C "$repo" worktree remove --force "$wt" || fail "git worktree remove $wt failed; the archive is at $archive"
     git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
     if [ -n "$id" ] && [ "$id" != pending ]; then claude_env claude rm "$id" >/dev/null 2>&1 || true; fi
@@ -364,11 +406,10 @@ case "$cmd" in
     [ $# -eq 0 ] || usage
     rows=$(awk 'NR > 1' "$reg" 2>/dev/null || true)
     [ -n "$rows" ] || { echo NONE; exit 0; }
-    live=$(claude_env claude agents --json 2>/dev/null || true)
-    printf '%s' "$live" | jq -e 'type == "array"' >/dev/null 2>&1 || live=""
+    live=$(live_sessions)
     while IFS=$'\t' read -r name id build main wt main_name launched; do
       status=unknown
-      [ -n "$live" ] && status=$(printf '%s' "$live" | jq -r --arg id "$id" '[.[] | select((.sessionId // "") | startswith($id))][0].status // "not-running"')
+      [ -n "$live" ] && status=$(session_of "$live" "$id" | jq -r '.status // "not-running"')
       echo "$name $id build=$build status=$status main=$main_name worktree=$wt launched=$launched"
     done <<< "$rows"
     ;;

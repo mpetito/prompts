@@ -74,6 +74,32 @@ owner_checkouts() {
     [ -z "$dir" ] || realpath -m -- "$dir"; } | awk '!seen[$0]++'
 }
 
+archive_ignored() {
+  # archive_ignored <worktree> <destination> <path prefix to leave out>: copy the files git ignores in <worktree>
+  # to <destination>/ignored/<path>, printing "archived ignored <path> to <destination>/ignored" on stdout for
+  # each. Dependency and cache folders are rebuilt from the lockfiles, and the caller archives the prefix itself,
+  # so both stay behind. git status leaves ignored files out and a forced worktree removal deletes them, so when
+  # git can't list them or a copy fails this fails with a refusal on stderr (its last line) that promises the
+  # caller removes nothing.
+  local wt=$1 dest=$2 prefix=$3 listing entry path
+  local skip='(^|/)(node_modules|\.venv|venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.terraform|cdk\.out[^/]*|\.next|\.turbo|\.cache|dist|build|target)/?$'
+  listing=$(mktemp)
+  if ! git -C "$wt" status --porcelain=v1 -z --ignored=matching > "$listing"; then
+    rm -f "$listing"
+    echo "refusing: git status failed in $wt, so its ignored files can't be archived; nothing was removed" >&2
+    return 1
+  fi
+  while IFS= read -r -d '' entry; do
+    [ "${entry:0:3}" = '!! ' ] || continue
+    path=${entry:3}
+    case "$path" in "$prefix"|"$prefix/"*) continue ;; esac
+    [[ $path =~ $skip ]] && continue
+    { mkdir -p "$dest/ignored" && (cd "$wt" && cp -a --parents -- "${path%/}" "$dest/ignored/"); } || { rm -f "$listing"; return 1; }
+    echo "archived ignored $path to $dest/ignored"
+  done < "$listing"
+  rm -f "$listing"
+}
+
 # Hook replies. advise adds a note beside the tool result and leaves the call, and its permission check, as they
 # were; deny refuses the call with the reason.
 advise() { jq -n --arg c "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$c}}'; exit 0; }

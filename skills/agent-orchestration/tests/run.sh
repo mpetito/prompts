@@ -155,6 +155,7 @@ cat > legacy/state.md <<'STATE'
 | --- | --- | --- | --- | --- |
 | alpha | codex | #1 | abc1234 | review |
 | beta | opus | #2 | def5678 | land |
+| scripts | - | - | - | brief |
 
 ## Log
 
@@ -172,6 +173,11 @@ tail -1 legacy/state.md | grep -q 'kept below the log' || fail "state.sh log wro
 "$here/scripts/state.sh" set beta "Head SHA" 9999999 >/dev/null
 grep -q '^| beta | opus | #2 | 9999999 | land |$' legacy/state.md || fail "state.sh set did not replace the cell"
 grep -q '^| alpha | codex | #1 | abc1234 | review |$' legacy/state.md || fail "state.sh set touched another row"
+# A lane not yet started has "-" cells; the separator row never matches a lane.
+"$here/scripts/state.sh" set scripts Agent opus >/dev/null || fail "state.sh set refused a lane whose Agent cell is -"
+grep -q '^| scripts | opus | - | - | brief |$' legacy/state.md || fail "state.sh set did not update a lane whose Agent cell was -"
+grep -qx '| --- | --- | --- | --- | --- |' legacy/state.md || fail "state.sh set changed the separator row"
+grep -q '^| beta | opus | #2 | 9999999 | land |$' legacy/state.md || fail "state.sh set on scripts touched another row"
 "$here/scripts/state.sh" set gamma "Head SHA" 1 >/dev/null 2>&1 && fail "state.sh set accepted an unknown lane"
 "$here/scripts/state.sh" set beta Nope 1 >/dev/null 2>&1 && fail "state.sh set accepted an unknown column"
 "$here/scripts/state.sh" backup >/dev/null
@@ -326,7 +332,7 @@ bash_note 'while ! curl -s localhost; do sleep 2; done' | advised 'loops on slee
 [ -z "$(bash_note 'sleep 45' false worker-1)" ] || fail "guard-bash advised a worker on a foreground wait"
 [ -z "$(bash_note 'until curl -s localhost; do sleep 2; done' false worker-1)" ] || fail "guard-bash advised a worker's wait loop"
 bash_note 'pkill -f vite' false worker-1 | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null || fail "guard-bash let a worker pkill"
-bash_note 'git worktree remove ../wt' false worker-1 | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'plain directory' || fail "guard-bash did not point a worker at plain-directory copies"
+bash_note 'git worktree remove ../wt' false worker-1 | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'git clone --no-local' || fail "guard-bash did not point a worker at a clone for throwaway copies"
 jq -n '{tool_input:{command:"sleep 45"}}' | "$here/hooks/guard-bash.sh" | advised 'sleeps 45 s' || fail "guard-bash should advise on a foreground sleep when the input has no cwd"
 
 # --- hooks fixture: the owner's checkout, a coordination worktree, a lane worktree, a nested worktree -----------
@@ -559,6 +565,25 @@ printf '=== 2026-10-10T14:00Z to Main two #ba9876543210\nSTATUS: working - d1\n\
 (cd "$tmp/plain" && "$thread" check --all) | grep -q '^INBOX t-c 2026-10-10T14:00Z' || fail "thread.sh check missed a new outbox entry"
 for t in t-a-r2 t-b2 t-d t-s t-s2; do "$thread" adopt "$t" --main 'Main two' >/dev/null; done
 [ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check did not print OK with nothing to catch up on"
+# A thread whose session waits on the owner is reported from claude agents --json; a working one is not.
+idc=$(awk -F'\t' '$1=="t-c" {print $2}' "$ORCHESTRATION_HOME/threads.tsv")
+printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"waiting","waitingFor":"permission prompt"}]' "$idc" > "$MOCK_DIR/agents.json"
+(cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c permission prompt: ' || fail "thread.sh check did not report a blocked thread: $(cat "$tmp/check.out")"
+printf '[{"sessionId":"%s-0000","name":"t-c","state":"working","status":"busy","waitingFor":null}]' "$idc" > "$MOCK_DIR/agents.json"
+[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a working thread"
+# A local git identity that differs from the global one is reported once per repository; an equal one is not.
+printf '[user]\n\temail = owner@example.com\n' > "$HOME/.gitconfig"
+git -C "$app" config user.email test@example.com
+out=$(cd "$tmp/plain" && "$thread" check --all)
+[ "$(printf '%s\n' "$out" | grep -c '^IDENTITY ')" = 1 ] && printf '%s\n' "$out" | grep -q "^IDENTITY $app user.email=test@example.com (global owner@example.com): " \
+  || fail "thread.sh check did not report a local git identity once: $out"
+git -C "$app" config user.name tester
+(cd "$tmp/plain" && "$thread" check --all) | grep -q "^IDENTITY $app user.name=tester (global none): " || fail "thread.sh check did not report a local name with no global one"
+git -C "$app" config --unset user.name
+git -C "$app" config user.email owner@example.com
+[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a local identity equal to the global one"
+git -C "$app" config --unset user.email
+rm "$HOME/.gitconfig"
 # A thread with no record at all (launched before records existed) is reported, not fatal.
 mkdir -p "$tmp/proj/legacy-orch/.orchestration"
 printf 't-old\tdeadbeef\told\t%s\t%s\tm\t2026-10-10T00:00Z\n' "$app" "$tmp/proj/legacy-orch" >> "$ORCHESTRATION_HOME/threads.tsv"
@@ -606,11 +631,18 @@ sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$wtc/.orchestration/thread.m
 # t-c's branch still holds the CLASH commit that integrate refused, so close refuses too.
 "$thread" close t-c | grep -q '^FAILED orchestration/c holds work that feat-x lacks in: CLASH.md' || fail "thread.sh closed a build with unlanded work"
 [ -d "$wtc" ] || fail "thread.sh close removed a worktree it refused to close"
+# Files git ignores in the coordination worktree are evidence too, except dependency folders.
+printf '.eval-runs/\n.claude/agent-memory/\nnode_modules/\n' >> "$app/.git/info/exclude"
+mkdir -p "$wtc/.eval-runs/r1" "$wtc/.claude/agent-memory" "$wtc/node_modules/x"
+printf 'run\n' > "$wtc/.eval-runs/r1/out.md"; printf 'memory\n' > "$wtc/.claude/agent-memory/x.md"; printf 'dep\n' > "$wtc/node_modules/x/i.js"
 idc=$(awk -F'\t' '$1=="t-c" {print $2}' "$ORCHESTRATION_HOME/threads.tsv")
 out=$("$thread" close t-c --force)
 [[ $out =~ ^CLOSED\ c\ archive=$ORCHESTRATION_HOME/archive/c-[0-9T]+Z\ lanes\ still\ present:\ .*app-wt-l1 ]] || fail "thread.sh close printed: $out"
 arch=${out#*archive=}; arch=${arch%% *}
 [ -f "$arch/thread.md" ] && [ -f "$arch/outbox.md" ] || fail "thread.sh close did not archive .orchestration"
+[ -f "$arch/ignored/.eval-runs/r1/out.md" ] && [ -f "$arch/ignored/.claude/agent-memory/x.md" ] || fail "thread.sh close did not archive the ignored files"
+[ -e "$arch/ignored/node_modules" ] && fail "thread.sh close archived node_modules"
+[ -e "$arch/ignored/.orchestration" ] && fail "thread.sh close archived .orchestration twice"
 [ ! -e "$wtc" ] && ! git -C "$app" rev-parse --verify -q orchestration/c >/dev/null || fail "thread.sh close left the worktree or the branch"
 grep -q '^t-c	' "$ORCHESTRATION_HOME/threads.tsv" && fail "thread.sh close left the registry row"
 grep -q "stop $idc" "$MOCK_DIR/claude.log" && grep -q "rm $idc" "$MOCK_DIR/claude.log" || fail "thread.sh close did not stop and remove the session"
@@ -623,6 +655,12 @@ wtd="$tmp/proj/app-orch-d"
 # A build the registry no longer lists closes by its worktree, with the base given.
 git -C "$app" worktree add -q -b orchestration/z "$tmp/proj/app-orch-z" main
 "$thread" close --worktree "$tmp/proj/app-orch-z" | tee "$tmp/z.out" | grep -q '^FAILED no record of .* base; pass --base' || fail "thread.sh closed an unrecorded build without a base: $(cat "$tmp/z.out")"
+# When git can't list the ignored files, close keeps the worktree.
+idx="$(git -C "$tmp/proj/app-orch-z" rev-parse --absolute-git-dir)/index"; cp "$idx" "$tmp/z.index.bak"; printf 'corrupt' > "$idx"
+out=$("$thread" close --worktree "$tmp/proj/app-orch-z" --base main --force || true)
+[[ $out =~ ^FAILED\ refusing:\ git\ status\ failed\ in\ .*app-orch-z.*nothing\ was\ removed\ \(archive\ at\ [^$'\n']*\)$ ]] || fail "thread.sh close carried on, or printed more than one line, when git status failed: $out"
+[ -d "$tmp/proj/app-orch-z" ] || fail "thread.sh close removed a worktree it could not list"
+cp "$tmp/z.index.bak" "$idx"
 "$thread" close --worktree "$tmp/proj/app-orch-z" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
 "$thread" close --worktree "$app" | grep -q 'is on .*, not orchestration/<build>' || fail "thread.sh closed a checkout that is not a coordination worktree"
 "$thread" close t-nope | grep -q '^FAILED no thread named t-nope' || fail "thread.sh closed an unknown thread"
