@@ -9,8 +9,12 @@ worktree, and give the worker the path.
 - **Model:** named explicitly. Opus by default; Sonnet only for mechanical work, with the reason
   written next to it; never inherited.
 - **Where:** the worker's own worktree, `../<repo>-wt-<lane>`; never the owner's checkout or
-  yours. A throwaway copy for experiments is a plain folder (`git archive` or `cp -a`), not a
-  worktree: a hook refuses a plain `git worktree remove`, so a worker can't clean one up.
+  yours. The worker writes only inside it, scratch in its `.orchestration/tmp/` (finish-lane.sh
+  archives it); a write anywhere else can wait on a permission prompt no one sees. For a
+  throwaway copy, use `git clone --no-local` or `git archive`, never `cp -a` of a worktree: the
+  copy keeps the worktree's `.git` pointer, so `git config` in it writes the live repository's
+  config. Make it a plain folder, not a worktree: a hook refuses a plain `git worktree remove`, so
+  a worker can't clean one up.
 - **The source wins:** where the brief and the source disagree, follow the source and list the
   difference.
 - **Report:** first line `STATUS: done|blocked|partial - <summary>` (authors) or
