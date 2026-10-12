@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # PreToolUse hook for Edit, Write, MultiEdit and NotebookEdit in an orchestration thread and the workers it starts (a
-# worker's input carries agent_id). A reminder, not a boundary: the thread is trusted, and could write any file
-# through Bash anyway. It refuses the one write a reminder would come too late for, into the owner's checkout, which
-# may hold their uncommitted work; and it advises the thread when it writes outside its coordination worktree, where
-# a change usually belongs to a worker. A session with no thread record or state file is not a thread: silent.
+# subagent worker's input carries agent_id; a lane session's hook runs with --lane). A reminder, not a boundary: the
+# thread is trusted, and could write any file through Bash anyway. It refuses the one write a reminder would come too
+# late for, into the owner's checkout, which may hold their uncommitted work; and it advises the thread when it writes
+# outside its coordination worktree, where a change usually belongs to a worker. A session that is neither a lane
+# nor started where a thread record or state file is, is not a thread: silent.
 set -u
 . "$(dirname "$0")/../scripts/lib.sh"
 input=$(cat)
 cwd=$(printf '%s' "$input" | jq -r '.cwd // empty')
 path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty')
 worker=$(printf '%s' "$input" | jq -r '.agent_id // empty')
+lane=""; [ "${1:-}" != --lane ] || { lane=1; worker=lane; }
 [ -n "$path" ] && [ -n "$cwd" ] || exit 0
 top=$(session_top "$cwd") || exit 0
-[ -f "$top/.orchestration/thread.md" ] || [ -f "$top/.orchestration/state.md" ] || exit 0
+# A lane session starts in its own worktree, which holds no thread files; its owner's checkout is the repository's.
+[ -n "$lane" ] || [ -f "$top/.orchestration/thread.md" ] || [ -f "$top/.orchestration/state.md" ] || exit 0
 top=$(realpath -m -- "$top")
 case $path in /*) target=$path ;; *) target="$cwd/$path" ;; esac
 target=$(realpath -m -- "$target")

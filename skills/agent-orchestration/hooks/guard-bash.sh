@@ -2,7 +2,7 @@
 # PreToolUse hook for Bash, in the orchestration thread and the workers it starts. Denies, for both, the
 # commands that destroyed work in past builds. Advises the thread when it waits in the foreground (workers may:
 # their waits deafen no one), and warns when the scratch filesystem is nearly out of inodes. Input: Claude Code's
-# hook JSON on stdin; a worker's carries agent_id.
+# hook JSON on stdin; a subagent worker's carries agent_id, and a lane session's hook runs with --lane.
 # A command is matched only in command position (start of a line, after ; & | ( or $( , or after
 # `sh -c '`), so the same words inside a quoted string, a backtick span or a comment pass.
 # The matching is textual, so it catches the commands past builds ran by mistake, not every way to run them; the
@@ -13,6 +13,7 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 background=$(printf '%s' "$input" | jq -r '.tool_input.run_in_background // false')
 worker=$(printf '%s' "$input" | jq -r '.agent_id // empty')
+[ "${1:-}" != --lane ] || worker=lane
 # A foreground wait shorter than this (a retry backoff, letting a port bind) costs less than a message
 # arriving late; anything longer leaves messages from MAIN and lane hand-backs unread while it runs.
 foreground_sleep_limit=30
@@ -42,6 +43,9 @@ if [ "$background" != true ] && [ -z "$worker" ]; then
   done < <(printf '%s\n' "$cmd" | grep -oE "${at}sleep[[:space:]]+[0-9]+(\.[0-9]+)?[smhd]?" || true)
   if printf '%s' "$cmd" | grep -Eq "${at}(until|while)([[:space:]]|$)" && printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_-])sleep[[:space:]]'; then
     wait_reason="loops on sleep in the foreground"
+  fi
+  if printf '%s' "$cmd" | grep -Eq "${at}[^[:space:]]*mail\.sh[[:space:]]+wait([[:space:]]|$)"; then
+    wait_reason="waits on mail in the foreground"
   fi
   if [ -n "$wait_reason" ]; then
     notes+=("This call $wait_reason: until it ends, messages from MAIN and lane hand-backs queue unread. Next time, arm a background timer: ~/.claude/skills/agent-orchestration/scripts/wake-at.sh <UTC|+<N>m> <label> with run_in_background, or watch the condition with Monitor.")

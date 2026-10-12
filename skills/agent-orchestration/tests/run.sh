@@ -324,6 +324,13 @@ out=$("$here/scripts/finish-lane.sh" "$tmp/lane" "$tmp/archive")
 printf '%s' "$out" | grep -q 'archived ignored .eval-runs/' || fail "finish-lane.sh did not report the archived eval runs"
 [ ! -d "$tmp/lane" ] || fail "finish-lane.sh did not remove the worktree"
 printf '%s' "$out" | grep -q 'deleted branch lane-x' || fail "finish-lane.sh did not delete the lane branch"
+# Inside herdr, a lane named by a relative path is still refused while an agent runs there; a sibling isn't it.
+git -C "$tmp/seed" worktree add -q "$tmp/lane4" -b lane-w
+printf '{"result":{"agents":[{"name":"t-l4","agent_status":"idle","cwd":"%s/src"},{"name":"t-l40","agent_status":"idle","cwd":"%s0"}]}}' \
+  "$(realpath "$tmp/lane4")" "$(realpath "$tmp/lane4")" > "$MOCK_DIR/herdr-agents.json"
+(cd "$tmp" && HERDR_ENV=1 "$here/scripts/finish-lane.sh" lane4 "$tmp/archive4" 2>&1) | grep -qx "refusing: agent(s) still run in lane4: t-l4" || fail "finish-lane.sh missed an agent in a lane named by a relative path"
+jq '.result.agents |= map(select(.name != "t-l4"))' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
+(cd "$tmp" && HERDR_ENV=1 "$here/scripts/finish-lane.sh" lane4 "$tmp/archive4" >/dev/null 2>&1) && [ ! -d "$tmp/lane4" ] || fail "finish-lane.sh took an agent in a sibling worktree for one in the lane"
 # When git can't list the ignored files, nothing is archived or removed.
 git -C "$tmp/seed" worktree add -q "$tmp/lane3" -b lane-z
 idx="$(git -C "$tmp/lane3" rev-parse --absolute-git-dir)/index"; cp "$idx" "$tmp/lane3.index.bak"; printf 'corrupt' > "$idx"
@@ -354,7 +361,7 @@ denies 'cat > doc.md <<EOF
 EOF' && fail "guard-bash denied a backtick-quoted mention"
 # Foreground waits: the thread gets advice and the call goes ahead; workers (agent_id) are left alone.
 bash_note() { jq -n --arg c "$1" --argjson bg "${2:-false}" --arg a "${3:-}" '{cwd:"/tmp",tool_input:{command:$c,run_in_background:$bg}} + (if $a == "" then {} else {agent_id:$a} end)' \
-  | "$here/hooks/guard-bash.sh"; }
+  | "$here/hooks/guard-bash.sh" ${LANE:+--lane}; }
 advised() { jq -e '(.hookSpecificOutput.permissionDecision == null) and (.hookSpecificOutput.additionalContext | test("'"$1"'"))' >/dev/null; }
 bash_note 'sleep 45' | advised 'sleeps 45 s in the foreground' || fail "guard-bash should advise on a 45 s foreground sleep"
 bash_note 'sleep 2m && date' | advised 'sleeps 120 s' || fail "guard-bash should advise on a minutes-long foreground sleep"
@@ -366,6 +373,10 @@ bash_note 'while ! curl -s localhost; do sleep 2; done' | advised 'loops on slee
 [ -z "$(bash_note 'while read -r l; do echo "$l"; done < f')" ] || fail "guard-bash noted a loop that does not sleep"
 [ -z "$(bash_note 'echo "until it sleeps"')" ] || fail "guard-bash noted the words inside a quoted string"
 [ -z "$(bash_note 'sleep 45' false worker-1)" ] || fail "guard-bash advised a worker on a foreground wait"
+[ -z "$(LANE=1 bash_note 'sleep 45')" ] || fail "guard-bash advised a lane session on a foreground wait"
+bash_note '~/.claude/skills/agent-orchestration/scripts/mail.sh wait b1/thread --timeout 600' | advised 'waits on mail in the foreground' || fail "guard-bash should advise on a foreground mail wait"
+[ -z "$(bash_note '~/.claude/skills/agent-orchestration/scripts/mail.sh wait b1/thread' true)" ] || fail "guard-bash noted a background mail wait"
+[ -z "$(bash_note '~/.claude/skills/agent-orchestration/scripts/mail.sh read b1/thread')" ] || fail "guard-bash noted a mail read"
 [ -z "$(bash_note 'until curl -s localhost; do sleep 2; done' false worker-1)" ] || fail "guard-bash advised a worker's wait loop"
 bash_note 'pkill -f vite' false worker-1 | jq -e '.hookSpecificOutput.permissionDecision == "deny"' >/dev/null || fail "guard-bash let a worker pkill"
 bash_note 'git worktree remove ../wt' false worker-1 | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'git clone --no-local' || fail "guard-bash did not point a worker at a clone for throwaway copies"
@@ -391,7 +402,7 @@ noted() { jq -e '(.hookSpecificOutput.permissionDecision == null) and (.hookSpec
 with_agent() { jq --arg a "${AGENT:-}" 'if $a == "" then . else . + {agent_id:$a} end'; }
 
 # --- guard-writes.sh -----------------------------------------------------------------------------------------
-writes() { jq -n --arg cwd "$1" --arg p "$2" --arg k "${3:-file_path}" '{cwd:$cwd,tool_input:{($k):$p}}' | with_agent | "$here/hooks/guard-writes.sh"; }
+writes() { jq -n --arg cwd "$1" --arg p "$2" --arg k "${3:-file_path}" '{cwd:$cwd,tool_input:{($k):$p}}' | with_agent | "$here/hooks/guard-writes.sh" ${LANE:+--lane}; }
 [ -z "$(writes "$gwc" "$gwc/.orchestration/plan.md")" ] || fail "guard-writes noted a write to .orchestration"
 [ -z "$(writes "$gwc/sub" "$gwc/src/app.ts")" ] || fail "guard-writes noted a file inside the coordination worktree"
 [ -z "$(writes "$gwc/sub" "../notes.md")" ] || fail "guard-writes noted a relative path inside the worktree"
@@ -405,6 +416,11 @@ writes "$gwc" "/etc/hosts" notebook_path | noted 'outside your coordination work
 writes "$gwc" "$gwc/../app-orch-b-evil/x" | noted 'outside your coordination worktree' || fail "guard-writes took a sibling with a shared prefix for its worktree"
 [ -z "$(AGENT=w1 writes "$gwc" "$gwl/src/app.ts")" ] || fail "guard-writes noted a worker in its lane worktree"
 [ -z "$(AGENT=w1 writes "$gwc" "$HOME/notes.md")" ] || fail "guard-writes noted a worker outside the owner's checkout"
+# A lane session starts in its lane worktree, with no thread files: --lane still guards the owner's checkout.
+[ -z "$(writes "$gwl" "$gwapp/a.txt")" ] || fail "guard-writes acted in a session that is neither a thread nor a lane"
+LANE=1 writes "$gwl" "$gwapp/a.txt" | reason | grep -q 'Make the change in your own lane worktree' || fail "guard-writes let a lane session write into the owner's checkout"
+[ -z "$(LANE=1 writes "$gwl" "$gwl/src/app.ts")" ] || fail "guard-writes noted a lane session in its own worktree"
+[ -z "$(LANE=1 writes "$gwl" "$HOME/notes.md")" ] || fail "guard-writes noted a lane session outside the owner's checkout"
 AGENT=w1 writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes let a worker write the owner's checkout"
 AGENT=w1 writes "$gwc" "$gwapp/a.txt" | reason | grep -q 'Make the change in your own lane worktree' || fail "guard-writes gave a worker the thread's reason"
 # The session is the folder it started in: a cd into the owner's checkout changes nothing.

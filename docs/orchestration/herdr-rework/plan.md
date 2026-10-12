@@ -81,7 +81,11 @@ every new assertion is shown to fail against a planted mutant before its step is
   'check-message\|guard-message\|SendMessage\|main_name' skills/*/scripts skills/*/hooks
   skills/*/tests agents` prints nothing (the docs and evals follow in steps 8 and 10); the commit
   body quotes the approval.
-- [ ] 7. `skills/agent-orchestration/references/herdr.md`, `skills/agent-orchestration/scripts/finish-lane.sh`,
+- [ ] 7. (Scripts done in the commit that adds the hooks' `--lane`: guard-bash and guard-writes treat
+  `--lane` as a worker and guard-writes acts in a lane worktree; guard-bash advises on a foreground
+  `mail.sh wait`; finish-lane.sh compares the resolved worktree and no longer takes a sibling for
+  it; each fails against its planted mutant. herdr.md waits for step 5's results.)
+  `skills/agent-orchestration/references/herdr.md`, `skills/agent-orchestration/scripts/finish-lane.sh`,
   `skills/agent-orchestration/hooks/guard-bash.sh`, `skills/agent-orchestration/tests/run.sh`: a
   short herdr reference for threads: the lanes' wake contract (the thread's wait watches its
   lanes; a blocked lane goes to MAIN as `STATUS: blocked - lane <x> waits in workspace <build>`;
