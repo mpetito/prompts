@@ -75,10 +75,12 @@ new_pane() {
   jq -r '"\(.result.root_pane.pane_id) \(.result.workspace.workspace_id)"' <<<"$out"
 }
 start_thread() {
-  # start_thread <build> <pane> <brief text>: start the orchestrator agent; prints nothing when it is ready, a reason
-  # for the owner when it waits on a startup prompt (a folder trust question), or fails with herdr's reason.
+  # start_thread <build> <pane> <brief file>: start the orchestrator agent on a one-line prompt naming the brief, since
+  # herdr refuses agent arguments it can't encode for the shell (a multi-line brief among them); prints nothing when
+  # it is ready, a reason for the owner when it waits on a startup prompt (a folder trust question), or fails with
+  # herdr's reason.
   local err
-  if err=$(herdr_json agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --agent orchestrator "$3" 2>&1 >/dev/null); then
+  if err=$(herdr_json agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --agent orchestrator "Read $3 and follow it." 2>&1 >/dev/null); then
     return 0
   fi
   case $err in
@@ -193,7 +195,8 @@ case "$cmd" in
     rm -f "$reg.err"
     # The row exists before the agent starts, so a thread waiting on a startup prompt is still known by name.
     put_row "$build" "$(row "$build" "$main" "$wt" "$ws" "$(utc_now)")"
-    if ! waiting=$(start_thread "$build" "$pane" "$(brief_text "$build" "$wt/.orchestration/state.md" "$(cat "$brief")")" 2>"$reg.err"); then
+    brief_text "$build" "$wt/.orchestration/state.md" "$(cat "$brief")" > "$wt/.orchestration/launch-brief.md"
+    if ! waiting=$(start_thread "$build" "$pane" "$wt/.orchestration/launch-brief.md" 2>"$reg.err"); then
       reason=$(cat "$reg.err"); rm -f "$reg.err"
       delete_row "$build"; herdr workspace close "$ws" >/dev/null 2>&1 || true
       fail "herdr agent start: $reason"
@@ -231,8 +234,9 @@ case "$cmd" in
     rm -f "$reg.err"
     [ -z "$old" ] || herdr pane close "$old" >/dev/null 2>&1 || true
     put_row "$build" "$(row "$build" "$main" "$wt" "$ws" "$(utc_now)")"
-    brief=$(brief_text "$build" "$state" "Resume: read STATE first and continue from its RESUME section without redoing finished work.")
-    waiting=$(start_thread "$build" "$pane" "$brief" 2>"$reg.err") \
+    brief_text "$build" "$state" "Resume: read STATE first and continue from its RESUME section without redoing finished work." \
+      > "$wt/.orchestration/rotate-brief.md"
+    waiting=$(start_thread "$build" "$pane" "$wt/.orchestration/rotate-brief.md" 2>"$reg.err") \
       || { reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "the old thread was closed but the new one did not start: $reason; run thread.sh rotate $build --force"; }
     rm -f "$reg.err"
     [ -z "$waiting" ] || { echo "BLOCKED $build $waiting"; exit 0; }

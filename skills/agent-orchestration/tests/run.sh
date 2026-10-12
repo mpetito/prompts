@@ -65,6 +65,7 @@ case "$1 $2" in
     while [ $# -gt 0 ]; do case $1 in --pane) pane=$2; shift 2 ;; --kind|--timeout) shift 2 ;; --) shift; break ;; *) shift ;; esac; done
     [[ $name =~ ^[a-z][a-z0-9_-]{0,31}$ ]] || err invalid_name "agent names must match [a-z][a-z0-9_-]{0,31}"
     [ -n "$pane" ] || err invalid "--pane is required"
+    for arg in "$@"; do [[ $arg != *$'\n'* ]] || err invalid_agent_argument "agent arguments cannot be encoded safely for the target shell"; done
     printf '%s\n' "$@" > "$MOCK_DIR/start-$name.args"
     [ "${MOCK_HERDR:-}" = startfail ] && err agent_start_failed "the agent exited"
     state=idle; [ "${MOCK_HERDR:-}" = notready ] && state=blocked
@@ -479,9 +480,11 @@ grep -qx "workspace create --cwd $wta --label t-a --no-focus --env ORCHESTRATION
 wsa=$(row_of t-a | cut -f4)
 [ "$(row_of t-a | cut -f1-3)" = "t-a	$app	$wta" ] && [[ $wsa =~ ^w[0-9]+$ ]] || fail "thread.sh launch registry row is wrong: $(row_of t-a)"
 [ "$(thread_pane t-a)" = "$wsa:p1" ] || fail "thread.sh did not start the thread in the workspace's root pane"
-[ "$(head -5 "$MOCK_DIR/start-t-a.args" | tr '\n' '|')" = "--agent|orchestrator|BUILD: t-a|MAIL: t-a/thread is yours; send MAIN t-a/main|STATE: $wta/.orchestration/state.md|" ] \
-  || fail "thread.sh started the wrong agent or brief header: $(head -5 "$MOCK_DIR/start-t-a.args")"
-grep -q 'Build the signup slice.' "$MOCK_DIR/start-t-a.args" || fail "thread.sh launch dropped the brief"
+[ "$(tr '\n' '|' < "$MOCK_DIR/start-t-a.args")" = "--agent|orchestrator|Read $wta/.orchestration/launch-brief.md and follow it.|" ] \
+  || fail "thread.sh started the wrong agent or prompt: $(cat "$MOCK_DIR/start-t-a.args")"
+[ "$(head -3 "$wta/.orchestration/launch-brief.md" | tr '\n' '|')" = "BUILD: t-a|MAIL: t-a/thread is yours; send MAIN t-a/main|STATE: $wta/.orchestration/state.md|" ] \
+  || fail "thread.sh wrote the wrong brief header: $(head -3 "$wta/.orchestration/launch-brief.md")"
+grep -q 'Build the signup slice.' "$wta/.orchestration/launch-brief.md" || fail "thread.sh launch dropped the brief"
 # The state file and the hooks work from inside the new worktree, and .orchestration stays untracked.
 (cd "$wta" && "$here/scripts/state.sh" init t-a >/dev/null)
 [ "$(cd "$wta" && "$here/scripts/state.sh" thread BUILD)" = t-a ] || fail "state.sh thread did not read BUILD from the launched record"
@@ -535,7 +538,9 @@ olda=$(thread_pane t-a)
 grep -qx "tab create --workspace $wsa --cwd $wta --label t-a --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" || fail "thread.sh rotate did not open the new thread in the build's workspace"
 newa=$(thread_pane t-a)
 grep -qx "pane close $olda" "$MOCK_DIR/herdr.log" && [ -n "$newa" ] && [ "$newa" != "$olda" ] || fail "thread.sh rotate did not replace the old pane: old=$olda new=$newa"
-grep -qx 'Resume: read STATE first and continue from its RESUME section without redoing finished work.' "$MOCK_DIR/start-t-a.args" || fail "thread.sh rotate brief is wrong"
+grep -qx "Read $wta/.orchestration/rotate-brief.md and follow it." "$MOCK_DIR/start-t-a.args" \
+  && grep -qx 'Resume: read STATE first and continue from its RESUME section without redoing finished work.' "$wta/.orchestration/rotate-brief.md" \
+  || fail "thread.sh rotate brief is wrong"
 [ "$(row_of t-a | cut -f1-4)" = "t-a	$app	$wta	$wsa" ] || fail "thread.sh rotate changed the build, worktree or workspace: $(row_of t-a)"
 # A thread whose agent and workspace are gone restarts in a new workspace.
 out=$(MOCK_HERDR=notab "$thread" rotate signup --force || true)
