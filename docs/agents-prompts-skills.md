@@ -94,18 +94,16 @@ Former prompt-style entry points are now skills so the slug is preserved while t
 | --- | --- |
 | `implement` | End-to-end implementation can be invoked explicitly or triggered by implementation requests. |
 | `review` | Code review methodology is reusable as `/review` and as a review-triggered skill. |
-| `commit` | Git/PR authoring workflow remains `/commit` while sharing supporting skill context. |
 | `story`, `spec`, `tt` | Renamed skills preserve the existing `/story`, `/spec`, and `/tt` slugs. |
 
-### PR Workflow Split ✅
-
-The former broad PR-management procedure has been split into focused skills:
+### PR Workflow in One Skill ✅
 
 | Skill | Scope |
 | --- | --- |
-| `pr-feedback` | Address review, CI, and code-analysis feedback. |
-| `pr-resolve` | Reply to and resolve review threads. |
-| `pr-consolidate` | Consolidate multiple PRs or branches. |
+| `pull-request` | Answer review feedback on your own PR, open a PR or update its description, and post a review of someone else's PR once the owner approves the text. |
+
+Plain commits belong to the commit-commands plugin, waiting for CI and Copilot to the `pr-watch`
+agent, and the review judgment to the `review` skill.
 
 ### Existing Skills Kept ✅
 
@@ -132,7 +130,7 @@ skills/                               # Symlinked into each tool's user-level sk
 └── <skill-name>/
     ├── SKILL.md                      # Workflow, decisions, pitfalls — kept under 500 lines
     ├── references/                   # Loaded on demand: code libraries, command tables, examples
-    ├── scripts/                      # Executable helpers (see skills/pr-scripts/)
+    ├── scripts/                      # Executable helpers (e.g. skills/pull-request/scripts/)
     └── assets/                       # Files used in output rather than read into context
 
 agents/                               # Symlinked into ~/.claude/agents (Claude Code format only)

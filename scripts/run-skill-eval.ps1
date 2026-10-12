@@ -14,7 +14,7 @@ are in flight. docs/evaluating-skills.md says which switches fit which kind of e
 Claude runs are wrapped so they load project settings only: user-level skills, plugins and MCP
 servers from this machine are not visible to the agent, while the normal login still works.
 .EXAMPLE
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pr-authoring
+pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pull-request
 .EXAMPLE
 pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill review,spec -Runs 3 -SkipTrigger
 .EXAMPLE
