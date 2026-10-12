@@ -10,7 +10,9 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 export HOME="$tmp/home" ORCHESTRATION_HOME="$tmp/orch" MOCK_DIR="$tmp/mock"
-unset ORCHESTRATION_STATE ORCHESTRATION_DECISIONS HERDR_ENV CLAUDE_CODE_MESSAGING_SOCKET
+unset ORCHESTRATION_STATE ORCHESTRATION_DECISIONS CLAUDE_CODE_MESSAGING_SOCKET
+# Run inside herdr, the suite must never reach the owner's real session.
+for v in $(compgen -e | grep '^HERDR_' || true); do unset "$v"; done
 mkdir -p "$HOME" "$MOCK_DIR" "$tmp/bin"
 export PATH="$tmp/bin:$PATH"
 utc='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}Z'
@@ -62,6 +64,13 @@ case ${MOCK_CODEX:-ok} in
       while [ $# -gt 0 ]; do [ "$1" = --output-last-message ] && echo done > "$2"; shift; done ;;
   fail) exit 3 ;;
   slow) sleep 5 ;;
+esac
+MOCK
+cat > "$tmp/bin/herdr" <<'MOCK'
+#!/usr/bin/env bash
+echo "$*" >> "$MOCK_DIR/herdr.log"
+case "$1 $2" in
+  "agent list") [ "${MOCK_HERDR:-}" = down ] && exit 1; cat "$MOCK_DIR/herdr-agents.json" 2>/dev/null || echo '{"result":{"agents":[]}}' ;;
 esac
 MOCK
 chmod +x "$tmp/bin/"*
@@ -205,6 +214,56 @@ unset ORCHESTRATION_DECISIONS
 "$here/scripts/wake-at.sh" +0m lane-b | grep -Eq "^WAKE lane-b $utc \(armed for $utc\)$" || fail "wake-at.sh printed the wrong line"
 "$here/scripts/wake-at.sh" 2000-01-01T00:00Z | grep -q '^WAKE timer ' || fail "wake-at.sh did not wake at once for a past time"
 "$here/scripts/wake-at.sh" soon >/dev/null 2>&1 && fail "wake-at.sh accepted a bad time"
+
+# --- mail.sh -------------------------------------------------------------------------------------------------
+mail="$here/scripts/mail.sh"
+box="$ORCHESTRATION_HOME/mail"
+# herdr_agents <name state>...: the agents the mocked herdr lists.
+herdr_agents() { printf '%s\n' "$@" | jq -R 'split(" ") | {name: .[0], agent_status: .[1]}' | jq -s '{result: {agents: .}}' > "$MOCK_DIR/herdr-agents.json"; }
+"$mail" send b1/main --from b1/thread "STATUS: working - one" | grep -q '^SENT b1/main ' || fail "mail.sh send did not report SENT"
+printf 'STATUS: done - two\n' > "$tmp/m2.md"; "$mail" send b1/main --from b1/thread --file "$tmp/m2.md" >/dev/null
+printf 'STATUS: working - three\n' | "$mail" send b1/main --from b1/lane-a >/dev/null
+"$mail" send b1/main "no sender" >/dev/null 2>&1 && fail "mail.sh sent without --from"
+"$mail" send main --from b1/thread x >/dev/null 2>&1 && fail "mail.sh accepted an address without a build"
+"$mail" send b1/main --from b1/thread '  ' >/dev/null 2>&1 && fail "mail.sh sent an empty message"
+printf '\n' | "$mail" send b1/main --from b1/thread >/dev/null 2>&1 && fail "mail.sh sent an empty message from stdin"
+[ -z "$(ls -A "$box/b1/main/tmp")" ] || fail "mail.sh left a half-written message in tmp/"
+"$mail" wait b1/main --timeout 0 | grep -qx 'MAIL 3' || fail "mail.sh wait did not count three messages"
+"$mail" read b1/main > "$tmp/read.out"
+[ "$(grep '^STATUS' "$tmp/read.out" | tr '\n' ' ')" = "STATUS: working - one STATUS: done - two STATUS: working - three " ] || fail "mail.sh read did not print the messages oldest first: $(cat "$tmp/read.out")"
+grep -qx 'From: b1/lane-a' "$tmp/read.out" || fail "mail.sh read lost the sender"
+[ "$(ls "$box/b1/main/cur" | wc -l)" = 3 ] && [ -z "$(ls -A "$box/b1/main/new")" ] || fail "mail.sh read did not file the messages"
+"$mail" read b1/main | grep -qx 'NO MAIL' || fail "mail.sh read printed old mail again"
+"$mail" wait b1/main --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait woke with no mail"
+# A quiet message wakes no wait, and the next read prints it.
+"$mail" send b1/main --from b1/thread --quiet "STATUS: working - quiet" >/dev/null
+"$mail" wait b1/main --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait woke for a quiet message"
+"$mail" read b1/main | grep -qx 'STATUS: working - quiet' || fail "mail.sh read skipped a quiet message"
+# Two watched threads: a prompt is reported once, and again only after the agent works and blocks anew.
+herdr_agents "b1 working" "b2 blocked"
+"$mail" wait m/main --watch b1,b2 --timeout 0 | grep -qx 'BLOCKED b2' || fail "mail.sh wait missed a blocked agent"
+"$mail" wait m/main --watch b1,b2 --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait reported the same prompt twice"
+herdr_agents "b1 working" "b2 working"; "$mail" wait m/main --watch b1,b2 --timeout 0 >/dev/null
+herdr_agents "b1 working" "b2 blocked"
+"$mail" wait m/main --watch b1,b2 --timeout 0 | grep -qx 'BLOCKED b2' || fail "mail.sh wait missed a second prompt"
+# A herdr that can't list its agents says nothing about them; an agent that leaves the list is GONE once.
+MOCK_HERDR=down "$mail" wait m/main --watch b1,b2 --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait judged agents while herdr was down"
+herdr_agents "b2 blocked"
+"$mail" wait m/main --watch b1,b2 --timeout 0 | grep -qx 'GONE b1' || fail "mail.sh wait missed an agent that left"
+"$mail" wait m/main --watch b1,b2,b9 --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait reported GONE twice, or for an agent it never saw"
+# An idle thread with mail older than five minutes stopped waiting; fresh mail is not yet a sign of that.
+herdr_agents "b3 idle"
+"$mail" send b3/thread --from b3/lane-a --quiet "STATUS: working - old and quiet" >/dev/null
+touch -d '-10 minutes' "$box/b3/thread/new/"*
+"$mail" wait b3/main --watch b3=b3/thread --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait called old quiet mail unread"
+"$mail" send b3/thread --from b3/main "STEER: fresh" >/dev/null
+"$mail" wait b3/main --watch b3=b3/thread --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait called fresh mail unread"
+touch -d '-10 minutes' "$box/b3/thread/new/"*
+"$mail" wait b3/main --watch b3=b3/thread --timeout 0 | grep -qx 'UNREAD b3 1' || fail "mail.sh wait missed an idle thread with old mail"
+"$mail" wait b3/main --watch b3=b3/thread --timeout 0 | grep -qx 'TIMEOUT' || fail "mail.sh wait reported the same unread stretch twice"
+herdr_agents "b3 working"; "$mail" wait b3/main --watch b3=b3/thread --timeout 0 >/dev/null
+herdr_agents "b3 done"
+"$mail" wait b3/main --watch b3=b3/thread --timeout 0 | grep -qx 'UNREAD b3 1' || fail "mail.sh wait missed a second unread stretch"
 
 # --- meter.sh ------------------------------------------------------------------------------------------------
 export CODEX_SESSIONS="$tmp/sessions"; mkdir -p "$CODEX_SESSIONS"
