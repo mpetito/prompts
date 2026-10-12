@@ -54,3 +54,37 @@ A thread started with `--agent orchestrator` and its hooks; launch in a fresh wo
 watched agents in one wait; a `GONE` report; a herdr server restart; a Codex lane committing in
 its worktree. The rework's live smoke test covers these
 ([plan](herdr-rework/plan.md), step 5).
+
+## Live smoke test of the rework (plan step 5)
+
+Run at 2026-10-12T16:50Z–17:14Z from a herdr pane in this repository: `thread.sh launch` of a probe build
+with the real `orchestrator` agent and hooks (auto permission mode), driven by mail from MAIN. herdr 0.9.3,
+Claude Code 2.1.296.
+
+| Probe | Result |
+| --- | --- |
+| Launch with the brief as a multi-line agent argument | **Failed**: herdr refuses agent arguments it can't encode for the shell (`invalid_agent_argument`). Fixed: the brief goes in a file and the thread starts on `Read <file> and follow it.` The failed launch left no registry row or workspace. |
+| Launch, after the fix | Pass: no trust prompt for the new coordination worktree; `--agent orchestrator` started, its start-up `/agent-orchestration` command took the one-line prompt as arguments |
+| Mail both ways | Pass |
+| Lanes started by the thread through `lane.sh`, with no settings rule | Pass for a Claude lane and a Codex lane with `--approve-for-me`: the classifier allowed both |
+| Each lane commits in its own worktree and reports by mail | Pass, within a minute of launch, under the owner's identity; Codex asked for no approval |
+| guard-writes refuses a Claude lane writing into the owner's checkout | Pass: refused, nothing written |
+| A quiet message doesn't wake MAIN; the next read prints it | Pass |
+| Decision default applied by the thread's own `wake-at.sh` | Pass: armed for 17:01Z, applied at 17:01:08Z with no answer from MAIN |
+| `GONE` when a lane's pane closes | Pass, 14 s after the close, reported by the thread |
+| `UNREAD` when the thread stops waiting, then a ring in its pane | Pass: `UNREAD` at exactly 5 min; the ringed thread read and replied 11 s later |
+| A thread showing an `AskUserQuestion` dialog | **herdr reported it `done`, not `blocked`** (`herdr agent explain`: the title rule `osc_title_idle` matched), so no watcher fired. The owner answered in the pane and the reply arrived by mail. The spike saw `blocked` for a permission prompt. |
+| Rotation | Pass: the new thread opened in a new tab of the build's workspace, the old pane closed, the name stayed, and the new thread resumed from RESUME and answered mail |
+| `finish-lane.sh` while the lane's agent runs | Pass: refused, with the lane named by a relative path |
+| `thread.sh close` | Pass: pane and workspace closed, worktree and branch removed, the build's mail moved into the archive |
+
+Not run as its own probe: a second build waited on alongside the first, and a fresh MAIN session reading the
+build's mail. MAIN has no identity in the mailbox, so any session reading `<build>/main` picks up the mail; the
+offline tests cover two watched agents.
+
+Findings for the remaining steps:
+
+- Threads and lanes must never use `AskUserQuestion`: herdr doesn't report it as blocked. Questions go by mail.
+- MAIN reads a thread's screen (`herdr agent read`) before ringing it, so a ring never types into a dialog herdr
+  didn't recognise.
+- No settings rule is needed for `lane.sh`.

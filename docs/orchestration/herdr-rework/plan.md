@@ -56,11 +56,12 @@ every new assertion is shown to fail against a planted mutant before its step is
   `BLOCKED` and gets no prompt; a lane that fails to start has its tab closed. codex-exec.sh, its
   tests and the mocked `codex` are deleted; its `--strip` of named secret variables has no
   equivalent, because a herdr agent inherits its pane's environment. Ask the owner for the
-  settings rule `Bash(~/.claude/skills/agent-orchestration/scripts/lane.sh:*)` with step 6's diff.
+  settings rule `Bash(~/.claude/skills/agent-orchestration/scripts/lane.sh:*)` with step 6's diff
+  (step 5 showed no rule is needed: the classifier allowed both kinds of lane).
   Check: run.sh passes, and fails with a named check against each of nine planted mutants
   (approve-for-me, add-dir, focus, the pointer prompt, network, the lane agent, the startup prompt,
   closing a failed lane's tab, the required model).
-- [ ] 5. Live smoke test from a herdr pane, before any document is rewritten: `thread.sh launch` a
+- [x] 5. Live smoke test from a herdr pane, before any document is rewritten: `thread.sh launch` a
   probe build of this repository with the real `orchestrator` agent and hooks; mail both ways; a
   permission prompt reported to MAIN; a decision default applied; two builds, one wait each;
   a thread killed (`GONE`) and one left idle without a wait (`UNREAD`, then rung); a fresh MAIN
@@ -68,7 +69,9 @@ every new assertion is shown to fail against a planted mutant before its step is
   commits in its worktree, and whether the owner's one-time approval covered that worktree; a
   Claude lane that commits in its worktree, with a guard hook refusing a planted mistake;
   `thread.sh close`. Append the results to the spike document; findings that change steps 6-10
-  update this plan first. Check: every probe's result is recorded, and there is no agent, workspace,
+  update this plan first: no settings rule is needed for `lane.sh`; herdr doesn't report an
+  `AskUserQuestion` dialog as blocked, so threads and lanes never use it (step 8) and MAIN reads a
+  thread's screen before ringing it (step 9). Check: every probe's result is recorded, and there is no agent, workspace,
   `../prompts-orch-<probe>` worktree or `mail/<probe>` folder left for the probe.
 - [x] 6. `agents/orchestrator.md`, `agents/lane.md`, `skills/agent-orchestration/hooks/guard-message.sh`,
   `skills/agent-orchestration/scripts/check-message.sh`, `skills/agent-orchestration/scripts/lib.sh`,
@@ -76,8 +79,8 @@ every new assertion is shown to fail against a planted mutant before its step is
   is a herdr agent and its `SendMessage` hook goes; guard-message.sh, check-message.sh, lib.sh's
   `main_name` and their tests are deleted; `agents/lane.md` is the Claude lane agent, running
   guard-bash and guard-writes with `--lane` (no model pin; `lane.sh` passes it). The settings rule
-  `Bash(~/.claude/skills/agent-orchestration/scripts/lane.sh:*)` is the owner's to add: Claude
-  Code's classifier refuses an agent editing its own settings. Check: run.sh passes; `grep -rn
+  `Bash(~/.claude/skills/agent-orchestration/scripts/lane.sh:*)` was never added (Claude
+  Code's classifier refuses an agent editing its own settings) and turned out unnecessary (step 5). Check: run.sh passes; `grep -rn
   'check-message\|guard-message\|SendMessage\|main_name' skills/*/scripts skills/*/hooks
   skills/*/tests agents` prints nothing (the docs and evals follow in steps 8 and 10); the commit
   body quotes the approval.
@@ -104,7 +107,8 @@ every new assertion is shown to fail against a planted mutant before its step is
   `skills/README.md`: lanes are herdr agents of either kind; the build's mailboxes replace Addresses (`mail.sh`, read then re-arm), the
   wake and UNREAD rules, blocked handling, the consent rule restated for mail, no `-r<n>`, no
   SendMessage limits; threads send `working` with `--quiet`; only a fixed line or a brief pointer
-  is ever typed into a pane, only into an idle agent, never MAIN; the RESUME checklist gains mail
+  is ever typed into a pane, only into an idle agent, never MAIN; threads and lanes never use
+  `AskUserQuestion` (herdr doesn't report it as blocked); the RESUME checklist gains mail
   read but not yet acted on; the wake table gains the mail wait and herdr lanes and loses
   `codex-exec.sh`; briefs are written for a lane of either kind and tell it to report by
   `mail.sh send --from`; subagents stay for jobs that aren't lanes. Check: `grep -rn
@@ -116,7 +120,7 @@ every new assertion is shown to fail against a planted mutant before its step is
   background `mail.sh wait <build>/main --watch <build>=<build>/thread` per running build, and each
   wake starts from `mail.sh read`; `BLOCKED` names the workspace for the owner; a decision or a blocked pane also raises
   `herdr notification show … --sound request`;
-  `UNREAD` rings the thread; rotation and a quiet thread use herdr state. Check: `grep -n
+  `UNREAD` rings the thread after reading its screen with `herdr agent read`; rotation and a quiet thread use herdr state. Check: `grep -n
   'ListAgents\|adopt\|MOVED\|claude attach\|notify_when_idle\|background session\|--main'
   skills/orchestration-main/SKILL.md` prints nothing.
 - [ ] 10. `skills/orchestration-main/evals/`, `skills/agent-orchestration/evals/`: replace
