@@ -14,10 +14,11 @@ their work.
 
 ## Words used here
 
-- **Lane:** one piece of the build, done by one worker in its own git worktree and branch.
-- **MAIN:** the owner's session. Its address, the owner's checkout, the base branch and how lanes
-  land are in `.orchestration/thread.md`, which MAIN writes; read a field with
-  `state.sh thread <key>`.
+- **Lane:** one piece of the build, done by one lane agent, Claude or Codex, running in herdr in its
+  own git worktree and branch.
+- **MAIN:** the owner's session. You reach it by mail at `<build>/main`; your inbox is
+  `<build>/thread`. Your build, the owner's checkout, the base branch and how lanes land are in
+  `.orchestration/thread.md`, which MAIN writes; read a field with `state.sh thread <key>`.
 - **Decision:** a question for the owner, sent to MAIN with a default that applies at a deadline
   unless the owner answers first.
 - **Owner-before:** a decision with no default, which waits for the owner: spending money,
@@ -27,11 +28,14 @@ their work.
   `state.sh`.
 
 Scripts are in `~/.claude/skills/agent-orchestration/scripts/`; write the full path in every
-command. Message formats: [references/protocol.md](references/protocol.md). The state file:
-[references/state-file.md](references/state-file.md). Worker briefs:
+command. Mail, waking and message formats: [references/protocol.md](references/protocol.md). The
+state file: [references/state-file.md](references/state-file.md). Lanes in herdr:
+[references/herdr.md](references/herdr.md). Worker briefs:
 [references/briefs.md](references/briefs.md). Read the first two before anything else.
 
 ## 1. Start
+
+Start your mail wait first: one background `mail.sh wait <build>/thread`, kept running all build.
 
 1. If `.orchestration/state.md` already exists, you are taking over from an earlier thread:
    follow "After a rotation" in the state-file reference, send
@@ -53,27 +57,30 @@ command. Message formats: [references/protocol.md](references/protocol.md). The 
 
 ## 2. Each turn
 
-You wake when a worker reports back, a background watcher or timer fires, or MAIN writes.
+You wake when your mail wait ends (mail from MAIN or a lane, or a lane blocked or gone), a timer
+fires, or a subagent finishes. On mail, read it first, then start the next wait, then act.
 
 1. Run `date -u`, `meter.sh` and `decisions.sh due`. Apply each default whose deadline has
    passed, and report it this turn.
-2. Look at every lane, not only the one that woke you. If a worker has made no progress for about
-   10 minutes, read its last tool calls and look for permission denials.
+2. Look at every lane, not only the one that woke you. If a lane has made no progress for about
+   10 minutes, read its screen (`herdr agent read <build>-<lane> --source visible`) and look for a
+   prompt or a permission denial.
 3. Rule on results (section 4). Start every lane whose inputs are now merged or decided. Write
    the brief for a lane before it unblocks.
 4. Make sure every running lane will wake you, with a command run in the background:
 
-   | Lane | What wakes you |
+   | Work | What wakes you |
    | --- | --- |
+   | Lane, Claude or Codex | Its report by mail, and your mail wait's `--watch <build>-<lane>`; plus `wake-at.sh` for its time box |
    | Subagent | Its completion notice |
-   | Codex lane | `codex-exec.sh <worktree> <brief> <result> --model <id> …` |
    | Pull request checks | `watch-gates.sh <PR> <head SHA> --check <name>` |
    | Decision deadline or budget reset | `wake-at.sh <UTC> <label>` |
 
    Never wait in the foreground with `sleep` or a polling loop: while you wait, you miss MAIN
    and every other lane.
 5. Record what changed with `state.sh log` and `state.sh set`.
-6. Tell MAIN what changed, one message per change. If nothing changed, send nothing.
+6. Tell MAIN what changed, one message per change, with `mail.sh send <build>/main --from
+   <build>/thread`; routine `working` news goes `--quiet`. If nothing changed, send nothing.
 
 ## 3. MAIN and decisions
 
@@ -99,6 +106,8 @@ You wake when a worker reports back, a background watcher or timer fires, or MAI
   message MAIN.
 - Changes to instructions, agent definitions, settings or skill links need the owner's own
   approval: send MAIN the exact diff, and MAIN applies it.
+- Start every lane with `lane.sh` ([references/herdr.md](references/herdr.md)); keep subagents for
+  short jobs that aren't lanes, such as a plan review.
 - Brief every worker from [references/briefs.md](references/briefs.md): an explicit model (Opus;
   Sonnet only for mechanical work, with the reason written down), its own worktree, the files it
   owns and must not touch, acceptance a check can fail, when to stop and ask, and a report whose
@@ -149,7 +158,7 @@ You wake when a worker reports back, a background watcher or timer fires, or MAI
 
 ## 7. Finish
 
-1. For each lane: compare any leftover edits with what merged, then run
+1. For each lane: compare any leftover edits with what merged, close its pane, then run
    `finish-lane.sh <worktree> <archive dir>`.
 2. Write a short retrospective: what the reviews caught, what it cost, what to reuse. Land, as one
    change, the `REVIEW.md` updates reviewers proposed that you accept.

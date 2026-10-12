@@ -6,8 +6,8 @@ worktree, `../<repo>-orch-<build>`, next to `decisions.md`, `plan.md`, `briefs/`
 The folder isn't committed. The scripts find it from the worktree's root; `$ORCHESTRATION_STATE`
 points them at another file.
 
-MAIN's address, the base branch and how lanes land are not in this file. They are in `thread.md`,
-which MAIN writes; read them with `state.sh main` and `state.sh thread <key>`.
+The build's name, the base branch and how lanes land are not in this file. They are in `thread.md`,
+which MAIN writes; read them with `state.sh thread <key>` (`BUILD`, `BASE`, `LANE-BASE`, `LANDING`).
 
 ## Sections
 
@@ -32,15 +32,17 @@ Write it with `state.sh resume -` from a heredoc. A fresh thread reads it first 
 to work any of this out again:
 
 1. **Goal and plan:** the build in one line, the plan file, the order of the lanes.
-2. **Every open lane:** its name, the kind of worker and its model, worktree, branch, pull request,
-   head commit, review round and verdict, and its next step.
-3. **What stopped with the session:** running subagents, background watchers and timers, each
-   with the command or brief that restarts it.
-4. **Open decisions:** each id with its default and deadline, or `owner-before`.
-5. **Approvals and rulings:** what the owner approved (quoted, with the time), and standing
+2. **Every open lane:** its name, its kind (Claude or Codex) and model, its herdr agent, worktree,
+   branch, pull request, head commit, review round and verdict, and its next step. Lanes are herdr
+   agents and keep running across a rotation.
+3. **What stopped with the session:** running subagents, the mail wait and its watch list, and
+   timers, each with the command or brief that restarts it.
+4. **Mail in hand:** each message read but not yet acted on, quoted.
+5. **Open decisions:** each id with its default and deadline, or `owner-before`.
+6. **Approvals and rulings:** what the owner approved (quoted, with the time), and standing
    rulings.
-6. **Budget:** the last meter readings, Codex and Claude.
-7. **Done:** merged lanes, one line each, so nothing is redone.
+7. **Budget:** the last meter readings, Codex and Claude.
+8. **Done:** merged lanes, one line each, so nothing is redone.
 
 ## After a rotation
 
@@ -48,4 +50,5 @@ to work any of this out again:
    checked it.
 2. Check each open lane against its source: `gh pr view <PR> --json headRefOid,state,statusCheckRollup`,
    `git rev-parse <branch>`, and each result file.
-3. Restart what stopped (checklist item 3), then carry on as in a normal turn.
+3. Restart what stopped (checklist item 3), act on the mail in hand, then carry on as in a normal
+   turn.

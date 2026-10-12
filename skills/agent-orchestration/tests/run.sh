@@ -235,6 +235,12 @@ herdr_agents "b3 working"; "$mail" wait b3/main --watch b3=b3/thread --timeout 0
 herdr_agents "b3 done"
 "$mail" wait b3/main --watch b3=b3/thread --timeout 0 | grep -qx 'UNREAD b3 1' || fail "mail.sh wait missed a second unread stretch"
 
+# --- docs: the wait lines protocol.md names are the ones mail.sh documents and prints ----------------------------
+doc_lines=$(sed -n '/^## Waking/,/^## Messages/p' "$here/references/protocol.md" | grep -oE '^\| `[A-Z]+' | tr -d '|` ' | sort -u)
+head_lines=$(sed -n '1,/^set -euo pipefail/p' "$mail" | grep -oE '^#   [A-Z]{4,}( |$)' | tr -d '# ' | sort -u)
+[ -n "$doc_lines" ] && [ "$doc_lines" = "$head_lines" ] || fail "protocol.md's wait lines ($(echo $doc_lines)) differ from mail.sh's header ($(echo $head_lines))"
+for w in $doc_lines; do grep -Eq "echo \"?$w( |\"|;)" "$mail" || fail "protocol.md names $w, which mail.sh never prints"; done
+
 # --- meter.sh ------------------------------------------------------------------------------------------------
 export CODEX_SESSIONS="$tmp/sessions"; mkdir -p "$CODEX_SESSIONS"
 "$here/scripts/meter.sh" | grep -q '^codex=unknown .*verdict=unknown' || fail "meter.sh without logs should print unknown"

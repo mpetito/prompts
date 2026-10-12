@@ -84,7 +84,7 @@ every new assertion is shown to fail against a planted mutant before its step is
   'check-message\|guard-message\|SendMessage\|main_name' skills/*/scripts skills/*/hooks
   skills/*/tests agents` prints nothing (the docs and evals follow in steps 8 and 10); the commit
   body quotes the approval.
-- [ ] 7. (Scripts done in the commit that adds the hooks' `--lane`: guard-bash and guard-writes treat
+- [x] 7. (Scripts done in the commit that adds the hooks' `--lane`: guard-bash and guard-writes treat
   `--lane` as a worker and guard-writes acts in a lane worktree; guard-bash advises on a foreground
   `mail.sh wait`; finish-lane.sh compares the resolved worktree and no longer takes a sibling for
   it; each fails against its planted mutant. herdr.md waits for step 5's results.)
@@ -102,7 +102,7 @@ every new assertion is shown to fail against a planted mutant before its step is
   guard-bash advises on a foreground `mail.sh wait`. Check: run.sh fails without the realpath fix
   without the new guard-bash advice, and without the lane-session rule in either hook; every command in herdr.md matches `herdr <group>` help on
   0.9.3.
-- [ ] 8. `skills/agent-orchestration/references/protocol.md`, `skills/agent-orchestration/references/state-file.md`,
+- [x] 8. `skills/agent-orchestration/references/protocol.md`, `skills/agent-orchestration/references/state-file.md`,
   `skills/agent-orchestration/references/briefs.md`, `skills/agent-orchestration/SKILL.md`,
   `skills/README.md`: lanes are herdr agents of either kind; the build's mailboxes replace Addresses (`mail.sh`, read then re-arm), the
   wake and UNREAD rules, blocked handling, the consent rule restated for mail, no `-r<n>`, no
@@ -115,8 +115,9 @@ every new assertion is shown to fail against a planted mutant before its step is
   'SendMessage\|socket\|outbox\|background session\|-r<n>\|codex-exec'
   skills/agent-orchestration skills/README.md` prints nothing; a run.sh case asserts that every
   wait output named in protocol.md is one mail.sh documents and prints, and fails when one is
-  renamed in either; step 10's new case passes.
-- [ ] 9. `skills/orchestration-main/SKILL.md`: launch without `ListAgents` or `--main`; one
+  renamed in either (it does, and the rename in mail.sh also fails its behaviour test); step 10's
+  new case passes.
+- [x] 9. `skills/orchestration-main/SKILL.md`: launch without `ListAgents` or `--main`; one
   background `mail.sh wait <build>/main --watch <build>=<build>/thread` per running build, and each
   wake starts from `mail.sh read`; `BLOCKED` names the workspace for the owner; a decision or a blocked pane also raises
   `herdr notification show … --sound request`;

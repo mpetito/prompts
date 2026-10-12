@@ -1,8 +1,10 @@
 # Briefs
 
-What the thread sends its workers. Fill every `<placeholder>` from a command you run when you send
-the brief, never from memory. Save each brief as `.orchestration/briefs/<lane>-<kind>.md` in your
-worktree, and give the worker the path.
+What the thread sends its workers: a lane, a herdr agent of either kind ([herdr.md](herdr.md)), or a
+subagent for a short job that isn't a lane, such as a plan review. Fill every `<placeholder>` from a
+command you run when you send the brief, never from memory. Save each brief as
+`.orchestration/briefs/<lane>-<kind>.md` in your worktree, and give the worker the path: `lane.sh`
+does it for a lane.
 
 ## Every brief
 
@@ -20,7 +22,11 @@ worktree, and give the worker the path.
 - **Report:** first line `STATUS: done|blocked|partial - <summary>` (authors) or
   `VERDICT: approve|changes-required|close for <commit or version>` (reviewers); at most 40 lines;
   the long version in `.orchestration/results/<lane>.md` in your worktree. No reply until the work
-  is finished.
+  is finished. A lane sends it with
+  `~/.claude/skills/agent-orchestration/scripts/mail.sh send <build>/thread --from <build>/<lane> --file <report>`;
+  a subagent ends with it.
+- **Questions:** a lane that must ask sends `STATUS: blocked - <question>` the same way and waits
+  for its brief to change. Never `AskUserQuestion`: no one sees it.
 
 ## Plan review
 
