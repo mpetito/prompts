@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Offline checks for the orchestration scripts and hooks, including orchestration-main's thread.sh. Uses a
-# throwaway directory with mocked claude, gh and codex on PATH and real git repositories; needs bash 5, jq,
+# throwaway directory with mocked herdr, gh and codex on PATH and real git repositories; needs bash 5, jq,
 # python3, git 2.31+ and GNU coreutils.
 # No pipefail: each assertion pipes a command that may exit 1 by design into grep, and judges grep.
 set -eu
@@ -18,26 +18,6 @@ export PATH="$tmp/bin:$PATH"
 utc='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}Z'
 
 # --- mocks -------------------------------------------------------------------------------------------------
-cat > "$tmp/bin/claude" <<'MOCK'
-#!/usr/bin/env bash
-echo "$PWD :: $*" >> "$MOCK_DIR/claude.log"
-[ -z "${CLAUDECODE:-}" ] || echo "CLAUDECODE leaked" >> "$MOCK_DIR/claude.log"
-case "$1" in
-  stop) [ "${MOCK_CLAUDE:-}" = fail-stop ] && { echo "no session $2" >&2; exit 1; }; echo "stopped $2"; exit 0 ;;
-  agents) cat "$MOCK_DIR/agents.json" 2>/dev/null || echo '[]'; exit 0 ;;
-esac
-case "${MOCK_CLAUDE:-}" in
-  untrusted) echo "Error: Workspace not trusted. Open this folder in claude once to trust it." >&2; exit 1 ;;
-  noagent) echo "warning: no agent named orchestrator"; echo "backgrounded · deadbeef · x"; exit 0 ;;
-esac
-name=""; brief=""
-while [ $# -gt 0 ]; do
-  case $1 in --agent) shift 2 ;; --bg) shift ;; --name) name=$2; shift 2 ;; *) brief=$1; shift ;; esac
-done
-printf '%s' "$brief" > "$MOCK_DIR/brief-$name.txt"
-id=$(printf '%s' "$name" | md5sum | cut -c1-8)
-echo "Starting background service…"; echo "backgrounded · $id · $name"; echo "  claude stop $id      stop this session"
-MOCK
 cat > "$tmp/bin/gh" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$MOCK_DIR/gh.log"
@@ -68,9 +48,39 @@ esac
 MOCK
 cat > "$tmp/bin/herdr" <<'MOCK'
 #!/usr/bin/env bash
+# A herdr that keeps its agents in $MOCK_DIR/herdr-agents.json and refuses what 0.9.3 refuses.
 echo "$*" >> "$MOCK_DIR/herdr.log"
+db="$MOCK_DIR/herdr-agents.json"
+[ -f "$db" ] || echo '{"result":{"agents":[]}}' > "$db"
+err() { printf '{"error":{"code":"%s","message":"%s"}}\n' "$1" "$2" >&2; exit 1; }
+put() { jq "$@" "$db" > "$db.tmp" && mv "$db.tmp" "$db"; }
+n=$(( $(cat "$MOCK_DIR/herdr.n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$MOCK_DIR/herdr.n"
 case "$1 $2" in
-  "agent list") [ "${MOCK_HERDR:-}" = down ] && exit 1; cat "$MOCK_DIR/herdr-agents.json" 2>/dev/null || echo '{"result":{"agents":[]}}' ;;
+  "agent list") [ "${MOCK_HERDR:-}" = down ] && exit 1; cat "$db" ;;
+  "agent get") jq -e --arg a "$3" '.result.agents[] | select(.name == $a) | {result: {agent: .}}' "$db" || err agent_not_found "agent target $3 not found" ;;
+  "workspace create")
+    [[ " $* " == *" --cwd "* && " $* " == *" --no-focus "* ]] || err invalid "the mock wants --cwd and --no-focus"
+    printf '{"result":{"workspace":{"workspace_id":"w%s"},"root_pane":{"pane_id":"w%s:p1"}}}\n' "$n" "$n" ;;
+  "tab create")
+    [ "${MOCK_HERDR:-}" = notab ] && err workspace_not_found "no such workspace"
+    ws=$(sed -n 's/.*--workspace \([^ ]*\).*/\1/p' <<<"$*"); [ -n "$ws" ] || err invalid "the mock wants --workspace"
+    printf '{"result":{"tab":{"tab_id":"%s:t%s"},"root_pane":{"pane_id":"%s:p%s"}}}\n' "$ws" "$n" "$ws" "$n" ;;
+  "agent start")
+    name=$3; shift 3; pane=""
+    while [ $# -gt 0 ]; do case $1 in --pane) pane=$2; shift 2 ;; --kind|--timeout) shift 2 ;; --) shift; break ;; *) shift ;; esac; done
+    [[ $name =~ ^[a-z][a-z0-9_-]{0,31}$ ]] || err invalid_name "agent names must match [a-z][a-z0-9_-]{0,31}"
+    [ -n "$pane" ] || err invalid "--pane is required"
+    printf '%s\n' "$@" > "$MOCK_DIR/start-$name.args"
+    [ "${MOCK_HERDR:-}" = startfail ] && err agent_start_failed "the agent exited"
+    state=idle; [ "${MOCK_HERDR:-}" = notready ] && state=blocked
+    put --arg a "$name" --arg p "$pane" --arg s "$state" '.result.agents += [{name: $a, agent_status: $s, pane_id: $p}]'
+    [ "$state" = idle ] || err agent_not_ready "agent $name is blocked"
+    printf '{"result":{"agent":{"name":"%s","pane_id":"%s"}}}\n' "$name" "$pane" ;;
+  "pane close")
+    [ "${MOCK_HERDR:-}" = closefail ] && err pane_not_found "pane $3 not found"
+    put --arg p "$3" '.result.agents |= map(select(.pane_id != $p))'; echo '{"result":{"type":"ok"}}' ;;
+  "workspace close") echo '{"result":{"type":"ok"}}' ;;
+  *) err unknown "the mock has no $1 $2" ;;
 esac
 MOCK
 chmod +x "$tmp/bin/"*
@@ -118,7 +128,7 @@ out=$(cd "$coord" && "$here/scripts/state.sh" log x 2>&1) && fail "state.sh logg
 printf '%s' "$out" | grep -q "no state file at $coord/.orchestration/state.md" || fail "state.sh did not resolve the worktree root: $out"
 "$here/scripts/state.sh" now | grep -Eq "^$utc$" || fail "state.sh now printed the wrong format"
 
-# --- state.sh: init, main, log, resume ----------------------------------------------------------------------
+# --- state.sh: init, thread, log, resume ----------------------------------------------------------------------
 cd "$coord/sub"
 "$here/scripts/state.sh" init b1 | grep -Eq "^initialised $coord/.orchestration/state.md $utc$" || fail "state.sh init did not use the worktree root"
 s1="$coord/.orchestration/state.md"
@@ -128,13 +138,10 @@ grep -q '^Record: thread.md' "$s1" && grep -Eq "^Started: $utc$" "$s1" && grep -
 grep -q '^MAIN:' "$s1" && fail "state.sh init wrote a MAIN line; the thread record is its one home"
 "$here/scripts/state.sh" init b1 >/dev/null 2>&1 && fail "state.sh init overwrote an existing file"
 "$here/scripts/state.sh" init b1 prompts-9d >/dev/null 2>&1 && fail "state.sh init accepted the old MAIN argument"
-"$here/scripts/state.sh" main >/dev/null 2>&1 && fail "state.sh main printed a name with no thread record"
-printf '%s\n' '# record' 'MAIN: Main session one' 'MAIN-SOCKET: uds:/tmp/main-1.sock' 'CHECKOUT: /x' 'BASE: dev' 'LANE-BASE: orchestration/b1' 'LANDING: local' > "$coord/.orchestration/thread.md"
-[ "$("$here/scripts/state.sh" main)" = 'Main session one' ] || fail "state.sh main did not read MAIN from the thread record"
-[ "$("$here/scripts/state.sh" main --socket)" = uds:/tmp/main-1.sock ] || fail "state.sh main --socket did not read MAIN-SOCKET"
+printf '%s\n' '# record' 'BUILD: b1' 'CHECKOUT: /x' 'BASE: dev' 'LANE-BASE: orchestration/b1' 'LANDING: local' > "$coord/.orchestration/thread.md"
 [ "$("$here/scripts/state.sh" thread LANE-BASE)" = orchestration/b1 ] || fail "state.sh thread did not read a record field"
 "$here/scripts/state.sh" thread NOPE >/dev/null 2>&1 && fail "state.sh thread printed a missing field"
-"$here/scripts/state.sh" main --bogus >/dev/null 2>&1 && fail "state.sh main accepted an unknown option"
+"$here/scripts/state.sh" main >/dev/null 2>&1 && fail "state.sh still has a main command"
 "$here/scripts/state.sh" log "lane A launched" | grep -Eq "^logged $utc$" || fail "state.sh log printed the wrong line"
 tail -1 "$s1" | grep -Eq "^- $utc lane A launched$" || fail "state.sh log did not append to the Log section"
 printf 'Lanes A, B done.\nWritten: 1999-01-01T00:00Z\nNext: lane C.\n' | "$here/scripts/state.sh" resume - | grep -q '^resume written' || fail "state.sh resume printed the wrong line"
@@ -149,9 +156,6 @@ printf '   \n' | "$here/scripts/state.sh" resume - >/dev/null 2>&1 && fail "stat
 [ -f "$coord/.orchestration/decisions.md" ] || fail "decisions.sh did not put decisions.md beside the state file"
 cd "$tmp"
 
-# A state file written before thread records existed still names MAIN.
-mkdir -p "$tmp/oldstate/.orchestration"; printf '## Thread\n\nMAIN: old-main\n' > "$tmp/oldstate/.orchestration/state.md"
-[ "$(ORCHESTRATION_STATE="$tmp/oldstate/.orchestration/state.md" "$here/scripts/state.sh" main)" = old-main ] || fail "state.sh main ignored a legacy MAIN line"
 
 # --- state.sh with an explicit file (the original assertions) ------------------------------------------------
 mkdir -p legacy
@@ -480,7 +484,7 @@ edit "resumed 2026-10-05T18:16Z" | noted '18:16Z' || fail "timestamps hook shoul
 CLAUDE_PROJECT_DIR="$gwc" edit "approved at 14:30Z" "$tmp/plain" | noted '14:30Z' || fail "timestamps hook lost the session after a cd"
 
 # --- thread.sh -----------------------------------------------------------------------------------------------
-export ORCHESTRATION_HOME="$tmp/orch" CLAUDECODE=1 HERDR_PANE_ID=p1 CLAUDE_CODE_MESSAGING_SOCKET="$tmp/main-1.sock"
+export ORCHESTRATION_HOME="$tmp/orch"
 git init -q --bare -b main "$tmp/app-origin.git"
 git clone -q "$tmp/app-origin.git" "$tmp/app-seed" 2>/dev/null
 (cd "$tmp/app-seed" && printf 'app\n' > README.md && git add . && git commit -qm init && git push -q origin main \
@@ -491,163 +495,139 @@ app=$(realpath "$tmp/proj/app")
 printf 'Build the signup slice.\n' > "$tmp/brief-a.md"
 [ "$("$thread" list)" = NONE ] || fail "thread.sh list should print NONE with no registry"
 [ "$("$thread" decisions)" = NONE ] || fail "thread.sh decisions should print NONE with no registry"
-out=$("$thread" launch t-a "$app" "$tmp/brief-a.md" --main prompts-9d)
-[[ $out =~ ^LAUNCHED\ t-a\ [0-9a-f]{8}\ base=main@[0-9a-f]{7}\ landing=pr$ ]] || fail "thread.sh launch printed: $out"
-ida=$(printf '%s' "$out" | cut -d' ' -f3)
+rm -f "$MOCK_DIR/herdr-agents.json" "$MOCK_DIR/herdr.log"
+# thread_pane <build>: the pane the mocked herdr hosts the build's thread in.
+thread_pane() { jq -r --arg a "$1" '.result.agents[] | select(.name == $a) | .pane_id' "$MOCK_DIR/herdr-agents.json"; }
+row_of() { awk -F'\t' -v b="$1" '$1 == b' "$ORCHESTRATION_HOME/threads.tsv"; }
+out=$("$thread" launch t-a "$app" "$tmp/brief-a.md" || true)
+[[ $out =~ ^LAUNCHED\ t-a\ base=main@[0-9a-f]{7}\ landing=pr$ ]] || fail "thread.sh launch printed: $out"
 wta="$tmp/proj/app-orch-t-a"
 [ "$(git -C "$wta" rev-parse --abbrev-ref HEAD)" = orchestration/t-a ] || fail "thread.sh did not create the coordination worktree on orchestration/t-a"
 [ "$(git -C "$wta" rev-parse HEAD)" = "$(git -C "$app" rev-parse origin/main)" ] || fail "thread.sh did not branch from origin/<current branch>"
 rec="$wta/.orchestration/thread.md"
-[ "$(sed -n 's/^\(MAIN\|MAIN-SOCKET\|CHECKOUT\|BASE\|BASE-REF\|LANE-BASE\|LANDING\): //p' "$rec" | tr '\n' '|')" = "prompts-9d|uds:$tmp/main-1.sock|$app|main|origin/main|origin/main|pr|" ] \
-  || fail "thread.sh launch wrote the wrong thread record: $(cat "$rec")"
+[ "$(sed -n 's/^\([A-Z-]*\): //p' "$rec" | head -6 | tr '\n' '|')" = "t-a|$app|main|origin/main|origin/main|pr|" ] \
+  && ! grep -q '^MAIN' "$rec" || fail "thread.sh launch wrote the wrong thread record: $(cat "$rec")"
 [ -z "$(git -C "$wta" config --get branch.orchestration/t-a.merge || true)" ] || fail "thread.sh made the coordination branch track the base"
 grep -qxF '.orchestration/' "$app/.git/info/exclude" || fail "thread.sh did not exclude .orchestration/"
-[ "$(head -2 "$MOCK_DIR/brief-t-a.txt" | tr '\n' '|')" = "MAIN: prompts-9d|STATE: $wta/.orchestration/state.md|" ] || fail "thread.sh launch brief header is wrong"
-grep -q 'Build the signup slice.' "$MOCK_DIR/brief-t-a.txt" || fail "thread.sh launch dropped the brief"
-grep -q "^$wta :: --agent orchestrator --bg --name t-a " "$MOCK_DIR/claude.log" || fail "thread.sh did not start the session in the coordination worktree"
-grep -q 'CLAUDECODE leaked' "$MOCK_DIR/claude.log" && fail "thread.sh passed CLAUDECODE to claude"
-[ "$(awk -F'\t' 'NR==2 {print $1, $2, $3, $4, $5, $6}' "$ORCHESTRATION_HOME/threads.tsv")" = "t-a $ida t-a $app $wta prompts-9d" ] || fail "thread.sh launch registry row is wrong"
+# One workspace per build, opened at the coordination worktree without taking the owner's focus.
+grep -qx "workspace create --cwd $wta --label t-a --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" \
+  || fail "thread.sh did not open the build's workspace at its worktree without focus: $(cat "$MOCK_DIR/herdr.log")"
+wsa=$(row_of t-a | cut -f4)
+[ "$(row_of t-a | cut -f1-3)" = "t-a	$app	$wta" ] && [[ $wsa =~ ^w[0-9]+$ ]] || fail "thread.sh launch registry row is wrong: $(row_of t-a)"
+[ "$(thread_pane t-a)" = "$wsa:p1" ] || fail "thread.sh did not start the thread in the workspace's root pane"
+[ "$(head -5 "$MOCK_DIR/start-t-a.args" | tr '\n' '|')" = "--agent|orchestrator|BUILD: t-a|MAIL: t-a/thread is yours; send MAIN t-a/main|STATE: $wta/.orchestration/state.md|" ] \
+  || fail "thread.sh started the wrong agent or brief header: $(head -5 "$MOCK_DIR/start-t-a.args")"
+grep -q 'Build the signup slice.' "$MOCK_DIR/start-t-a.args" || fail "thread.sh launch dropped the brief"
 # The state file and the hooks work from inside the new worktree, and .orchestration stays untracked.
 (cd "$wta" && "$here/scripts/state.sh" init t-a >/dev/null)
-[ "$(cd "$wta" && "$here/scripts/state.sh" main --socket)" = "uds:$tmp/main-1.sock" ] || fail "state.sh main --socket did not read the launched record"
+[ "$(cd "$wta" && "$here/scripts/state.sh" thread BUILD)" = t-a ] || fail "state.sh thread did not read BUILD from the launched record"
 [ -z "$(git -C "$wta" status --porcelain)" ] || fail ".orchestration/ shows up as untracked in the coordination worktree"
-"$thread" launch t-a "$app" "$tmp/brief-a.md" --main prompts-9d --build other | grep -q '^FAILED a thread named t-a' || fail "thread.sh launched a duplicate name"
-"$thread" launch t-x "$app" "$tmp/brief-a.md" --main prompts-9d --build t-a | grep -q "^FAILED $wta already hosts thread t-a" || fail "thread.sh launched a second thread on one worktree"
+"$thread" launch t-a "$app" "$tmp/brief-a.md" | grep -q '^FAILED a thread for build t-a is already registered' || fail "thread.sh launched a duplicate build"
+jq '.result.agents += [{name: "held", agent_status: "idle", pane_id: "w0:p9"}]' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
+"$thread" launch held "$app" "$tmp/brief-a.md" | grep -q '^FAILED a live herdr agent is already named held' || fail "thread.sh took a name a live agent holds"
 mkdir -p "$tmp/proj/app-orch-x"
-"$thread" launch t-y "$app" "$tmp/brief-a.md" --main prompts-9d --build x | grep -q "^FAILED $tmp/proj/app-orch-x exists and is not the coordination worktree" || fail "thread.sh accepted a foreign path"
-"$thread" launch t-z "$tmp/nowhere" "$tmp/brief-a.md" --main prompts-9d | grep -q '^FAILED no repository checkout' || fail "thread.sh launched without a repository"
-"$thread" launch t-z "$tmp/plain" "$tmp/brief-a.md" --main prompts-9d | grep -q '^FAILED .* is not a git checkout' || fail "thread.sh launched outside git"
-"$thread" launch t-z "$app" "$tmp/brief-a.md" | grep -q '^FAILED launch needs --main' || fail "thread.sh launched without --main"
-"$thread" launch "bad name" "$app" "$tmp/brief-a.md" --main m | grep -q '^FAILED thread name' || fail "thread.sh accepted a name with a space"
-"$thread" launch t-z "$app" "$tmp/brief-a.md" --main m --base nope | grep -q '^FAILED no branch nope in .* or on origin' || fail "thread.sh accepted a missing base"
-"$thread" launch t-z "$app" "$tmp/brief-a.md" --main m --landing push | grep -q '^FAILED --landing takes pr or local' || fail "thread.sh accepted an unknown landing mode"
-MOCK_CLAUDE=untrusted "$thread" launch t-u "$app" "$tmp/brief-a.md" --main prompts-9d | grep -q '^FAILED workspace not trusted: start the thread from a repository Claude Code trusts' || fail "thread.sh did not explain an untrusted workspace"
-MOCK_CLAUDE=noagent "$thread" launch t-u "$app" "$tmp/brief-a.md" --main prompts-9d | grep -q '^FAILED no agent named orchestrator' || fail "thread.sh did not report a missing agent"
-grep -q '^t-u' "$ORCHESTRATION_HOME/threads.tsv" && fail "thread.sh left a registry row for a failed launch"
+"$thread" launch x "$app" "$tmp/brief-a.md" | grep -q "^FAILED $tmp/proj/app-orch-x exists and is not the coordination worktree" || fail "thread.sh accepted a foreign path"
+"$thread" launch t-z "$tmp/nowhere" "$tmp/brief-a.md" | grep -q '^FAILED no repository checkout' || fail "thread.sh launched without a repository"
+"$thread" launch t-z "$tmp/plain" "$tmp/brief-a.md" | grep -q '^FAILED .* is not a git checkout' || fail "thread.sh launched outside git"
+for bad in "bad name" Upper 1st "$(printf 'a%.0s' {1..33})"; do
+  "$thread" launch "$bad" "$app" "$tmp/brief-a.md" | grep -q '^FAILED build name .* must match' || fail "thread.sh accepted the build name '$bad'"
+done
+"$thread" launch t-z "$app" "$tmp/brief-a.md" --base nope | grep -q '^FAILED no branch nope in .* or on origin' || fail "thread.sh accepted a missing base"
+"$thread" launch t-z "$app" "$tmp/brief-a.md" --landing push | grep -q '^FAILED --landing takes pr or local' || fail "thread.sh accepted an unknown landing mode"
+# A thread held at a startup prompt is launched and reported; a thread that fails to start leaves nothing behind.
+out=$(MOCK_HERDR=notready "$thread" launch t-u "$app" "$tmp/brief-a.md" || true)
+[ "$out" = "BLOCKED t-u waiting on a startup prompt: answer it in workspace t-u" ] && [ -n "$(row_of t-u)" ] || fail "thread.sh launch mishandled a startup prompt: $out"
+"$thread" stop t-u >/dev/null
+out=$(MOCK_HERDR=startfail "$thread" launch t-f "$app" "$tmp/brief-a.md" || true)
+[ "$out" = "FAILED herdr agent start: agent_start_failed: the agent exited" ] || fail "thread.sh launch printed: $out"
+[ -z "$(row_of t-f)" ] && grep -q "^workspace close w" "$MOCK_DIR/herdr.log" || fail "thread.sh left a row or a workspace behind after a failed start"
 # A linked worktree passed as the checkout still places the coordination worktree beside the main checkout.
 git -C "$app" worktree add -q "$tmp/proj/app-wt-lane-b" -b lane-b
-"$thread" launch t-b "$tmp/proj/app-wt-lane-b" "$tmp/brief-a.md" --main prompts-9d --build signup --base dev | grep -q '^LAUNCHED t-b ' || fail "thread.sh did not launch from a linked worktree"
+"$thread" launch signup "$tmp/proj/app-wt-lane-b" "$tmp/brief-a.md" --base dev | grep -q '^LAUNCHED signup ' || fail "thread.sh did not launch from a linked worktree"
 wtb="$tmp/proj/app-orch-signup"
 [ -f "$wtb/DEV.md" ] || fail "thread.sh ignored --base dev"
 grep -qx "CHECKOUT: $tmp/proj/app-wt-lane-b" "$wtb/.orchestration/thread.md" || fail "thread.sh recorded the main checkout, not the linked worktree it was given"
-# list reads live status from claude agents --json by session id prefix.
-printf '[{"sessionId":"%s-0000","name":"t-a","status":"busy"}]' "$ida" > "$MOCK_DIR/agents.json"
-"$thread" list | grep -q "^t-a $ida build=t-a status=busy main=prompts-9d worktree=$wta " || fail "thread.sh list did not show t-a busy"
-"$thread" list | grep -q "^t-b [0-9a-f]* build=signup status=not-running main=prompts-9d worktree=$wtb " || fail "thread.sh list did not mark t-b not running"
+# list reads each thread's status from herdr.
+jq '(.result.agents[] | select(.name == "t-a") | .agent_status) = "working"' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
+herdr pane close "$(thread_pane signup)" >/dev/null
+"$thread" list | grep -q "^t-a status=working workspace=$wsa worktree=$wta " || fail "thread.sh list did not show t-a working"
+"$thread" list | grep -q "^signup status=not-running workspace=w[0-9]* worktree=$wtb " || fail "thread.sh list did not mark signup not running"
 # decisions: owner-before first, then by deadline, across threads, read from each worktree's .orchestration/.
 (cd "$wta" && "$here/scripts/decisions.sh" add "Tea or coffee" "lane B" "lane B" "tea" +2h >/dev/null)
 (cd "$wtb" && "$here/scripts/decisions.sh" add "Banner copy" "demo" "lane C" "short copy" +1h >/dev/null)
 (cd "$wtb" && "$here/scripts/decisions.sh" add "Spend 40 USD" "quota" "lane D" "none" owner-before >/dev/null)
-out=$("$thread" decisions)
+out=$("$thread" decisions || true)
 [ "$(printf '%s\n' "$out" | wc -l)" = 3 ] || fail "thread.sh decisions should list three items: $out"
-printf '%s\n' "$out" | sed -n 1p | grep -q '^t-b D2 Spend 40 USD | default: none | owner-before$' || fail "thread.sh decisions did not put owner-before first: $out"
-printf '%s\n' "$out" | sed -n 2p | grep -Eq "^t-b D1 Banner copy \| default: short copy \| applies at $utc$" || fail "thread.sh decisions misordered by deadline: $out"
+printf '%s\n' "$out" | sed -n 1p | grep -q '^signup D2 Spend 40 USD | default: none | owner-before$' || fail "thread.sh decisions did not put owner-before first: $out"
+printf '%s\n' "$out" | sed -n 2p | grep -Eq "^signup D1 Banner copy \| default: short copy \| applies at $utc$" || fail "thread.sh decisions misordered by deadline: $out"
 printf '%s\n' "$out" | sed -n 3p | grep -Eq "^t-a D1 Tea or coffee \| default: tea \| applies at $utc$" || fail "thread.sh decisions misformatted: $out"
-# rotate needs a fresh RESUME stamp unless forced, and stays in the same worktree.
+# rotate needs a fresh RESUME stamp unless forced, keeps the name, and replaces the thread in the build's workspace.
 sed -i 's/^Written: .*/Written: 2000-01-01T00:00Z/' "$wta/.orchestration/state.md"
-export CLAUDE_CODE_MESSAGING_SOCKET="$tmp/main-2.sock"
-"$thread" rotate t-a --main prompts-9d | grep -q '^FAILED RESUME in .* min ago (limit 15)' || fail "thread.sh rotated on a stale RESUME"
-"$thread" rotate t-b --main prompts-9d | grep -q '^FAILED no RESUME Written' || fail "thread.sh rotated a thread with no state file"
+"$thread" rotate t-a | grep -q '^FAILED RESUME in .* min ago (limit 15)' || fail "thread.sh rotated on a stale RESUME"
+"$thread" rotate signup | grep -q '^FAILED no RESUME Written' || fail "thread.sh rotated a thread with no state file"
 printf 'Lane A done.\n' | (cd "$wta" && "$here/scripts/state.sh" resume - >/dev/null)
-out=$("$thread" rotate t-a --main prompts-9d)
-[[ $out =~ ^ROTATED\ t-a\ -\>\ t-a-r1\ [0-9a-f]{8}$ ]] || fail "thread.sh rotate printed: $out"
-grep -q "stop $ida" "$MOCK_DIR/claude.log" || fail "thread.sh rotate did not stop the old session"
-grep -q "^$wta :: --agent orchestrator --bg --name t-a-r1 " "$MOCK_DIR/claude.log" || fail "thread.sh rotate left the coordination worktree"
-grep -q '^Resume: read STATE first and continue from its RESUME section without redoing finished work.$' "$MOCK_DIR/brief-t-a-r1.txt" || fail "thread.sh rotate brief is wrong"
-[ "$(awk -F'\t' '$1=="t-a-r1" {print $3, $5}' "$ORCHESTRATION_HOME/threads.tsv")" = "t-a $wta" ] || fail "thread.sh rotate changed the build or worktree"
-grep -qx "MAIN-SOCKET: uds:$tmp/main-2.sock" "$rec" && grep -qx 'LANDING: pr' "$rec" || fail "thread.sh rotate did not refresh MAIN's socket, or lost the rest of the record"
-grep -q '^t-a	' "$ORCHESTRATION_HOME/threads.tsv" && fail "thread.sh rotate left the old row"
-"$thread" rotate t-a-r1 --main prompts-9d --force | grep -q '^ROTATED t-a-r1 -> t-a-r2 ' || fail "thread.sh rotate --force did not increment the suffix"
-out=$("$thread" stop t-b)
-[[ $out =~ ^STOPPED\ t-b\ [0-9a-f]{8}$ ]] || fail "thread.sh stop printed: $out"
-grep -q '^t-b	' "$ORCHESTRATION_HOME/threads.tsv" && fail "thread.sh stop left the row"
+olda=$(thread_pane t-a)
+[ "$("$thread" rotate t-a)" = "ROTATED t-a" ] || fail "thread.sh rotate did not print ROTATED t-a"
+grep -qx "tab create --workspace $wsa --cwd $wta --label t-a --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" || fail "thread.sh rotate did not open the new thread in the build's workspace"
+newa=$(thread_pane t-a)
+grep -qx "pane close $olda" "$MOCK_DIR/herdr.log" && [ -n "$newa" ] && [ "$newa" != "$olda" ] || fail "thread.sh rotate did not replace the old pane: old=$olda new=$newa"
+grep -qx 'Resume: read STATE first and continue from its RESUME section without redoing finished work.' "$MOCK_DIR/start-t-a.args" || fail "thread.sh rotate brief is wrong"
+[ "$(row_of t-a | cut -f1-4)" = "t-a	$app	$wta	$wsa" ] || fail "thread.sh rotate changed the build, worktree or workspace: $(row_of t-a)"
+# A thread whose agent and workspace are gone restarts in a new workspace.
+out=$(MOCK_HERDR=notab "$thread" rotate signup --force || true)
+[ "$out" = "ROTATED signup" ] && [ -n "$(thread_pane signup)" ] || fail "thread.sh rotate --force did not restart a stopped thread: $out"
+"$thread" list | grep -q "^signup status=idle workspace=w[0-9]* " || fail "thread.sh rotate did not record the new workspace"
+MOCK_HERDR=closefail "$thread" stop signup | grep -q '^FAILED herdr pane close .*: pane_not_found' || fail "thread.sh hid a failed stop"
+[ -n "$(row_of signup)" ] || fail "thread.sh dropped the row after a failed stop"
+[ "$("$thread" stop signup)" = "STOPPED signup" ] || fail "thread.sh stop did not print STOPPED signup"
+[ -z "$(row_of signup)" ] && [ -z "$(thread_pane signup)" ] || fail "thread.sh stop left the row or the agent"
 [ -d "$wtb/.git" ] || [ -f "$wtb/.git" ] || fail "thread.sh stop removed the coordination worktree"
-"$thread" stop t-b | grep -q '^FAILED no thread named t-b' || fail "thread.sh stopped an unknown thread"
-"$thread" launch t-b2 "$app" "$tmp/brief-a.md" --main prompts-9d --build signup | grep -q '^LAUNCHED t-b2 ' || fail "thread.sh did not reuse the existing coordination worktree"
-MOCK_CLAUDE=fail-stop "$thread" stop t-a-r2 | grep -q '^FAILED claude stop' || fail "thread.sh hid a failed stop"
-grep -q '^t-a-r2	' "$ORCHESTRATION_HOME/threads.tsv" || fail "thread.sh dropped the row after a failed stop"
+"$thread" stop signup | grep -q '^FAILED no thread for build signup' || fail "thread.sh stopped an unknown thread"
+"$thread" launch signup "$app" "$tmp/brief-a.md" | grep -q '^LAUNCHED signup ' || fail "thread.sh did not reuse the existing coordination worktree"
 
 # --- thread.sh: started from a branch ------------------------------------------------------------------------
 # The base defaults to the checkout's current branch; an unpushed branch lands locally.
 git -C "$app" checkout -q -b feat-x
 (cd "$app" && printf 'feat\n' > FEAT.md && git add . && git commit -qm feat)
-out=$("$thread" launch t-c "$app" "$tmp/brief-a.md" --main prompts-9d --build c)
-[[ $out =~ ^LAUNCHED\ t-c\ [0-9a-f]{8}\ base=feat-x@[0-9a-f]{7}\ landing=local$ ]] || fail "thread.sh did not launch from the current, unpushed branch: $out"
+out=$("$thread" launch c "$app" "$tmp/brief-a.md" || true)
+[[ $out =~ ^LAUNCHED\ c\ base=feat-x@[0-9a-f]{7}\ landing=local$ ]] || fail "thread.sh did not launch from the current, unpushed branch: $out"
 wtc="$tmp/proj/app-orch-c"
 [ "$(git -C "$wtc" rev-parse HEAD)" = "$(git -C "$app" rev-parse feat-x)" ] || fail "thread.sh did not branch from the local feat-x"
 grep -qx 'LANE-BASE: orchestration/c' "$wtc/.orchestration/thread.md" && grep -qx 'BASE-REF: feat-x' "$wtc/.orchestration/thread.md" || fail "thread.sh recorded the wrong base for a local build"
-"$thread" launch t-d "$app" "$tmp/brief-a.md" --main m --build d --landing pr | grep -q '^FAILED --landing pr needs feat-x on origin with nothing unpushed' || fail "thread.sh accepted pr landing for an unpushed branch"
+"$thread" launch d "$app" "$tmp/brief-a.md" --landing pr | grep -q '^FAILED --landing pr needs feat-x on origin with nothing unpushed' || fail "thread.sh accepted pr landing for an unpushed branch"
 git -C "$app" checkout -q --detach
-"$thread" launch t-d "$app" "$tmp/brief-a.md" --main m --build d | grep -q '^FAILED .* is on a detached HEAD; pass --base' || fail "thread.sh guessed a base on a detached HEAD"
+"$thread" launch d "$app" "$tmp/brief-a.md" | grep -q '^FAILED .* is on a detached HEAD; pass --base' || fail "thread.sh guessed a base on a detached HEAD"
 git -C "$app" checkout -q main
 # A branch on origin with unpushed local commits starts from the local branch and lands locally.
 git -C "$app" checkout -q -b dev origin/dev
 (cd "$app" && printf 'local\n' > LOCAL.md && git add . && git commit -qm local)
-out=$("$thread" launch t-e "$app" "$tmp/brief-a.md" --main m --build e)
+out=$("$thread" launch e "$app" "$tmp/brief-a.md" || true)
 [[ $out == *"base=dev@"*" landing=local" ]] && [ -f "$tmp/proj/app-orch-e/LOCAL.md" ] || fail "thread.sh dropped unpushed commits on a branch that is on origin: $out"
-"$thread" stop t-e >/dev/null
+"$thread" stop e >/dev/null
 git -C "$app" checkout -q main
 # A local branch behind origin starts from origin, which has the newer commits.
 (cd "$tmp/app-seed" && git checkout -q main && printf 'more\n' > MORE.md && git add . && git commit -qm more && git push -q origin main)
-out=$("$thread" launch t-d "$app" "$tmp/brief-a.md" --main m --build d)
+out=$("$thread" launch d "$app" "$tmp/brief-a.md" || true)
 [[ $out == *"landing=pr" ]] && [ -f "$tmp/proj/app-orch-d/MORE.md" ] || fail "thread.sh did not start a stale local branch from origin: $out"
 # No origin at all, then an origin that can't be fetched: both land locally, and the second warns.
 git init -q -b trunk "$tmp/proj/solo"
 (cd "$tmp/proj/solo" && printf 's\n' > s.txt && git add . && git commit -qm s)
-out=$("$thread" launch t-s "$tmp/proj/solo" "$tmp/brief-a.md" --main m --build s1)
+out=$("$thread" launch s1 "$tmp/proj/solo" "$tmp/brief-a.md" || true)
 [[ $out == *"base=trunk@"*" landing=local" ]] || fail "thread.sh did not land locally without an origin: $out"
 git -C "$tmp/proj/solo" remote add origin "$tmp/no-such-origin.git"
-out=$("$thread" launch t-s2 "$tmp/proj/solo" "$tmp/brief-a.md" --main m --build s2 2>"$tmp/s2.err")
+out=$("$thread" launch s2 "$tmp/proj/solo" "$tmp/brief-a.md" 2>"$tmp/s2.err" || true)
 [[ $out == *"landing=local" ]] && grep -q 'warning: git fetch origin failed' "$tmp/s2.err" || fail "thread.sh did not carry on past a failed fetch: $out"
 
-# --- thread.sh check and adopt: MAIN's address moved --------------------------------------------------------
-# MAIN restarts with a new socket; every thread so far recorded main-2.
-export CLAUDE_CODE_MESSAGING_SOCKET="$tmp/main-3.sock"
-(cd "$app" && "$thread" check) | tee "$tmp/check.out" | grep -q '^MOVED t-c main=prompts-9d recorded=uds:'"$tmp"'/main-2.sock this=uds:'"$tmp"'/main-3.sock' || fail "thread.sh check did not report that MAIN moved: $(cat "$tmp/check.out")"
-(cd "$app" && "$thread" check) | grep -q '^MOVED t-s ' && fail "thread.sh check reported another repository's thread"
-(cd "$tmp/plain" && "$thread" check) | grep -q '^MOVED t-s ' || fail "thread.sh check outside git did not cover every thread"
-(cd "$app" && "$thread" check --all) | grep -q '^MOVED t-s ' || fail "thread.sh check --all did not cover every thread"
-out=$("$thread" adopt t-c --main 'Main two')
-[ "$out" = "ADOPTED t-c main=Main two socket=uds:$tmp/main-3.sock" ] || fail "thread.sh adopt printed: $out"
-grep -qx 'MAIN: Main two' "$wtc/.orchestration/thread.md" && grep -qx "MAIN-SOCKET: uds:$tmp/main-3.sock" "$wtc/.orchestration/thread.md" || fail "thread.sh adopt did not rewrite the record"
-grep -qx 'LANE-BASE: orchestration/c' "$wtc/.orchestration/thread.md" || fail "thread.sh adopt lost the rest of the record"
-[ "$(awk -F'\t' '$1=="t-c" {print $6}' "$ORCHESTRATION_HOME/threads.tsv")" = 'Main two' ] || fail "thread.sh adopt did not update the registry"
-(cd "$app" && "$thread" check) | grep -q '^MOVED t-c ' && fail "thread.sh check still reported t-c after adopt"
-"$thread" adopt t-c | grep -q '^FAILED adopt needs --main' || fail "thread.sh adopted without a name"
-"$thread" adopt t-nope --main x | grep -q '^FAILED no thread named t-nope' || fail "thread.sh adopted an unknown thread"
-# The inbox shows each outbox entry once, without its hash.
-printf '=== 2026-10-10T13:46Z to Main two #0123456789ab\nSTATUS: done - c merged\nCheck: README\n\n' > "$wtc/.orchestration/outbox.md"
-out=$(cd "$tmp/plain" && "$thread" check --all)
-printf '%s\n' "$out" | grep -qx 'INBOX t-c 2026-10-10T13:46Z to Main two' && printf '%s\n' "$out" | grep -qx '  Check: README' || fail "thread.sh check did not show the outbox: $out"
-(cd "$tmp/plain" && "$thread" check --all) | grep -q '^INBOX t-c' && fail "thread.sh check showed an outbox entry twice"
-printf '=== 2026-10-10T14:00Z to Main two #ba9876543210\nSTATUS: working - d1\n\n' >> "$wtc/.orchestration/outbox.md"
-(cd "$tmp/plain" && "$thread" check --all) | grep -q '^INBOX t-c 2026-10-10T14:00Z' || fail "thread.sh check missed a new outbox entry"
-for t in t-a-r2 t-b2 t-d t-s t-s2; do "$thread" adopt "$t" --main 'Main two' >/dev/null; done
-[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check did not print OK with nothing to catch up on"
-# A thread whose session waits on the owner is reported from claude agents --json; a working one is not.
-idc=$(awk -F'\t' '$1=="t-c" {print $2}' "$ORCHESTRATION_HOME/threads.tsv")
-printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"waiting","waitingFor":"permission prompt"}]' "$idc" > "$MOCK_DIR/agents.json"
-(cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c permission prompt: ' || fail "thread.sh check did not report a blocked thread: $(cat "$tmp/check.out")"
-printf '[{"sessionId":"%s-0000","name":"t-c","state":"working","status":"busy","waitingFor":null}]' "$idc" > "$MOCK_DIR/agents.json"
-[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a working thread"
-# state decides, not status; a blocked session with no waitingFor still says blocked.
-printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"idle"}]' "$idc" > "$MOCK_DIR/agents.json"
-(cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c blocked: ' || fail "thread.sh check missed a blocked, idle thread with no waitingFor: $(cat "$tmp/check.out")"
-printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"waiting","waitingFor":null}]' "$idc" > "$MOCK_DIR/agents.json"
-(cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c blocked: ' || fail "thread.sh check mishandled a null waitingFor: $(cat "$tmp/check.out")"
-printf '[{"sessionId":"%s-0000","name":"t-c","state":"working","status":"waiting","waitingFor":"input needed"}]' "$idc" > "$MOCK_DIR/agents.json"
-[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a working thread whose status is waiting"
-# Output that is not a JSON array reports nothing.
-for bad in 'not json' '{"sessionId":"x","state":"blocked"}'; do
-  printf '%s' "$bad" > "$MOCK_DIR/agents.json"
-  [ "$(cd "$tmp/plain" && "$thread" check --all 2>/dev/null)" = OK ] || fail "thread.sh check did not print OK when claude agents printed: $bad"
-done
+# --- thread.sh check: local git identities ----------------------------------------------------------------------
+[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check did not print OK with nothing to report"
 # A local git identity that differs from the global one is reported once per repository; an equal one is not.
 printf '[user]\n\temail = owner@example.com\n' > "$HOME/.gitconfig"
 git -C "$app" config user.email test@example.com
 out=$(cd "$tmp/plain" && "$thread" check --all)
 [ "$(printf '%s\n' "$out" | grep -c '^IDENTITY ')" = 1 ] && printf '%s\n' "$out" | grep -q "^IDENTITY $app user.email=test@example.com (global owner@example.com): " \
   || fail "thread.sh check did not report a local git identity once: $out"
+(cd "$app" && "$thread" check) | grep -q "^IDENTITY $app " || fail "thread.sh check missed this repository's identity"
+[ "$(cd "$tmp/proj/solo" && "$thread" check)" = OK ] || fail "thread.sh check reported another repository's identity"
 git -C "$app" config user.name tester
 (cd "$tmp/plain" && "$thread" check --all) | grep -q "^IDENTITY $app user.name=tester (global none): " || fail "thread.sh check did not report a local name with no global one"
 git -C "$app" config --unset user.name
@@ -655,11 +635,6 @@ git -C "$app" config user.email owner@example.com
 [ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a local identity equal to the global one"
 git -C "$app" config --unset user.email
 rm "$HOME/.gitconfig"
-# A thread with no record at all (launched before records existed) is reported, not fatal.
-mkdir -p "$tmp/proj/legacy-orch/.orchestration"
-printf 't-old\tdeadbeef\told\t%s\t%s\tm\t2026-10-10T00:00Z\n' "$app" "$tmp/proj/legacy-orch" >> "$ORCHESTRATION_HOME/threads.tsv"
-(cd "$app" && "$thread" check) | grep -q '^MOVED t-old main=m recorded=none' || fail "thread.sh check failed on a thread with no record"
-"$thread" stop t-old >/dev/null
 
 # --- land-local.sh -------------------------------------------------------------------------------------------
 git -C "$app" worktree add -q "$tmp/proj/app-wt-l1" -b lane/l1 orchestration/c
@@ -679,50 +654,52 @@ ll lane/none abc --check true | grep -q '^STOPPED lane=lane/none no branch' || f
 ll lane/l1 "$l1" >/dev/null 2>&1 && fail "land-local.sh ran without --check"
 
 # --- thread.sh integrate -------------------------------------------------------------------------------------
-"$thread" integrate t-c | grep -q '^FAILED .* is on main, not feat-x' || fail "thread.sh integrated into the wrong branch"
+"$thread" integrate c | grep -q '^FAILED .* is on main, not feat-x' || fail "thread.sh integrated into the wrong branch"
 git -C "$app" checkout -q feat-x
-out=$("$thread" integrate t-c)
-[[ $out =~ ^INTEGRATED\ t-c\ feat-x@[0-9a-f]{7}\ \(fast-forward\)$ ]] && [ -f "$app/L1.md" ] || fail "thread.sh integrate did not fast-forward: $out"
+out=$("$thread" integrate c || true)
+[[ $out =~ ^INTEGRATED\ c\ feat-x@[0-9a-f]{7}\ \(fast-forward\)$ ]] && [ -f "$app/L1.md" ] || fail "thread.sh integrate did not fast-forward: $out"
 (cd "$app" && printf 'owner\n' > OWNER.md && git add . && git commit -qm owner)
 (cd "$wtc" && printf 'c2\n' > C2.md && git add C2.md && git commit -qm c2)
-out=$("$thread" integrate t-c)
+out=$("$thread" integrate c || true)
 [[ $out == *"(merge)" ]] && [ -f "$app/C2.md" ] && [ -f "$app/OWNER.md" ] || fail "thread.sh integrate did not merge a moved base: $out"
 (cd "$app" && printf 'a\n' > CLASH.md && git add . && git commit -qm a)
 (cd "$wtc" && printf 'b\n' > CLASH.md && git add CLASH.md && git commit -qm b)
-"$thread" integrate t-c | grep -q '^FAILED merging orchestration/c into feat-x conflicts in: CLASH.md' || fail "thread.sh integrate hid a conflict"
+"$thread" integrate c | grep -q '^FAILED merging orchestration/c into feat-x conflicts in: CLASH.md' || fail "thread.sh integrate hid a conflict"
 [ -z "$(git -C "$app" status --porcelain --untracked-files=no)" ] || fail "thread.sh integrate left a half-done merge"
 printf 'dirty\n' >> "$app/FEAT.md"
-"$thread" integrate t-c | grep -q '^FAILED .* has uncommitted changes' || fail "thread.sh integrated over uncommitted changes"
+"$thread" integrate c | grep -q '^FAILED .* has uncommitted changes' || fail "thread.sh integrated over uncommitted changes"
 git -C "$app" checkout -q FEAT.md
-"$thread" integrate t-d | grep -q '^FAILED t-d lands by pull request' || fail "thread.sh integrated a pull-request build"
+"$thread" integrate d | grep -q '^FAILED d lands by pull request' || fail "thread.sh integrated a pull-request build"
 sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$wtc/.orchestration/thread.md"
-"$thread" integrate t-c | grep -q "^FAILED $tmp/proj/solo is not a checkout of $app" || fail "thread.sh integrated into another repository"
+"$thread" integrate c | grep -q "^FAILED $tmp/proj/solo is not a checkout of $app" || fail "thread.sh integrated into another repository"
 
 # --- thread.sh close ------------------------------------------------------------------------------------------
-# t-c's branch still holds the CLASH commit that integrate refused, so close refuses too.
-"$thread" close t-c | grep -q '^FAILED orchestration/c holds work that feat-x lacks in: CLASH.md' || fail "thread.sh closed a build with unlanded work"
+# c's branch still holds the CLASH commit that integrate refused, so close refuses too.
+"$thread" close c | grep -q '^FAILED orchestration/c holds work that feat-x lacks in: CLASH.md' || fail "thread.sh closed a build with unlanded work"
 [ -d "$wtc" ] || fail "thread.sh close removed a worktree it refused to close"
 # Files git ignores in the coordination worktree are evidence too, except dependency folders.
 printf '.eval-runs/\n.claude/agent-memory/\nnode_modules/\n' >> "$app/.git/info/exclude"
 mkdir -p "$wtc/.eval-runs/r1" "$wtc/.claude/agent-memory" "$wtc/node_modules/x"
 printf 'run\n' > "$wtc/.eval-runs/r1/out.md"; printf 'memory\n' > "$wtc/.claude/agent-memory/x.md"; printf 'dep\n' > "$wtc/node_modules/x/i.js"
-idc=$(awk -F'\t' '$1=="t-c" {print $2}' "$ORCHESTRATION_HOME/threads.tsv")
-out=$("$thread" close t-c --force)
+"$here/scripts/mail.sh" send c/main --from c/thread "STATUS: done - c" >/dev/null
+panec=$(thread_pane c); wsc=$(row_of c | cut -f4)
+out=$("$thread" close c --force || true)
 [[ $out =~ ^CLOSED\ c\ archive=$ORCHESTRATION_HOME/archive/c-[0-9T]+Z\ lanes\ still\ present:\ .*app-wt-l1 ]] || fail "thread.sh close printed: $out"
 arch=${out#*archive=}; arch=${arch%% *}
-[ -f "$arch/thread.md" ] && [ -f "$arch/outbox.md" ] || fail "thread.sh close did not archive .orchestration"
+[ -f "$arch/thread.md" ] || fail "thread.sh close did not archive .orchestration"
+[ -n "$(ls "$arch/mail/main/new")" ] && [ ! -e "$ORCHESTRATION_HOME/mail/c" ] || fail "thread.sh close did not move the build's mail into the archive"
 [ -f "$arch/ignored/.eval-runs/r1/out.md" ] && [ -f "$arch/ignored/.claude/agent-memory/x.md" ] || fail "thread.sh close did not archive the ignored files"
 [ -e "$arch/ignored/node_modules" ] && fail "thread.sh close archived node_modules"
 [ -e "$arch/ignored/.orchestration" ] && fail "thread.sh close archived .orchestration twice"
 [ ! -e "$wtc" ] && ! git -C "$app" rev-parse --verify -q orchestration/c >/dev/null || fail "thread.sh close left the worktree or the branch"
-grep -q '^t-c	' "$ORCHESTRATION_HOME/threads.tsv" && fail "thread.sh close left the registry row"
-grep -q "stop $idc" "$MOCK_DIR/claude.log" && grep -q "rm $idc" "$MOCK_DIR/claude.log" || fail "thread.sh close did not stop and remove the session"
+[ -z "$(row_of c)" ] || fail "thread.sh close left the registry row"
+grep -qx "pane close $panec" "$MOCK_DIR/herdr.log" && grep -qx "workspace close $wsc" "$MOCK_DIR/herdr.log" || fail "thread.sh close did not close the thread's pane and the build's workspace"
 # A pull-request build whose work landed by squash: different commits, same files on the base.
 wtd="$tmp/proj/app-orch-d"
 (cd "$wtd" && printf 'plan\n' > PLAN.md && git add PLAN.md && git commit -qm plan)
-"$thread" close t-d | grep -q '^FAILED orchestration/d holds work that origin/main lacks in: PLAN.md' || fail "thread.sh closed a pull-request build before its work landed"
+"$thread" close d | grep -q '^FAILED orchestration/d holds work that origin/main lacks in: PLAN.md' || fail "thread.sh closed a pull-request build before its work landed"
 (cd "$tmp/app-seed" && git pull -q origin main && printf 'plan\n' > PLAN.md && git add PLAN.md && git commit -qm "plan (#9)" && git push -q origin main)
-"$thread" close t-d | grep -q '^CLOSED d ' || fail "thread.sh did not recognise squash-landed work"
+"$thread" close d | grep -q '^CLOSED d ' || fail "thread.sh did not recognise squash-landed work"
 # A build the registry no longer lists closes by its worktree, with the base given.
 git -C "$app" worktree add -q -b orchestration/z "$tmp/proj/app-orch-z" main
 "$thread" close --worktree "$tmp/proj/app-orch-z" | tee "$tmp/z.out" | grep -q '^FAILED no record of .* base; pass --base' || fail "thread.sh closed an unrecorded build without a base: $(cat "$tmp/z.out")"
@@ -734,6 +711,6 @@ out=$("$thread" close --worktree "$tmp/proj/app-orch-z" --base main --force || t
 cp "$tmp/z.index.bak" "$idx"
 "$thread" close --worktree "$tmp/proj/app-orch-z" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
 "$thread" close --worktree "$app" | grep -q 'is on .*, not orchestration/<build>' || fail "thread.sh closed a checkout that is not a coordination worktree"
-"$thread" close t-nope | grep -q '^FAILED no thread named t-nope' || fail "thread.sh closed an unknown thread"
+"$thread" close t-nope | grep -q '^FAILED no thread for build t-nope' || fail "thread.sh closed an unknown thread"
 
 echo "orchestration tests passed"

@@ -24,25 +24,28 @@ every new assertion is shown to fail against a planted mutant before its step is
   Check: run.sh passes send, read and wait cases with two watched agents, and fails against each
   of ten planted mutants (once per prompt, unread age, unread once, herdr down, gone unseen,
   atomic rename, read order, quiet wakes, quiet counted unread, empty allowed).
-- [ ] 3. `skills/orchestration-main/scripts/thread.sh`, `skills/agent-orchestration/scripts/state.sh`,
-  `skills/agent-orchestration/scripts/lib.sh`, `skills/agent-orchestration/tests/run.sh`: threads
-  on herdr.
-  - Launch: the thread's name is the build, `[a-z][a-z0-9_-]{0,31}`, refused while a live agent
-    holds it; `herdr workspace create --cwd <worktree> --label <build> --no-focus` (plus `--env
-    ORCHESTRATION_HOME` when set); `herdr agent start <build> --kind claude --pane <root_pane> --
-    --agent orchestrator "<brief text>"`; on `agent_not_ready` prints `BLOCKED <build>: answer the
-    startup prompt in workspace <build>`. The record holds the build's mail folder, no MAIN name
-    or socket.
-  - Stop and rotate resolve the pane from the agent name. Rotate keeps the name and replaces the
-    thread in the workspace's first tab.
-  - Close archives `<build>/` from the mail root and closes the build's workspace.
-  - Delete `claude_env`, `start_session`, `live_sessions`, `session_of`, `inbox`, `main_socket`,
-    `set_main`, `adopt`, `--main`, and check's `INBOX`, `MOVED` and `BLOCKED` lines (check keeps
-    `IDENTITY`); `state.sh main` goes; lib.sh drops MAIN-SOCKET and adopt.
-  - The mock `herdr` rejects argv that 0.9.3 rejects (no `--pane`, a name off the pattern).
-  Check: run.sh asserts workspace create with `--cwd` and `--no-focus`, a held name refused,
-  rotate reusing the name, and the `agent_not_ready` line;
-  the `claude agents` and outbox cases are gone.
+- [x] 3. `skills/orchestration-main/scripts/thread.sh`, `skills/agent-orchestration/scripts/state.sh`,
+  `skills/agent-orchestration/tests/run.sh`: threads on herdr.
+  - Launch: the thread's name is the build, `[a-z][a-z0-9_-]{0,31}`, refused while it is registered
+    or a live agent holds it; `herdr workspace create --cwd <worktree> --label <build> --no-focus`
+    (plus `--env ORCHESTRATION_HOME` when set); `herdr agent start <build> --kind claude --pane
+    <root_pane> -- --agent orchestrator "<brief text>"`, the brief headed by its build, its mailboxes
+    and its state file; `agent_not_ready` prints `BLOCKED <build> waiting on a startup prompt:
+    answer it in workspace <build>`; any other start failure closes the workspace and drops the row.
+    The record holds the build, no MAIN name or socket.
+  - Stop resolves the pane from the agent name. Rotate keeps the name, opens the new thread in a new
+    tab of the build's workspace (a new workspace when that is gone), then closes the old pane.
+  - Close closes the thread's pane and the build's workspace, and archives `<build>/` from the mail
+    root.
+  - Deleted: `claude_env`, `start_session`, `live_sessions`, `session_of`, `inbox`, `main_socket`,
+    `set_main`, `adopt`, `--main`, `--build`, and check's `INBOX`, `MOVED` and `BLOCKED` lines (check
+    keeps `IDENTITY`); `state.sh main`; the mocked `claude`. lib.sh's `main_name` stays until step 6,
+    because guard-message.sh still uses it.
+  - The mock `herdr` keeps its agents in a file and rejects argv that 0.9.3 rejects (no `--pane`, a
+    name off the pattern, a workspace without `--cwd` and `--no-focus`).
+  Check: run.sh passes, and fails with a named check against each of eleven planted mutants (focus,
+  held name, name pattern, startup prompt, failed-start cleanup, rotate's tab, rotate closing the
+  old pane, close's mail, close's workspace, the home passed on, a missing agent read as an error).
 - [ ] 4. `skills/agent-orchestration/scripts/lane.sh`, `skills/agent-orchestration/scripts/codex-exec.sh`,
   `skills/agent-orchestration/tests/run.sh`: one lane launcher for both kinds replaces the headless
   Codex one. `lane.sh <build> <lane> <worktree> <brief> --kind claude|codex --model <id>`: a new
@@ -65,7 +68,8 @@ every new assertion is shown to fail against a planted mutant before its step is
 - [ ] 6. `agents/orchestrator.md`, `agents/lane.md`, `skills/agent-orchestration/hooks/guard-message.sh`,
   `skills/agent-orchestration/scripts/check-message.sh`, `skills/agent-orchestration/tests/run.sh`
   (owner approval): one change that drops the `SendMessage` hook, updates the description (a
-  herdr agent, not a background session) and deletes both scripts and their tests; adds
+  herdr agent, not a background session) and deletes both scripts and their tests, with lib.sh's
+  `main_name` and its MAIN and MAIN-SOCKET record notes; adds
   `agents/lane.md`, the Claude lane agent, running guard-bash and guard-writes as a lane (no
   model pin; `lane.sh` passes it); with it, the settings rule from step 4. Send the owner the exact diff; apply it only on their approval.
   Check: run.sh passes; `grep -rn 'check-message\|guard-message\|SendMessage' skills agents`

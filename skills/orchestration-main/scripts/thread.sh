@@ -1,32 +1,31 @@
 #!/usr/bin/env bash
-# Launch, stop, rotate and list orchestration threads: background Claude Code sessions running the orchestrator
-# agent, each in its build's coordination worktree, ../<repo>-orch-<build> beside the main checkout, on branch
-# orchestration/<build>. The thread keeps its files in that worktree's untracked .orchestration/ folder.
-#   thread.sh launch <name> <checkout> <brief file> --main <your session name> [--build <b>] [--base <branch>] [--landing pr|local]
-#   thread.sh stop <name>
-#   thread.sh rotate <name> --main <your session name> [--force]
-#   thread.sh adopt <name> --main <your session name>
+# Launch, stop, rotate and list orchestration threads: herdr agents running the orchestrator agent, one per build,
+# each named after its build and started in the build's own herdr workspace from its coordination worktree,
+# ../<repo>-orch-<build> beside the main checkout, on branch orchestration/<build>. The thread keeps its files in
+# that worktree's untracked .orchestration/ folder, and talks to MAIN through the build's mailboxes (mail.sh).
+#   thread.sh launch <build> <checkout> <brief file> [--base <branch>] [--landing pr|local]
+#   thread.sh stop <build>
+#   thread.sh rotate <build> [--force]
 #   thread.sh check [--all]
-#   thread.sh integrate <name>
-#   thread.sh close <name> | --worktree <coordination worktree> [--base <branch>] [--force]
+#   thread.sh integrate <build>
+#   thread.sh close <build> | --worktree <coordination worktree> [--base <branch>] [--force]
 #   thread.sh list
 #   thread.sh decisions
-# launch, stop, rotate, adopt and integrate print one line: LAUNCHED <name> <id> base=<branch>@<sha> landing=<mode>,
-# STOPPED <name> <id>, ROTATED <old> -> <new> <id>, ADOPTED <name> main=<name> socket=<address>,
-# INTEGRATED <name> <branch>@<sha> (fast-forward|merge), CLOSED <build> archive=<dir>, or FAILED <reason> with
-# exit 1. close ends a build: it refuses while the build branch holds work the base lacks, archives
-# .orchestration/ under $ORCHESTRATION_HOME/archive/<build>-<stamp>/ and the worktree's other ignored files (not
-# dependency or cache folders) under its ignored/, and removes the worktree, branch and session. check prints MOVED,
-# BLOCKED (the thread's session waits on the owner, per claude agents --json), INBOX and IDENTITY (a repository's
-# local git config sets user.name or user.email apart from the global one) lines, or OK; list and decisions print
-# one line per thread or item, or NONE.
+# launch, stop, rotate and integrate print one line: LAUNCHED <build> base=<branch>@<sha> landing=<mode>,
+# BLOCKED <build> <reason> (launched, but waiting on a startup prompt the owner must answer), STOPPED <build>,
+# ROTATED <build>, INTEGRATED <build> <branch>@<sha> (fast-forward|merge), CLOSED <build> archive=<dir>, or
+# FAILED <reason> with exit 1. close ends a build: it refuses while the build branch holds work the base lacks,
+# archives .orchestration/ and the build's mail under $ORCHESTRATION_HOME/archive/<build>-<stamp>/ and the
+# worktree's other ignored files (not dependency or cache folders) under its ignored/, then removes the worktree and
+# branch and closes the build's workspace. check prints IDENTITY lines (a repository's local git config sets
+# user.name or user.email apart from the global one), or OK; list and decisions print one line per thread or item,
+# or NONE.
+# A build name is a herdr agent name, [a-z][a-z0-9_-]{0,31}, and a thread keeps it across rotations.
 # The base defaults to the checkout's current branch. Landing is pr when the base is on origin with nothing
 # unpushed, else local: lanes merge into orchestration/<build>, and integrate brings that branch into the base.
-# Each thread's .orchestration/thread.md records MAIN's name and socket ($CLAUDE_CODE_MESSAGING_SOCKET), the
-# owner's checkout, the base and the landing mode. A session's name can change with its title and its socket
-# with a restart or fork, so MAIN runs check on every wake and adopt when it has moved.
+# Each thread's .orchestration/thread.md records its build, the owner's checkout, the base and the landing mode.
 # MAIN's list of threads, across repositories, is $ORCHESTRATION_HOME/threads.tsv (default
-# ~/.orchestration/threads.tsv), one tab-separated row per thread: name id build repo worktree main launched
+# ~/.orchestration/threads.tsv), one tab-separated row per thread: build repo worktree workspace launched
 set -euo pipefail
 . "$(dirname "$0")/../../agent-orchestration/scripts/lib.sh"
 # ROTATE makes the thread rewrite RESUME just before it answers "STATUS: rotating"; an older stamp means it never
@@ -35,10 +34,10 @@ resume_max_age_minutes=15
 home=${ORCHESTRATION_HOME:-$HOME/.orchestration}
 reg="$home/threads.tsv"
 fail() { echo "FAILED $*"; exit 1; }
-usage() { sed -n '2,29p' "$0" >&2; exit 1; }
+usage() { sed -n '2,28p' "$0" >&2; exit 1; }
 ensure_registry() {
   mkdir -p "$home"
-  [ -f "$reg" ] || printf 'name\tid\tbuild\trepo\tworktree\tmain\tlaunched\n' > "$reg"
+  [ -f "$reg" ] || printf 'build\trepo\tworktree\tworkspace\tlaunched\n' > "$reg"
 }
 row_by() { awk -F'\t' -v c="$1" -v v="$2" 'NR > 1 && $c == v' "$reg" 2>/dev/null || true; }
 delete_row() {
@@ -49,41 +48,43 @@ put_row() {
   awk -F'\t' -v n="$1" -v r="$2" 'NR > 1 && $1 == n { print r; done = 1; next } { print } END { if (!done) print r }' "$reg" > "$reg.tmp" \
     && mv "$reg.tmp" "$reg"
 }
-row() { printf '%s\t%s\t%s\t%s\t%s\t%s\t%s' "$@"; }
-valid_name() { [[ $1 =~ ^[A-Za-z0-9_-]+$ ]] || fail "$2 '$1' may hold only letters, digits, hyphens and underscores (other sessions address it by name)"; }
-claude_env() {
-  # A nested session refuses to start while CLAUDECODE marks the parent, and Herdr variables would make the
-  # thread treat the caller's terminal pane as its own.
-  local args=(-u CLAUDECODE) v
-  for v in $(compgen -e | grep '^HERDR_' || true); do args+=(-u "$v"); done
-  env "${args[@]}" "$@"
-}
-start_session() {
-  # start_session <name> <worktree> <brief text>: print the new session's short id, or a reason on stderr.
-  local out code=0 id
-  out=$(cd "$2" && claude_env claude --agent orchestrator --bg --name "$1" "$3" 2>&1) || code=$?
-  if printf '%s' "$out" | grep -qi 'workspace not trusted'; then
-    echo "workspace not trusted: start the thread from a repository Claude Code trusts (claude: $(printf '%s' "$out" | grep -i -m1 'trusted'))" >&2; return 1
-  fi
-  if printf '%s' "$out" | grep -qi 'no agent named'; then
-    echo "no agent named orchestrator: run setup-skills-link.ps1 so agents/orchestrator.md is linked into ~/.claude/agents" >&2; return 1
-  fi
-  id=$(printf '%s\n' "$out" | sed -n 's/.*backgrounded[^0-9a-f]*\([0-9a-f]\{8,\}\).*/\1/p' | head -1)
-  if [ "$code" -ne 0 ] || [ -z "$id" ]; then
-    echo "claude exited $code: $(printf '%s\n' "$out" | grep -m1 . || echo 'no output')" >&2; return 1
-  fi
-  echo "$id"
-}
-live_sessions() {
-  # live_sessions: the JSON array from claude agents --json, the supported way to read session state from outside
-  # Claude Code, or nothing when the call fails or prints something else.
+row() { printf '%s\t%s\t%s\t%s\t%s' "$@"; }
+valid_name() { [[ $1 =~ ^[a-z][a-z0-9_-]{0,31}$ ]] || fail "build name '$1' must match [a-z][a-z0-9_-]{0,31}: it is the thread's herdr agent name"; }
+herdr_json() {
+  # herdr_json <herdr args...>: herdr's JSON reply on stdout; on failure, "<code>: <message>" on stderr and exit 1.
   local out
-  out=$(claude_env claude agents --json 2>/dev/null || true)
-  if printf '%s' "$out" | jq -e 'type == "array"' >/dev/null 2>&1; then printf '%s' "$out"; fi
+  if out=$(herdr "$@" 2>&1); then printf '%s' "$out"; return 0; fi
+  printf '%s' "$out" | jq -r '"\(.error.code): \(.error.message)"' >&2 2>/dev/null || printf '%s\n' "$out" >&2
+  return 1
 }
-session_of() {
-  # session_of <live sessions> <registry id>: the live entry whose sessionId starts with the id, or null.
-  printf '%s' "$1" | jq --arg id "$2" '[.[] | select((.sessionId // "") | startswith($id))][0]'
+# agent_pane <name>: the pane hosting the live agent with that name, or nothing when there is none.
+agent_pane() { { herdr agent get "$1" 2>/dev/null || true; } | jq -r '.result.agent.pane_id // empty'; }
+home_env() {
+  # The build's workspace doesn't inherit this shell's environment, so a non-default home is passed on.
+  [ -z "${ORCHESTRATION_HOME:-}" ] || printf '%s\n' --env "ORCHESTRATION_HOME=$ORCHESTRATION_HOME"
+}
+new_pane() {
+  # new_pane <build> <worktree> <workspace or empty>: a fresh shell pane for the thread, in a new tab of the build's
+  # workspace, or in a new workspace when there is none; prints "<pane> <workspace>".
+  local out
+  local -a env; mapfile -t env < <(home_env)
+  if [ -n "$3" ] && out=$(herdr_json tab create --workspace "$3" --cwd "$2" --label "$1" --no-focus "${env[@]}" 2>/dev/null); then
+    printf '%s %s\n' "$(jq -r '.result.root_pane.pane_id' <<<"$out")" "$3"; return 0
+  fi
+  out=$(herdr_json workspace create --cwd "$2" --label "$1" --no-focus "${env[@]}") || return 1
+  jq -r '"\(.result.root_pane.pane_id) \(.result.workspace.workspace_id)"' <<<"$out"
+}
+start_thread() {
+  # start_thread <build> <pane> <brief text>: start the orchestrator agent; prints nothing when it is ready, a reason
+  # for the owner when it waits on a startup prompt (a folder trust question), or fails with herdr's reason.
+  local err
+  if err=$(herdr_json agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --agent orchestrator "$3" 2>&1 >/dev/null); then
+    return 0
+  fi
+  case $err in
+    agent_not_ready:*) echo "waiting on a startup prompt: answer it in workspace $1" ;;
+    *) echo "$err" >&2; return 1 ;;
+  esac
 }
 identity_warnings() {
   # identity_warnings <repo>: an IDENTITY line for each of user.name and user.email that the repository's local
@@ -97,28 +98,15 @@ identity_warnings() {
     echo "IDENTITY $1 $key=$mine (global ${global:-none}): a local git identity; remove it with git -C $1 config --unset $key unless the owner set it"
   done
 }
-# brief_text <main> <state> <body>: the header lines, a blank line, then the body. One printf, because a command
+# brief_text <build> <state> <body>: the header lines, a blank line, then the body. One printf, because a command
 # substitution would strip the blank line that separates them.
-brief_text() { printf 'MAIN: %s\nSTATE: %s\n\n%s' "$1" "$2" "$3"; }
-# This session's own inbox address, as SendMessage takes it; empty where Claude Code exports no socket.
-main_socket() { [ -z "${CLAUDE_CODE_MESSAGING_SOCKET:-}" ] || printf 'uds:%s' "$CLAUDE_CODE_MESSAGING_SOCKET"; }
+brief_text() { printf 'BUILD: %s\nMAIL: %s/thread is yours; send MAIN %s/main\nSTATE: %s\n\n%s' "$1" "$1" "$1" "$2" "$3"; }
 write_record() {
-  # write_record <worktree> <main name> <checkout> <base> <base ref> <lane base> <landing>
+  # write_record <worktree> <build> <checkout> <base> <base ref> <lane base> <landing>
   local file="$1/.orchestration/thread.md"
   mkdir -p "$1/.orchestration"
-  printf '%s\n' "# Thread record, written by MAIN's thread.sh (launch, rotate, adopt). The thread reads it and never edits it." \
-    "MAIN: $2" "MAIN-SOCKET: $(main_socket)" "CHECKOUT: $3" "BASE: $4" "BASE-REF: $5" "LANE-BASE: $6" "LANDING: $7" \
-    "UPDATED: $(utc_now)" > "$file.tmp"
-  mv -f "$file.tmp" "$file"
-}
-set_main() {
-  # set_main <worktree> <main name> <checkout>: point the record's MAIN fields at this session; a thread started
-  # before records existed gets one with what the registry knows, and no base or landing mode.
-  local file="$1/.orchestration/thread.md"
-  if [ ! -f "$file" ]; then write_record "$1" "$2" "$3" "" "" "" ""; return 0; fi
-  awk -v m="$2" -v s="$(main_socket)" -v u="$(utc_now)" '
-    /^MAIN:/ { print "MAIN: " m; next } /^MAIN-SOCKET:/ { print "MAIN-SOCKET: " s; next }
-    /^UPDATED:/ { print "UPDATED: " u; next } { print }' "$file" > "$file.tmp"
+  printf '%s\n' "# Thread record, written by MAIN's thread.sh launch. The thread reads it and never edits it." \
+    "BUILD: $2" "CHECKOUT: $3" "BASE: $4" "BASE-REF: $5" "LANE-BASE: $6" "LANDING: $7" "UPDATED: $(utc_now)" > "$file.tmp"
   mv -f "$file.tmp" "$file"
 }
 pick_base() {
@@ -166,42 +154,21 @@ ensure_worktree() {
     git -C "$main" worktree add -q --no-track -b "$branch" "$wt" "$base_ref" >/dev/null 2>&1 || fail "git worktree add $wt from $base_ref failed"
   fi
 }
-inbox() {
-  # inbox <worktree> <thread name>: print the thread's outbox entries not shown before, then remember the count.
-  # The thread's message hook copies every message to MAIN there, so one that never arrived is still read.
-  local file="$1/.orchestration/outbox.md" mark seen total
-  [ -f "$file" ] || return 0
-  mkdir -p "$home/seen"
-  mark="$home/seen/$(printf '%s' "$1" | md5sum | cut -c1-16)"
-  seen=$(cat "$mark" 2>/dev/null || echo 0)
-  total=$(grep -c '^=== ' "$file" || true)
-  [ "$total" -ge "$seen" ] || seen=0
-  [ "$total" -gt "$seen" ] || return 0
-  awk -v skip="$seen" -v t="$2" '
-    /^=== / { n++; on = (n > skip); if (on) { sub(/^=== /, ""); sub(/ #[0-9a-f]+$/, ""); print "INBOX " t " " $0 } next }
-    on && NF { print "  " $0 }' "$file"
-  echo "$total" > "$mark"
-}
 
 cmd=${1:-}; [ $# -gt 0 ] && shift
 case "$cmd" in
   launch)
     [ $# -ge 3 ] || usage
-    name=$1; repo=$2; brief=$3; shift 3
-    main_name=""; build=""; base=""; want=""
+    build=$1; repo=$2; brief=$3; shift 3
+    base=""; want=""
     while [ $# -gt 0 ]; do
       case $1 in
-        --main) need_value "$1" $#; main_name=$2; shift 2 ;;
-        --build) need_value "$1" $#; build=$2; shift 2 ;;
         --base) need_value "$1" $#; base=$2; shift 2 ;;
         --landing) need_value "$1" $#; want=$2; shift 2 ;;
         *) usage ;;
       esac
     done
-    [ -n "$main_name" ] || fail "launch needs --main <main session name>"
-    valid_name "$name" "thread name"
-    build=${build:-$name}
-    valid_name "$build" "build name"
+    valid_name "$build"
     [ -d "$repo" ] || fail "no repository checkout at $repo"
     [ -s "$brief" ] || fail "no brief at $brief"
     common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || fail "$repo is not a git checkout"
@@ -214,45 +181,42 @@ case "$cmd" in
       base=$(git -C "$repo" symbolic-ref --quiet --short HEAD 2>/dev/null) || fail "$repo is on a detached HEAD; pass --base <branch>"
     fi
     ensure_registry
-    [ -z "$(row_by 1 "$name")" ] || fail "a thread named $name is already registered; stop it or pick another name"
-    taken=$(row_by 5 "$wt" | cut -f1 | head -1)
-    [ -z "$taken" ] || fail "$wt already hosts thread $taken; one running thread per coordination worktree, so stop it or pick another --build"
+    [ -z "$(row_by 1 "$build")" ] || fail "a thread for build $build is already registered; stop or close it, or pick another build name"
+    [ -z "$(agent_pane "$build")" ] || fail "a live herdr agent is already named $build; pick another build name"
     pick_base "$main" "$base" "$want"
     ensure_worktree "$main" "$common" "$wt" "$build" "$base_ref"
     mkdir -p "$common/info"
     grep -qxF '.orchestration/' "$common/info/exclude" 2>/dev/null || printf '.orchestration/\n' >> "$common/info/exclude"
     if [ "$landing" = pr ]; then lane_base=$base_ref; else lane_base="orchestration/$build"; fi
-    write_record "$wt" "$main_name" "$checkout" "$base" "$base_ref" "$lane_base" "$landing"
-    state="$wt/.orchestration/state.md"
-    # The row exists before the session starts, so a failed start can be cleaned up by name.
-    put_row "$name" "$(row "$name" pending "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
-    if ! id=$(start_session "$name" "$wt" "$(brief_text "$main_name" "$state" "$(cat "$brief")")" 2>"$reg.err"); then
-      delete_row "$name"; reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "$reason"
+    write_record "$wt" "$build" "$checkout" "$base" "$base_ref" "$lane_base" "$landing"
+    read -r pane ws < <(new_pane "$build" "$wt" "" 2>"$reg.err") || { reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "herdr workspace create: $reason"; }
+    rm -f "$reg.err"
+    # The row exists before the agent starts, so a thread waiting on a startup prompt is still known by name.
+    put_row "$build" "$(row "$build" "$main" "$wt" "$ws" "$(utc_now)")"
+    if ! waiting=$(start_thread "$build" "$pane" "$(brief_text "$build" "$wt/.orchestration/state.md" "$(cat "$brief")")" 2>"$reg.err"); then
+      reason=$(cat "$reg.err"); rm -f "$reg.err"
+      delete_row "$build"; herdr workspace close "$ws" >/dev/null 2>&1 || true
+      fail "herdr agent start: $reason"
     fi
     rm -f "$reg.err"
-    put_row "$name" "$(row "$name" "$id" "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
-    echo "LAUNCHED $name $id base=$base@$(git -C "$main" rev-parse --short "$base_ref") landing=$landing" ;;
+    [ -z "$waiting" ] || { echo "BLOCKED $build $waiting"; exit 0; }
+    echo "LAUNCHED $build base=$base@$(git -C "$main" rev-parse --short "$base_ref") landing=$landing" ;;
   stop)
     [ $# -eq 1 ] || usage
-    found=$(row_by 1 "$1"); [ -n "$found" ] || fail "no thread named $1 in $reg"
-    id=$(printf '%s\n' "$found" | cut -f2)
-    out=$(claude_env claude stop "$id" 2>&1) || fail "claude stop $id: $(printf '%s\n' "$out" | grep -m1 . || echo 'no output')"
+    [ -n "$(row_by 1 "$1")" ] || fail "no thread for build $1 in $reg"
+    pane=$(agent_pane "$1")
+    [ -z "$pane" ] || herdr_json pane close "$pane" >/dev/null 2>"$reg.err" || { reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "herdr pane close $pane: $reason"; }
+    rm -f "$reg.err"
     delete_row "$1"
-    echo "STOPPED $1 $id" ;;
+    echo "STOPPED $1" ;;
   rotate)
     [ $# -ge 1 ] || usage
-    old=$1; shift
-    main_name=""; force=0
+    build=$1; shift; force=0
     while [ $# -gt 0 ]; do
-      case $1 in
-        --main) need_value "$1" $#; main_name=$2; shift 2 ;;
-        --force) force=1; shift ;;
-        *) usage ;;
-      esac
+      case $1 in --force) force=1; shift ;; *) usage ;; esac
     done
-    [ -n "$main_name" ] || fail "rotate needs --main <main session name>"
-    found=$(row_by 1 "$old"); [ -n "$found" ] || fail "no thread named $old in $reg"
-    IFS=$'\t' read -r _ id build main wt _ _ <<< "$found"
+    found=$(row_by 1 "$build"); [ -n "$found" ] || fail "no thread for build $build in $reg"
+    IFS=$'\t' read -r _ main wt ws _ <<< "$found"
     state="$wt/.orchestration/state.md"
     if [ "$force" = 0 ]; then
       written=$(awk '/^## RESUME/ { r = 1; next } r && /^## / { exit } r && /^Written:/ { sub(/^Written:[ \t]*/, ""); print; exit }' "$state" 2>/dev/null || true)
@@ -261,32 +225,18 @@ case "$cmd" in
       [ "$age" -le "$resume_max_age_minutes" ] \
         || fail "RESUME in $state was written $age min ago (limit $resume_max_age_minutes); send ROTATE and wait for 'STATUS: rotating', or pass --force"
     fi
-    if [[ $old =~ ^(.+)-r([0-9]+)$ ]]; then new="${BASH_REMATCH[1]}-r$(( BASH_REMATCH[2] + 1 ))"; else new="$old-r1"; fi
-    [ -z "$(row_by 1 "$new")" ] || fail "a thread named $new is already registered; stop it before rotating $old"
-    out=$(claude_env claude stop "$id" 2>&1) || fail "claude stop $id: $(printf '%s\n' "$out" | grep -m1 . || echo 'no output')"
-    set_main "$wt" "$main_name" "$main"
-    put_row "$old" "$(row "$new" pending "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
-    brief=$(brief_text "$main_name" "$state" "Resume: read STATE first and continue from its RESUME section without redoing finished work.")
-    if ! newid=$(start_session "$new" "$wt" "$brief" 2>"$reg.err"); then
-      delete_row "$new"; reason=$(cat "$reg.err"); rm -f "$reg.err"
-      fail "$old was stopped but $new did not start: $reason; start it with thread.sh launch"
-    fi
+    old=$(agent_pane "$build")
+    # The new pane opens first, so closing the old one never leaves the build's workspace empty.
+    read -r pane ws < <(new_pane "$build" "$wt" "$ws" 2>"$reg.err") || { reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "no pane for the new thread: $reason"; }
     rm -f "$reg.err"
-    put_row "$new" "$(row "$new" "$newid" "$build" "$main" "$wt" "$main_name" "$(utc_now)")"
-    echo "ROTATED $old -> $new $newid" ;;
-  adopt)
-    [ $# -ge 1 ] || usage
-    t=$1; shift; main_name=""
-    while [ $# -gt 0 ]; do
-      case $1 in --main) need_value "$1" $#; main_name=$2; shift 2 ;; *) usage ;; esac
-    done
-    [ -n "$main_name" ] || fail "adopt needs --main <your session name>"
-    found=$(row_by 1 "$t"); [ -n "$found" ] || fail "no thread named $t in $reg"
-    IFS=$'\t' read -r _ id build main wt _ launched <<< "$found"
-    set_main "$wt" "$main_name" "$main"
-    put_row "$t" "$(row "$t" "$id" "$build" "$main" "$wt" "$main_name" "$launched")"
-    sock=$(main_socket)
-    echo "ADOPTED $t main=$main_name socket=${sock:-none}" ;;
+    [ -z "$old" ] || herdr pane close "$old" >/dev/null 2>&1 || true
+    put_row "$build" "$(row "$build" "$main" "$wt" "$ws" "$(utc_now)")"
+    brief=$(brief_text "$build" "$state" "Resume: read STATE first and continue from its RESUME section without redoing finished work.")
+    waiting=$(start_thread "$build" "$pane" "$brief" 2>"$reg.err") \
+      || { reason=$(cat "$reg.err"); rm -f "$reg.err"; fail "the old thread was closed but the new one did not start: $reason; run thread.sh rotate $build --force"; }
+    rm -f "$reg.err"
+    [ -z "$waiting" ] || { echo "BLOCKED $build $waiting"; exit 0; }
+    echo "ROTATED $build" ;;
   check)
     all=0
     if [ "${1:-}" = --all ]; then all=1; shift; fi
@@ -296,36 +246,17 @@ case "$cmd" in
     # Only this repository's threads, unless --all or outside git: other main sessions own the rest.
     here=""
     if [ "$all" = 0 ] && c=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then here=$(dirname "$(realpath -m "$c")"); fi
-    sock=$(main_socket); printed=0; repos=""
-    live=$(live_sessions)
-    while IFS=$'\t' read -r name id _ repo wt main_name _; do
-      [ -n "$name" ] || continue
-      [ -z "$here" ] || [ "$repo" = "$here" ] || continue
-      repos+="$repo"$'\n'
-      rec=$(thread_field "$wt" MAIN-SOCKET)
-      if [ -n "$sock" ] && [ "$rec" != "$sock" ]; then
-        echo "MOVED $name main=$main_name recorded=${rec:-none} this=$sock: if you are its main session now, run thread.sh adopt $name --main <your name>"
-        printed=1
-      fi
-      # A blocked session waits on a permission prompt or a question in its own session, so it can't send word.
-      waiting=""
-      [ -z "$live" ] || waiting=$(session_of "$live" "$id" | jq -r 'select(.state == "blocked") | if (.waitingFor // "") == "" then "blocked" else .waitingFor end')
-      if [ -n "$waiting" ]; then
-        echo "BLOCKED $name $waiting: it can't message you while it waits; tell the owner to answer it in the session"
-        printed=1
-      fi
-      out=$(inbox "$wt" "$name")
-      if [ -n "$out" ]; then printf '%s\n' "$out"; printed=1; fi
-    done <<< "$rows"
+    printed=0
     while IFS= read -r repo; do
+      [ -n "$repo" ] || continue
       out=$(identity_warnings "$repo")
       if [ -n "$out" ]; then printf '%s\n' "$out"; printed=1; fi
-    done < <(printf '%s' "$repos" | sort -u)
+    done < <(printf '%s\n' "$rows" | cut -f2 | awk -v h="$here" 'h == "" || $0 == h' | sort -u)
     [ "$printed" = 1 ] || echo OK ;;
   integrate)
     [ $# -eq 1 ] || usage
-    found=$(row_by 1 "$1"); [ -n "$found" ] || fail "no thread named $1 in $reg"
-    IFS=$'\t' read -r _ _ build repo wt _ _ <<< "$found"
+    found=$(row_by 1 "$1"); [ -n "$found" ] || fail "no thread for build $1 in $reg"
+    IFS=$'\t' read -r build repo wt _ _ <<< "$found"
     landing=$(thread_field "$wt" LANDING); base=$(thread_field "$wt" BASE); checkout=$(thread_field "$wt" CHECKOUT)
     [ "$landing" = local ] || fail "$1 lands by pull request (LANDING: ${landing:-unknown}), so its base moves on origin; pull it instead"
     [ -n "$base" ] && [ -d "$checkout" ] || fail "no BASE or CHECKOUT in $wt/.orchestration/thread.md"
@@ -357,10 +288,10 @@ case "$cmd" in
       esac
     done
     [ -n "$name" ] || [ -n "$wt" ] || usage
-    id=""
+    ws=""
     if [ -n "$name" ]; then
-      found=$(row_by 1 "$name"); [ -n "$found" ] || fail "no thread named $name in $reg; for a build the registry no longer lists, pass --worktree <coordination worktree>"
-      IFS=$'\t' read -r _ id _ _ wt _ _ <<< "$found"
+      found=$(row_by 1 "$name"); [ -n "$found" ] || fail "no thread for build $name in $reg; for a build the registry no longer lists, pass --worktree <coordination worktree>"
+      IFS=$'\t' read -r _ _ wt ws _ <<< "$found"
     fi
     [ -d "$wt" ] || fail "no coordination worktree at $wt"
     branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null) || fail "$wt has a detached HEAD; it is not a coordination worktree"
@@ -388,36 +319,37 @@ case "$cmd" in
         [ -z "$unlanded" ] || fail "$branch holds work that ${ref#refs/*/} lacks in: $unlanded(integrate or land it, or pass --force)"
       fi
     fi
-    if [ -n "$id" ] && [ "$id" != pending ]; then claude_env claude stop "$id" >/dev/null 2>&1 || true; fi
+    pane=$(agent_pane "$build")
+    [ -z "$pane" ] || herdr pane close "$pane" >/dev/null 2>&1 || true
     archive="$home/archive/$build-$(date -u +%Y%m%dT%H%M%SZ)"
     mkdir -p "$archive"
     [ ! -d "$wt/.orchestration" ] || cp -a "$wt/.orchestration/." "$archive/"
+    [ ! -d "$home/mail/$build" ] || mv "$home/mail/$build" "$archive/mail"
     # The forced removal deletes what git ignores (eval runs, agent memory), so archive it first. stdout carries
     # only the CLOSED or FAILED line, so the per-file lines and git's own diagnostics are dropped.
     reason=$(archive_ignored "$wt" "$archive" .orchestration 2>&1 >/dev/null) || fail "${reason##*$'\n'} (archive at $archive)"
     git -C "$repo" worktree remove --force "$wt" || fail "git worktree remove $wt failed; the archive is at $archive"
     git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
-    if [ -n "$id" ] && [ "$id" != pending ]; then claude_env claude rm "$id" >/dev/null 2>&1 || true; fi
+    [ -z "$ws" ] || herdr workspace close "$ws" >/dev/null 2>&1 || true
     [ -z "$name" ] || delete_row "$name"
-    rm -f "$home/seen/$(printf '%s' "$wt" | md5sum | cut -c1-16)"
     lanes=$(git -C "$repo" worktree list --porcelain | sed -n "s#^worktree \($(dirname "$repo")/$(basename "$repo")-wt-[^/]*\)\$#\1#p" | tr '\n' ' ')
     echo "CLOSED $build archive=$archive${lanes:+ lanes still present: $lanes}" ;;
   list)
     [ $# -eq 0 ] || usage
     rows=$(awk 'NR > 1' "$reg" 2>/dev/null || true)
     [ -n "$rows" ] || { echo NONE; exit 0; }
-    live=$(live_sessions)
-    while IFS=$'\t' read -r name id build main wt main_name launched; do
+    agents=$(herdr agent list 2>/dev/null || true)
+    while IFS=$'\t' read -r build _ wt ws launched; do
       status=unknown
-      [ -n "$live" ] && status=$(session_of "$live" "$id" | jq -r '.status // "not-running"')
-      echo "$name $id build=$build status=$status main=$main_name worktree=$wt launched=$launched"
+      [ -z "$agents" ] || status=$(jq -r --arg b "$build" '[.result.agents[] | select(.name == $b)][0].agent_status // "not-running"' <<<"$agents")
+      echo "$build status=$status workspace=$ws worktree=$wt launched=$launched"
     done <<< "$rows"
     ;;
   decisions)
     [ $# -eq 0 ] || usage
     rows=$(awk 'NR > 1' "$reg" 2>/dev/null || true)
     items=""
-    while IFS=$'\t' read -r name _ _ _ wt _ _; do
+    while IFS=$'\t' read -r name _ wt _ _; do
       [ -n "$name" ] || continue
       file="$wt/.orchestration/decisions.md"
       [ -f "$file" ] || continue

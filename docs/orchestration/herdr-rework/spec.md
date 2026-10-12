@@ -104,7 +104,8 @@ owner's place, driving MAIN and talking to other peers. Nothing here should bloc
 2. **MAIN's address:** a mailbox per build, `<build>/main`; MAIN has no herdr name.
 3. **Placement:** one herdr workspace per build, the thread in its first tab, one tab per lane;
    MAIN's workspace untouched.
-4. **Rotation:** the same name, replacing the thread in its workspace's first tab.
+4. **Rotation:** the same name; the new thread opens in a new tab of the build's workspace before
+   the old pane closes, or in a new workspace when the old one is gone.
 5. **After a build:** close archives the build's mail folder, then closes its workspace.
 6. **MAIN's waits:** one per running build, on its `main` box, watching its thread.
 7. **The orchestration home:** launch passes `ORCHESTRATION_HOME` to the build's workspace when it
