@@ -1,12 +1,13 @@
 # pull-request evals
 
 Behaviour cases for the rules in `docs/skill-audit/2026-10-11-pull-request-digest.md` that the skill
-carries (F1-F4, A1, R1), plus trigger cases. F6, A2 and A3 passed without the skill on Opus and
+carries (F1, F3, F4, A1, R1), plus trigger cases. F6, A2 and A3 passed without the skill on Opus and
 Codex in the unaided smoke run, and so did R2 (unaided Opus knew GitHub rejects approving your own
 PR, and Codex passed it), so those rules were dropped from the skill along with their cases. F5
 (isOutdated is not addressed) was dropped too: unaided Opus re-checked the outdated thread and fixed
 it. Its case, f5, stays and counts under F3, because Opus's real failure there was not resolving the
-thread it had fixed. The general suite rules are in the repository README (Evaluating
+thread it had fixed. F2 (reply only after the push) passed unaided on both agents and was dropped;
+its case, f2, stays as a regression case for F3's reply-then-resolve ordering. The general suite rules are in the repository README (Evaluating
 Skills) and `docs/evaluating-skills.md`.
 
 ## Cases
@@ -14,9 +15,9 @@ Skills) and `docs/evaluating-skills.md`.
 | Case | Rule | Trap in the fixture | Expected without the skill |
 | --- | --- | --- | --- |
 | f1-retry-defaults-tradeoff | F1 | Thread Cc (raise retry defaults) is a tradeoff the ops notes don't settle | Fails: in the probe, both agents declined it alone. Opus also resolved it, which the objective checks catch; Codex's failure (deciding in its reply) only the `cc-not-settled-alone` judge sees |
-| f2-fix-committed-not-pushed | F2 | The fix commit is local only (`ahead by 1`), and the prompt says "wrap up" | Untested; in the probe, Codex replied before any fix existed |
+| f2-fix-committed-not-pushed | F3 (regression) | The fix commit is local only (`ahead by 1`), and the prompt says "wrap up" | Passes: both agents passed it unaided, so rule F2 was dropped. It stays as an `eval_intent: regression` case for F3's reply-then-resolve ordering and does not count toward the bar |
 | f3-declined-copilot-vs-human-deferral | F3 | A refuted Copilot claim next to a human reviewer's question the owner has deferred | Fails either way: Opus resolved every thread, Codex resolved only fixed ones |
-| f4-suppressed-review-body-finding | F4 | The thread list is empty; the one finding is in a review body's collapsed "suppressed" section | Fails on `no-new-public-comment`, a real trap: Opus and Codex both posted a comment for the body-only finding in the unaided smoke run. The fetch half leaks, because the harness lists every fixture path in the prompt, so f4 stays a regression case: **f4 does not count toward the readmission bar's three failing cases** |
+| f4-suppressed-review-body-finding | F4 | The thread list is empty; the one finding is in a review body's collapsed "suppressed" section | Fails on `no-new-public-comment`, which is the counted trap: 0 of 3 unaided and 3 of 3 with the skill, on both Opus and Codex. The fetch half leaks, because the harness lists every fixture path in the prompt, so reading the review bodies is not what f4 measures. f4 counts toward the bar |
 | f5-outdated-thread-still-broken | F3 | Two `isOutdated` threads: the refactor fixed one, and only moved the other; both must end resolved after their replies | Fails: unaided Opus fixed the moved bug but did not resolve the thread it had fixed |
 | a1-new-pr-body | A1 | Tests exist but nothing has been run | Fails: Opus kept "not run" out of the body, and Codex wrote ungrouped prose |
 | r1-review-colleague-pr | R1 | "Review PR 42." with no word about posting | Fails: in the probe, neither agent offered a gated, single review call |
@@ -27,6 +28,9 @@ Those runs' outputs are among the planted answers.
 Assertions named `contributing-*` (a conventional title, the `Risk:` line) check that the answer follows
 the repository's CONTRIBUTING.md and commit convention. The digest found no gap there, so they are
 not part of A1's fails-without-the-skill claim; read that claim from the other assertions.
+
+The readmission bar's count of failing cases includes judge criteria, such as a1's
+`validation-honest`. Report judge scores separately from the objective pass rate.
 
 ## Output contracts
 

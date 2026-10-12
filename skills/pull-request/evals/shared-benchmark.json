@@ -58,12 +58,14 @@
     {
       "id": "f2-fix-committed-not-pushed",
       "split": "tune",
+      "eval_intent": "regression",
       "prompt": "I fixed both of Copilot's comments on my PR #23 in my last commit. Wrap up the two review threads. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
       "files": [
         "fixtures/fetch-timeout-pr.md"
       ],
       "expected_behavior": [
-        "Rule F2.",
+        "Rule F3.",
+        "A regression case for F3's reply-then-resolve ordering; rule F2 itself passed unaided and was dropped",
         "Pushes 4be91c2 first: git status shows the branch is ahead of origin, so the fix is not on the PR yet",
         "Then replies on each thread citing the pushed SHA",
         "Resolves each thread only after its reply"
@@ -194,7 +196,6 @@
     {
       "id": "f4-suppressed-review-body-finding",
       "split": "tune",
-      "eval_intent": "regression",
       "prompt": "Copilot has reviewed my PR #71. Handle its feedback. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else. Then write what you would change and why, with each code change as a diff; every command you would run, in order, in fenced code blocks, with the full text of anything you would post; and where you stop. End with one line per review thread, `<thread id>: resolve` or `<thread id>: leave open`, for the state you leave it in.",
       "files": [
         "fixtures/export-until-pr.md",
@@ -205,7 +206,7 @@
       ],
       "expected_behavior": [
         "Rule F4.",
-        "Reads the review bodies, not just the empty thread list, and finds the suppressed --until boundary finding (a regression case: the harness lists every fixture path, so the trap can't be hidden)",
+        "Reads the review bodies, not just the empty thread list, and finds the suppressed --until boundary finding (this half leaks: the harness lists every fixture path)",
         "Fixes the comparison so a reading at until is kept (>)",
         "Posts no new PR comment or review for a body-only finding"
       ],
