@@ -94,6 +94,9 @@ You wake when a worker reports back, a background watcher or timer fires, or MAI
   `orchestration/<build>`. Code goes to workers; each lane ticks its own items in the plan.
 - Don't write in the owner's checkout; a hook refuses it. A small fix in a lane's worktree is
   fine if you log it.
+- Keep your own writes inside your worktree and your lanes' worktrees. A write elsewhere (another
+  repository, a private store) can wait on a permission prompt, and while it waits you can't
+  message MAIN.
 - Changes to instructions, agent definitions, settings or skill links need the owner's own
   approval: send MAIN the exact diff, and MAIN applies it.
 - Brief every worker from [references/briefs.md](references/briefs.md): an explicit model (Opus;

@@ -49,6 +49,12 @@ You wake when a thread writes, the owner writes, or an idle notice arrives. Firs
   `STEER: MAIN moved; read my address with state.sh main before your next message`.
 - `INBOX <thread> <time> …`: a message the thread sent you. Ones you already received come up
   again; act on the rest.
+- `BLOCKED <thread> <what it waits on> …`: the thread waits on a prompt in its session and can't
+  message you. Tell the owner which thread waits on what, and that they answer it in that session
+  (`claude attach <id>`, the id from `thread.sh list`).
+- `IDENTITY <repo> …`: the repository's local git config sets an identity other than the global
+  one. Tell the owner, and recommend removing it with the command the line gives unless they set
+  it.
 - `OK` or `NONE`: nothing to catch up on.
 
 If `ListAgents` shows a different name for you than `thread.sh list` (`main=`), run `adopt` too.
@@ -116,6 +122,7 @@ When a thread sends `STATUS: done`, tell the owner what to check and where the r
 2. Apply any diffs the thread sent for instructions, agent definitions, settings or skill links,
    once the owner approves them here: a decision you passed on is not their consent for those.
 3. Run `thread.sh close <name>`. It refuses while the build's branch has work the base lacks;
-   otherwise it archives the thread's files under `~/.orchestration/archive/`, removes its
+   otherwise it archives the thread's files under `~/.orchestration/archive/` (its worktree's
+   ignored files, such as eval runs and agent memory, under `ignored/` there), removes its
    worktree, branch and session, and names any lane worktrees left behind. For a build the
    registry no longer lists, use `thread.sh close --worktree ../<repo>-orch-<build> --base <branch>`.
