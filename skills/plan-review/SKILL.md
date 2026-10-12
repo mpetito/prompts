@@ -1,6 +1,6 @@
 ---
 name: plan-review
-description: "Review a plan, spec or design document adversarially before any code is written: find mechanisms no requirement needs, decisions that will be expensive to change later, missing contracts, files two workstreams both touch, unverified claims, questions only the owner can answer, and an order that delays what the owner can see. Use when asked to review, check, challenge or poke holes in a plan, spec, design doc, RFC or task breakdown before it is approved or implemented, or when a coordinator delegates a plan review. Not for code, diffs, staged or uncommitted changes, commits or pull requests (review), or for writing the plan itself."
+description: "Review a plan, spec or design document adversarially before any code is written: find mechanisms no requirement needs, decisions that will be expensive to change later, missing contracts, files two workstreams both touch, unverified claims, questions only the owner can answer, and an order that delays what the owner can see. Use when asked to review, check, challenge or poke holes in a plan, spec, design doc, RFC or task breakdown before it is approved or implemented, or when a coordinator delegates a plan review. Not for code, diffs, staged or uncommitted changes, commits or pull requests (review), or for writing the plan itself (spec)."
 ---
 
 # Plan review

@@ -1,0 +1,266 @@
+{
+  "version": 2,
+  "skill_name": "spec",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "r1-numbered-defaults",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository: every file's path and full contents. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.\n\nThe repository owner asks:\n\n> We need tally to handle expenses in more than one currency. Add a currency column in src/parser.ts by changing parseRow() so each Expense carries its currency, and make the totals take it into account. Our bank's CSV exports always include an ISO 4217 code in the fifth column, so every row will have one. A few things I haven't decided yet: whether the totals should convert everything to USD (we would need to pull exchange rates from somewhere) or just show one subtotal per currency, whether the new column in the table output should be headed \"Currency\" or \"CCY\", whether that column goes before or after the Total column, and whether the JSON field is called \"currency\" or \"ccy\". Write the spec and plan for this.",
+      "files": [
+        "fixtures/tally-repo.md"
+      ],
+      "expected_behavior": [
+        "spec.md has an Open Questions section whose questions are numbered",
+        "The owner's four undecided points (USD conversion or per-currency subtotals, the column heading, the column position, the JSON field name) are each a numbered open question",
+        "Every open question gives a recommended default, with enough context to answer 'agreed' by number"
+      ],
+      "assertions": [
+        {
+          "name": "numbered-open-questions",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))"
+        },
+        {
+          "name": "cosmetic-questions-listed",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?\\bCCY\\b"
+        },
+        {
+          "name": "column-position-listed",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:\\b(?:before|after)\\b[^\\n]{0,60}\\btotal\\b|\\btotal\\b[^\\n]{0,60}\\b(?:before|after)\\b|\\bcolumn (?:order|position)\\b)"
+        },
+        {
+          "name": "no-question-without-default",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))(?!(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~)|^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$)))[\\s\\S])*?(?:\\b(?:default|recommend(?:ed|ation)?)\\b[ \\t]*(?:\\*\\*|_)?[ \\t]*[:—–][ \\t]*(?:\\*\\*|_)?(?![ \\t]*(?:\\*\\*|_)?[ \\t]*(?:none\\b|no (?:recommendation|default|pick|preference)\\b|either\\b|your call|tbd\\b|n/a\\b|undecided|unclear|not sure))|\\b(?:I|I'd|I would|we|we'd|we would) recommend\\b(?![ \\t]*(?:\\*\\*|_)?[ \\t]*(?:none\\b|no (?:recommendation|default|pick|preference)\\b|either\\b|your call|tbd\\b|n/a\\b|undecided|unclear|not sure))|\\b(?:my |our )?recommendation is\\b(?![ \\t]*(?:\\*\\*|_)?[ \\t]*(?:none\\b|no (?:recommendation|default|pick|preference)\\b|either\\b|your call|tbd\\b|n/a\\b|undecided|unclear|not sure))|\\blean(?:s|ing)? (?:to|towards)\\b(?![ \\t]*(?:\\*\\*|_)?[ \\t]*(?:none\\b|no (?:recommendation|default|pick|preference)\\b|either\\b|your call|tbd\\b|n/a\\b|undecided|unclear|not sure))|\\(recommended\\)))"
+        },
+        {
+          "name": "answerable-by-number",
+          "type": "judge",
+          "rubric": [
+            "Each open question carries enough context (options and their consequence) that the owner could reply 'agreed' or pick an option by its number without rereading the request"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r3-unproven-claim",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository: every file's path and full contents. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.\n\nThe repository owner asks:\n\n> We need tally to handle expenses in more than one currency. Add a currency column in src/parser.ts by changing parseRow() so each Expense carries its currency, and make the totals take it into account. Our bank's CSV exports always include an ISO 4217 code in the fifth column, so every row will have one. Two things I haven't decided yet: whether the totals should convert everything to USD (we would need to pull exchange rates from somewhere) or just show one subtotal per currency, and whether the new column in the table output should be headed \"Currency\" or \"CCY\". Write the spec and plan for this.",
+      "files": [
+        "fixtures/tally-repo.md"
+      ],
+      "expected_behavior": [
+        "The owner's unproven claim (every bank export row carries an ISO 4217 code in the fifth column) is a numbered open question for the owner to confirm",
+        "spec.md does not state the claim as a requirement or a fact"
+      ],
+      "assertions": [
+        {
+          "name": "spec-written",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
+        },
+        {
+          "name": "claim-is-open-question",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:^[ \\t]*(?:#{2,5}[ \\t]*)?(?:[-*][ \\t]+)?(?:\\*\\*)?(?:[QD][ \\t]*\\d{1,2}\\b[.):]?|\\d{1,2}[.):](?=[ \\t*]|$))|^[ \\t]*[-*][ \\t]+)(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|\\1[ \\t]|```|~~~))[\\s\\S])*?(?:(?:fifth[- \\t\\n]+column|ISO[ \\t]*4217(?![^\\n?]{0,30}\\blist\\b)|\\b(?:every|each|all)\\b[^.!?\\n]{0,30}\\b(?:rows?|exports?|lines?)\\b[^.!?]{0,40}\\b(?:code|currency)\\b)[^.!?]*?\\?(?=[*_\\\"”]*(?:[ \\t\\n]|$))|confirm[^.!?]*?(?:fifth[- \\t\\n]+column|ISO[ \\t]*4217(?![^\\n?]{0,30}\\blist\\b)|\\b(?:every|each|all)\\b[^.!?\\n]{0,30}\\b(?:rows?|exports?|lines?)\\b[^.!?]{0,40}\\b(?:code|currency)\\b)|(?:fifth[- \\t\\n]+column|ISO[ \\t]*4217(?![^\\n?]{0,30}\\blist\\b)|\\b(?:every|each|all)\\b[^.!?\\n]{0,30}\\b(?:rows?|exports?|lines?)\\b[^.!?]{0,40}\\b(?:code|currency)\\b)[^.!?]*?confirm)"
+        },
+        {
+          "name": "claim-not-stated-as-fact",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?:(?>^[ \\t]*(?P<qh>#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$(?:(?!^[ \\t]*(?:#{1,2}[ \\t]|(?P=qh)[ \\t]|```|~~~))[\\s\\S])*)|(?!^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$)(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S]))*?(?:[.!?][ \\t]+|[.!?][ \\t]*\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1))|^[ \\t]*\\n|^(?!^[ \\t]*(#{1,4})[ \\t]+[^\\n]*\\b(?:questions?|decisions? (?:needed|required|pending)|open decisions?|confirm(?!ed)\\w*|sign[- ]?off)\\b[^\\n]*$)[ \\t]*#[^\\n]*\\n|^[ \\t]*(?:[-*+][ \\t]+(?:\\[[ xX]\\][ \\t]+)?|\\d{1,2}[.)][ \\t]+|>[ \\t]*)))?(?!(?:[^.!?\\n]|[.!?](?![ \\t\\n]|$)|\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1)))*?(?:\\?|confirm|verif|assum|unless|\\bif\\b|claim|request|you said|owner|question|\\bQ\\d|\\bcan(?:'|’)t\\b|\\bcannot\\b))(?:[^.!?\\n]|[.!?](?![ \\t\\n]|$)|\\n(?![ \\t]*(?:\\n|[-*+][ \\t]|\\d{1,2}[.)][ \\t]|#|>|\\||\\1)))*?(?:\\bguarantees?\\b|\\btrust\\s+(?:the|each|every)\\s+(?:supplied|bank|row)|every\\s+(?:bank\\s+)?(?:export\\s+)?row\\s+(?:supplies|carries|has|includes|contains)\\s+(?:a|an|one|its)\\b|since\\s+every\\s+(?:export\\s+)?row\\s+has|exports?\\s+(?:now\\s+)?(?:always\\s+)?(?:carry|carries|supply|supplies|include|includes|contain|contains|put|puts|have|has|send|sends)\\b(?!\\s+(?:no|not|never)\\b)[^.!?]{0,60}\\b(?:every\\s+row|fifth\\s+column)|\\bbank\\s+(?:now\\s+)?(?:always\\s+)?(?:sends?|puts?)\\b[^.!?]{0,60}\\b(?:every\\s+row|fifth)|\\b(?:bank(?:'s)?|exports?|rows?|csv|files?|input)\\s+(?:now\\s+)?always\\s+(?:include|includes|contain|contains|carry|carries|have|has|hold|holds|put|puts|supply|supplies)\\b(?!\\s+(?:no|not|never)\\b))"
+        },
+        {
+          "name": "claim-held-open",
+          "type": "judge",
+          "rubric": [
+            "Nowhere in spec.md or plan.md is the fifth-column claim treated as settled: the spec says what happens if a row has no code, or makes that an open question, rather than relying on the bank's guarantee"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r4-what-how",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository: every file's path and full contents. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: for every file you would create or change, give a level-2 heading with its path relative to the repository root, then its full contents in one fenced code block. Anything else you need to tell me goes after the files.\n\nThe repository owner asks:\n\n> We need tally to handle expenses in more than one currency. Add a currency column in src/parser.ts by changing parseRow() so each Expense carries its currency, and make the totals take it into account. Our bank's CSV exports always include an ISO 4217 code in the fifth column, so every row will have one. Two things I haven't decided yet: whether the totals should convert everything to USD (we would need to pull exchange rates from somewhere) or just show one subtotal per currency, and whether the new column in the table output should be headed \"Currency\" or \"CCY\". Write the spec and plan for this.",
+      "files": [
+        "fixtures/tally-repo.md"
+      ],
+      "expected_behavior": [
+        "spec.md says what and why only: no file paths, function or type names, or code, even though the request names src/parser.ts and parseRow()",
+        "plan.md is ordered steps, each naming the files it touches and ending with a check that can fail, such as npm test with a named new test"
+      ],
+      "assertions": [
+        {
+          "name": "spec-written",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$"
+        },
+        {
+          "name": "plan-has-steps",
+          "type": "regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/plan\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]|^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?P<ind>[ \\t]*)(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?P=ind)(?![ \\t])(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?P=ind)(?![ \\t])(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]"
+        },
+        {
+          "name": "spec-has-no-code",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/spec\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?(?:\\b(?:parseRow|parseFile|toCents|toCurrency|sumByCategory|formatTable|formatJson|resolveCategory|CategoryTotal|amountCents|totalCents)\\b|`Expense`|\\b[A-Za-z_]\\w*\\(\\)|\\b(?:src|test)/[\\w.-]+|\\b\\w+\\.ts\\b)",
+          "ci": false
+        },
+        {
+          "name": "every-step-names-files",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/plan\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]|^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?P<ind>[ \\t]*)(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?:(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?P=ind)(?![ \\t])(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t])?(?!(?:(?!^(?P=ind)(?![ \\t])(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]|^[ \\t]*\\1[ \\t]*$|^[ \\t]*#{1,6}[ \\t])[\\s\\S])*?(?:\\b(?:src|test)/[\\w.-]+\\.ts\\b|\\bREADME\\.md\\b|\\bpackage\\.json\\b))"
+        },
+        {
+          "name": "every-step-has-check",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t]*(?:#{1,4}[ \\t]+|=+[ \\t]*)?[`*_]*specs/(?!001-|002-|010-)[\\w.-]+/plan\\.md[`*_]*:?[ \\t]*=*[ \\t]*$\\n\\s*(`{3,}|~{3,})(?![`~])[^\\n]*\\n(?:(?!^[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]|^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?P<ind>[ \\t]*)(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t](?:(?:(?!^[ \\t]*\\1[ \\t]*$)[\\s\\S])*?^(?P=ind)(?![ \\t])(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t])?(?!(?:(?!^(?P=ind)(?![ \\t])(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]*)?(?:\\*\\*)?\\d{1,2}[.)][ \\t]|^[ \\t]*\\1[ \\t]*$|^[ \\t]*#{1,6}[ \\t])[\\s\\S])*?(?:\\bchecks?\\b[ \\t]*(?:\\*\\*|_)?[ \\t]*:|\\bnpm (?:run )?test\\b|\\bnode[ \\t]+(?:--test|src/)|\\bverif(?:y|ied|ication)\\b[ \\t]*(?:\\*\\*)?[ \\t]*:|\\bdone when\\b))"
+        },
+        {
+          "name": "checks-can-fail",
+          "type": "judge",
+          "rubric": [
+            "Each plan step's check would fail if the step were skipped or done wrong (a named new test, a command with expected output), not a restatement such as 'works correctly'"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "r5-tick-order",
+      "split": "tune",
+      "prompt": "The input file is a snapshot of a git repository and its terminal: every file's path and contents, the recent history, and the output of the last commands run. Read the input file; a read-only command such as cat is fine for that, but do not change any file or run anything else. Your answer is your only output: the complete ordered list of every edit you will make to the repository's files to finish the plan, plan.md edits included, nothing skipped. Give one edit per line as a numbered list (1., 2., ...); start each line with the path of the one file that edit changes, then say what the edit does and which plan step it serves. Do not give file contents.\n\nThe repository owner asks:\n\n> Carry on with spec 011.",
+      "files": [
+        "fixtures/tally-011-tick-order.md"
+      ],
+      "expected_behavior": [
+        "Lists every remaining edit, steps 5 to 8, in plan order",
+        "Ticks each step in plan.md after that step's last file edit and before the next step's first file edit, never in a batch after the code"
+      ],
+      "assertions": [
+        {
+          "name": "every-step-edited",
+          "type": "regex",
+          "pattern": "(?m)\\A(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/totals\\.ts|test/totals\\.test\\.ts)\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/format\\.ts|test/format\\.test\\.ts)\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*README\\.md\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*package\\.json\\b)"
+        },
+        {
+          "name": "every-step-ticked",
+          "type": "regex",
+          "pattern": "(?m)\\A(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)5\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)6\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)7\\b)(?=[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)8\\b)"
+        },
+        {
+          "name": "tick-before-next-step",
+          "type": "not_regex",
+          "pattern": "(?m)(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/format\\.ts|test/format\\.test\\.ts)\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)5\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*README\\.md\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)6\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*package\\.json\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)7\\b)"
+        },
+        {
+          "name": "no-edit-after-own-tick",
+          "type": "not_regex",
+          "pattern": "(?m)(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)5\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/totals\\.ts|test/totals\\.test\\.ts)\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)6\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:src/format\\.ts|test/format\\.test\\.ts)\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)7\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*README\\.md\\b)|(?:^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*(?:specs/011-multi-currency-totals/)?plan\\.md(?=[^\\n]*?(?:\\btick|\\bcheck(?:ed|s)?[ \\t-]*off|\\bmark|\\[x\\]|\\bdone\\b|\\bcomplete))(?:(?!(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)\\d)[^\\n])*?(?:\\bsteps?[ \\t]*(?:\\d[ \\t]*(?:,|and|&)[ \\t]*)*|\\[x\\][ \\t]*|#|\\btick\\w*[ \\t]+(?:off[ \\t]+)?)8\\b[\\s\\S]*?^[ \\t]*(?:[-*][ \\t]+|\\d{1,3}[.)][ \\t]+)?(?:\\*\\*)?(?:(?:edit|update|modify|create|change|add)[ \\t:]+)?[`*_]*package\\.json\\b)"
+        }
+      ]
+    },
+    {
+      "id": "trig-spec-before-coding",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a spec and implementation plan for adding SSO login to the admin portal before we start coding.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-scope-feature",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Scope out offline mode for the field app: what is in, what is out, and how we would build it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-carry-on-spec",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Carry on with spec 042.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-finish-half-done-checklist",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "We got through about half of the checklist in 031-invoice-export before running out of time yesterday; pick it up and finish the rest.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-work-through-plan-steps",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Work through the plan.md for 019-sso-login until every step is checked off.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-plan-review",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Here is the plan for spec 014; poke holes in it before anyone writes code and tell me what will be expensive to change later.",
+      "expected_behavior": [
+        "The skill should NOT trigger: reviewing a plan before code exists belongs to plan-review."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-project-setup",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Set up a specs/ folder for this repo and document its numbering convention in AGENTS.md so agents know where new work goes.",
+      "expected_behavior": [
+        "The skill should NOT trigger: setting up the specs/ layout and AGENTS.md belongs to project-setup."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-multi-lane-build",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run the plan for spec 027 as a build with three parallel lanes, one agent per lane, and merge them when green.",
+      "expected_behavior": [
+        "The skill should NOT trigger: running a build with several parallel lanes belongs to orchestration-main."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-small-fix",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Fix the off-by-one in the pagination helper; there is no ticket or design doc for it, just make the change.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a small fix with no spec belongs to code-style."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
