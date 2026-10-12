@@ -46,15 +46,20 @@ every new assertion is shown to fail against a planted mutant before its step is
   Check: run.sh passes, and fails with a named check against each of eleven planted mutants (focus,
   held name, name pattern, startup prompt, failed-start cleanup, rotate's tab, rotate closing the
   old pane, close's mail, close's workspace, the home passed on, a missing agent read as an error).
-- [ ] 4. `skills/agent-orchestration/scripts/lane.sh`, `skills/agent-orchestration/scripts/codex-exec.sh`,
+- [x] 4. `skills/agent-orchestration/scripts/lane.sh`, `skills/agent-orchestration/scripts/codex-exec.sh`,
   `skills/agent-orchestration/tests/run.sh`: one lane launcher for both kinds replaces the headless
-  Codex one. `lane.sh <build> <lane> <worktree> <brief> --kind claude|codex --model <id>`: a new
-  tab labelled with the lane in the build's workspace at the lane worktree, then `herdr agent start
-  <build>-<lane>` with, for Codex, `--approve-for-me --add-dir <build mail folder>`, and for Claude,
-  `--agent lane --model <id>`; then the pointer prompt to the brief. Delete codex-exec.sh and its
-  tests. Ask the owner for the settings rule
-  `Bash(~/.claude/skills/agent-orchestration/scripts/lane.sh:*)` with step 6's diff. Check: run.sh
-  asserts, per kind, the tab, the agent arguments and the prompt with the mock `herdr`.
+  Codex one. `lane.sh <build> <lane> <worktree> <brief> --kind claude|codex --model <id>
+  [--network]`: a new tab labelled with the lane in the thread's workspace at the lane worktree,
+  then `herdr agent start <build>-<lane>` with, for Codex, `--approve-for-me --add-dir <build mail
+  folder>` (plus the sandbox network setting with `--network`), and for Claude, `--agent lane`;
+  then the pointer prompt `Read <brief> and follow it.` A lane held at a startup prompt prints
+  `BLOCKED` and gets no prompt; a lane that fails to start has its tab closed. codex-exec.sh, its
+  tests and the mocked `codex` are deleted; its `--strip` of named secret variables has no
+  equivalent, because a herdr agent inherits its pane's environment. Ask the owner for the
+  settings rule `Bash(~/.claude/skills/agent-orchestration/scripts/lane.sh:*)` with step 6's diff.
+  Check: run.sh passes, and fails with a named check against each of nine planted mutants
+  (approve-for-me, add-dir, focus, the pointer prompt, network, the lane agent, the startup prompt,
+  closing a failed lane's tab, the required model).
 - [ ] 5. Live smoke test from a herdr pane, before any document is rewritten: `thread.sh launch` a
   probe build of this repository with the real `orchestrator` agent and hooks; mail both ways; a
   permission prompt reported to MAIN; a decision default applied; two builds, one wait each;

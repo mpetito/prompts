@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Offline checks for the orchestration scripts and hooks, including orchestration-main's thread.sh. Uses a
-# throwaway directory with mocked herdr, gh and codex on PATH and real git repositories; needs bash 5, jq,
+# throwaway directory with mocked herdr and gh on PATH and real git repositories; needs bash 5, jq,
 # python3, git 2.31+ and GNU coreutils.
 # No pipefail: each assertion pipes a command that may exit 1 by design into grep, and judges grep.
 set -eu
@@ -37,15 +37,6 @@ case "$1 $2" in
     fi ;;
 esac
 MOCK
-cat > "$tmp/bin/codex" <<'MOCK'
-#!/usr/bin/env bash
-case ${MOCK_CODEX:-ok} in
-  ok) [ -n "${MOCK_CODEX_ARGS:-}" ] && printf '%s\n' "cwd=$PWD" "$@" > "$MOCK_CODEX_ARGS"
-      while [ $# -gt 0 ]; do [ "$1" = --output-last-message ] && echo done > "$2"; shift; done ;;
-  fail) exit 3 ;;
-  slow) sleep 5 ;;
-esac
-MOCK
 cat > "$tmp/bin/herdr" <<'MOCK'
 #!/usr/bin/env bash
 # A herdr that keeps its agents in $MOCK_DIR/herdr-agents.json and refuses what 0.9.3 refuses.
@@ -57,7 +48,11 @@ put() { jq "$@" "$db" > "$db.tmp" && mv "$db.tmp" "$db"; }
 n=$(( $(cat "$MOCK_DIR/herdr.n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$MOCK_DIR/herdr.n"
 case "$1 $2" in
   "agent list") [ "${MOCK_HERDR:-}" = down ] && exit 1; cat "$db" ;;
-  "agent get") jq -e --arg a "$3" '.result.agents[] | select(.name == $a) | {result: {agent: .}}' "$db" || err agent_not_found "agent target $3 not found" ;;
+  "agent get") jq -e --arg a "$3" '.result.agents[] | select(.name == $a) | {result: {agent: (. + {workspace_id: (.pane_id // "" | split(":")[0])})}}' "$db" \
+    || err agent_not_found "agent target $3 not found" ;;
+  "agent prompt")
+    jq -e --arg a "$3" '.result.agents[] | select(.name == $a and .agent_status == "blocked")' "$db" >/dev/null && err agent_blocked "agent $3 is blocked"
+    echo '{"result":{"type":"ok"}}' ;;
   "workspace create")
     [[ " $* " == *" --cwd "* && " $* " == *" --no-focus "* ]] || err invalid "the mock wants --cwd and --no-focus"
     printf '{"result":{"workspace":{"workspace_id":"w%s"},"root_pane":{"pane_id":"w%s:p1"}}}\n' "$n" "$n" ;;
@@ -314,24 +309,32 @@ printf '%s\n' 0123456789012345678901234567890123456789 > "$MOCK_DIR/pr-head"
 "$here/scripts/watch-gates.sh" 7 "$sha" --check ci --minutes 1 | grep -q "^MOVED pr=7 head=${sha:0:7} now=0123456" || fail "watch-gates.sh did not report a moved head"
 rm "$MOCK_DIR/pr-head"
 
-# --- codex-exec.sh ---------------------------------------------------------------------------------------------
-printf 'brief\n' > "$tmp/brief.md"
-"$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" | grep -q '^CODEX done lane=wt ' || fail "codex-exec.sh did not report done"
-[ -s "$tmp/out/r.md" ] || fail "codex-exec.sh did not leave the result file"
-MOCK_CODEX=fail "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" | grep -q '^CODEX failed lane=wt exit=3' || fail "codex-exec.sh did not report failure"
-MOCK_CODEX=slow "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" --timeout 1s | grep -q '^CODEX timeout lane=wt after 1s' || fail "codex-exec.sh did not report a timeout"
-"$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" >/dev/null 2>&1 && fail "codex-exec.sh ran without a result file"
-# A resumed lane keeps the sandbox, the model and the network setting, and runs from inside its worktree.
-MOCK_CODEX_ARGS="$tmp/codex-args" "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" --resume abc123 --model m1 >/dev/null
-grep -qx 'resume' "$tmp/codex-args" || fail "codex-exec.sh --resume did not call codex exec resume"
-grep -qx 'sandbox_mode="workspace-write"' "$tmp/codex-args" || fail "codex-exec.sh --resume dropped the sandbox"
-grep -qx 'm1' "$tmp/codex-args" || fail "codex-exec.sh --resume dropped the model"
-grep -qx "cwd=$(realpath "$tmp/wt")" "$tmp/codex-args" || fail "codex-exec.sh --resume did not run inside the worktree"
-grep -q 'network_access' "$tmp/codex-args" && fail "codex-exec.sh --resume enabled the network without --network"
-MOCK_CODEX_ARGS="$tmp/codex-args" "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" --resume abc123 --network >/dev/null
-grep -qx 'sandbox_workspace_write.network_access=true' "$tmp/codex-args" || fail "codex-exec.sh --resume dropped --network"
-MOCK_CODEX_ARGS="$tmp/codex-args" "$here/scripts/codex-exec.sh" "$tmp/wt" "$tmp/brief.md" "$tmp/out/r.md" >/dev/null
-grep -qx 'workspace-write' "$tmp/codex-args" && grep -qx 'sandbox_mode="workspace-write"' "$tmp/codex-args" || fail "codex-exec.sh dropped the sandbox on a fresh lane"
+# --- lane.sh -------------------------------------------------------------------------------------------------
+lane="$here/scripts/lane.sh"
+mkdir -p "$tmp/lanewt"; printf 'Build the API.\n' > "$tmp/lane-brief.md"
+herdr_agents "lb idle"
+jq '(.result.agents[] | select(.name == "lb")) += {pane_id: "w7:p1"}' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
+: > "$MOCK_DIR/herdr.log"
+out=$("$lane" lb api "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 || true)
+[[ $out =~ ^LANE\ lb-api\ pane=w7:p[0-9]+\ kind=codex$ ]] || fail "lane.sh printed: $out"
+grep -qx "tab create --workspace w7 --cwd $tmp/lanewt --label api --no-focus" "$MOCK_DIR/herdr.log" || fail "lane.sh did not open a tab for the lane in the thread's workspace: $(cat "$MOCK_DIR/herdr.log")"
+[ "$(tr '\n' '|' < "$MOCK_DIR/start-lb-api.args")" = "--approve-for-me|--add-dir|$ORCHESTRATION_HOME/mail/lb|--model|m1|" ] || fail "lane.sh started Codex with: $(cat "$MOCK_DIR/start-lb-api.args")"
+[ -d "$ORCHESTRATION_HOME/mail/lb" ] || fail "lane.sh did not create the mail folder it lets Codex write"
+grep -qx "agent prompt lb-api Read $tmp/lane-brief.md and follow it." "$MOCK_DIR/herdr.log" || fail "lane.sh did not hand the lane its brief"
+"$lane" lb net "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 --network >/dev/null
+grep -qx 'sandbox_workspace_write.network_access=true' "$MOCK_DIR/start-lb-net.args" || fail "lane.sh --network did not open Codex's sandbox to the network"
+"$lane" lb ui "$tmp/lanewt" "$tmp/lane-brief.md" --kind claude --model opus | grep -q '^LANE lb-ui ' || fail "lane.sh did not start a Claude lane"
+[ "$(tr '\n' '|' < "$MOCK_DIR/start-lb-ui.args")" = "--agent|lane|--model|opus|" ] || fail "lane.sh started Claude with: $(cat "$MOCK_DIR/start-lb-ui.args")"
+"$lane" lb x "$tmp/lanewt" "$tmp/lane-brief.md" --kind claude | grep -q '^FAILED --model is required' || fail "lane.sh started a lane without a model"
+"$lane" lb x "$tmp/lanewt" "$tmp/lane-brief.md" --kind gemini --model g | grep -q '^FAILED --kind takes claude or codex' || fail "lane.sh accepted an unknown kind"
+"$lane" lb "$(printf 'x%.0s' {1..30})" "$tmp/lanewt" "$tmp/lane-brief.md" --kind claude --model opus | grep -q '^FAILED lane agent name .* must match' || fail "lane.sh accepted a name herdr refuses"
+"$lane" nob x "$tmp/lanewt" "$tmp/lane-brief.md" --kind claude --model opus | grep -q '^FAILED no live thread named nob' || fail "lane.sh started a lane with no thread"
+: > "$MOCK_DIR/herdr.log"
+out=$(MOCK_HERDR=notready "$lane" lb tr "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 || true)
+[ "$out" = "BLOCKED lb-tr waiting on a startup prompt: answer it in workspace lb, tab tr" ] || fail "lane.sh mishandled a startup prompt: $out"
+grep -q '^agent prompt' "$MOCK_DIR/herdr.log" && fail "lane.sh prompted a lane held at a startup prompt"
+out=$(MOCK_HERDR=startfail "$lane" lb sf "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 || true)
+[ "$out" = "FAILED herdr agent start: agent_start_failed: the agent exited" ] && grep -q '^pane close w7:p' "$MOCK_DIR/herdr.log" || fail "lane.sh left the tab of a lane that failed to start: $out"
 
 # --- finish-lane.sh (no herdr on PATH) -------------------------------------------------------------------------
 git -C "$tmp/seed" worktree add -q "$tmp/lane" -b lane-x
