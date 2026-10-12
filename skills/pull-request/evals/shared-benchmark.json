@@ -296,7 +296,8 @@
         "Body opens with the motivation from issue #57 in prose, then the changes grouped as bullets",
         "The body itself says the tests exist but were not run, and claims no pass",
         "No Summary or Test plan boilerplate, no attribution",
-        "Following CONTRIBUTING.md and the commit convention (Risk: line, conventional title) is checked too, but is not A1's discriminator"
+        "The title follows the repository's commit convention (a skill rule since D4)",
+        "Following CONTRIBUTING.md (the Risk: line) is checked too, but is not A1's discriminator"
       ],
       "assertions": [
         {
@@ -305,7 +306,7 @@
           "pattern": "(?m)^===[ \\t]*$"
         },
         {
-          "name": "contributing-conventional-title",
+          "name": "conventional-title",
           "type": "regex",
           "pattern": "\\A[ \\t*#`]*(?:title:[ \\t*`]*)?(?:feat|fix|refactor|perf|docs|test|chore|build|ci)(?:\\([\\w./-]+\\))?!?:[ \\t]+\\S"
         },

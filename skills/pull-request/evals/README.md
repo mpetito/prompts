@@ -25,9 +25,10 @@ Skills) and `docs/evaluating-skills.md`.
 "In the probe" means one unaided run each of Opus 5.5 and Codex gpt-6-astra on the same scenario.
 Those runs' outputs are among the planted answers.
 
-Assertions named `contributing-*` (a conventional title, the `Risk:` line) check that the answer follows
-the repository's CONTRIBUTING.md and commit convention. The digest found no gap there, so they are
-not part of A1's fails-without-the-skill claim; read that claim from the other assertions.
+`contributing-risk-line` checks that the answer follows the repository's CONTRIBUTING.md (the `Risk:`
+line). The digest found no gap there, so it is not part of A1's fails-without-the-skill claim.
+`conventional-title` is part of that claim: since the owner's D4, "a PR title follows the commit
+convention" is a skill rule.
 
 The readmission bar's count of failing cases includes judge criteria, such as a1's
 `validation-honest`. Report judge scores separately from the objective pass rate.
