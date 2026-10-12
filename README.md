@@ -28,6 +28,7 @@ lists readmitted skills only.
 | [code-style](skills/code-style/SKILL.md) | loaded by workers before they write code | Steer code toward the owner's pragmatic style: least mechanism, reuse what exists, trust your own callers, registry dispatch, contract-level comments, delete what a change replaces, tests that never match copy |
 | [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |
 | [pull-request](skills/pull-request/SKILL.md) | `/pull-request` | Work a pull request: answer review feedback on your own PR (check each claim, fix what is right, reply to every thread, resolve or leave it open), open a PR or update its description, and post a review of someone else's PR once you approve the text |
+| [playwright-e2e](skills/playwright-e2e/SKILL.md) | loaded by workers that write or run browser tests | Structure and run Playwright E2E tests that stay independent: the project's conventions for test data and layout (raised with the owner when unsettled), page objects through fixtures, no serial chains, anchored absence checks, and a port and capped workers per checkout on a shared machine |
 
 ## Agents
 

@@ -1,0 +1,206 @@
+{
+  "version": 2,
+  "skill_name": "playwright-e2e",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "r1-seeded-projects-rename",
+      "files": [
+        "fixtures/seeded-projects/projects.spec.ts",
+        "fixtures/seeded-projects/project-copy.ts",
+        "fixtures/seeded-projects/global-setup.ts",
+        "fixtures/seeded-projects/playwright.config.ts"
+      ],
+      "prompt": "Add an E2E test to projects.spec.ts: renaming a project on its settings page shows the new name in the sidebar. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed or added in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most five lines of notes, and do not quote the original code.",
+      "expected_behavior": [
+        "The new test changes no seeded project and runs as a user or account no other test uses, because the existing tests assert the seeded user's exact project list while running in parallel",
+        "The notes raise how tests get server-side data as a convention the project has not settled, for the owner to choose, with the options and a default"
+      ],
+      "assertions": [
+        {
+          "name": "own-user-or-account",
+          "type": "regex",
+          "pattern": "test-api/users|parallelIndex|workerIndex"
+        },
+        {
+          "name": "raises-data-convention",
+          "type": "regex",
+          "pattern": "(?is)(?:data|server-side|records|accounts?).{0,160}(?:conventions?|for you to (?:confirm|decide|choose|pick)|yours to (?:decide|confirm|choose|pick)|you (?:may )?want to (?:pick|choose|decide)|(?:owner|you) (?:should|to) (?:decide|choose|pick|confirm))|(?:conventions?|for you to (?:confirm|decide|choose|pick)|yours to (?:decide|confirm|choose|pick)|you (?:may )?want to (?:pick|choose|decide)|(?:owner|you) (?:should|to) (?:decide|choose|pick|confirm)).{0,160}(?:data|server-side|records|accounts?)"
+        },
+        {
+          "name": "convention-for-owner",
+          "type": "judge",
+          "rubric": [
+            "The answer tells the owner that the project has no settled way for tests to get server-side data, offers options (for example per-test records through the API, one account per worker, a fresh database per run) and names a default, instead of settling it silently inside the one test"
+          ]
+        }
+      ],
+      "split": "tune"
+    },
+    {
+      "id": "r2-lane-e2e-check",
+      "files": [
+        "fixtures/lane-host/lane-brief.md",
+        "fixtures/lane-host/playwright.config.ts",
+        "fixtures/lane-host/package.json"
+      ],
+      "prompt": "You are the checkout-totals lane in lane-brief.md. Your code changes and the new test are committed. Before you push, run the E2E check the brief asks for: write the exact shell commands you will run, in order, in one fenced block under a level-2 heading `Commands`, and output any file you change for it in full under its own level-2 heading. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else. After that, add at most five lines of notes.",
+      "expected_behavior": [
+        "Runs the suite against a server on a port of its own (from an environment variable), without reusing a server another worktree started",
+        "Caps the number of Playwright workers for its run, because three lanes run suites on the same machine at once"
+      ],
+      "assertions": [
+        {
+          "name": "own-port",
+          "type": "regex",
+          "pattern": "E2E_PORT|process\\.env\\.\\w*PORT"
+        },
+        {
+          "name": "workers-capped",
+          "type": "regex",
+          "pattern": "--workers[= ]\\d|\\bworkers\\s*:\\s*(?:\\d|['\"]\\d)|PW_WORKERS|PLAYWRIGHT_WORKERS"
+        },
+        {
+          "name": "shared-machine",
+          "type": "judge",
+          "rubric": [
+            "The plan keeps this lane's E2E run from testing another lane's server and from oversubscribing the shared machine's CPUs"
+          ]
+        }
+      ],
+      "split": "tune"
+    },
+    {
+      "id": "r3-invoice-void",
+      "files": [
+        "fixtures/invoice-chain/invoices.spec.ts",
+        "fixtures/invoice-chain/invoice-copy.ts",
+        "fixtures/invoice-chain/invoice-api.ts"
+      ],
+      "prompt": "Add an E2E test to invoices.spec.ts: voiding a paid invoice shows its status as Void. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else. Output every file you changed or added in full: for each, a level-2 heading with its file name, then its complete new content in one fenced code block. After the files, add at most five lines of notes, and do not quote the original code.",
+      "expected_behavior": [
+        "Sets up its own paid invoice with createInvoice instead of reading the chain's shared invoiceNumber",
+        "Puts the test where the serial chain cannot skip it: with the serial mode confined to a group in invoices.spec.ts that the new test is outside (or, less fitting the request, its own spec file)"
+      ],
+      "assertions": [
+        {
+          "name": "own-invoice",
+          "type": "regex",
+          "pattern": "createInvoice\\("
+        },
+        {
+          "name": "outside-serial-chain",
+          "type": "regex",
+          "pattern": "(?m)^## (?!invoices\\.spec\\.ts\\s*$)[\\w./-]+\\.spec\\.ts\\s*$|test\\.describe\\.serial\\(|^[ \\t]+test\\.describe\\.configure\\(\\{\\s*mode:\\s*'serial'"
+        },
+        {
+          "name": "independent",
+          "type": "judge",
+          "rubric": [
+            "The new test passes or fails on its own: it creates its own data and no failure in the existing serial chain can skip it"
+          ]
+        }
+      ],
+      "split": "tune"
+    },
+    {
+      "id": "trig-terse-login-tests",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add Playwright tests for the login page.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-fails-one-in-five-on-build-server",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The checkout test passes every time on my laptop but fails about one run in five on the build server, so help me work out why and what to do with it meanwhile.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-passes-alone-fails-in-suite",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "This browser test passes when I run it alone but fails when the whole suite runs. What's going on?",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-two-worktrees-same-suite",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Two of my worktrees run the end-to-end suite at the same time and one of them keeps reporting results for code it doesn't have. Fix the setup.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-page-objects-layout",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "How should we organise page objects and fixtures for our browser test suite? It's getting messy.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-accessibility-audit",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Audit the checkout page for colour contrast and keyboard navigation problems and tell me what to fix.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a UI and accessibility audit, not writing browser tests."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-build-cart-drawer",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Build the cart drawer with quantity controls and keep its contents in localStorage across reloads.",
+      "expected_behavior": [
+        "The skill should NOT trigger: building a feature, not testing it in a browser."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-unit-tests-pure-helper",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write Vitest unit tests for the formatPrice helper in src/utils.",
+      "expected_behavior": [
+        "The skill should NOT trigger: unit tests without a browser."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-look-at-page",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Open localhost:3000 in the browser and tell me why the checkout button sits under the footer.",
+      "expected_behavior": [
+        "The skill should NOT trigger: driving a browser by hand to inspect a page."
+      ],
+      "assertions": []
+    }
+  ]
+}

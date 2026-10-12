@@ -1,22 +1,26 @@
 # Stability, Flakes and CI Evidence
 
-Load this from [playwright-e2e](../SKILL.md) when a suite must stay trustworthy as it grows:
-CI artifacts, the stability gate for new tests, flake triage, tests written ahead of features,
-smoke tests that gate a rollback, secrets in artifacts, and several agents sharing one host.
+Load this from [playwright-e2e](../SKILL.md) when a suite must stay trustworthy as it grows.
+Option names and behaviour below come from the Playwright docs unless marked "observed"; check
+them against the installed version.
 
-- The reviewer's probes (mutants, reproduce-and-ablate, secret-sink scans) are in
-  [review](../../review/SKILL.md).
-- CI waits, re-runs and merge refs are in [autonomous-loops](../../autonomous-loops/SKILL.md).
-- Option names and behaviour below come from the Playwright 1.63 docs unless marked
-  "observed". Check them against the installed version.
+## Contents
+
+- CI Artifacts and Duration
+- Stability Gate for New or Changed Tests
+- Helpers That Bypass Actionability
+- Flake Triage
+- Tests Written Ahead of Features
+- Smoke Tests That Gate a Rollback
+- Secrets in Artifacts
 
 ## CI Artifacts and Duration
 
 Set these up with the first CI e2e job. A flake with no record of the failing attempt costs
 rounds of guessing.
 
-- **Keep a trace of every failed attempt.** The SKILL.md config uses `retain-on-failure`. The
-  modes that matter here:
+- **Keep a trace of every failed attempt:** `trace: 'retain-on-failure'`. The modes that matter
+  here:
 
   | Mode                      | Records            | Keeps                      |
   | ------------------------- | ------------------ | -------------------------- |
@@ -48,7 +52,7 @@ rounds of guessing.
 One green run proves little. Before opening a PR that adds or changes a browser test:
 
 ```bash
-taskset -c 0,1 npx playwright test tests/cart.spec.ts --repeat-each=5 --retries=0
+taskset -c 0,1 npx playwright test tests/cart.spec.ts --repeat-each=5 --retries=0 --workers=2
 ```
 
 - **Every project,** WebKit and phone profiles included. Timing bugs show first on the slower
@@ -130,11 +134,10 @@ release.
   redirected host. Derive expectations from live responses, and allowlist a host only after a
   real run has shown it.
 - **Separate "smoke infrastructure failed" from "release failed".** A stalled browser install,
-  runner network loss or harness crash must not roll back. Install timeouts and retries are in
-  [autonomous-loops](../../autonomous-loops/SKILL.md).
-- **Pair every "absent" assertion with an existence check** (SKILL.md Common Pitfalls).
-- Ordering a check change against the behaviour change it checks is release policy:
-  [agent-orchestration](../../agent-orchestration/SKILL.md).
+  runner network loss or harness crash must not roll back; give the install a timeout and a
+  retry.
+- **Anchor every absence assertion:** first assert something the same render shows. An
+  absence check alone also passes before the page renders and after the element is renamed.
 
 ## Secrets in Artifacts
 
@@ -150,22 +153,3 @@ don't say).
   traces) for it. First confirm the scan catches a deliberate leak.
 - **Keep real secrets out of the test build's DOM and URLs** where possible. Redaction is the
   second line of defence.
-
-## Parallel Agents on One Host
-
-Several agents or checkouts running suites on one machine interfere in ways that look like
-flakes.
-
-- **A port per agent, from an environment variable** (the SKILL.md config reads `E2E_PORT`).
-  With a shared port, `reuseExistingServer` silently tests another checkout's build.
-- **An output directory per run:** `--output <dir>`, plus `PLAYWRIGHT_HTML_OUTPUT_DIR` for the
-  report. Playwright cleans `outputDir` at the start of a run, so two runs sharing it delete
-  each other's artifacts.
-- **Keep test output outside lint, typecheck and format globs,** or add it to their ignore
-  files once.
-- **Cap workers per run** (`--workers=2`). The default is half the logical cores per run, so
-  concurrent suites oversubscribe the host. Cap concurrent browser suites by CPU count.
-- **A run whose server died or was killed is invalid, not failed.** Rerun it and report it
-  apart from real failures.
-- `TMPDIR` on disk, stopping servers by PID and the other shared-machine rules are in the
-  standing block of [agent-briefs](../../agent-briefs/SKILL.md).
