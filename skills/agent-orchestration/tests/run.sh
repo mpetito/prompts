@@ -571,6 +571,18 @@ printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"waiting
 (cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c permission prompt: ' || fail "thread.sh check did not report a blocked thread: $(cat "$tmp/check.out")"
 printf '[{"sessionId":"%s-0000","name":"t-c","state":"working","status":"busy","waitingFor":null}]' "$idc" > "$MOCK_DIR/agents.json"
 [ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a working thread"
+# state decides, not status; a blocked session with no waitingFor still says blocked.
+printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"idle"}]' "$idc" > "$MOCK_DIR/agents.json"
+(cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c blocked: ' || fail "thread.sh check missed a blocked, idle thread with no waitingFor: $(cat "$tmp/check.out")"
+printf '[{"sessionId":"%s-0000","name":"t-c","state":"blocked","status":"waiting","waitingFor":null}]' "$idc" > "$MOCK_DIR/agents.json"
+(cd "$tmp/plain" && "$thread" check --all) | tee "$tmp/check.out" | grep -q '^BLOCKED t-c blocked: ' || fail "thread.sh check mishandled a null waitingFor: $(cat "$tmp/check.out")"
+printf '[{"sessionId":"%s-0000","name":"t-c","state":"working","status":"waiting","waitingFor":"input needed"}]' "$idc" > "$MOCK_DIR/agents.json"
+[ "$(cd "$tmp/plain" && "$thread" check --all)" = OK ] || fail "thread.sh check reported a working thread whose status is waiting"
+# Output that is not a JSON array reports nothing.
+for bad in 'not json' '{"sessionId":"x","state":"blocked"}'; do
+  printf '%s' "$bad" > "$MOCK_DIR/agents.json"
+  [ "$(cd "$tmp/plain" && "$thread" check --all 2>/dev/null)" = OK ] || fail "thread.sh check did not print OK when claude agents printed: $bad"
+done
 # A local git identity that differs from the global one is reported once per repository; an equal one is not.
 printf '[user]\n\temail = owner@example.com\n' > "$HOME/.gitconfig"
 git -C "$app" config user.email test@example.com

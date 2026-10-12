@@ -78,9 +78,9 @@ archive_ignored() {
   # archive_ignored <worktree> <destination> <path prefix to leave out>: copy the files git ignores in <worktree>
   # to <destination>/ignored/<path>, printing "archived ignored <path> to <destination>/ignored" on stdout for
   # each. Dependency and cache folders are rebuilt from the lockfiles, and the caller archives the prefix itself,
-  # so both stay behind. git status leaves ignored files out and a forced worktree removal deletes them, so when
-  # git can't list them or a copy fails this fails with a refusal on stderr (its last line) that promises the
-  # caller removes nothing.
+  # so both stay behind. git status leaves ignored files out and a forced worktree removal deletes them, so this
+  # fails when git can't list them or a copy fails, and the caller must then remove nothing. The last stderr line
+  # is the reason: a refusal saying nothing was removed when the listing fails, cp's own message when a copy fails.
   local wt=$1 dest=$2 prefix=$3 listing entry path
   local skip='(^|/)(node_modules|\.venv|venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.terraform|cdk\.out[^/]*|\.next|\.turbo|\.cache|dist|build|target)/?$'
   listing=$(mktemp)
