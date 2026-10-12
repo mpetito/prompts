@@ -612,11 +612,18 @@ sed -i "s#^CHECKOUT: .*#CHECKOUT: $tmp/proj/solo#" "$wtc/.orchestration/thread.m
 # t-c's branch still holds the CLASH commit that integrate refused, so close refuses too.
 "$thread" close t-c | grep -q '^FAILED orchestration/c holds work that feat-x lacks in: CLASH.md' || fail "thread.sh closed a build with unlanded work"
 [ -d "$wtc" ] || fail "thread.sh close removed a worktree it refused to close"
+# Files git ignores in the coordination worktree are evidence too, except dependency folders.
+printf '.eval-runs/\n.claude/agent-memory/\nnode_modules/\n' >> "$app/.git/info/exclude"
+mkdir -p "$wtc/.eval-runs/r1" "$wtc/.claude/agent-memory" "$wtc/node_modules/x"
+printf 'run\n' > "$wtc/.eval-runs/r1/out.md"; printf 'memory\n' > "$wtc/.claude/agent-memory/x.md"; printf 'dep\n' > "$wtc/node_modules/x/i.js"
 idc=$(awk -F'\t' '$1=="t-c" {print $2}' "$ORCHESTRATION_HOME/threads.tsv")
 out=$("$thread" close t-c --force)
 [[ $out =~ ^CLOSED\ c\ archive=$ORCHESTRATION_HOME/archive/c-[0-9T]+Z\ lanes\ still\ present:\ .*app-wt-l1 ]] || fail "thread.sh close printed: $out"
 arch=${out#*archive=}; arch=${arch%% *}
 [ -f "$arch/thread.md" ] && [ -f "$arch/outbox.md" ] || fail "thread.sh close did not archive .orchestration"
+[ -f "$arch/ignored/.eval-runs/r1/out.md" ] && [ -f "$arch/ignored/.claude/agent-memory/x.md" ] || fail "thread.sh close did not archive the ignored files"
+[ -e "$arch/ignored/node_modules" ] && fail "thread.sh close archived node_modules"
+[ -e "$arch/ignored/.orchestration" ] && fail "thread.sh close archived .orchestration twice"
 [ ! -e "$wtc" ] && ! git -C "$app" rev-parse --verify -q orchestration/c >/dev/null || fail "thread.sh close left the worktree or the branch"
 grep -q '^t-c	' "$ORCHESTRATION_HOME/threads.tsv" && fail "thread.sh close left the registry row"
 grep -q "stop $idc" "$MOCK_DIR/claude.log" && grep -q "rm $idc" "$MOCK_DIR/claude.log" || fail "thread.sh close did not stop and remove the session"
@@ -629,6 +636,12 @@ wtd="$tmp/proj/app-orch-d"
 # A build the registry no longer lists closes by its worktree, with the base given.
 git -C "$app" worktree add -q -b orchestration/z "$tmp/proj/app-orch-z" main
 "$thread" close --worktree "$tmp/proj/app-orch-z" | tee "$tmp/z.out" | grep -q '^FAILED no record of .* base; pass --base' || fail "thread.sh closed an unrecorded build without a base: $(cat "$tmp/z.out")"
+# When git can't list the ignored files, close keeps the worktree.
+idx="$(git -C "$tmp/proj/app-orch-z" rev-parse --absolute-git-dir)/index"; cp "$idx" "$tmp/z.index.bak"; printf 'corrupt' > "$idx"
+out=$("$thread" close --worktree "$tmp/proj/app-orch-z" --base main --force || true)
+[[ $out =~ ^FAILED\ refusing:\ git\ status\ failed\ in\ .*app-orch-z.*nothing\ was\ removed\ \(archive\ at\ [^$'\n']*\)$ ]] || fail "thread.sh close carried on, or printed more than one line, when git status failed: $out"
+[ -d "$tmp/proj/app-orch-z" ] || fail "thread.sh close removed a worktree it could not list"
+cp "$tmp/z.index.bak" "$idx"
 "$thread" close --worktree "$tmp/proj/app-orch-z" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
 "$thread" close --worktree "$app" | grep -q 'is on .*, not orchestration/<build>' || fail "thread.sh closed a checkout that is not a coordination worktree"
 "$thread" close t-nope | grep -q '^FAILED no thread named t-nope' || fail "thread.sh closed an unknown thread"

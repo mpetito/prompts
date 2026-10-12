@@ -15,8 +15,9 @@
 # STOPPED <name> <id>, ROTATED <old> -> <new> <id>, ADOPTED <name> main=<name> socket=<address>,
 # INTEGRATED <name> <branch>@<sha> (fast-forward|merge), CLOSED <build> archive=<dir>, or FAILED <reason> with
 # exit 1. close ends a build: it refuses while the build branch holds work the base lacks, archives
-# .orchestration/ under $ORCHESTRATION_HOME/archive/, and removes the worktree, branch and session. check prints MOVED and
-# INBOX lines, or OK; list and decisions print one line per thread or item, or NONE.
+# .orchestration/ under $ORCHESTRATION_HOME/archive/<build>-<stamp>/ and the worktree's other ignored files (not
+# dependency or cache folders) under its ignored/, and removes the worktree, branch and session. check prints MOVED
+# and INBOX lines, or OK; list and decisions print one line per thread or item, or NONE.
 # The base defaults to the checkout's current branch. Landing is pr when the base is on origin with nothing
 # unpushed, else local: lanes merge into orchestration/<build>, and integrate brings that branch into the base.
 # Each thread's .orchestration/thread.md records MAIN's name and socket ($CLAUDE_CODE_MESSAGING_SOCKET), the
@@ -32,7 +33,7 @@ resume_max_age_minutes=15
 home=${ORCHESTRATION_HOME:-$HOME/.orchestration}
 reg="$home/threads.tsv"
 fail() { echo "FAILED $*"; exit 1; }
-usage() { sed -n '2,26p' "$0" >&2; exit 1; }
+usage() { sed -n '2,27p' "$0" >&2; exit 1; }
 ensure_registry() {
   mkdir -p "$home"
   [ -f "$reg" ] || printf 'name\tid\tbuild\trepo\tworktree\tmain\tlaunched\n' > "$reg"
@@ -353,6 +354,9 @@ case "$cmd" in
     archive="$home/archive/$build-$(date -u +%Y%m%dT%H%M%SZ)"
     mkdir -p "$archive"
     [ ! -d "$wt/.orchestration" ] || cp -a "$wt/.orchestration/." "$archive/"
+    # The forced removal deletes what git ignores (eval runs, agent memory), so archive it first. stdout carries
+    # only the CLOSED or FAILED line, so the per-file lines and git's own diagnostics are dropped.
+    reason=$(archive_ignored "$wt" "$archive" .orchestration 2>&1 >/dev/null) || fail "${reason##*$'\n'} (archive at $archive)"
     git -C "$repo" worktree remove --force "$wt" || fail "git worktree remove $wt failed; the archive is at $archive"
     git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
     if [ -n "$id" ] && [ "$id" != pending ]; then claude_env claude rm "$id" >/dev/null 2>&1 || true; fi
