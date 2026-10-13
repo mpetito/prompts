@@ -26,7 +26,8 @@ agents pay that before every command and every edit. By comparison:
   Execution Alias.
 - PowerShell 7 starts in 545 ms.
 
-On Linux, Python starts in about 13 ms and PowerShell in about 150 ms.
+On Linux, Python starts in about 13 ms and PowerShell in about 150 ms. The full measurements, before and after the port, are in
+[performance.md](performance.md).
 
 On 2026-10-13 a two-member model council debated the choice (one Claude on Opus, one Codex on
 GPT-6 Astra). It started split between Python and PowerShell. After one exchange both chose Python,

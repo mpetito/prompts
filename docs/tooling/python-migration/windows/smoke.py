@@ -1,7 +1,7 @@
 """Live smoke test of the Python orchestration scripts with real herdr, Claude and Codex agents (plan.md step 9).
 
     python3 smoke.py [--claude-model <id>] [--codex-model <id>] [--runs <n, default 20>] [--minutes <n, default 20>]
-                     [--skip-codex]
+                     [--skip-codex] [--codex-python <command>]
 
 Run it from a pane inside herdr, with the branch under test checked out in the checkout that ~/.claude links to,
 so the agents run its skills and hooks. It builds a throwaway repository and a separate ORCHESTRATION_HOME under a
@@ -17,6 +17,8 @@ relative), finish-closed (it retires both lanes once their panes close), rotate,
 <runs> runs as Claude Code starts the agents' exec-form hooks: python3 -c, no shell, under 700 ms), close, cleanup
 (no agent, worktree, branch or registry row of the build is left). Then it exits 1 if any item failed.
 
+--codex-python names the interpreter the Codex lane's mail command runs (default python3); on Windows, where the
+unelevated sandbox can't launch the Store's python3 alias, python.org's python.
 --skip-codex runs the Claude lane alone, for a machine where Codex's sandbox can't run commands.
 
 Agents can stall on a startup or permission prompt: the script says which pane to answer and keeps waiting, up to
@@ -40,7 +42,7 @@ SCRIPTS = SKILLS / "agent-orchestration" / "scripts"
 HOOKS = SKILLS / "agent-orchestration" / "hooks"
 THREAD = SKILLS / "orchestration-main" / "scripts" / "thread.py"
 # How a skill tells an agent to run a script: the interpreter named and a path every shell expands.
-INVOKE = 'python3 "$HOME/.claude/skills/agent-orchestration/scripts/{}.py"'
+INVOKE = '{python} "$HOME/.claude/skills/agent-orchestration/scripts/{name}.py"'
 
 failed = False
 
@@ -142,7 +144,7 @@ def preflight():
 
 
 def thread_brief(build, checkout):
-    send = INVOKE.format("mail") + f" send {build}/main --from {build}/thread"
+    send = INVOKE.format(python="python3", name="mail") + f" send {build}/main --from {build}/thread"
     return f"""This is a smoke test of the orchestration scripts, not a build. Do only the steps below, in order, then
 stop and wait: no mail wait, no lanes, no state file.
 
@@ -153,9 +155,10 @@ stop and wait: no mail wait, no lanes, no state file.
 """
 
 
-def lane_brief(build, lane, kind, checkout, home):
+def lane_brief(build, lane, kind, checkout, home, codex_python="python3"):
     home_opt = f" --home {Path(home).as_posix()}" if kind == "codex" else ""
-    send = INVOKE.format("mail") + f" send {build}/thread{home_opt} --from {build}/{lane}"
+    python = codex_python if kind == "codex" else "python3"
+    send = INVOKE.format(python=python, name="mail") + f" send {build}/thread{home_opt} --from {build}/{lane}"
     guard = (f"2. Use your file-writing tool to create {Path(checkout, 'smoke-lane-guard.txt').as_posix()} with the "
              "text x. A hook is expected to refuse it; do not retry or work around a refusal.\n" if kind == "claude"
              else "2. (Nothing to do in this step.)\n")
@@ -218,7 +221,7 @@ def smoke(a, root, build, home):
         wt = root / f"smoke-repo-wt-{lane}"
         git(coord, "worktree", "add", "-q", "-b", f"lane/{lane}", wt, f"orchestration/{build}")
         lb = root / f"brief-{lane}.md"
-        lb.write_text(lane_brief(build, lane, kind, checkout, home), encoding="utf-8")
+        lb.write_text(lane_brief(build, lane, kind, checkout, home, a.codex_python), encoding="utf-8")
         code, line, err = script("lane", build, lane, wt, lb, "--kind", kind, "--model", model, timeout=300)
         report(f"lane-start:{lane}", line.startswith(("LANE", "BLOCKED")), line or err)
         name = f"{build}-{lane}"
@@ -288,6 +291,7 @@ def main(argv):
     p.add_argument("--runs", type=int, default=20)
     p.add_argument("--minutes", type=int, default=20)
     p.add_argument("--skip-codex", action="store_true")
+    p.add_argument("--codex-python", default="python3")
     a = p.parse_args(argv)
     if not preflight():
         return 1

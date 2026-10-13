@@ -1,7 +1,8 @@
 """Probe what phase 1 of the Python migration assumes about Windows (plan.md step 0), before it lands.
 
     python3 probe.py <evidence dir> [--codex-model <id>] [--claude-model <id>] [--runs <n, default 20>]
-                     [--codex-windows-sandbox elevated|unelevated]
+                     [--codex-windows-sandbox elevated|unelevated] [--codex-python <command or path>]
+                     [--codex-drop-path <text>] [--only codex]
 
 Run it from PowerShell on the owner's Windows machine; it also runs on Linux, which checks the script itself.
 Prints one line per check, then exits 1 if any check failed:
@@ -19,7 +20,10 @@ Checks:
   hook-cost       median milliseconds of <runs> spawns of an empty hook along each chain Claude Code uses: shell
                   form through bash -c (Git Bash on Windows), exec form spawned directly, for python3 and python
 
---codex-windows-sandbox overrides the [windows] sandbox setting for the codex check alone, with a -c option, so a
+--codex-python picks the interpreter the sandboxed shell runs (default python3), and --codex-drop-path removes the
+PATH entries containing its text from codex's environment: codex runs pwsh when PATH has it, and on the owner's
+machine that is the Store build in WindowsApps, which the unelevated sandbox can't launch. --only codex runs that
+check alone. --codex-windows-sandbox overrides the [windows] sandbox setting for the codex check alone, with a -c option, so a
 mode can be tried without editing the owner's Codex config.
 
 Each model call is one short, mechanically checked task. Evidence (command lines, outputs, the settings file) goes
@@ -29,6 +33,7 @@ import argparse
 import json
 import os
 import platform
+import re
 import shutil
 import statistics
 import subprocess
@@ -95,27 +100,54 @@ def interpreters(evidence):
     return found
 
 
-def codex_sandbox(evidence, model, windows_sandbox=None):
-    codex = shutil.which("codex")
+def codex_sandbox(evidence, model, windows_sandbox=None, python="python3", drop_path=None):
+    """Ask codex to run python inside its workspace-write sandbox and write sys.executable into an --add-dir folder.
+
+    python is the command the sandboxed shell runs: a name on PATH, or a full path. drop_path removes every PATH
+    entry containing that text (case-insensitive) from codex's environment, so a shell or interpreter found there,
+    such as the Store's pwsh and python3 aliases in WindowsApps, is out of reach. Reports which shell codex launched
+    and which interpreter wrote the file."""
+    env = dict(os.environ)
+    if drop_path:
+        env["PATH"] = os.pathsep.join(d for d in env["PATH"].split(os.pathsep) if drop_path.lower() not in d.lower())
+    codex = shutil.which("codex", path=env["PATH"])
     if not codex:
         return report("codex-sandbox", False, "codex is not on PATH")
     mail = Path.home() / f".orchestration-probe-{os.getpid()}" / "mail"
     mail.mkdir(parents=True)
     work = Path(tempfile.mkdtemp(prefix="probe-work-"))
     target = mail / "probe"
-    command = f"python3 -c \"import pathlib,sys; pathlib.Path(sys.argv[1]).write_text('ok')\" {target.as_posix()}"
+    # Codex's shell is PowerShell on Windows, where a quoted full path needs the call operator, and bash elsewhere.
+    is_path = "/" in python or "\\" in python
+    launch = (f"& '{python}'" if os.name == "nt" else f"'{python}'") if is_path else python
+    command = (f"{launch} -c \"import pathlib,sys; pathlib.Path(sys.argv[1]).write_text(sys.executable)\" "
+               f"{target.as_posix()}")
     try:
         # The owner's own config, as a lane runs: on Windows, workspace-write needs its [windows] sandbox setting, and
         # --ignore-user-config would drop it and fall back to read-only.
         override = ["-c", f'windows.sandbox="{windows_sandbox}"'] if windows_sandbox else []
-        r = spawn([codex, "exec", "--skip-git-repo-check", "-m", model, *override,
-                   "-c", 'sandbox_mode="workspace-write"', "--add-dir", str(mail), "-C", str(work),
-                   f"Run exactly this shell command once, then reply DONE: {command}"], evidence, "codex-sandbox",
-                  cwd=work)
-        header = next((l for l in (r.stderr if r else "").splitlines() if l.startswith("sandbox:")), "")
-        wrote = target.is_file() and target.read_text() == "ok"
-        report("codex-sandbox", bool(r) and "workspace-write" in header and wrote,
-               f"launcher={Path(codex).name} windows_sandbox={windows_sandbox or 'config'} exit={r.returncode if r else 'none'} header={header!r} wrote={wrote}")
+        args = [codex, "exec", "--skip-git-repo-check", "-m", model, *override, "-c", 'sandbox_mode="workspace-write"',
+                "--add-dir", str(mail), "-C", str(work),
+                f"Run exactly this shell command once, then reply DONE: {command}"]
+        (evidence / "codex-sandbox.cmd.txt").write_text(json.dumps(args, indent=1), encoding="utf-8")
+        try:
+            r = subprocess.run(args, stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", cwd=work, env=env, timeout=300)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return report("codex-sandbox", False, f"codex did not run: {e!r}")
+        (evidence / "codex-sandbox.out.txt").write_text(r.stdout, encoding="utf-8")
+        (evidence / "codex-sandbox.err.txt").write_text(r.stderr, encoding="utf-8")
+        lines = r.stderr.splitlines()
+        header = next((l for l in lines if l.startswith("sandbox:")), "")
+        # Codex logs each command as "exec", then the shell and its arguments on the next line.
+        shell = next((re.match(r'\s*(?:"([^"]+)"|(\S+))', lines[i + 1]).group(1, 2) for i, l in enumerate(lines[:-1])
+                      if l.strip() == "exec" and lines[i + 1].strip()), ("unknown", None))
+        shell = shell[0] or shell[1]
+        wrote = target.read_text(encoding="utf-8") if target.is_file() else ""
+        report("codex-sandbox", "workspace-write" in header and bool(wrote),
+               f"launcher={Path(codex).name} windows_sandbox={windows_sandbox or 'config'} python={python} "
+               f"drop_path={drop_path or 'none'} shell={shell} exit={r.returncode} header={header!r} "
+               f"wrote_by={wrote or 'nothing'}")
     finally:
         shutil.rmtree(mail.parent, ignore_errors=True)
         shutil.rmtree(work, ignore_errors=True)
@@ -180,13 +212,19 @@ def main(argv):
     p.add_argument("--claude-model", default="opus")
     p.add_argument("--runs", type=int, default=20)
     p.add_argument("--codex-windows-sandbox", choices=("elevated", "unelevated"))
+    p.add_argument("--codex-python", default="python3")
+    p.add_argument("--codex-drop-path")
+    p.add_argument("--only", choices=("codex",), help="run only this check")
     a = p.parse_args(argv)
     evidence = Path(a.evidence).resolve()
     evidence.mkdir(parents=True, exist_ok=True)
     (evidence / "probe_hook.py").write_text(HOOK, encoding="utf-8")
     print(f"PROBE host {platform.platform()} python={sys.version.split()[0]} evidence={evidence.as_posix()}")
+    if a.only == "codex":
+        codex_sandbox(evidence, a.codex_model, a.codex_windows_sandbox, a.codex_python, a.codex_drop_path)
+        return 1 if failed else 0
     found = interpreters(evidence)
-    codex_sandbox(evidence, a.codex_model, a.codex_windows_sandbox)
+    codex_sandbox(evidence, a.codex_model, a.codex_windows_sandbox, a.codex_python, a.codex_drop_path)
     hook_fires(evidence, a.claude_model, found.get("python3"))
     hook_cost(evidence, a.runs, found)
     return 1 if failed else 0

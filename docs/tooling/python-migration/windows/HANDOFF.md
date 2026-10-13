@@ -10,7 +10,7 @@ Standing rules:
 - Commit only the results files named below, and push only branch `py/orchestration`.
 - Never write a project name, session id or pull request link into tracked files.
 
-## Step 0: probe (now)
+## Step 0: probe (done)
 
 The probe checks three things before phase 1 is ported:
 - that `python3` runs inside a Codex sandbox and can write a mail folder;
@@ -47,7 +47,7 @@ What the Linux session does with each result:
   bash plus Python.
 - **The `hook-cost` lines:** they set what the 700 ms hook bound has to absorb.
 
-## Step 0, second run: the Codex sandbox (now)
+## Step 0, second run: the Codex sandbox (done)
 
 The first run is recorded in `results/probe.md`. codex-sandbox failed: with the owner's config, every command in
 the sandbox failed with `setup refresh had errors`. The sandbox log blamed `node_repl.exe` files that the running
@@ -68,7 +68,7 @@ Codex desktop app held open. The owner chose to test that explanation:
 If codex-sandbox passes, go on to step 9 with the Codex app still closed. If it fails, stop and report: the
 Linux session takes it to the owner.
 
-## Step 0, third run: the unelevated sandbox (now)
+## Step 0, third run: the unelevated sandbox (done)
 
 The second run (`results/probe.md`) confirmed a known Codex bug, openai/codex#52488. With
 `[windows] sandbox = "elevated"`, setup fails with os error 32, and no command runs, whether the desktop app is open
@@ -88,7 +88,51 @@ rules. The owner chose to test it without editing their config:
      yourself. If the owner switches it, run step 9 in full. If not, run step 9 with `--skip-codex`.
    - **codex-sandbox fails:** run step 9 with `--skip-codex`.
 
-## Step 9: smoke test
+## Codex lanes on Windows: PowerShell 7 from the MSI, and python.org's python (now)
+
+The third probe showed that the unelevated sandbox gets through setup but can't launch Codex's shell. Codex runs
+every command in `pwsh` when PATH has it, falling back to Windows PowerShell 5.1, and offers no setting for the shell
+(openai/codex#49716, #53160). On this machine `pwsh` is the Microsoft Store build, and the sandbox refuses to launch
+it (`CreateProcessAsUserW ... Access is denied`). `python3` is also a Store alias here, while `python` is a
+python.org install.
+
+The owner chose to install PowerShell 7's MSI build, which isn't Store-packaged, and to have Codex lanes on Windows
+run python.org's `python`. The question is whether the unelevated sandbox runs commands with both. Don't edit
+`~/.codex/config.toml` or PATH yourself.
+
+1. **Install PowerShell 7 from the MSI.** The owner approved it:
+   `winget install --id Microsoft.PowerShell --source winget`. The owner answers the UAC prompt. Leave the Store
+   build installed.
+2. **Check which `pwsh` comes first.** In a new PowerShell window, so PATH is refreshed, record
+   `(Get-Command pwsh -All).Source`. The first entry should be `C:\Program Files\PowerShell\7\pwsh.exe`. If the
+   WindowsApps alias still comes first, Codex would keep picking the Store build. Run probe A once more with
+   `--codex-drop-path WindowsApps` as a diagnostic, which hides the Store aliases from codex alone, then stop and
+   report.
+3. **Pull the branch, then run the probe three times from that window.** The probe now takes `--codex-python`,
+   `--codex-drop-path` and `--only codex`, and reports which shell codex launched and which interpreter wrote the
+   file:
+   - (A) The target setup:
+     `python3 docs\tooling\python-migration\windows\probe.py $env:TEMP\py-probe-4a --only codex --codex-windows-sandbox unelevated --codex-python python`
+   - (B) Whether the Store `python3` alias can run in the sandbox. Same as A, with `--codex-python python3` and
+     `py-probe-4b`.
+   - (C) Whether the elevated sandbox now works. Same as A, with `--codex-windows-sandbox elevated` and
+     `py-probe-4c`.
+4. **Record the results.** Append a "Fourth run" section to `results/probe.md` with:
+   - the `pwsh` list from step 2;
+   - the three `PROBE codex-sandbox` lines, verbatim;
+   - for each failure, the matching `codex-sandbox.err.txt` lines.
+
+   Commit, then pull with rebase and push.
+5. **Then:**
+   - **A or C passes:** a lane uses the owner's config, so ask the owner whether to set `[windows] sandbox` to the
+     mode that passed. If C passed, the owner's current `elevated` may already be right. Once the config holds a
+     passing mode, run the smoke test with the Codex lane:
+     `python3 docs\tooling\python-migration\windows\smoke.py --codex-python python`. Do this from %TEMP%, with the
+     branch checked out in `D:\prompts` as before, and record it as "Second run, with Codex" in
+     `results/smoke.md`.
+   - **A and C both fail:** stop and report.
+
+## Step 9: smoke test (done without Codex)
 
 `smoke.py` runs one throwaway build with real agents and real herdr: a thread, a Claude lane and a Codex lane. Along
 the way it checks:
