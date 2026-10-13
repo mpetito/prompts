@@ -68,6 +68,26 @@ Codex desktop app held open. The owner chose to test that explanation:
 If codex-sandbox passes, go on to step 9 with the Codex app still closed. If it fails, stop and report: the
 Linux session takes it to the owner.
 
+## Step 0, third run: the unelevated sandbox (now)
+
+The second run (`results/probe.md`) confirmed a known Codex bug, openai/codex#52488. With
+`[windows] sandbox = "elevated"`, setup fails with os error 32, and no command runs, whether the desktop app is open
+or not. The reported workaround is the `unelevated` sandbox. It uses a restricted token derived from the owner's
+own user instead of a separate sandbox user, and it blocks the network through environment variables, not firewall
+rules. The owner chose to test it without editing their config:
+
+1. Pull the branch. The probe now takes `--codex-windows-sandbox`, which passes a `-c` override for the codex
+   check alone.
+2. From PowerShell, run:
+   `python3 docs\tooling\python-migration\windows\probe.py $env:TEMP\py-probe-3 --codex-windows-sandbox unelevated`
+3. Append a "Third run" section to `results/probe.md`: the `PROBE` lines, verbatim, and, if codex-sandbox fails, the
+   matching `codex-sandbox.err.txt` lines. Commit, then pull with rebase and push.
+4. Then:
+   - **codex-sandbox passes:** ask the owner whether to set `[windows] sandbox = "unelevated"` in
+     `~/.codex/config.toml`. A lane uses the owner's config, so the smoke test's Codex lane needs it. Never edit it
+     yourself. If the owner switches it, run step 9 in full. If not, run step 9 with `--skip-codex`.
+   - **codex-sandbox fails:** run step 9 with `--skip-codex`.
+
 ## Step 9: smoke test
 
 `smoke.py` runs one throwaway build with real agents and real herdr: a thread, a Claude lane and a Codex lane. Along
