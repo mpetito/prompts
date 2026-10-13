@@ -153,8 +153,8 @@ class ArchiveIgnored(OrchTest):
 
     def test_copies_ignored_files_at_their_paths_and_leaves_rebuilt_and_prefix(self):
         lines = lib.archive_ignored(self.wt, self.dest, ".orchestration")
-        self.assertEqual((self.dest / "ignored" / "a.log").read_text(), "a")
-        self.assertEqual((self.dest / "ignored" / "runs" / "r1" / "out.txt").read_text(), "r")
+        self.assertEqual((self.dest / "ignored" / "a.log").read_text(encoding="utf-8"), "a")
+        self.assertEqual((self.dest / "ignored" / "runs" / "r1" / "out.txt").read_text(encoding="utf-8"), "r")
         self.assertFalse((self.dest / "ignored" / "node_modules").exists())
         self.assertFalse((self.dest / "ignored" / ".orchestration").exists())
         self.assertEqual(len(lines), 2)

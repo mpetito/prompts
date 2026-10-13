@@ -146,7 +146,7 @@ class HooksFixture(HookTest):
     def setUp(self):
         super().setUp()
         self.app = self.repo(self.home / "gw" / "app", commit=False)
-        (self.app / "a.txt").write_text("x\n")
+        (self.app / "a.txt").write_text("x\n", encoding="utf-8")
         self.git(self.app, "add", ".")
         self.git(self.app, "commit", "-qm", "init")
         with open(self.app / ".git" / "info" / "exclude", "a") as f:
@@ -158,7 +158,7 @@ class HooksFixture(HookTest):
         self.lane = Path(lib.canon(self.home / "gw" / "app-wt-lane-a"))
         (self.coord / ".orchestration").mkdir()
         (self.coord / "sub").mkdir()
-        (self.coord / ".orchestration" / "state.md").write_text("# state\n")
+        (self.coord / ".orchestration" / "state.md").write_text("# state\n", encoding="utf-8")
         self.record(f"CHECKOUT: {self.app}")
         self.plain = self.tmp / "plain"
         self.plain.mkdir()
@@ -169,7 +169,7 @@ class HooksFixture(HookTest):
         subprocess.run(["git", "-C", str(path), *args], check=True)
 
     def record(self, *lines):
-        (self.coord / ".orchestration" / "thread.md").write_text("\n".join(["# record", "BUILD: b1", *lines]) + "\n")
+        (self.coord / ".orchestration" / "thread.md").write_text("\n".join(["# record", "BUILD: b1", *lines]) + "\n", encoding="utf-8")
 
 
 class GuardWrites(HooksFixture):
@@ -204,15 +204,15 @@ class GuardWrites(HooksFixture):
         orch = self.coord / ".orchestration"
         for gone in ("thread.md", "state.md"):
             with self.subTest(gone=gone):
-                saved = (orch / gone).read_text()
+                saved = (orch / gone).read_text(encoding="utf-8")
                 (orch / gone).unlink()
                 self.assertAdvised(self.writes(self.coord, self.lane / "src" / "app.ts"),
                                    "outside your coordination worktree")
-                (orch / gone).write_text(saved)
+                (orch / gone).write_text(saved, encoding="utf-8")
 
     def test_a_thread_in_the_main_checkout_may_write_it(self):
         (self.app / ".orchestration").mkdir()
-        (self.app / ".orchestration" / "state.md").write_text("# state\n")
+        (self.app / ".orchestration" / "state.md").write_text("# state\n", encoding="utf-8")
         self.assertIsNone(self.writes(self.app, self.app / "a.txt"))
 
     def test_leaves_workers_alone_outside_the_owners_checkout(self):
@@ -274,7 +274,7 @@ class GuardTimestamps(HooksFixture):
     def setUp(self):
         super().setUp()
         self.notes = self.coord / ".orchestration" / "notes.md"
-        self.notes.write_text("state at 10:00Z\n")
+        self.notes.write_text("state at 10:00Z\n", encoding="utf-8")
 
     def edit(self, text, cwd=None, path=None, agent=None):
         payload = {"cwd": lib.native(cwd or self.coord),

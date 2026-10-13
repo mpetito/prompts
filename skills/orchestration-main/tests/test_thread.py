@@ -26,7 +26,7 @@ def git(cwd, *args):
 
 
 def commit(cwd, name, text, message):
-    Path(cwd, name).write_text(text)
+    Path(cwd, name).write_text(text, encoding="utf-8")
     git(cwd, "add", name)
     git(cwd, "commit", "-qm", message)
 
@@ -50,7 +50,7 @@ class ThreadCase(support.OrchTest):
         subprocess.run(["git", "clone", "-q", str(origin), str(self.proj / "app")], check=True, capture_output=True)
         self.app = Path(lib.canon(self.proj / "app"))
         self.brief = self.tmp / "brief-a.md"
-        self.brief.write_text("Build the signup slice.\n")
+        self.brief.write_text("Build the signup slice.\n", encoding="utf-8")
         self.plain = self.tmp / "plain"
         self.plain.mkdir()
         self.orch = Path(os.environ["ORCHESTRATION_HOME"])
@@ -68,7 +68,7 @@ class ThreadCase(support.OrchTest):
 
     def row_of(self, build):
         reg = self.orch / "threads.tsv"
-        lines = reg.read_text().splitlines()[1:] if reg.exists() else []
+        lines = reg.read_text(encoding="utf-8").splitlines()[1:] if reg.exists() else []
         found = [line.split("\t") for line in lines if line.split("\t")[0] == build]
         self.assertLessEqual(len(found), 1, f"two rows for {build}")
         return found[0] if found else None
@@ -79,7 +79,7 @@ class ThreadCase(support.OrchTest):
     def write_state(self, wt, written, later=""):
         """A state file as state.py init writes it, its RESUME stamped written, and later in its Log section."""
         Path(wt, ".orchestration", "state.md").write_text(
-            f"# Orchestration thread: x\n\n## RESUME\n\n{written}\n(nothing yet)\n\n## Lanes\n\n## Log\n{later}")
+            f"# Orchestration thread: x\n\n## RESUME\n\n{written}\n(nothing yet)\n\n## Lanes\n\n## Log\n{later}", encoding="utf-8")
 
     def alias(self, path):
         """path spelled through a symlink to its parent, or, where symlinks need privileges, in native form."""
@@ -102,12 +102,12 @@ class Launch(ThreadCase):
         wta = Path(lib.canon(self.proj / "app-orch-t-a"))
         self.assertEqual(git(wta, "rev-parse", "--abbrev-ref", "HEAD"), "orchestration/t-a")
         self.assertEqual(git(wta, "rev-parse", "HEAD"), git(self.app, "rev-parse", "origin/main"))
-        rec = (wta / ".orchestration" / "thread.md").read_text()
+        rec = (wta / ".orchestration" / "thread.md").read_text(encoding="utf-8")
         fields = re.findall(r"(?m)^[A-Z-]+: (.*)$", rec)[:6]
         self.assertEqual(fields, ["t-a", str(self.app), "main", "origin/main", "origin/main", "pr"])
         self.assertNotRegex(rec, "(?m)^MAIN")
         self.assertNotIn("branch.orchestration/t-a.merge", git(wta, "config", "--list"))
-        self.assertIn(".orchestration/", (self.app / ".git" / "info" / "exclude").read_text().splitlines())
+        self.assertIn(".orchestration/", (self.app / ".git" / "info" / "exclude").read_text(encoding="utf-8").splitlines())
         # One workspace per build, opened at the coordination worktree without taking the owner's focus.
         self.assertIn(f"workspace create --cwd {wta} --label t-a --no-focus --env ORCHESTRATION_HOME={self.orch}",
                       self.herdr.log)
@@ -118,10 +118,10 @@ class Launch(ThreadCase):
         brief = wta / ".orchestration" / "launch-brief.md"
         self.assertEqual(self.herdr.started["t-a"],
                          ["--agent", "orchestrator", f"Read {lib.native(brief)} and follow it."])
-        self.assertEqual(brief.read_text().splitlines()[:3], [
+        self.assertEqual(brief.read_text(encoding="utf-8").splitlines()[:3], [
             "BUILD: t-a", "MAIL: t-a/thread is yours; send MAIN t-a/main",
             f"STATE: {lib.native(wta / '.orchestration' / 'state.md')}"])
-        self.assertIn("Build the signup slice.", brief.read_text())
+        self.assertIn("Build the signup slice.", brief.read_text(encoding="utf-8"))
         # The record reads from inside the new worktree, and .orchestration stays untracked.
         self.write_state(wta, f"Written: {lib.utc_now()}")
         self.assertEqual(lib.thread_field(lib.toplevel(wta), "BUILD"), "t-a")
@@ -169,7 +169,7 @@ class Launch(ThreadCase):
         wtb = self.launch("signup", self.proj / "app-wt-lane-b", "--base", "dev")
         self.assertTrue((wtb / "DEV.md").is_file())
         self.assertIn(f"CHECKOUT: {lib.canon(self.proj / 'app-wt-lane-b')}",
-                      (wtb / ".orchestration" / "thread.md").read_text().splitlines())
+                      (wtb / ".orchestration" / "thread.md").read_text(encoding="utf-8").splitlines())
 
 
 class Running(ThreadCase):
@@ -185,20 +185,20 @@ class Running(ThreadCase):
         next(a for a in self.herdr.agents if a["name"] == "t-a")["agent_status"] = "working"
         self.herdr(["pane", "close", self.pane_of("signup")])
         out = self.out("list").splitlines()
-        self.assertTrue(any(line.startswith(f"t-a status=working workspace={self.wsa} worktree={self.wta} ")
+        self.assertTrue(any(line.startswith(f"t-a status=working workspace={self.wsa} worktree={lib.native(self.wta)} ")
                             for line in out), out)
-        self.assertTrue(any(re.match(f"signup status=not-running workspace=w[0-9]+ worktree={self.wtb} ", line)
+        self.assertTrue(any(re.match(f"signup status=not-running workspace=w[0-9]+ worktree={re.escape(lib.native(self.wtb))} ", line)
                             for line in out), out)
 
     def add_decision(self, wt, what, default, when):
         """An open item as decisions.py add writes it."""
         file = Path(wt, ".orchestration", "decisions.md")
-        text = file.read_text() if file.exists() else "# Decisions\n\n## Open\n\n## Applied\n"
+        text = file.read_text(encoding="utf-8") if file.exists() else "# Decisions\n\n## Open\n\n## Applied\n"
         n = text.count("\n- D") + 1
         tail = "owner-before: waits for the owner" if when == "owner-before" else \
             f"applies at {lib.fmt_utc(lib.to_epoch(when))} unless the owner objects"
         item = f"- D{n} ({lib.utc_now()}) {what} · why now: x · blocks: lane · default: {default} · {tail}\n\n"
-        file.write_text(text.replace("## Applied", item + "## Applied"))
+        file.write_text(text.replace("## Applied", item + "## Applied"), encoding="utf-8")
 
     def test_decisions_put_owner_before_first_then_order_by_deadline(self):
         # The earlier deadline belongs to the thread whose name sorts last, so only the deadline orders them.
@@ -206,7 +206,7 @@ class Running(ThreadCase):
         self.add_decision(self.wtb, "Banner copy", "short copy", "+2h")
         self.add_decision(self.wtb, "Spend 40 USD", "none", "owner-before")
         applied = self.wta / ".orchestration" / "decisions.md"
-        applied.write_text(applied.read_text() + "- D9 (2000-01-01T00:00Z) Done · default: y · owner-before\n")
+        applied.write_text(applied.read_text(encoding="utf-8") + "- D9 (2000-01-01T00:00Z) Done · default: y · owner-before\n", encoding="utf-8")
         out = self.out("decisions").splitlines()
         self.assertEqual(len(out), 3, out)
         self.assertEqual(out[0], "signup D2 Spend 40 USD | default: none | owner-before")
@@ -234,7 +234,7 @@ class Running(ThreadCase):
         brief = self.wta / ".orchestration" / "rotate-brief.md"
         self.assertIn(f"Read {lib.native(brief)} and follow it.", self.herdr.started["t-a"])
         self.assertIn("Resume: read STATE first and continue from its RESUME section without redoing finished work.",
-                      brief.read_text().splitlines())
+                      brief.read_text(encoding="utf-8").splitlines())
         self.assertEqual(self.row_of("t-a")[:4], ["t-a", str(self.app), str(self.wta), self.wsa])
         # The new pane opens before the old one closes, so the build's workspace is never left empty.
         self.assertLess(self.herdr.log.index(tab), self.herdr.log.index(f"pane close {olda}"))
@@ -306,7 +306,7 @@ class FromABranch(ThreadCase):
         self.assertRegex(self.out("launch", "c", self.app, self.brief), f"^LAUNCHED c base=feat-x@{SHA} landing=local$")
         wtc = self.proj / "app-orch-c"
         self.assertEqual(git(wtc, "rev-parse", "HEAD"), git(self.app, "rev-parse", "feat-x"))
-        rec = (wtc / ".orchestration" / "thread.md").read_text().splitlines()
+        rec = (wtc / ".orchestration" / "thread.md").read_text(encoding="utf-8").splitlines()
         self.assertIn("LANE-BASE: orchestration/c", rec)
         self.assertIn("BASE-REF: feat-x", rec)
         self.assertRegex(self.out("launch", "d", self.app, self.brief, "--landing", "pr"),
@@ -346,16 +346,16 @@ class Check(ThreadCase):
         self.launch("s1", solo)
         self.assertEqual(self.out("check", "--all", cwd=self.plain), "OK")
         # A local git identity that differs from the global one is reported once per repository; an equal one is not.
-        Path(os.environ["GIT_CONFIG_GLOBAL"]).write_text("[user]\n\temail = owner@example.com\n")
+        Path(os.environ["GIT_CONFIG_GLOBAL"]).write_text("[user]\n\temail = owner@example.com\n", encoding="utf-8")
         git(self.app, "config", "user.email", "test@example.com")
         out = self.out("check", "--all", cwd=self.plain).splitlines()
         self.assertEqual(len([line for line in out if line.startswith("IDENTITY ")]), 1, out)
         self.assertTrue(out[0].startswith(
-            f"IDENTITY {self.app} user.email=test@example.com (global owner@example.com): "), out)
-        self.assertTrue(self.out("check", cwd=self.app).startswith(f"IDENTITY {self.app} "))
+            f"IDENTITY {lib.native(self.app)} user.email=test@example.com (global owner@example.com): "), out)
+        self.assertTrue(self.out("check", cwd=self.app).startswith(f"IDENTITY {lib.native(self.app)} "))
         self.assertEqual(self.out("check", cwd=solo), "OK")
         git(self.app, "config", "user.name", "tester")
-        self.assertIn(f"IDENTITY {self.app} user.name=tester (global none): ",
+        self.assertIn(f"IDENTITY {lib.native(self.app)} user.name=tester (global none): ",
                       self.out("check", "--all", cwd=self.plain))
         git(self.app, "config", "--unset", "user.name")
         git(self.app, "config", "user.email", "owner@example.com")
@@ -399,7 +399,7 @@ class LocalBuild(ThreadCase):
         self.assertRegex(self.out("integrate", "d"), "^FAILED d lands by pull request")
         solo = self.repo(self.proj / "solo")
         rec = self.wtc / ".orchestration" / "thread.md"
-        rec.write_text(re.sub(r"(?m)^CHECKOUT: .*$", f"CHECKOUT: {solo}", rec.read_text()))
+        rec.write_text(re.sub(r"(?m)^CHECKOUT: .*$", lambda _: f"CHECKOUT: {solo}", rec.read_text(encoding="utf-8")), encoding="utf-8")
         self.assertRegex(self.out("integrate", "c"),
                          f"^FAILED {re.escape(str(solo))} is not a checkout of {re.escape(lib.native(self.app))}")
 
@@ -408,9 +408,9 @@ class LocalBuild(ThreadCase):
         C:/x and C:\\x differ on Windows, still name one repository."""
         git(self.app, "checkout", "-q", "feat-x")
         rec = self.wtc / ".orchestration" / "thread.md"
-        rec.write_text(re.sub(r"(?m)^CHECKOUT: .*$", f"CHECKOUT: {self.alias(self.app)}", rec.read_text()))
+        rec.write_text(re.sub(r"(?m)^CHECKOUT: .*$", lambda _: f"CHECKOUT: {self.alias(self.app)}", rec.read_text(encoding="utf-8")), encoding="utf-8")
         reg = self.orch / "threads.tsv"
-        reg.write_text(reg.read_text().replace(f"c\t{self.app}\t", f"c\t{self.alias(self.app)}\t"))
+        reg.write_text(reg.read_text(encoding="utf-8").replace(f"c\t{self.app}\t", f"c\t{self.alias(self.app)}\t"), encoding="utf-8")
         self.assertRegex(self.out("integrate", "c"), f"^INTEGRATED c feat-x@{SHA} \\(fast-forward\\)$")
 
     def test_close(self):
@@ -426,10 +426,10 @@ class LocalBuild(ThreadCase):
         for rel, text in ((".eval-runs/r1/out.md", "run\n"), (".claude/agent-memory/x.md", "memory\n"),
                           ("node_modules/x/i.js", "dep\n")):
             (self.wtc / rel).parent.mkdir(parents=True, exist_ok=True)
-            (self.wtc / rel).write_text(text)
+            (self.wtc / rel).write_text(text, encoding="utf-8")
         mail = self.orch / "mail" / "c" / "main" / "new"
         mail.mkdir(parents=True)
-        (mail / "1-msg").write_text("From: c/thread\n\nSTATUS: done - c\n")
+        (mail / "1-msg").write_text("From: c/thread\n\nSTATUS: done - c\n", encoding="utf-8")
         panec, wsc = self.pane_of("c"), self.row_of("c")[3]
         git(self.app, "worktree", "add", "-q", "-b", "far", str(self.tmp / "far" / "app-wt-far"))
         out = self.out("close", "c", "--force")
@@ -451,7 +451,7 @@ class LocalBuild(ThreadCase):
         self.assertIn(f"workspace close {wsc}", self.herdr.log)
 
     def test_close_recognises_squash_landed_work(self):
-        (self.wtd / "README.md").write_text("dirty\n")
+        (self.wtd / "README.md").write_text("dirty\n", encoding="utf-8")
         self.assertRegex(self.out("close", "d"), "^FAILED .* has uncommitted changes to tracked files")
         git(self.wtd, "checkout", "-q", "README.md")
         commit(self.wtd, "PLAN.md", "plan\n", "plan")
@@ -470,7 +470,7 @@ class LocalBuild(ThreadCase):
         # When git can't list the ignored files, close keeps the worktree.
         index = Path(git(wtz, "rev-parse", "--absolute-git-dir"), "index")
         saved = index.read_bytes()
-        index.write_text("corrupt")
+        index.write_text("corrupt", encoding="utf-8")
         out = self.out("close", "--worktree", wtz, "--base", "main", "--force")
         self.assertRegex(out, r"^FAILED refusing: git status failed in .*app-orch-z.*nothing was removed "
                               r"\(archive at [^\n]*\)$")
