@@ -179,9 +179,10 @@ own sandbox log which mode ran the member's commands. Don't edit `~/.codex/confi
    `git worktree add -b py/council ..\prompts-council mpetito/py/council` and `cd ..\prompts-council`.
 2. **Close every Codex session:** the desktop app, any `codex` CLI session or herdr lane, and an IDE's
    Codex extension. Confirm with `Get-Process codex*, node_repl -ErrorAction SilentlyContinue`, which
-   should print nothing. They all write `%USERPROFILE%\.codex\.sandbox\sandbox.<date>.log`, the log the
-   round reads, so the round's preflight refuses to start while any `codex*` process runs, and
-   sandbox-mode fails if one appears during the round.
+   should print only `codex-windows-sandbox-service`: that is Codex's sandbox service, which is expected
+   to keep running, so leave it. Every other session writes `%USERPROFILE%\.codex\.sandbox\sandbox.<date>.log`,
+   the log the round reads, so the round's preflight refuses to start while any other `codex*` process
+   runs, and sandbox-mode fails if one appears during the round.
 3. **Run the round from PowerShell 7's MSI build,** in a new window, so a non-Store `pwsh` comes first
    on PATH as in the fourth probe run:
    `python3 docs\tooling\python-migration\windows\council_round.py`. It makes one Codex call and one

@@ -56,6 +56,9 @@ import codex_member  # noqa: E402
 import run as spawn  # noqa: E402  (codex_member's spawn helper)
 
 WINDOWS = os.name == "nt"
+# Codex's sandbox service (the [[bin]] of codex-rs/windows-sandbox-service): a Windows service that runs with every
+# session closed, so it is no other session.
+SANDBOX_SERVICE = "codex-windows-sandbox-service.exe"
 # The Codex release whose source the sandbox-log rule was read from.
 LOG_RULE_VERSION = "0.162.1"
 
@@ -177,12 +180,13 @@ def log_lines_since(before):
 
 
 def codex_processes():
-    """'<image> (<pid>)' for each running Codex process on Windows, any image named codex*: the CLI, the desktop app
-    and their sandbox helpers. Empty elsewhere, where Codex keeps no shared sandbox log."""
+    """'<image> (<pid>)' for each running Codex process on Windows, any image named codex* but the sandbox service:
+    the CLI, the desktop app and their sandbox helpers. Empty elsewhere, where Codex keeps no shared sandbox log."""
     if not WINDOWS:
         return []
     rows = csv.reader(run(["tasklist", "/FO", "CSV", "/NH"])[1].splitlines())
-    return [f"{r[0]} ({r[1]})" for r in rows if len(r) > 1 and r[0].lower().startswith("codex")]
+    return [f"{r[0]} ({r[1]})" for r in rows
+            if len(r) > 1 and r[0].lower().startswith("codex") and r[0].lower() != SANDBOX_SERVICE]
 
 
 def council_round(a, repo, out):
