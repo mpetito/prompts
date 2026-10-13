@@ -25,7 +25,7 @@ try {
         Set-Content -LiteralPath (Join-Path $fixture "skills/$name/data.txt") -Value 'source'
     }
     Set-Content -LiteralPath (Join-Path $fixture 'instructions/CLAUDE.md') -Value 'instructions'
-    Set-Content -LiteralPath (Join-Path $fixture 'statusline/statusline.js') -Value '// script'
+    Set-Content -LiteralPath (Join-Path $fixture 'statusline/statusline.py') -Value '# script'
     $setup = Join-Path $fixture 'setup-skills-link.ps1'
     $verify = Join-Path $fixture 'verify-setup.ps1'
     $paths = Get-SetupPaths -HomeDirectory $destination
@@ -40,6 +40,23 @@ try {
     & $setup -Tools codex,claude,opencode,copilot -HomeDirectory $destination 6>$null
     Assert (@(Get-ChildItem -LiteralPath $destination -Recurse -Force).Count -eq $initialCount) 'Reruns must not add files or backups.'
     Assert (Test-RepoLink (Join-Path $paths.SharedSkills 'pr-scripts') (Join-Path $fixture 'skills/pr-scripts')) 'Sibling helper directories must be linked.'
+
+    Assert (Test-RepoLink (Join-Path $paths.ClaudeRoot 'statusline.py') (Join-Path $fixture 'statusline/statusline.py')) 'Claude must link the Python status line.'
+    $retired = Join-Path $paths.ClaudeRoot 'statusline.js'
+    $null = New-Item -ItemType SymbolicLink -Path $retired -Target (Join-Path $fixture 'statusline/statusline.js')
+    & $verify -Tools claude -HomeDirectory $destination 3>$null 6>$null
+    Assert ($null -ne (Get-Item -LiteralPath $retired -Force -ErrorAction SilentlyContinue)) 'Verification must never remove the retired status line link.'
+    & $setup -Tools claude -HomeDirectory $destination -WhatIf 6>$null
+    Assert ($null -ne (Get-Item -LiteralPath $retired -Force -ErrorAction SilentlyContinue)) 'WhatIf must not remove the retired status line link.'
+    & $setup -Tools claude -HomeDirectory $destination 6>$null
+    Assert ($null -eq (Get-Item -LiteralPath $retired -Force -ErrorAction SilentlyContinue)) 'Setup must remove the retired status line link into this checkout.'
+    foreach ($kind in 'real file', 'link elsewhere') {
+        if ($kind -eq 'real file') { Set-Content -LiteralPath $retired -Value 'mine' }
+        else { $null = New-Item -ItemType SymbolicLink -Path $retired -Target (Join-Path $testRoot 'other/statusline.js') }
+        & $setup -Tools claude -HomeDirectory $destination 6>$null
+        Assert ($null -ne (Get-Item -LiteralPath $retired -Force -ErrorAction SilentlyContinue)) "A statusline.js that is a $kind must be left alone."
+        Remove-Item -LiteralPath $retired -Force
+    }
 
     $source = Join-Path $fixture 'skills/example'
     $link = Join-Path $paths.SharedSkills 'example'
@@ -105,5 +122,5 @@ try {
         Assert (-not (Test-SamePath (Join-Path $testRoot 'Case') (Join-Path $testRoot 'case'))) 'Unix comparisons must be case sensitive.'
     }
     Expect-Failure { & $setup -Tools unknown -HomeDirectory $destination } 'Unknown tool'
-    Write-Output 'PASS: selections, previews, reruns, relative and broken links, conflicts, backups, migration, and verification.'
+    Write-Output 'PASS: selections, previews, reruns, relative and broken links, conflicts, backups, migration, the retired status line link, and verification.'
 } finally { Remove-Item -LiteralPath $testRoot -Recurse -Force }

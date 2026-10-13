@@ -8,8 +8,10 @@ the repository looks like, which model is answering, and how much of the context
    cwd            repo             branch + git state      model + effort    context
 ```
 
-`statusline.js` reads the session JSON on stdin and prints that one line. Claude Code re-runs it
-on every render, so it has to be fast and it has to exit — both are load-bearing, see below.
+`statusline.py` reads the session JSON on stdin and prints that one line. Claude Code re-runs it
+on every render, so it has to be fast and it has to exit — both are load-bearing, see below. It
+needs Python 3.12 or later and the standard library only. Its tests run with
+`python3 -m unittest discover -s statusline/tests -t statusline` from the repository root.
 
 ## Setup
 
@@ -19,18 +21,20 @@ entry without the font shows a row of boxes.
 ### 1. Link the script
 
 When Claude is selected, `setup-skills-link.ps1` in the repository root links this file to
-`~/.claude/statusline.js`, alongside the link for `instructions/CLAUDE.md`.
+`~/.claude/statusline.py`, alongside the link for `instructions/CLAUDE.md`. It also removes the
+link to the Node script this replaced when that link points into this checkout; a file of that
+name, or a link elsewhere, is left alone.
 
 ### 2. Point `settings.json` at it
 
-Install Node.js and Git on the machine. Claude Code does not run the script until
+Install Python 3.12+ and Git on the machine. Claude Code does not run the script until
 `~/.claude/settings.json` names it:
 
 ```json
 {
   "statusLine": {
     "type": "command",
-    "command": "node \"C:/Users/<you>/.claude/statusline.js\"",
+    "command": "python3 \"C:/Users/<you>/.claude/statusline.py\"",
     "padding": 0
   }
 }
@@ -39,7 +43,7 @@ Install Node.js and Git on the machine. Claude Code does not run the script unti
 On Ubuntu, use the machine's actual path instead:
 
 ```json
-"command": "node \"/home/<you>/.claude/statusline.js\""
+"command": "python3 \"/home/<you>/.claude/statusline.py\""
 ```
 
 If `CLAUDE_CONFIG_DIR` is set, use that directory for both `settings.json` and the linked script.
@@ -124,7 +128,7 @@ fully closed and reopened the icons keep rendering as boxes even though everythi
 correctly. Verify with:
 
 ```powershell
-'{}' | node (Join-Path $HOME ".claude/statusline.js")
+'{}' | python3 (Join-Path $HOME ".claude/statusline.py")
 ```
 
 (PowerShell has no `<` input redirection — piping is how you hand it stdin.) That prints the cwd
@@ -150,7 +154,7 @@ branch mark), `U+2717` and `U+2718` (ballot X). Verify before reaching for a new
 | context  | `U+F437`   | octicon graph        |
 | divider  | `U+2502`   | box-drawing vertical |
 
-The source stays **pure ASCII** — every glyph is written as a `\u` escape. Editing it through a
+The source stays **pure ASCII** — every glyph is written as a `\u` or `\U` escape. Editing it through a
 shell heredoc has already corrupted a backslash escape once; keeping the file ASCII makes that
 class of damage impossible to reintroduce silently.
 
@@ -175,12 +179,15 @@ The permission mode (`auto mode on`) cannot be hidden today —
 
 ## Two things not to undo
 
-**The watchdog.** Claude Code spawns the script with a stdin pipe and separately spawns MCP servers
+**The deadline.** Claude Code spawns the script with a stdin pipe and separately spawns MCP servers
 via `cmd.exe`, which inherit open handles. A grandchild holding the write end means EOF never
-arrives, so waiting on `'end'` alone leaks one wedged Node process per session — they accumulate
-silently at 0% CPU. This machine had 23 of them. The documented Node example in Claude Code's own
-statusline docs has the same bug. `DEADLINE_MS` renders on whichever comes first, EOF or the
-deadline, and always exits explicitly.
+arrives, so waiting for EOF alone leaks one wedged process per session — they accumulate
+silently at 0% CPU. This machine had 23 of them under the Node version. The documented Node
+example in Claude Code's own statusline docs has the same bug. A reader thread collects stdin;
+`DEADLINE` renders on whichever comes first, EOF or the deadline, from what has arrived (the
+payload is usually whole, only the EOF is missing), then flushes and exits with `os._exit`, which
+does not wait for the thread still blocked on stdin. A test holds stdin open and checks the
+process exits at the deadline.
 
 **`git status --porcelain=v1 --branch`, not `git rev-parse`.** One call returns the branch *and*
 the working-tree state, so the git indicator costs no extra subprocess — measured at 94ms vs 75ms

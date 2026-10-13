@@ -31,6 +31,7 @@ foreach ($target in Get-SkillTargets -RepoRoot $PSScriptRoot -Paths $paths -Tool
 if ('codex' -in $selected) {
     Remove-LegacyCodexLinks -RepoRoot $PSScriptRoot -Paths $paths -WhatIf:$WhatIfPreference
 }
+if ('claude' -in $selected) { Remove-RetiredStatusLineLink -RepoRoot $PSScriptRoot -Paths $paths -WhatIf:$WhatIfPreference }
 if ($WhatIfPreference) { Write-Host 'Preview complete. No files were changed.' }
 elseif ($incomplete) { throw 'Setup is incomplete; conflicting entries were preserved. Review warnings or run verify-setup.ps1.' }
 else { Write-Host "Skills configured for: $($selected -join ', '). Restart clients to refresh skill discovery." }

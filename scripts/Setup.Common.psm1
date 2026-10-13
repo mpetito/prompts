@@ -91,7 +91,7 @@ function Get-SkillTargets {
         @{ Source = $skills; Path = Join-Path $Paths.ClaudeRoot 'skills'; Children = $true }
         @{ Source = Join-Path $RepoRoot 'agents'; Path = Join-Path $Paths.ClaudeRoot 'agents'; Children = $false }
         @{ Source = Join-Path $RepoRoot 'instructions/CLAUDE.md'; Path = Join-Path $Paths.ClaudeRoot 'CLAUDE.md'; Children = $false }
-        @{ Source = Join-Path $RepoRoot 'statusline/statusline.js'; Path = Join-Path $Paths.ClaudeRoot 'statusline.js'; Children = $false }
+        @{ Source = Join-Path $RepoRoot 'statusline/statusline.py'; Path = Join-Path $Paths.ClaudeRoot 'statusline.py'; Children = $false }
     }
 }
 
@@ -206,6 +206,17 @@ function Remove-LegacyCodexLinks {
     }
 }
 
+function Remove-RetiredStatusLineLink {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([string]$RepoRoot, [hashtable]$Paths)
+    # The Node status line became statusline.py. Remove its old link only when it points into this checkout.
+    $old = Join-Path $Paths.ClaudeRoot 'statusline.js'
+    if ((Test-RepoLink $old (Join-Path $RepoRoot 'statusline/statusline.js')) -and
+        $PSCmdlet.ShouldProcess($old, 'Remove retired status line link')) {
+        Remove-Item -LiteralPath $old -Force
+    }
+}
+
 function Invoke-SetupCommand {
     param([string]$Command, [string[]]$Arguments)
     # ErrorActionPreference alone does not turn native nonzero exits into exceptions.
@@ -213,4 +224,4 @@ function Invoke-SetupCommand {
     if ($LASTEXITCODE -ne 0) { throw "Command failed (exit $LASTEXITCODE): $Command $($Arguments -join ' ')" }
 }
 
-Export-ModuleMember -Function Get-SetupPaths, Select-SetupTools, Test-SamePath, Get-LinkDestination, Test-RepoLink, Get-SkillTargets, Install-RepoLink, Install-SkillChildren, Remove-LegacyCodexLinks, Invoke-SetupCommand
+Export-ModuleMember -Function Get-SetupPaths, Select-SetupTools, Test-SamePath, Get-LinkDestination, Test-RepoLink, Get-SkillTargets, Install-RepoLink, Install-SkillChildren, Remove-LegacyCodexLinks, Remove-RetiredStatusLineLink, Invoke-SetupCommand
