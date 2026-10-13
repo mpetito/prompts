@@ -1,6 +1,7 @@
 """Live smoke test of the Python orchestration scripts with real herdr, Claude and Codex agents (plan.md step 9).
 
     python3 smoke.py [--claude-model <id>] [--codex-model <id>] [--runs <n, default 20>] [--minutes <n, default 20>]
+                     [--skip-codex]
 
 Run it from a pane inside herdr, with the branch under test checked out in the checkout that ~/.claude links to,
 so the agents run its skills and hooks. It builds a throwaway repository and a separate ORCHESTRATION_HOME under a
@@ -15,6 +16,8 @@ finish-running (finish_lane.py refuses while the lane runs, given its path nativ
 relative), finish-closed (it retires both lanes once their panes close), rotate, hook-cost:<hook> (median ms of
 <runs> runs as Claude Code starts the agents' exec-form hooks: python3 -c, no shell, under 700 ms), close, cleanup
 (no agent, worktree, branch or registry row of the build is left). Then it exits 1 if any item failed.
+
+--skip-codex runs the Claude lane alone, for a machine where Codex's sandbox can't run commands.
 
 Agents can stall on a startup or permission prompt: the script says which pane to answer and keeps waiting, up to
 --minutes per wait. Whatever happens, it closes the build's panes and removes the temporary folder at the end.
@@ -196,7 +199,8 @@ def smoke(a, root, build, home):
            f"file_written={(checkout / 'smoke-thread-guard.txt').exists()} said={[b.splitlines()[-1] for b in bodies]!r}")
 
     lanes = {}
-    for lane, kind, model in (("cl", "claude", a.claude_model), ("cx", "codex", a.codex_model)):
+    kinds = (("cl", "claude", a.claude_model),) + (() if a.skip_codex else (("cx", "codex", a.codex_model),))
+    for lane, kind, model in kinds:
         wt = root / f"smoke-repo-wt-{lane}"
         git(coord, "worktree", "add", "-q", "-b", f"lane/{lane}", wt, f"orchestration/{build}")
         lb = root / f"brief-{lane}.md"
@@ -214,7 +218,7 @@ def smoke(a, root, build, home):
             report(f"lane-ready:{lane}", ready)
     bodies = wait_mail(f"{build}/thread", [f"{build}-{l}" for l in lanes], a.minutes, want=len(lanes))
     committed = {l: (git(wt, "log", "-1", "--format=%s")[1] == "smoke") for l, (wt, _) in lanes.items()}
-    report("lanes", len(bodies) == 2 and all(committed.values()), f"mail={len(bodies)} committed={committed}")
+    report("lanes", len(bodies) == len(lanes) and all(committed.values()), f"mail={len(bodies)} committed={committed}")
     report("lane-guard", any("from: " + f"{build}/cl" in b.lower() and "guard refused" in b for b in bodies)
            and not (checkout / "smoke-lane-guard.txt").exists(),
            f"file_written={(checkout / 'smoke-lane-guard.txt').exists()}")
@@ -267,6 +271,7 @@ def main(argv):
     p.add_argument("--codex-model", default="gpt-6.1-sol")
     p.add_argument("--runs", type=int, default=20)
     p.add_argument("--minutes", type=int, default=20)
+    p.add_argument("--skip-codex", action="store_true")
     a = p.parse_args(argv)
     if not preflight():
         return 1
