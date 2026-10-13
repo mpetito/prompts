@@ -80,7 +80,7 @@ start_thread() {
   # it is ready, a reason for the owner when it waits on a startup prompt (a folder trust question), or fails with
   # herdr's reason.
   local err
-  if err=$(herdr_json agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --agent orchestrator "Read $3 and follow it." 2>&1 >/dev/null); then
+  if err=$(herdr_json agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --agent orchestrator "Read $(native "$3") and follow it." 2>&1 >/dev/null); then
     return 0
   fi
   case $err in
@@ -102,7 +102,7 @@ identity_warnings() {
 }
 # brief_text <build> <state> <body>: the header lines, a blank line, then the body. One printf, because a command
 # substitution would strip the blank line that separates them.
-brief_text() { printf 'BUILD: %s\nMAIL: %s/thread is yours; send MAIN %s/main\nSTATE: %s\n\n%s' "$1" "$1" "$1" "$2" "$3"; }
+brief_text() { printf 'BUILD: %s\nMAIL: %s/thread is yours; send MAIN %s/main\nSTATE: %s\n\n%s' "$1" "$1" "$1" "$(native "$2")" "$3"; }
 write_record() {
   # write_record <worktree> <build> <checkout> <base> <base ref> <lane base> <landing>
   local file="$1/.orchestration/thread.md"

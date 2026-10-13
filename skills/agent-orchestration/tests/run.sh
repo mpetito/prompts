@@ -274,6 +274,8 @@ land() { "$here/scripts/land.sh" 7 "$tmp/wt" --check ci --subject "feat: x" --bo
 # native <path>: <path> as a native tool (herdr, Claude Code, Python) gives it under Git for Windows, C:\x; elsewhere
 # unchanged. MSYS converts a /x argument for a native program but never a path inside JSON.
 native() { if command -v cygpath >/dev/null; then cygpath -w -- "$1"; else printf '%s\n' "$1"; fi; }
+# The form the scripts write into prompts and briefs, which MSYS never converts: C:/x on Windows.
+prose() { if command -v cygpath >/dev/null; then cygpath -m -- "$1"; else printf '%s\n' "$1"; fi; }
 
 # --- land.sh -------------------------------------------------------------------------------------------------
 "$here/scripts/land.sh" >/dev/null 2>&1 && fail "land.sh ran without arguments"
@@ -310,7 +312,7 @@ out=$("$lane" lb api "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 
 grep -qx "tab create --workspace w7 --cwd $tmp/lanewt --label api --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" || fail "lane.sh did not open a tab for the lane in the thread's workspace: $(cat "$MOCK_DIR/herdr.log")"
 [ "$(tr '\n' '|' < "$MOCK_DIR/start-lb-api.args")" = "--approve-for-me|--add-dir|$ORCHESTRATION_HOME/mail/lb|--model|m1|" ] || fail "lane.sh started Codex with: $(cat "$MOCK_DIR/start-lb-api.args")"
 [ -d "$ORCHESTRATION_HOME/mail/lb" ] || fail "lane.sh did not create the mail folder it lets Codex write"
-grep -qx "agent prompt lb-api Read $tmp/lane-brief.md and follow it." "$MOCK_DIR/herdr.log" || fail "lane.sh did not hand the lane its brief"
+grep -qx "agent prompt lb-api Read $(prose "$tmp/lane-brief.md") and follow it." "$MOCK_DIR/herdr.log" || fail "lane.sh did not hand the lane its brief"
 "$lane" lb net "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 --network >/dev/null
 grep -qx 'sandbox_workspace_write.network_access=true' "$MOCK_DIR/start-lb-net.args" || fail "lane.sh --network did not open Codex's sandbox to the network"
 "$lane" lb ui "$tmp/lanewt" "$tmp/lane-brief.md" --kind claude --model opus | grep -q '^LANE lb-ui ' || fail "lane.sh did not start a Claude lane"
@@ -508,9 +510,9 @@ grep -qx "workspace create --cwd $wta --label t-a --no-focus --env ORCHESTRATION
 wsa=$(row_of t-a | cut -f4)
 [ "$(row_of t-a | cut -f1-3)" = "t-a	$app	$wta" ] && [[ $wsa =~ ^w[0-9]+$ ]] || fail "thread.sh launch registry row is wrong: $(row_of t-a)"
 [ "$(thread_pane t-a)" = "$wsa:p1" ] || fail "thread.sh did not start the thread in the workspace's root pane"
-[ "$(tr '\n' '|' < "$MOCK_DIR/start-t-a.args")" = "--agent|orchestrator|Read $wta/.orchestration/launch-brief.md and follow it.|" ] \
+[ "$(tr '\n' '|' < "$MOCK_DIR/start-t-a.args")" = "--agent|orchestrator|Read $(prose "$wta/.orchestration/launch-brief.md") and follow it.|" ] \
   || fail "thread.sh started the wrong agent or prompt: $(cat "$MOCK_DIR/start-t-a.args")"
-[ "$(head -3 "$wta/.orchestration/launch-brief.md" | tr '\n' '|')" = "BUILD: t-a|MAIL: t-a/thread is yours; send MAIN t-a/main|STATE: $wta/.orchestration/state.md|" ] \
+[ "$(head -3 "$wta/.orchestration/launch-brief.md" | tr '\n' '|')" = "BUILD: t-a|MAIL: t-a/thread is yours; send MAIN t-a/main|STATE: $(prose "$wta/.orchestration/state.md")|" ] \
   || fail "thread.sh wrote the wrong brief header: $(head -3 "$wta/.orchestration/launch-brief.md")"
 grep -q 'Build the signup slice.' "$wta/.orchestration/launch-brief.md" || fail "thread.sh launch dropped the brief"
 # The state file and the hooks work from inside the new worktree, and .orchestration stays untracked.
@@ -566,7 +568,7 @@ olda=$(thread_pane t-a)
 grep -qx "tab create --workspace $wsa --cwd $wta --label t-a --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" || fail "thread.sh rotate did not open the new thread in the build's workspace"
 newa=$(thread_pane t-a)
 grep -qx "pane close $olda" "$MOCK_DIR/herdr.log" && [ -n "$newa" ] && [ "$newa" != "$olda" ] || fail "thread.sh rotate did not replace the old pane: old=$olda new=$newa"
-grep -qx "Read $wta/.orchestration/rotate-brief.md and follow it." "$MOCK_DIR/start-t-a.args" \
+grep -qx "Read $(prose "$wta/.orchestration/rotate-brief.md") and follow it." "$MOCK_DIR/start-t-a.args" \
   && grep -qx 'Resume: read STATE first and continue from its RESUME section without redoing finished work.' "$wta/.orchestration/rotate-brief.md" \
   || fail "thread.sh rotate brief is wrong"
 [ "$(row_of t-a | cut -f1-4)" = "t-a	$app	$wta	$wsa" ] || fail "thread.sh rotate changed the build, worktree or workspace: $(row_of t-a)"

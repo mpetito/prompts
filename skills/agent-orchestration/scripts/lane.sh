@@ -60,5 +60,5 @@ if ! out=$(run agent start "$name" --kind "$kind" --pane "$pane" --timeout 12000
     *) herdr pane close "$pane" >/dev/null 2>&1 || true; fail "herdr agent start: $out" ;;
   esac
 fi
-out=$(run agent prompt "$name" "Read $brief and follow it.") || fail "herdr agent prompt: $out"
+out=$(run agent prompt "$name" "Read $(native "$brief") and follow it.") || fail "herdr agent prompt: $out"
 echo "LANE $name pane=$pane kind=$kind"

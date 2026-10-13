@@ -30,14 +30,18 @@ need_value() {
 # comparison uses: realpath -m of bash's own spelling, resolving a relative path against $PWD. Convert a native
 # tool's path with canon where it enters; native tools accept the bash form as an argument. canon_from <dir> <path>
 # is canon of <path>, resolving a relative one against <dir> instead; there C:\x and C:/x are absolute too.
+# MSYS converts a path argument for a native tool, but not a path inside prose: native <path> is the form to write
+# into a prompt or brief an agent reads, C:/x on Windows, which bash and native tools both open.
 case ${OSTYPE:-} in
   msys*|cygwin*)
     canon() { realpath -m -- "$(cygpath -u -- "$1")"; }
     canon_from() { local p; p=$(cygpath -u -- "$2"); [[ $p == /* ]] || p="$1/$p"; canon "$p"; }
+    native() { cygpath -m -- "$1"; }
     jq() { command jq -b "$@"; } ;;
   *)
     canon() { realpath -m -- "$1"; }
-    canon_from() { local p=$2; [[ $p == /* ]] || p="$1/$p"; canon "$p"; } ;;
+    canon_from() { local p=$2; [[ $p == /* ]] || p="$1/$p"; canon "$p"; }
+    native() { printf '%s\n' "$1"; } ;;
 esac
 
 # The thread's files live in its coordination worktree's untracked .orchestration/ folder, found from any
