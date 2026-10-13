@@ -264,8 +264,7 @@ def arm_judges(o, manifest, runs_dir, variants, results_path, claude_bin, log_di
 
 def run_variants(runs_dir):
     """The arms present under runs/<case>/, in name order."""
-    cases = sorted(d for d in Path(runs_dir).iterdir() if d.is_dir())
-    return list(dict.fromkeys(v.name for case in cases for v in sorted(case.iterdir()) if v.is_dir()))
+    return sorted({v.name for case in Path(runs_dir).iterdir() if case.is_dir() for v in case.iterdir() if v.is_dir()})
 
 
 def rate(value):
@@ -297,14 +296,16 @@ def summary(name, benchmark_path, trigger_path, baseline_file):
             print(f"  {label:<30} objective {rate(s.get('mean_objective_pass_rate'))}  judge {rate(judge_mean)}  "
                   f"cost USD {rate(s.get('cost_usd_total'))}")
         print(f"  paired delta, with minus without: {rate((b.get('paired_summary') or {}).get('absolute_delta'))}")
+        # Counted and sorted case-insensitively, each under its first spelling, as PowerShell's Group-Object did.
         failures = {}
         for r in b.get("results") or []:
             for a in r.get("assertions") or []:
                 if a.get("passed") is False:
                     key = f"{r['case_id']}/{r['variant']}: {a['name']}"
-                    failures[key] = failures.get(key, 0) + 1
-        for key in sorted(failures, key=lambda k: (k.casefold(), k)):
-            print(f"  failed {failures[key]}x  {key}")
+                    first, count = failures.get(key.casefold(), (key, 0))
+                    failures[key.casefold()] = (first, count + 1)
+        for first, count in sorted(failures.values(), key=lambda fc: (fc[0].casefold(), fc[0])):
+            print(f"  failed {count}x  {first}")
     if trigger_path and Path(trigger_path).exists():
         t = json.loads(Path(trigger_path).read_text(encoding="utf-8"))
         for cell in t.get("matrix") or []:

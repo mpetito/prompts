@@ -327,14 +327,18 @@ Fixture prose in `.md` files is updated with its skill.
   - A regrade input came from the PowerShell runner on main (skill-authoring, `-Runs 1 -SkipTrigger`). Both
     runners' regrades of it print the same lines, and so do five earlier runs covering a baseline arm, a trigger
     matrix and an agent definition.
-  - A sixth run differs in one judge mean, and the Python value is the right one. The PowerShell runner dropped
-    an arm's zero scores while they were its only scores, so playwright-e2e's without_skill judge read 0.25
-    where the mean of its nine scores is 0.17.
+  - A sixth run differs in two judge means, and the Python values are the right ones. The PowerShell runner
+    dropped an arm's zero scores while they were its only scores, so playwright-e2e's without_skill and
+    old_skill judges each read 0.25 where the mean of their nine scores is 0.17.
   - Live runs of the Python runner: skill-authoring `--runs 1 --skip-trigger` wrote the same run layout and
     wrapper files as the PowerShell run; `--agent-definition verifier --runs 1` completed.
   - `stage_plugin_baseline.py` writes the same folder as the `.ps1`, byte for byte.
-  - The PowerShell scripts had no test suite. `scripts/tests` adds 50 cases, run in CI; each of 74 runner
-    mutants and 32 helper mutants fails it.
+  - The PowerShell scripts had no test suite. `scripts/tests` adds 59 cases, run in CI. One case per kind of run
+    asserts every command it makes, argv in full, and each of 91 runner mutants and 32 helper mutants fails
+    the suite.
+  - The runner writes `claude-eval` and `claude-judge` wrappers into each run directory, `.sh` on POSIX and
+    `.cmd` on Windows, as the `.ps1` did. They are generated run files, not repository scripts, and the one
+    place a shebang and an executable bit are relied on.
 - [ ] 19. `.github/workflows/validate.yml`, `CONTRIBUTING.md`, `README.md`:
   - CI runs every `unittest` suite on both operating systems under setup-python 3.12, and drops
     the pwsh steps, the node step and the PowerShell parse check.

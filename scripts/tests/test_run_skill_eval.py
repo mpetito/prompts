@@ -466,14 +466,15 @@ class SummaryTest(unittest.TestCase):
             path = Path(tmp) / "b.json"
             path.write_text(json.dumps({"summary": {"with_skill": {}}, "results": [
                 {"case_id": "c", "variant": "with_skill", "assertions": [{"name": "B", "passed": False},
-                                                                          {"name": "a", "passed": False}]}]}),
+                                                                          {"name": "a", "passed": False}]},
+                {"case_id": "c", "variant": "with_skill", "assertions": [{"name": "A", "passed": False}]}]}),
                             encoding="utf-8")
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 rse.summary("s", str(path), None, None)
         self.assertEqual(out.getvalue().splitlines(), [
             "", "== s ==", "  with_skill                     objective n/a  judge n/a  cost USD n/a",
-            "  paired delta, with minus without: n/a", "  failed 1x  c/with_skill: a", "  failed 1x  c/with_skill: B"])
+            "  paired delta, with minus without: n/a", "  failed 2x  c/with_skill: a", "  failed 1x  c/with_skill: B"])
 
 
 class RegradeTest(RunnerTest):
@@ -662,6 +663,19 @@ class ArgvTest(RunnerTest):
             [B, "render-viewer", "--benchmark", str(d / "benchmark.json"), "--runs", runs, "--out", str(d / "review.html")],
         ])
 
+    def test_relative_out_root_gives_absolute_paths(self):
+        code, _, _ = self.main("--skill", "skill-authoring", "--skip-trigger", "--skip-judge", "--parallel", "1",
+                               "--out-root", "rel", out_root=False, cwd=self.tmp)
+        self.assertEqual(code, 0)
+        (stamp,) = (self.tmp / "rel" / "skill-authoring").iterdir()
+        (answers,) = self.fake.verbs("run-agent")
+        expected = {"--tasks": stamp / "tasks-0.jsonl", "--runs": stamp / "runs",
+                    "--claude-bin": Path(self.wrapper(stamp, "claude-eval"))}
+        for name, want in expected.items():
+            path = option(answers, name)
+            self.assertTrue(os.path.isabs(path), path)
+            self.assertEqual(os.path.realpath(path), os.path.realpath(want))
+
 
 class ManifestTest(unittest.TestCase):
     def test_the_run_copy_is_all_absolute_and_the_live_one_is_untouched(self):
@@ -691,6 +705,27 @@ class ManifestTest(unittest.TestCase):
             copy = rse.run_manifest(str(live), tmp, skill_path="/staged/x.md")
             self.assertEqual(json.loads(Path(copy).read_text(encoding="utf-8"))["skill_paths"], ["/staged/x.md"])
             self.assertNotIn("old_skill_paths", json.loads(Path(copy).read_text(encoding="utf-8")))
+
+
+class OrderTest(unittest.TestCase):
+    """Arms and suites come in name order whatever order the filesystem lists them in."""
+
+    def test_listing_order_does_not_matter(self):
+        listed = Path.iterdir
+        with tempfile.TemporaryDirectory() as tmp, \
+                unittest.mock.patch.object(Path, "iterdir", lambda self: iter(sorted(listed(self), reverse=True))):
+            # Cases need not hold the same arms: the first case listed lacks some. Six arms, so a set's own order
+            # matches name order by chance about once in 720 runs.
+            arms = ["arm-a", "arm-b", "arm-c", "old_skill", "with_skill", "without_skill"]
+            for case, held in (("c1", arms), ("c2", arms[3:])):
+                for arm in held:
+                    (Path(tmp) / "runs" / case / arm).mkdir(parents=True)
+            self.assertEqual(rse.run_variants(str(Path(tmp) / "runs")), arms)
+            for name in ("b", "a"):
+                (Path(tmp) / "skills" / name / "evals").mkdir(parents=True)
+                (Path(tmp) / "skills" / name / "evals" / "shared-benchmark.json").write_text("{}", encoding="utf-8")
+            with unittest.mock.patch.object(rse, "REPO", Path(tmp)):
+                self.assertEqual(rse.skill_list([]), ["a", "b"])
 
 
 class FailureTest(RunnerTest):
