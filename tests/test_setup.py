@@ -242,7 +242,7 @@ class Linking(SetupTest):
         with unittest.mock.patch.dict(os.environ, PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}"):
             code, _, err = call(VERIFY, "--tools", "codex", "--home-directory", self.dest)
         self.assertEqual(code, 1)
-        self.assertRegex(err, "python3 (is the Microsoft Store placeholder|--version failed)")
+        self.assertRegex(err, "Microsoft Store placeholder" if os.name == "nt" else r"python3 --version failed")
         self.assertRegex(err, r"\b1 setup check")
 
 
