@@ -178,3 +178,51 @@ non-Store shell. This was not tried, because it means installing a non-Store Pow
 codex uses.
 
 Result: codex-sandbox fails under the unelevated sandbox too. Per the handoff, step 9 runs with `--skip-codex`.
+
+## Fourth run: MSI PowerShell 7 and python.org python
+
+Date: 2026-10-13, about 21:14Z, at `a97f6e3`. PowerShell 7.6.6's MSI build was already installed at
+`C:\Program Files\PowerShell\7\pwsh.exe` (`winget list` shows `Microsoft.PowerShell 7.6.6.0`, source `winget`), so
+the agent ran no install. The Store build is still installed.
+
+The agent's own PowerShell is the Store build, and PowerShell puts its own folder at the front of its children's
+PATH. So the probes ran in the MSI `pwsh`, with PATH rebuilt from the registry (Machine, then User), the way a new
+window starts. `HERDR_*` was cleared. The owner's `~/.codex/config.toml` was unchanged (same SHA-256), and no
+`node_repl` process was running.
+
+`(Get-Command pwsh -All).Source` in that environment:
+
+```
+C:\Program Files\PowerShell\7\pwsh.exe
+%USERPROFILE%\AppData\Local\Microsoft\WindowsApps\pwsh.exe
+```
+
+The MSI build comes first, so the `--codex-drop-path WindowsApps` diagnostic was not needed.
+
+```
+PROBE codex-sandbox pass launcher=codex.CMD windows_sandbox=unelevated python=python drop_path=none shell=C:\Program Files\PowerShell\7\pwsh.exe exit=0 header='sandbox: workspace-write [workdir, /tmp, $TMPDIR, %USERPROFILE%\.orchestration-probe-15852\mail]' wrote_by=%USERPROFILE%\AppData\Local\Programs\Python\Python314\python.exe
+PROBE codex-sandbox pass launcher=codex.CMD windows_sandbox=unelevated python=python3 drop_path=none shell=C:\Program Files\PowerShell\7\pwsh.exe exit=0 header='sandbox: workspace-write [workdir, /tmp, $TMPDIR, %USERPROFILE%\.orchestration-probe-27388\mail]' wrote_by=%USERPROFILE%\AppData\Local\Python\pythoncore-3.14-64\python.exe
+PROBE codex-sandbox fail launcher=codex.CMD windows_sandbox=elevated python=python drop_path=none shell=C:\Program Files\PowerShell\7\pwsh.exe exit=0 header='sandbox: workspace-write [workdir, /tmp, $TMPDIR, %USERPROFILE%\.orchestration-probe-43020\mail]' wrote_by=nothing
+```
+
+The lines are in order A (unelevated, `python`), B (unelevated, `python3`), C (elevated, `python`).
+
+- **A passes.** With the MSI `pwsh`, the unelevated sandbox runs commands, and python.org's `python` writes into
+  the `--add-dir` mail folder.
+- **B passes too.** The Store `python3` alias runs inside the unelevated sandbox, and the file was written by the
+  Install Manager's 3.14.2. The third run's hypothesis, that the sandbox blocks every Store-packaged program, is
+  wrong: only the Store-packaged `pwsh` under `C:\Program Files\WindowsApps` was refused.
+- **C fails as in runs one and two.** The elevated sandbox's setup still fails on `node_repl.exe`, so the MSI
+  shell changes nothing there. From `py-probe-4c\codex-sandbox.err.txt`:
+
+```
+exec
+"C:\Program Files\PowerShell\7\pwsh.exe" -Command 'python -c "..." .../mail/probe' in ...\probe-work-v6ruvera
+ exited -1 in 0ms:
+Failed to create unified exec process: helper_unknown_error: setup refresh had errors
+```
+
+The sandbox log shows the same `runtime read/execute validation failed ... node_repl.exe ... (os error 32)` as
+before.
+
+Next (handoff step 5): A passed, so the agent asks the owner whether to set `[windows] sandbox = "unelevated"`.
