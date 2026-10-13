@@ -140,7 +140,7 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: the suite passes with the source count, including the no-bash case and a Windows case
   where a WSL `bash.exe` comes before Git's on PATH.
-- [ ] 6. `skills/orchestration-main/scripts/thread.py`, `skills/orchestration-main/tests/__init__.py`,
+- [x] 6. `skills/orchestration-main/scripts/thread.py`, `skills/orchestration-main/tests/__init__.py`,
   `skills/orchestration-main/tests/test_thread.py`: launch, stop, rotate, list, check, close and
   integrate.
   - Records store realpath. Briefs get `as_posix` paths.
