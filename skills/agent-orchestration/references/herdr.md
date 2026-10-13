@@ -2,6 +2,8 @@
 
 How the thread runs lanes. Every lane is a herdr agent, Claude or Codex, treated the same way: its own
 tab in the build's workspace, its own worktree, its own brief file. `herdr --skill` documents the CLI.
+A script's short name, such as `mail.py`, means
+`python3 "$HOME/.claude/skills/agent-orchestration/scripts/<name>.py"`, written in full in a command.
 
 ## Contents
 
@@ -18,23 +20,24 @@ tab in the build's workspace, its own worktree, its own brief file. `herdr --ski
 3. Run, from your own pane:
 
    ```bash
-   ~/.claude/skills/agent-orchestration/scripts/lane.sh <build> <lane> ../<repo>-wt-<lane> <brief> --kind claude|codex --model <id> [--network]
+   python3 "$HOME/.claude/skills/agent-orchestration/scripts/lane.py" <build> <lane> ../<repo>-wt-<lane> <brief> --kind claude|codex --model <id> [--network]
    ```
 
    It prints `LANE <build>-<lane> pane=<pane> kind=<kind>`, `BLOCKED …` or `FAILED <reason>`.
    - A Claude lane runs the `lane` agent, with the guard hooks a subagent worker gets.
    - A Codex lane runs with `--approve-for-me`, so Codex's own reviewer grants its approvals, and can
      write the build's mail folder. Its sandbox sees neither the pane's environment nor herdr, which is
-     why every lane names itself when it sends.
+     why every lane names itself when it sends, and why a Codex lane's brief gives
+     `mail.py send --home <home>` when `ORCHESTRATION_HOME` is set ([briefs.md](briefs.md)).
    - `BLOCKED` means the lane waits on a startup prompt. For a Codex lane in a project Codex hasn't
      been approved for, send MAIN `STATUS: blocked - Codex needs the owner to run it once in <worktree>`.
      Once the owner has answered and the lane is idle, send the pointer prompt yourself (below).
-4. Restart your mail wait with the lane added to `--watch`, and arm a `wake-at.sh` timer for the
+4. Restart your mail wait with the lane added to `--watch`, and arm a `wake_at.py` timer for the
    lane's time box, so a lane that goes quiet still wakes you.
 
 ## Hear from a lane
 
-- A lane reports by mail: `mail.sh send <build>/thread --from <build>/<lane> "STATUS: …"`, with the
+- A lane reports by mail: `mail.py send <build>/thread --from <build>/<lane> "STATUS: …"`, with the
   long version in a file in its worktree. Its brief says so.
 - Your wait prints `BLOCKED <build>-<lane>` when a lane hits a permission prompt. Read its screen
   (`herdr agent read <build>-<lane> --source visible`). Send MAIN
@@ -57,7 +60,7 @@ Update its brief file, then, once the lane is idle, prompt it with one line:
 
 When its work is merged or dropped: restart your mail wait without the lane in `--watch` (or it
 reports the close as `GONE`), close its pane with `herdr pane close <pane>`, then run
-`finish-lane.sh`, which refuses while an agent still runs in the worktree. A lane agent lives for one
+`finish_lane.py`, which refuses while an agent still runs in the worktree. A lane agent lives for one
 lane; never start a long-lived agent inside a lane worktree, because removing the worktree breaks it.
 
 ## Traps

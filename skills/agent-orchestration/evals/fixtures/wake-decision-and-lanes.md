@@ -45,7 +45,7 @@ move until it is."
 Contract C-1 (merged): prices are integers in cents everywhere; no floating-point or Decimal
 types in the API.
 
-## What woke you: mail from the catalog-api reviewer, read with `mail.sh read shopfront/thread`
+## What woke you: mail from the catalog-api reviewer, read with `mail.py read shopfront/thread`
 
     From: shopfront/catalog-api-review
 

@@ -4,6 +4,9 @@ How MAIN, the session the owner talks to, and each orchestration thread talk to 
 skills follow it: [agent-orchestration](../SKILL.md) for a thread,
 [orchestration-main](../../orchestration-main/SKILL.md) for MAIN.
 
+Every script named here runs as `python3 "$HOME/.claude/skills/<skill>/scripts/<name>.py" <args>`,
+the path quoted and never under `~`; a short name such as `mail.py wait` means that command.
+
 ## Contents
 
 - Who does what
@@ -30,21 +33,24 @@ Each build owns two mailboxes, folders under `~/.orchestration/mail/<build>/`: `
 reads for the build, and `thread`, the thread's inbox. Lanes report to `thread`.
 
 ```bash
-M=~/.claude/skills/agent-orchestration/scripts/mail.sh
-$M send <build>/main --from <build>/thread "<message>"   # or --file <path>, or stdin
-$M read <build>/thread                                   # prints new mail, oldest first, and files it
+python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py" send <build>/main --from <build>/thread "<message>"
+python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py" read <build>/thread
 ```
+
+`send` takes the text, `--file <path>` or stdin. `read` prints new mail, oldest first, and files it.
 
 - An address is the build and the box, never a session: nothing to look up, nothing that goes stale
   when a session restarts. The sender always names itself with `--from`.
 - A message read is filed at once. If you rotate before acting on one, carry it in RESUME.
 - `--quiet` files a message without waking anyone; it arrives with the next one that does.
+- The folder is `$ORCHESTRATION_HOME/mail` when that is set. Every subcommand also takes
+  `--home <path>`, which a Codex lane needs: its sandbox can't see the pane's environment.
 - Messages are plain text, never empty. Times are UTC, `YYYY-MM-DDTHH:MMZ`, from `date -u` or the
   scripts.
 
 ## Waking
 
-A Claude agent keeps exactly one `mail.sh wait` running as a background task, which ends, and so
+A Claude agent keeps exactly one `mail.py wait` running as a background task, which ends, and so
 wakes it, with one line:
 
 | Line | Means |
@@ -103,8 +109,8 @@ An owner-before decision has `Default: none, owner-before` instead, and waits fo
 
 ## Decisions
 
-1. The thread opens the decision with `decisions.sh add` (it prints the id and the deadline),
-   sends the request, sets `wake-at.sh <deadline>` running in the background, and keeps every
+1. The thread opens the decision with `decisions.py add` (it prints the id and the deadline),
+   sends the request, sets `wake_at.py <deadline>` running in the background, and keeps every
    lane the decision doesn't block moving.
 2. MAIN puts it to the owner once, with the default.
 3. The answer comes back as `DECISION D<n>: …`. If the deadline passes first, the thread applies
@@ -122,9 +128,9 @@ before the owner is away for a long time.
 2. The thread starts nothing new. Its subagents end with the session, so it waits for their
    reports, or lists each one in RESUME to be restarted. Its lanes are herdr agents and keep
    running.
-3. It writes RESUME with `state.sh resume` (checklist in [state-file.md](state-file.md)), stops its
+3. It writes RESUME with `state.py resume` (checklist in [state-file.md](state-file.md)), stops its
    mail wait, sends `STATUS: rotating - <lanes in flight>, <open decisions>`, and ends its turn.
-4. MAIN stops the build's wait and runs `thread.sh rotate <build>`, then starts the wait again. The
+4. MAIN stops the build's wait and runs `thread.py rotate <build>`, then starts the wait again. The
    script refuses a RESUME older than 15 minutes, opens a new tab
    in the build's workspace, closes the old thread's pane, and starts the new thread under the same
    name, so the mail carries over.

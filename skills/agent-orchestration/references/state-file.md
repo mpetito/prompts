@@ -4,14 +4,16 @@ The thread's memory. A fresh thread that takes over (a rotation) starts from thi
 else, so anything not written here is lost. It is `.orchestration/state.md` in the thread's
 worktree, `../<repo>-orch-<build>`, next to `decisions.md`, `plan.md`, `briefs/` and `results/`.
 The folder isn't committed. The scripts find it from the worktree's root; `$ORCHESTRATION_STATE`
-points them at another file.
+points them at another file. `state.py` is
+`python3 "$HOME/.claude/skills/agent-orchestration/scripts/state.py"`, and `decisions.py` its sibling;
+write the full path in a command.
 
 The build's name, the base branch and how lanes land are not in this file. They are in `thread.md`,
-which MAIN writes; read them with `state.sh thread <key>` (`BUILD`, `BASE`, `LANE-BASE`, `LANDING`).
+which MAIN writes; read them with `state.py thread <key>` (`BUILD`, `BASE`, `LANE-BASE`, `LANDING`).
 
 ## Sections
 
-`state.sh init <build>` writes these, in this order. Change them only with `state.sh` (`log`,
+`state.py init <build>` writes these, in this order. Change them only with `state.py` (`log`,
 `set`, `resume`, `backup`): it stamps the time itself, so you never type one, and a hook reminds
 you if you do.
 
@@ -20,7 +22,7 @@ you if you do.
 | Thread | A pointer to `thread.md`, the start time, the plan's path | `init`, once |
 | RESUME | What a fresh thread needs to carry on (checklist below) | `resume`, at each rotation and the end of each phase |
 | Lanes | One row per lane: worker, pull request, head commit, next step | `set <lane> <column> <value>` |
-| Decisions | A pointer to `decisions.md`, which `decisions.sh` keeps | `decisions.sh` |
+| Decisions | A pointer to `decisions.md`, which `decisions.py` keeps | `decisions.py` |
 | Log | One time-stamped line per event | `log "<event>"` |
 
 Add a section only when the build needs one, such as approvals the owner gave (quoted, with the
@@ -28,7 +30,7 @@ time) or standing decisions on flaky tests.
 
 ## RESUME checklist
 
-Write it with `state.sh resume -` from a heredoc. A fresh thread reads it first and must not have
+Write it with `state.py resume -` from a heredoc. A fresh thread reads it first and must not have
 to work any of this out again:
 
 1. **Goal and plan:** the build in one line, the plan file, the order of the lanes.

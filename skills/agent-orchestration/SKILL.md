@@ -18,29 +18,32 @@ their work.
   own git worktree and branch.
 - **MAIN:** the owner's session. You reach it by mail at `<build>/main`; your inbox is
   `<build>/thread`. Your build, the owner's checkout, the base branch and how lanes land are in
-  `.orchestration/thread.md`, which MAIN writes; read a field with `state.sh thread <key>`.
+  `.orchestration/thread.md`, which MAIN writes; read a field with `state.py thread <key>`.
 - **Decision:** a question for the owner, sent to MAIN with a default that applies at a deadline
   unless the owner answers first.
 - **Owner-before:** a decision with no default, which waits for the owner: spending money,
   changing access (IAM, keys, trust), production data, destructive actions, editing the spec, and
   anything the owner or the spec reserved for the owner.
 - **State file:** `.orchestration/state.md`, your memory across sessions. Change it only with
-  `state.sh`.
+  `state.py`.
 
-Scripts are in `~/.claude/skills/agent-orchestration/scripts/`; write the full path in every
-command. Mail, waking and message formats: [references/protocol.md](references/protocol.md). The
-state file: [references/state-file.md](references/state-file.md). Lanes in herdr:
+Scripts are in `$HOME/.claude/skills/agent-orchestration/scripts/`. Run each as
+`python3 "$HOME/.claude/skills/agent-orchestration/scripts/<name>.py" <args>`, the full path quoted
+in every command, never `~`, which not every shell expands. A short name below, such as
+`state.py log`, means that command. Mail, waking and message formats:
+[references/protocol.md](references/protocol.md). The state file:
+[references/state-file.md](references/state-file.md). Lanes in herdr:
 [references/herdr.md](references/herdr.md). Worker briefs:
 [references/briefs.md](references/briefs.md). Read the first two before anything else.
 
 ## 1. Start
 
-Start your mail wait first: one background `mail.sh wait <build>/thread`, kept running all build.
+Start your mail wait first: one background `mail.py wait <build>/thread`, kept running all build.
 
 1. If `.orchestration/state.md` already exists, you are taking over from an earlier thread:
    follow "After a rotation" in the state-file reference, send
    `STATUS: working - resumed from RESUME …`, and carry on as in section 2.
-2. Otherwise run `state.sh init <build>`.
+2. Otherwise run `state.py init <build>`.
 3. Write the plan to `.orchestration/plan.md`, or to the repository's plan file if it has one:
    - Order the lanes so the owner can see and click something real as soon as possible.
      Behind-the-scenes work (evals, ledgers, counters, alarms, hardening) starts only when no
@@ -61,7 +64,7 @@ Start your mail wait first: one background `mail.sh wait <build>/thread`, kept r
 You wake when your mail wait ends (mail from MAIN or a lane, or a lane blocked or gone), a timer
 fires, or a subagent finishes. On mail, read it first, then start the next wait, then act.
 
-1. Run `date -u`, `meter.sh` and `decisions.sh due`. Apply each default whose deadline has
+1. Run `date -u`, `meter.py` and `decisions.py due`. Apply each default whose deadline has
    passed, and report it this turn.
 2. Look at every lane, not only the one that woke you. If a lane has made no progress for about
    10 minutes, read its screen (`herdr agent read <build>-<lane> --source visible`) and look for a
@@ -73,23 +76,23 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
 
    | Work | What wakes you |
    | --- | --- |
-   | Lane, Claude or Codex | Its report by mail, and your mail wait's `--watch <build>-<lane>`; plus `wake-at.sh` for its time box |
+   | Lane, Claude or Codex | Its report by mail, and your mail wait's `--watch <build>-<lane>`; plus `wake_at.py` for its time box |
    | Subagent | Its completion notice |
-   | Pull request checks | `watch-gates.sh <PR> <head SHA> --check <name>` |
-   | Decision deadline or budget reset | `wake-at.sh <UTC> <label>` |
+   | Pull request checks | `watch_gates.py <PR> <head SHA> --check <name>` |
+   | Decision deadline or budget reset | `wake_at.py <UTC> <label>` |
 
    Never wait in the foreground with `sleep` or a polling loop: while you wait, you miss MAIN
    and every other lane.
-5. Record what changed with `state.sh log` and `state.sh set`.
-6. Tell MAIN what changed, one message per change, with `mail.sh send <build>/main --from
+5. Record what changed with `state.py log` and `state.py set`.
+6. Tell MAIN what changed, one message per change, with `mail.py send <build>/main --from
    <build>/thread`; routine `working` news goes `--quiet`, but never an answer to MAIN's
    `QUESTION` or `DECISION`. If nothing changed, send nothing.
 
 ## 3. MAIN and decisions
 
 - Never use `AskUserQuestion`. Send every question to MAIN as a decision request: options, a
-  default and `applies at <UTC>`, or `owner-before`. Open it with `decisions.sh add`, and set a
-  `wake-at.sh` timer for its deadline.
+  default and `applies at <UTC>`, or `owner-before`. Open it with `decisions.py add`, and set a
+  `wake_at.py` timer for its deadline.
 - A decision holds only the work that depends on it. Keep every other lane moving, even when the
   plan or spec says to wait for the answer, and say in the request what you kept moving.
 - When a deadline passes without an answer, apply the default. An owner-before decision waits,
@@ -109,7 +112,7 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
   message MAIN.
 - Changes to instructions, agent definitions, settings or skill links need the owner's own
   approval: send MAIN the exact diff, and MAIN applies it.
-- Start every lane with `lane.sh` ([references/herdr.md](references/herdr.md)); keep subagents for
+- Start every lane with `lane.py` ([references/herdr.md](references/herdr.md)); keep subagents for
   short jobs that aren't lanes, such as a plan review.
 - Brief every worker from [references/briefs.md](references/briefs.md): an explicit model (Opus;
   Sonnet only for mechanical work, with the reason written down), its own worktree, the files it
@@ -136,9 +139,9 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
 
   ```bash
   # LANDING: pr
-  ~/.claude/skills/agent-orchestration/scripts/land.sh <PR> <worktree> --check <name> --subject "<conventional subject>" --body-file <body.md>
+  python3 "$HOME/.claude/skills/agent-orchestration/scripts/land.py" <PR> <worktree> --check <name> --subject "<conventional subject>" --body-file <body.md>
   # LANDING: local, run from your worktree
-  ~/.claude/skills/agent-orchestration/scripts/land-local.sh <lane branch> <approved sha> --check "<the repo's CI steps>" --subject "<conventional subject>"
+  python3 "$HOME/.claude/skills/agent-orchestration/scripts/land_local.py" <lane branch> <approved sha> --check "<the repo's CI steps>" --subject "<conventional subject>"
   ```
 
   Both print `LANDED` or `STOPPED <reason>`. A stopped landing goes back to the reviewer; never
@@ -150,9 +153,9 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
 
 ## 6. Context and budget
 
-- Each turn, check `meter.sh` (Codex) and the usage view (Claude). At 70% or more on either, send
+- Each turn, check `meter.py` (Codex) and the usage view (Claude). At 70% or more on either, send
   `STATUS: working - <meter> at <n>%; ready to rotate`, and MAIN replaces you with a fresh
-  thread. On a limit notice, write RESUME, set a `wake-at.sh` timer for the reset, and start
+  thread. On a limit notice, write RESUME, set a `wake_at.py` timer for the reset, and start
   nothing that uses the limit until then.
 - Keep your context small: scripts and a `test-runner` worker do mechanical work, worker reports
   stay short, and you open the long version only when you need it.
@@ -162,7 +165,7 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
 ## 7. Finish
 
 1. For each lane: compare any leftover edits with what merged, close its pane, then run
-   `finish-lane.sh <worktree> <archive dir>`.
+   `finish_lane.py <worktree> <archive dir>`.
 2. Write a short retrospective: what the reviews caught, what it cost, what to reuse. Land, as one
    change, the `REVIEW.md` updates reviewers proposed that you accept.
 3. Send `STATUS: done - …` with what the owner should check, the retrospective's path and, when

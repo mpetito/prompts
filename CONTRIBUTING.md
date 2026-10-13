@@ -29,16 +29,21 @@ pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
 node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js
-bash skills/agent-orchestration/tests/run.sh   # bash 5, jq, python3, GNU coreutils
+python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration   # Python 3.12+
+python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
 bash skills/model-council/tests/run.sh
 ```
 
-On Windows, run the two bash suites from Git Bash: PowerShell's `bash` is WSL's launcher. The
+On Windows, run the bash suite from Git Bash: PowerShell's `bash` is WSL's launcher. The
 model-council suite makes native symlinks, which need Developer Mode or an elevated shell.
 
-All seven are offline: they use disposable directories and mocked CLIs, and touch neither your
+All eight are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set plus a
 PowerShell parse check over every `.ps1` and `.psm1`, on Windows and Ubuntu.
+
+The orchestration scripts and hooks are **Python 3.12+**, standard library only. Skills and
+agents run each one as `python3` and its quoted path under `$HOME`, never `~`, so bash and both
+PowerShells can run the same command.
 
 Scripts target **PowerShell 7.4+** on Windows, Linux, and macOS. Windows PowerShell 5.1 is not
 supported, so `$IsWindows` and other PowerShell 7 built-ins are safe to rely on. `.gitattributes`

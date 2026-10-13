@@ -3,15 +3,16 @@
 What the thread sends its workers: a lane, a herdr agent of either kind ([herdr.md](herdr.md)), or a
 subagent for a short job that isn't a lane, such as a plan review. Fill every `<placeholder>` from a
 command you run when you send the brief, never from memory. Save each brief as
-`.orchestration/briefs/<lane>-<kind>.md` in your worktree, and give the worker the path: `lane.sh`
-does it for a lane.
+`.orchestration/briefs/<lane>-<kind>.md` in your worktree, and give the worker the path: `lane.py`
+does it for a lane. A script's short name, such as `lane.py`, means
+`python3 "$HOME/.claude/skills/agent-orchestration/scripts/<name>.py"`; a brief writes it in full.
 
 ## Every brief
 
 - **Model:** named explicitly. Opus by default; Sonnet only for mechanical work, with the reason
   written next to it; never inherited.
 - **Where:** the worker's own worktree, `../<repo>-wt-<lane>`; never the owner's checkout or
-  yours. The worker writes only inside it, scratch in its `.orchestration/tmp/` (finish-lane.sh
+  yours. The worker writes only inside it, scratch in its `.orchestration/tmp/` (finish_lane.py
   archives it); a write anywhere else can wait on a permission prompt no one sees. For a
   throwaway copy, use `git clone --no-local` or `git archive`, never `cp -a` of a worktree: the
   copy keeps the worktree's `.git` pointer, so `git config` in it writes the live repository's
@@ -23,8 +24,9 @@ does it for a lane.
   `VERDICT: approve|changes-required|close for <commit or version>` (reviewers); at most 40 lines;
   the long version in `.orchestration/results/<lane>.md` in your worktree. No reply until the work
   is finished. A lane sends it with
-  `~/.claude/skills/agent-orchestration/scripts/mail.sh send <build>/thread --from <build>/<lane> --file <report>`;
-  a subagent ends with it.
+  `python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py" send <build>/thread --from <build>/<lane> --file <report>`;
+  a subagent ends with it. When `ORCHESTRATION_HOME` is set, a Codex lane's command adds
+  `--home <its value>` after `send`: Codex's sandbox can't see the pane's environment.
 - **Questions:** a lane that must ask sends `STATUS: blocked - <question>` the same way and waits
   for its brief to change. Never `AskUserQuestion`: no one sees it.
 
@@ -44,7 +46,7 @@ Long version: <results path>
 # <lane>: <one-line goal>
 Load the code-style skill before you write code.
 Why: <the owner's or the spec's words, verbatim, with the source>
-Worktree: `git worktree add -b <branch> ../<repo>-wt-<lane> <LANE-BASE from state.sh thread>`; base `<sha>` when sent.
+Worktree: `git worktree add -b <branch> ../<repo>-wt-<lane> <LANE-BASE from state.py thread>`; base `<sha>` when sent.
 Owns: <paths>. Never touch: <paths> (owned by <lane>; message the thread with evidence instead).
 Changes: <numbered, each with its source: spec section, decision ID or finding ID>
 Must hold, each with a check you run before the first push: <property> - <check>

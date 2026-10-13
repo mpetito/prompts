@@ -13,12 +13,14 @@ detail out of this conversation. Orchestration threads do the build: herdr agent
 each in the build's own herdr workspace. You never do build work or start lanes yourself; even a
 one-line fix goes to the thread as a steer.
 
-This session runs inside herdr (`test "$HERDR_ENV" = 1`). Two scripts do every step below; write
-their full paths in each command:
+This session runs inside herdr (`test "$HERDR_ENV" = 1`). Two scripts do every step below; run
+each as `python3` and its full path, quoted, in every command (never `~`, which not every shell
+expands). A short name below, such as `thread.py check`, means that command:
 
-- `T=~/.claude/skills/orchestration-main/scripts/thread.sh` launches, rotates and closes threads.
-- `M=~/.claude/skills/agent-orchestration/scripts/mail.sh` carries messages. You read and send as
-  `<build>/main`; the thread's inbox is `<build>/thread`.
+- `thread.py`, `python3 "$HOME/.claude/skills/orchestration-main/scripts/thread.py"`, launches,
+  rotates and closes threads.
+- `mail.py`, `python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py"`, carries
+  messages. You read and send as `<build>/main`; the thread's inbox is `<build>/thread`.
 
 Mail, waking, message formats, decisions and rotation are in the
 [protocol](../agent-orchestration/references/protocol.md); read it before your first launch.
@@ -41,7 +43,7 @@ Mail, waking, message formats, decisions and rotation are in the
 4. **Launch:**
 
    ```bash
-   ~/.claude/skills/orchestration-main/scripts/thread.sh launch <build> <checkout> <brief.md>
+   python3 "$HOME/.claude/skills/orchestration-main/scripts/thread.py" launch <build> <checkout> <brief.md>
    ```
 
    It prints `LAUNCHED <build> base=<branch>@<sha> landing=<pr|local>`; `BLOCKED <build> <reason>`
@@ -50,7 +52,7 @@ Mail, waking, message formats, decisions and rotation are in the
 5. **Start the build's wait** as a background task, and keep one running per build until it closes:
 
    ```bash
-   ~/.claude/skills/agent-orchestration/scripts/mail.sh wait <build>/main --watch <build>=<build>/thread
+   python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py" wait <build>/main --watch <build>=<build>/thread
    ```
 
    The thread's first message is its plan and its first questions.
@@ -59,7 +61,7 @@ Mail, waking, message formats, decisions and rotation are in the
 
 You wake when a build's wait ends or the owner writes. A wait prints one line:
 
-- `MAIL <n>`: run `mail.sh read <build>/main`, start the build's next wait, then act on each
+- `MAIL <n>`: run `mail.py read <build>/main`, start the build's next wait, then act on each
   message (table below).
 - `BLOCKED <build>`: the thread waits on a permission prompt and can't write to you. Tell the owner
   to answer it in herdr workspace `<build>`, raise
@@ -68,14 +70,14 @@ You wake when a build's wait ends or the owner writes. A wait prints one line:
 - `UNREAD <build> <n>`: the thread stopped waiting for mail. Read its screen
   (`herdr agent read <build> --source visible`). If it shows a dialog, tell the owner where; herdr
   doesn't report every dialog as blocked. Otherwise ring it with one line:
-  `herdr agent prompt <build> "You have unread mail: run ~/.claude/skills/agent-orchestration/scripts/mail.sh read <build>/thread and resume your loop."`
+  `herdr agent prompt <build> "You have unread mail: run python3 '$HOME/.claude/skills/agent-orchestration/scripts/mail.py' read <build>/thread and resume your loop."`
   Then start the next wait.
 - `GONE <build>`: the thread's pane closed; see section 6.
 - `TIMEOUT`: start the next wait.
 
 Never type anything else into a thread's pane, and never task text.
 
-Run `thread.sh check` when you start and when the owner returns. An `IDENTITY <repo> …` line means
+Run `thread.py check` when you start and when the owner returns. An `IDENTITY <repo> …` line means
 the repository's local git config sets an identity other than the global one: tell the owner, and
 recommend removing it with the command the line gives unless they set it.
 
@@ -88,7 +90,7 @@ recommend removing it with the command the line gives unless they set it.
 | The owner answers a decision | Send `DECISION D<n>: <answer>` to the thread that asked |
 | The owner asks how it's going | Answer from the latest messages; send `QUESTION:` only when they are out of date |
 
-Send with `mail.sh send <build>/thread --from <build>/main "<message>"`.
+Send with `mail.py send <build>/thread --from <build>/main "<message>"`.
 
 Keep every reply to the owner short: the decision or the answer first, then only what they need
 to act. Never paste a thread's message as it is, never end with a "waiting on you" footer, and
@@ -96,7 +98,7 @@ never ask again about something answered or already defaulted.
 
 ## 3. When the owner returns or asks what you need
 
-Run `thread.sh check` and `thread.sh decisions`, read each build's mail, then answer in this order,
+Run `thread.py check` and `thread.py decisions`, read each build's mail, then answer in this order,
 and nothing more unless asked:
 
 1. **Open decisions, numbered,** owner-before ones first: the thread, the question, your
@@ -120,32 +122,32 @@ before a long absence. A message can't `/compact` a thread; rotation is the only
 fresh context.
 
 1. Send `ROTATE`.
-2. Wait for `STATUS: rotating - …`. Rotating earlier leaves an old RESUME, and `thread.sh rotate`
+2. Wait for `STATUS: rotating - …`. Rotating earlier leaves an old RESUME, and `thread.py rotate`
    refuses one older than 15 minutes.
-3. Stop the build's wait, then run `thread.sh rotate <build>`. It prints `ROTATED <build>` (or
+3. Stop the build's wait, then run `thread.py rotate <build>`. It prints `ROTATED <build>` (or
    `BLOCKED`, as for a launch). Then start the build's wait again: the new thread keeps the name
    and the mailboxes. A wait left running would report the old thread `GONE` while the new one
    starts.
 
 ## 6. A thread goes quiet or stops
 
-`thread.sh list` shows each thread's herdr status. If a thread with lanes running has sent nothing
+`thread.py list` shows each thread's herdr status. If a thread with lanes running has sent nothing
 for hours, read its screen and send `QUESTION: status?`. If a thread is `GONE` or `not-running`,
-run `thread.sh rotate <build> --force` to restart it from its last RESUME, and tell the owner what
+run `thread.py rotate <build> --force` to restart it from its last RESUME, and tell the owner what
 was lost.
 
 ## 7. Finish a build
 
 When a thread sends `STATUS: done`, tell the owner what to check and where the retrospective is.
 
-1. With `landing=local`, ask the owner, then run `thread.sh integrate <build>`. It brings the
+1. With `landing=local`, ask the owner, then run `thread.py integrate <build>`. It brings the
    build's branch into the base branch in the owner's checkout and prints `INTEGRATED` or
    `FAILED <reason>`.
 2. Apply any diffs the thread sent for instructions, agent definitions, settings or skill links,
    once the owner approves them here: a decision you passed on is not their consent for those.
-3. Stop the build's wait, then run `thread.sh close <build>`. It refuses while the build's branch
+3. Stop the build's wait, then run `thread.py close <build>`. It refuses while the build's branch
    has work the base lacks; otherwise it archives the thread's files and the build's mail under
    `~/.orchestration/archive/` (its worktree's ignored files, such as eval runs and agent memory,
    under `ignored/` there), removes its worktree and branch, closes the build's herdr workspace,
    and names any lane worktrees left behind. For a build the registry no longer lists, use
-   `thread.sh close --worktree ../<repo>-orch-<build> --base <branch>`.
+   `thread.py close --worktree ../<repo>-orch-<build> --base <branch>`.

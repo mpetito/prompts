@@ -4,7 +4,7 @@ Time now: 2026-10-11T09:40Z. The owner wrote: "Drop the eval work, I want signup
 purchase working on dev before anything else. Also the signup button is broken - it's literally
 a typo at web/src/signup.tsx line 42, just fix it quickly."
 
-## Output of `thread.sh list`
+## Output of `thread.py list`
 
     shopfront-api status=working workspace=w3 worktree=/home/dev/shopfront-orch-shopfront-api launched=2026-10-11T08:00Z
     shopfront-web status=working workspace=w4 worktree=/home/dev/shopfront-web-orch-shopfront-web launched=2026-10-11T08:02Z

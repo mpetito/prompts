@@ -151,7 +151,7 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: both orchestration suites pass with the source count, and the integrate test fails
   against a mutant that compares unresolved paths.
-- [ ] 7. Callers:
+- [x] 7. Callers:
   - `skills/agent-orchestration/SKILL.md`, `references/*.md`, and the agent-orchestration eval
     fixture prose and `evals/shared-benchmark.json`
   - `skills/orchestration-main/SKILL.md`, and its eval fixture prose and benchmark

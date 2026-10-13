@@ -1,6 +1,6 @@
 ---
 name: lane
-description: One lane of an orchestrated build, run as a herdr agent in its own worktree by the orchestration thread (lane.sh). Not a subagent; never delegate to it with the Agent tool.
+description: One lane of an orchestrated build, run as a herdr agent in its own worktree by the orchestration thread (lane.py). Not a subagent; never delegate to it with the Agent tool.
 hooks:
   PreToolUse:
     - matcher: "Bash"
