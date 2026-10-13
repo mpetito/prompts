@@ -18,8 +18,9 @@ USAGE = "usage: tally.py <answer file> <answer file> --exchange <k>"
 
 
 def field(key, text):
-    """The last value of key in text, whitespace collapsed: an answer may quote the template before its own block."""
-    values = [line.split(":", 1)[1] for line in text.splitlines() if re.match(rf"\s*{key}:", line, re.IGNORECASE)]
+    """The last value of key in text, whitespace collapsed: an answer may quote the template before its own block.
+    Lines end at \n alone, as grep's do: splitlines() would also split at \f, \x85, \u2028 and others."""
+    values = [line.split(":", 1)[1] for line in text.split("\n") if re.match(rf"\s*{key}:", line, re.IGNORECASE)]
     return " ".join(values[-1].split()) if values else ""
 
 

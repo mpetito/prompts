@@ -37,6 +37,10 @@ def write(text):
 if mode == "ok":
     print('{"type":"thread.started","thread_id":"t-123"}')
     write("Reasoning here.\nstance: initial\ndisposition: defect\naction: add the tenant id to the cache key\n")
+elif mode == "twothreads":
+    print('{"type":"thread.started","thread_id":"t-123"}')
+    print('{"type":"thread.started","thread_id":"t-456"}')
+    write("Reasoning here.\nstance: initial\ndisposition: defect\naction: add the tenant id to the cache key\n")
 elif mode == "quoted":
     write("stance: initial | agree | revise | hold\ndisposition: <one of>\n...\n"
           "stance: hold\ndisposition: false-positive\naction: no change\n")
@@ -44,6 +48,9 @@ elif mode == "prose":
     write("I think it is fine.\n")
 elif mode == "fail":
     sys.exit(3)
+elif mode == "signal":
+    import signal
+    os.kill(os.getpid(), signal.SIGTERM)
 elif mode == "writefail":
     write(answer)
     sys.exit(3)
@@ -87,12 +94,12 @@ class CouncilTest(unittest.TestCase):
         env.start()
         self.addCleanup(env.stop)
         os.environ.pop("MOCK_CODEX", None)
-        self.argv, self.cwd = [], None
+        self.argv, self.cwd, self.timeout_s = [], None, None
         self.out, self.log = self.tmp / "out" / "a.md", self.tmp / "out" / "a.log"
 
         def fake_run(args, **kw):
             self.assertEqual(args[0], "codex")
-            self.argv, self.cwd = list(args[1:]), kw["cwd"]
+            self.argv, self.cwd, self.timeout_s = list(args[1:]), kw["cwd"], kw["timeout"]
             return REAL_RUN([sys.executable, str(fake), *args[1:]], **kw)
 
         patch = unittest.mock.patch.object(run, "run", fake_run)
@@ -137,6 +144,9 @@ class MemberCommand(CouncilTest):
         self.assertEqual(self.argv[:3], ["exec", "resume", "r-999"], "resume did not call codex exec resume <id>")
         self.assertTrue(pair(self.argv, "-c", 'sandbox_mode="read-only"'), "resume dropped the read-only sandbox")
         self.assertTrue(pair(self.argv, "--model", "m1"), "resume dropped the model")
+        self.line("--model", "m1", "--resume", "r-999", "--effort", "high")
+        self.assertTrue(pair(self.argv, "-c", 'model_reasoning_effort="high"'), "resume dropped the effort")
+        self.line("--model", "m1", "--resume", "r-999")
         self.assertIn("--ignore-user-config", self.argv, "resume loaded the user's Codex config")
         self.assertEqual(self.cwd, str(self.tmp / "repo"), "resume did not run inside the repository")
         self.assertEqual(line, self.done("r-999", "initial", "defect"), "resume line did not report the resumed session")
@@ -196,6 +206,34 @@ class MemberOutcomes(CouncilTest):
         self.assertEqual(line, self.timeout("1s"))
         time.sleep(4)
         self.assertFalse(self.out.exists(), "a grandchild wrote the answer after the timeout")
+
+    def test_the_session_is_the_first_thread(self):
+        self.assertEqual(self.line("--model", "m1", mode="twothreads"), self.done("t-123", "initial", "defect"))
+
+    def test_a_codex_killed_by_a_signal_reports_128_plus_n(self):
+        if os.name == "nt":
+            self.skipTest("Windows has no signals: TerminateProcess gives a positive exit code")
+        self.assertEqual(self.line("--model", "m1", mode="signal"), self.failed(128 + 15))
+
+    def test_the_timeout_takes_timeout1_durations(self):
+        for duration, secs in (("90", 90), ("90s", 90), ("2m", 120), ("1h", 3600), ("1d", 86400), ("1.5m", 90)):
+            with self.subTest(duration):
+                self.assertEqual(codex_member.seconds(duration), secs)
+        self.line("--model", "m1")
+        self.assertEqual(self.timeout_s, 1200, "the default timeout is not 20m")
+        self.assertEqual(self.line("--model", "m1", "--timeout", "0"), self.done("t-123", "initial", "defect"))
+        self.assertIsNone(self.timeout_s, "--timeout 0 is not 'no limit', as it is for timeout(1)")
+        for bad in ("soon", "5x", "-1m", ""):
+            with self.subTest(bad=bad):
+                self.assertEqual(self.member("--model", "m1", "--timeout", bad),
+                                 (1, "", f"--timeout takes a duration such as 90s, 20m or 1h; {codex_member.USAGE}"))
+
+    def test_a_line_ends_only_at_a_newline(self):
+        # grep splits at \n alone; a form feed or a Unicode line separator inside a value is not a new line.
+        self.out.write_text("stance: initial\fdisposition: hold\ndisposition: defect\u2028stance: x\n",
+                            encoding="utf-8")
+        self.assertEqual((codex_member.field("stance", str(self.out)), codex_member.field("disposition", str(self.out))),
+                         ("initial\fdisposition: hold", "defect\u2028stance: x"))
 
     def test_a_symlinked_path_is_refused(self):
         # Its target is neither removed nor written beside. On Windows a symlink needs Developer Mode or elevation.
@@ -288,6 +326,16 @@ class Tally(unittest.TestCase):
                                     encoding="utf-8")
         self.assertEqual(self.tally(0), self.incomplete("b", "no-decisive-citation"))
 
+    def test_a_disposition_is_one_word(self):
+        # bash's word list accepted "defect improvement"; the disposition is exactly one of the listed values.
+        self.ans("a", "initial", "defect", "x")
+        self.ans("b", "initial", "defect improvement", "x")
+        self.assertEqual(self.tally(0), self.incomplete("b", "disposition 'defect improvement'"))
+
+    def test_a_line_ends_only_at_a_newline(self):
+        self.assertEqual(tally.field("disposition", "disposition: defect\naction: x\u2028disposition: maybe\n"),
+                         "defect")
+
     def test_a_stance_must_fit_the_round(self):
         self.ans("a", "agree", "defect", "x")
         self.ans("b", "agree", "defect", "x")
@@ -327,7 +375,8 @@ class Usage(unittest.TestCase):
     def test_a_usage_error_exits_1(self):
         cases = ((codex_member, ["repo"], codex_member.USAGE),
                  (tally, ["a", "b"], tally.USAGE),
-                 (tally, ["a", "b", "--exchange", "one"], f"--exchange takes a round number; {tally.USAGE}"))
+                 (tally, ["a", "b", "--exchange", "one"], f"--exchange takes a round number; {tally.USAGE}"),
+                 (tally, ["a", "b", "--exchange", "-1"], f"--exchange takes a round number; {tally.USAGE}"))
         for module, argv, message in cases:
             with self.subTest(module.__name__, argv=argv):
                 r = subprocess.run([sys.executable, module.__file__, *argv], capture_output=True, text=True)

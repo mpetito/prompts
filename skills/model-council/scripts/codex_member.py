@@ -24,7 +24,8 @@ WINDOWS_SANDBOX = 'windows.sandbox="unelevated"'
 
 
 def seconds(duration):
-    """A timeout(1) duration, a number with an optional s, m, h or d suffix, in seconds; None when it isn't one."""
+    """A timeout(1) duration, a number with an optional s, m, h or d suffix, in seconds; None when it isn't one.
+    0 means no limit, as it does for timeout(1)."""
     m = re.fullmatch(r"(\d+(?:\.\d+)?)([smhd]?)", duration)
     return float(m[1]) * {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[m[2]] if m else None
 
@@ -33,8 +34,10 @@ def field(key, path):
     """The last value of key in the answer file, trimmed: the answer may quote the template before its own block."""
     if not os.path.isfile(path):
         return ""
-    with open(path, encoding="utf-8", errors="replace") as f:
-        values = [line.split(":", 1)[1].strip() for line in f if re.match(rf"\s*{key}:", line, re.IGNORECASE)]
+    # Lines end at \n alone, as grep's do: splitlines() would also split at \f, \x85, \u2028 and others.
+    with open(path, encoding="utf-8", errors="replace", newline="") as f:
+        lines = f.read().split("\n")
+    values = [line.split(":", 1)[1].strip() for line in lines if re.match(rf"\s*{key}:", line, re.IGNORECASE)]
     return values[-1] if values else ""
 
 
@@ -99,7 +102,7 @@ def main(argv):
         os.remove(out)  # a stale answer from an earlier run must not survive this one
 
     code = run.run(["codex", *codex_args(repo, out, model, opts["--effort"], opts["--resume"])], cwd=repo,
-                   stdin=prompt, stdout=events, stderr=log, timeout=seconds(timeout_for))
+                   stdin=prompt, stdout=events, stderr=log, timeout=seconds(timeout_for) or None)
 
     session = opts["--resume"]
     if not session and os.path.isfile(events):
@@ -114,7 +117,8 @@ def main(argv):
         if code == 124:
             print(f"MEMBER timeout {line} after {timeout_for}; log {log}")
         else:
-            print(f"MEMBER failed {line} exit={code}; log {log}")
+            # A signal's death is -N here; bash reported 128+N.
+            print(f"MEMBER failed {line} exit={128 - code if code < 0 else code}; log {log}")
         return 0
     stance, disposition = field("stance", out), field("disposition", out)
     if not stance or not disposition:
