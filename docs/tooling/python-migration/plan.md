@@ -83,7 +83,7 @@ Fixture prose in `.md` files is updated with its skill.
 
 ## Phase 1: orchestration and its hooks (branch `py/orchestration`)
 
-- [ ] 1. `skills/agent-orchestration/scripts/lib.py`, `skills/agent-orchestration/tests/__init__.py`,
+- [x] 1. `skills/agent-orchestration/scripts/lib.py`, `skills/agent-orchestration/tests/__init__.py`,
   `skills/agent-orchestration/tests/test_lib.py`. Port every helper in `lib.sh`:
   - `utc_now`, `fmt_utc`, `to_epoch`, `need_value`
   - `toplevel`, `session_top`, `resolve_state`, the thread-record reader

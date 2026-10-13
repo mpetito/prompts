@@ -6,3 +6,4 @@
 
 # Local skill-eval runs written by scripts/run-skill-eval.ps1
 .eval-runs/
+__pycache__/
