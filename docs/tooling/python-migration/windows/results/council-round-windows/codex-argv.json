@@ -1,0 +1,21 @@
+[
+ "codex",
+ "exec",
+ "--cd",
+ "%USERPROFILE%\\AppData\\Local\\Temp\\council-round-9m9nr2rr\\repo",
+ "--sandbox",
+ "read-only",
+ "--ignore-user-config",
+ "-c",
+ "sandbox_mode=\"read-only\"",
+ "--model",
+ "gpt-6.1-sol",
+ "--json",
+ "--output-last-message",
+ "D:\\prompts-council\\docs\\tooling\\python-migration\\windows\\results\\council-round-windows\\round0-codex.md",
+ "-c",
+ "windows.sandbox=\"unelevated\"",
+ "-c",
+ "model_reasoning_effort=\"high\"",
+ "-"
+]
