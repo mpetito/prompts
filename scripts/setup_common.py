@@ -234,7 +234,8 @@ class Linker:
         self.backup_root, self.replace, self.what_if = backup_root, replace, what_if
 
     def link(self, source, path):
-        """Link path to source. True when the link is in place; False when a conflict was kept or what_if is set.
+        """Link path to source. True when the link is in place; False when a conflict was kept or what_if held back
+        the change.
         Fail when source is missing or the link can't be made, with the replaced entry put back."""
         if not os.path.exists(source):
             raise Fail(f"Repository source is missing: {source}")

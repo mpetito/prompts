@@ -34,7 +34,7 @@ jobs:
       - name: Check skill installation and migration
         run: python3 -m unittest discover -v -s tests -t . -p test_setup.py
       - name: Check MCP installation with mocked CLIs
-        run: ./tests/Mcp.Tests.ps1
+        run: python3 -m unittest discover -v -s tests -t . -p test_mcp.py
       - name: Check the pull-request feedback script with a mocked gh
         run: ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
       - name: Check the pull-request thread script with a mocked gh

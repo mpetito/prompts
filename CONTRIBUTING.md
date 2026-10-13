@@ -25,7 +25,6 @@ There is no package manager here. Run what CI runs, from the repository root:
 
 ```sh
 python3 -m unittest discover -s tests -t .
-pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
 node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js

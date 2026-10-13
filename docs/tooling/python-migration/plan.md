@@ -315,11 +315,17 @@ Fixture prose in `.md` files is updated with its skill.
   - Verification fails for a missing `python3`, the Store placeholder's 9009 and 3.11, all faked at
     `run()`, and for a placeholder first on `PATH`. It passes on the real `python3`. On POSIX a
     placeholder's 9009 reaches the caller as 49, so the 9009 message itself is checked on Windows CI.
-- [ ] 17. `mcp/bootstrap/mcp_common.py`, `install.py`, `verify.py`, `tests/test_mcp.py`,
+- [x] 17. `mcp/bootstrap/mcp_common.py`, `install.py`, `verify.py`, `tests/test_mcp.py`,
   `mcp/README.md`. Port prerequisites, previews, native failures, client selection, config backups,
   the JSONC merge and timeout updates. Delete the MCP `.ps1` and `.psm1` files,
   `scripts/Setup.Common.psm1` and `tests/Mcp.Tests.ps1`. Check: the suite passes with the source
   count.
+
+  Linux, 2026-10-13: `python3 -m unittest discover -s tests -t .` passes.
+  - All 30 assertions of `Mcp.Tests.ps1` are ported. The suite adds cases for each prerequisite,
+    credential migration on stdin, the Codex and Claude config backups, the gateway build sequence, a
+    client that isn't installed, and `verify.py`, which the PowerShell suite never ran.
+  - Every case fails against a planted mutant.
 - [ ] 18. The eval tooling and its docs:
   - `scripts/run_skill_eval.py`, plus `scripts/agent_eval_backend.py`, `skill_usage.py` and
     `trigger_matrix_shim.py` renamed from kebab-case

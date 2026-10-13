@@ -7,6 +7,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import unittest.mock
 from pathlib import Path
 
@@ -273,6 +274,21 @@ class Python(SetupTest):
         self.assertIsNone(self.check())
         self.assertIsNone(self.check(info=(0, "(3, 14)\n")))
         self.assertIsNone(self.check(info=(0, "(4, 0)\n")))
+
+
+class Run(SetupTest):
+    """setup_common.run, the one place setup spawns a process."""
+
+    def test_a_missing_command_returns_127(self):
+        self.assertEqual(sc.run(["no-such-command-for-setup-tests"]).returncode, 127)
+
+    def test_a_timeout_kills_the_whole_tree(self):
+        # The grandchild holds the output pipe open; only killing the tree lets run() return before it exits.
+        sleeper = "import subprocess, sys, time; subprocess.Popen([sys.executable, '-c', 'import time; " \
+                  "time.sleep(30)']); time.sleep(30)"
+        started = time.monotonic()
+        self.assertEqual(sc.run([sys.executable, "-c", sleeper], timeout=1).returncode, 124)
+        self.assertLess(time.monotonic() - started, 15)
 
 
 class Usage(SetupTest):

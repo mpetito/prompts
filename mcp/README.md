@@ -8,12 +8,12 @@ This directory is the source-controlled registry for the MCP tools used by Claud
 - Dynamic MCP is disabled so profile contents remain explicit and reproducible.
 - Tool-name prefixes are enabled so each exposed tool retains its source server identity (for example, Azure DevOps rather than only `core_list_projects`).
 
-Run these commands from the repository root with **PowerShell 7.4+** on Windows or Ubuntu:
+Run these commands from the repository root with **Python 3.12+** (`python3`) on Windows or Ubuntu:
 
 ```sh
-pwsh -NoProfile -File ./mcp/bootstrap/install.ps1 -WhatIf
-pwsh -NoProfile -File ./mcp/bootstrap/install.ps1
-pwsh -NoProfile -File ./mcp/bootstrap/verify.ps1
+python3 mcp/bootstrap/install.py --what-if
+python3 mcp/bootstrap/install.py
+python3 mcp/bootstrap/verify.py
 ```
 
 MCP setup is optional and independent of skill linking. Prerequisites are Docker with a running
@@ -25,7 +25,7 @@ machine setup step; these scripts do not install system packages or silently cho
 secret provider. See [Docker MCP Toolkit](https://docs.docker.com/ai/mcp-catalog-and-toolkit/).
 
 By default the installer detects `codex`, `claude`, and `opencode` on PATH. Missing clients are
-skipped; `-Tools codex,claude` narrows the selection. A preview can describe registrations for
+skipped; `--tools codex,claude` narrows the selection. A preview can describe registrations for
 clients not yet installed, but applying MCP setup requires the selected CLIs. Copilot MCP
 registration is not managed by this bootstrap.
 
@@ -38,11 +38,11 @@ gateway-managed OAuth.
 When installing another client after the gateways are ready, reuse them without rebuilding:
 
 ```sh
-pwsh -NoProfile -File ./mcp/bootstrap/install.ps1 -Tools opencode -SkipGatewaySetup -SkipCredentialMigration
+python3 mcp/bootstrap/install.py --tools opencode --skip-gateway-setup --skip-credential-migration
 ```
 
-`-SkipGatewaySetup` checks that the existing profiles are accessible. `-SkipCredentialMigration`
-leaves Docker secrets untouched. `-WhatIf` makes no changes and invokes no external commands,
+`--skip-gateway-setup` checks that the existing profiles are accessible. `--skip-credential-migration`
+leaves Docker secrets untouched. `--what-if` makes no changes and invokes no external commands,
 so it can be used before installing Docker MCP. Actual command failures stop the installer
 instead of allowing a misleading success message.
 
@@ -98,15 +98,15 @@ edits are not available through MCP and need the SonarQube web API.
 
 Machine-specific values can be supplied to the installer:
 
-```powershell
-pwsh -NoProfile -File ./mcp/bootstrap/install.ps1 -AwsRegion us-east-1
+```sh
+python3 mcp/bootstrap/install.py --aws-region us-east-1
 ```
 
 Playwright runs inside Docker. On Docker Desktop, use `host.docker.internal` to reach a host
 development server. On standalone Linux Docker, host access depends on the gateway/container
 network configuration; do not assume that hostname is available automatically.
 
-Run `pwsh -NoProfile -File ./mcp/bootstrap/verify.ps1` from the repository root to validate both
-gateways and list detected clients' registrations. Use `-Tools` to narrow the client checks.
+Run `python3 mcp/bootstrap/verify.py` from the repository root to validate both
+gateways and list detected clients' registrations. Use `--tools` to narrow the client checks.
 This verification can start gateway containers and contact configured services; the offline
 regression tests in `tests/` mock those calls instead.

@@ -218,7 +218,6 @@ Claude's status line also needs its machine-local settings entry and a terminal 
 
 ```sh
 python3 -m unittest discover -s tests -t .
-pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
 ```
 
 These offline tests create temporary homes, exercise migration and conflicts, and mock MCP CLI
