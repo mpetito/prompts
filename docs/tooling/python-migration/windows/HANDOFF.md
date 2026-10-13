@@ -47,6 +47,36 @@ What the Linux session does with each result:
   bash plus Python.
 - **The `hook-cost` lines:** they set what the 700 ms hook bound has to absorb.
 
-## Step 9: smoke test (later)
+## Step 9: smoke test
 
-The smoke test runs once phase 1 is ported. A section with its command will be added here then.
+`smoke.py` runs one throwaway build with real agents and real herdr: a thread, a Claude lane and a Codex lane. Along
+the way it checks:
+- that the guards refuse writes into the checkout;
+- that finish_lane refuses a running lane, however its path is spelled;
+- that the thread rotates and the build closes;
+- what each hook costs when started the way Claude Code starts it.
+
+It passed every item on Linux on 2026-10-13.
+
+1. **Make the branch what `~/.claude` runs.** The installed skills and agents link into `D:\prompts`. Check out the
+   phase branch's head there, detached, since the branch may be checked out in another worktree:
+   `git -C D:\prompts fetch mpetito` and then
+   `git -C D:\prompts checkout --detach mpetito/py/orchestration`. Every session on this machine now runs the
+   branch, so first make sure no orchestration build is running (`python3 ...\thread.py list` prints NONE, or
+   check `threads.tsv`).
+2. **Run it from a PowerShell pane inside herdr,** so codex starts the way a PowerShell-hosted lane would:
+   `python3 docs\tooling\python-migration\windows\smoke.py`. It takes 5–10 minutes. Its build and its
+   `ORCHESTRATION_HOME` live in a temporary folder.
+3. **The owner answers the startup prompts.** Each new folder gets Claude Code's trust prompt: the thread's
+   workspace and possibly the Claude lane's worktree. The Codex lane may show its own first-run prompt. The script
+   prints `BLOCKED <agent>` and waits up to 15 minutes for each. Never answer a trust prompt yourself.
+4. **Put `D:\prompts` back on main:** `git -C D:\prompts checkout main`.
+
+Then write `docs/tooling/python-migration/windows/results/smoke.md` containing:
+- the date;
+- every `SMOKE` line, verbatim;
+- `claude --version`, `codex --version` and `herdr --version`;
+- for a failed item, what the agent's pane showed.
+
+Commit and push it as in step 0. If the script is interrupted, check that no `smk*` agents are left
+(`herdr agent list`); its cleanup closes them and removes its temporary folder.

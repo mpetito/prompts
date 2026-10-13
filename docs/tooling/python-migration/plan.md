@@ -183,6 +183,15 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: run on Linux first. On Windows, the owner's agent reports every item passing and each
   hook under 700 ms.
+
+  Linux, 2026-10-13, on 8264100 with Claude Code 2.1.296: every item passed.
+  - The thread's write and the Claude lane's write into the checkout were both refused.
+  - Both lanes committed and mailed the thread; the Codex lane mailed through `--home` from its sandbox.
+  - finish_lane refused a running lane given native, slashed and relative paths, and retired both lanes once
+    their panes closed.
+  - The thread rotated, and close left no agent, worktree, branch or registry row.
+  - Hook medians, shell form through bash: guard_bash 31 ms, guard_writes 30 ms, guard_timestamps 31 ms.
+  - The run needed the owner to answer two startup prompts: the thread's folder trust and the Codex lane's.
 - [ ] 10. Evals: run `agent-orchestration` and `orchestration-main` against main's revision, as
   `docs/evaluating-skills.md` describes. Check: pass rates and trigger rates are no lower than the
   baseline's, or the owner accepts the difference. Then the owner merges the phase's pull request.
