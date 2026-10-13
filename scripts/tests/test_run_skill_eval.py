@@ -571,7 +571,10 @@ class SpawnTest(unittest.TestCase):
     """The real run(): it spawns, so these call the test's own Python."""
 
     def test_captures_output(self):
-        r = rse.run([sys.executable, "-c", "import sys; print('out ✓'); print('err', file=sys.stderr); sys.exit(3)"])
+        # The child writes UTF-8 itself, as harness children do under the runner's PYTHONUTF8=1; run() decodes it.
+        child = ("import sys; sys.stdout.reconfigure(encoding='utf-8'); print('out ✓'); print('err', file=sys.stderr); "
+                 "sys.exit(3)")
+        r = rse.run([sys.executable, "-c", child])
         self.assertEqual((r.returncode, r.stdout.strip(), r.stderr.strip()), (3, "out ✓", "err"))
 
     def test_log_takes_both_streams(self):
