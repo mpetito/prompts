@@ -723,7 +723,9 @@ out=$("$thread" close --worktree "$tmp/proj/app-orch-z" --base main --force || t
 [ -d "$tmp/proj/app-orch-z" ] || fail "thread.sh close removed a worktree it could not list"
 cp "$tmp/z.index.bak" "$idx"
 jq '.result.agents += [{name: "z", agent_status: "idle", pane_id: "w88:p1"}]' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
-"$thread" close --worktree "$tmp/proj/app-orch-z" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
+# Given as a native tool spells it on Git for Windows (C:/x), the worktree is still found beside its checkout.
+zwt="$tmp/proj/app-orch-z"; if command -v cygpath >/dev/null; then zwt=$(cygpath -m "$zwt"); fi
+"$thread" close --worktree "$zwt" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
 grep -qx 'workspace close w88' "$MOCK_DIR/herdr.log" || fail "thread.sh close --worktree left the build's workspace open"
 "$thread" close --worktree "$app" | grep -q 'is on .*, not orchestration/<build>' || fail "thread.sh closed a checkout that is not a coordination worktree"
 "$thread" close t-nope | grep -q '^FAILED no thread for build t-nope' || fail "thread.sh closed an unknown thread"
