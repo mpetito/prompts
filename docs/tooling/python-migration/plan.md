@@ -125,7 +125,7 @@ Fixture prose in `.md` files is updated with its skill.
   - Delete `mail.sh`.
 
   Check: the suite passes with the source count, and each of the ten mutants fails it.
-- [ ] 5. `skills/agent-orchestration/scripts/lane.py`, `finish_lane.py`, `land.py`, `land_local.py`,
+- [x] 5. `skills/agent-orchestration/scripts/lane.py`, `finish_lane.py`, `land.py`, `land_local.py`,
   `watch_gates.py`, `skills/agent-orchestration/tests/test_lanes.py`.
   - finish-lane refuses while herdr reports an agent in the worktree, whether the path is spelled
     `D:\…`, `D:/…` or relative.
