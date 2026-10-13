@@ -334,7 +334,7 @@ Fixture prose in `.md` files is updated with its skill.
     wrapper files as the PowerShell run; `--agent-definition verifier --runs 1` completed.
   - `stage_plugin_baseline.py` writes the same folder as the `.ps1`, byte for byte.
   - The PowerShell scripts had no test suite. `scripts/tests` adds 50 cases, run in CI; each of 74 runner
-    mutants and 33 helper mutants fails it.
+    mutants and 32 helper mutants fails it.
 - [ ] 19. `.github/workflows/validate.yml`, `CONTRIBUTING.md`, `README.md`:
   - CI runs every `unittest` suite on both operating systems under setup-python 3.12, and drops
     the pwsh steps, the node step and the PowerShell parse check.
