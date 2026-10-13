@@ -289,7 +289,7 @@ case "$cmd" in
     name=""; wt=""; base=""; force=0
     while [ $# -gt 0 ]; do
       case $1 in
-        --worktree) need_value "$1" $#; wt=$(canon "$2"); shift 2 ;;
+        --worktree) need_value "$1" $#; wt=$2; shift 2 ;;
         --base) need_value "$1" $#; base=$2; shift 2 ;;
         --force) force=1; shift ;;
         -*) usage ;;
@@ -302,6 +302,7 @@ case "$cmd" in
       found=$(row_by 1 "$name"); [ -n "$found" ] || fail "no thread for build $name in $reg; for a build the registry no longer lists, pass --worktree <coordination worktree>"
       IFS=$'\t' read -r _ _ wt ws _ <<< "$found"
     fi
+    wt=$(canon "$wt")
     [ -d "$wt" ] || fail "no coordination worktree at $wt"
     branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null) || fail "$wt has a detached HEAD; it is not a coordination worktree"
     [[ $branch == orchestration/* ]] || fail "$wt is on $branch, not orchestration/<build>; it is not a coordination worktree"
