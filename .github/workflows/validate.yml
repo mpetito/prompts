@@ -40,9 +40,9 @@ jobs:
       - name: Check the pull-request thread script with a mocked gh
         run: ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
       - name: Check orchestration scripts and hooks
-        run: python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration
+        run: python3 -m unittest discover -v -s skills/agent-orchestration/tests -t skills/agent-orchestration
       - name: Check orchestration threads
-        run: python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
+        run: python3 -m unittest discover -v -s skills/orchestration-main/tests -t skills/orchestration-main
       - name: Check model-council scripts
         shell: bash
         run: bash skills/model-council/tests/run.sh
