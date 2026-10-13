@@ -24,7 +24,7 @@ footer, no session links. `Co-Authored-By` is reserved for crediting human autho
 There is no package manager here. Run what CI runs, from the repository root:
 
 ```sh
-pwsh -NoProfile -File ./tests/Setup.Tests.ps1
+python3 -m unittest discover -s tests -t .
 pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
@@ -65,8 +65,8 @@ archived text and the audit's review of it, never from a blank file.
 Rerun setup so each client gets the new child link:
 
 ```sh
-pwsh -NoProfile -File ./setup-skills-link.ps1
-pwsh -NoProfile -File ./verify-setup.ps1
+python3 setup_skills_link.py
+python3 verify_setup.py
 ```
 
 Edits *inside* an already-linked skill need no rerun — they are visible immediately.

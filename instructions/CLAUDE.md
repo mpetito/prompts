@@ -1,7 +1,7 @@
 # Global instructions (all projects)
 
 <!-- Source of truth: instructions/CLAUDE.md in the agentic coding toolkit repository,
-     symlinked to ~/.claude/CLAUDE.md by setup-skills-link.ps1. Edit it there, not in
+     symlinked to ~/.claude/CLAUDE.md by setup_skills_link.py. Edit it there, not in
      ~/.claude. This file loads into every session — keep it short and keep every line
      load-bearing. -->
 

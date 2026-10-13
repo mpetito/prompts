@@ -32,7 +32,7 @@ jobs:
           }
           if ($errorsFound) { $errorsFound | Format-List; throw 'PowerShell syntax errors found.' }
       - name: Check skill installation and migration
-        run: ./tests/Setup.Tests.ps1
+        run: python3 -m unittest discover -v -s tests -t . -p test_setup.py
       - name: Check MCP installation with mocked CLIs
         run: ./tests/Mcp.Tests.ps1
       - name: Check the pull-request feedback script with a mocked gh

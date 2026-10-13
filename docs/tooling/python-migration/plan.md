@@ -285,7 +285,7 @@ Fixture prose in `.md` files is updated with its skill.
 
 ## Phase 4: setup, MCP and eval tooling (branch `py/setup`)
 
-- [ ] 16. Before porting anything, save `pwsh -NoProfile -File ./setup-skills-link.ps1 -WhatIf`
+- [x] 16. Before porting anything, save `pwsh -NoProfile -File ./setup-skills-link.ps1 -WhatIf`
   output from this machine to the scratchpad.
 
   Port the setup scripts:
@@ -305,6 +305,16 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes with the source count. `python3 setup_skills_link.py --what-if` prints
   the same link set as the saved PowerShell preview. Verification fails when `PATH` points
   `python3` at a placeholder that exits 9009.
+
+  Linux, 2026-10-13: `python3 -m unittest discover -s tests -t .` passes.
+  - All 24 assertions of `Setup.Tests.ps1` are ported, and its run of verification. The suite also covers
+    the python3 check, verification failures, and setup cases the PowerShell suite never asserted. Every
+    one fails against a planted mutant.
+  - The `--what-if` preview gives the same link set as PowerShell's, both against this machine's home and
+    against an empty isolated home. The isolated preview is byte-for-byte identical.
+  - Verification fails for a missing `python3`, the Store placeholder's 9009 and 3.11, all faked at
+    `run()`, and for a placeholder first on `PATH`. It passes on the real `python3`. On POSIX a
+    placeholder's 9009 reaches the caller as 49, so the 9009 message itself is checked on Windows CI.
 - [ ] 17. `mcp/bootstrap/mcp_common.py`, `install.py`, `verify.py`, `tests/test_mcp.py`,
   `mcp/README.md`. Port prerequisites, previews, native failures, client selection, config backups,
   the JSONC merge and timeout updates. Delete the MCP `.ps1` and `.psm1` files,

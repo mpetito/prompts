@@ -142,29 +142,29 @@ on its own by design, so it carries no trigger suite.
 
 ## Setup
 
-Use **PowerShell 7.4+ (`pwsh`)** on Windows, Ubuntu, and macOS. Windows PowerShell 5.1
-(`powershell.exe`) is not supported. Install PowerShell using the
-[Microsoft instructions](https://learn.microsoft.com/powershell/scripting/install/installing-powershell).
-Keep a local clone on each machine and sync the source through Git; the installer derives the
-checkout location from its own script, so the clone can live anywhere.
+Setup needs **Python 3.12+**, run as `python3`, on Windows, Ubuntu, and macOS. On Windows,
+`python3` must reach an installed Python: verification rejects the Microsoft Store placeholder
+that only offers to install one. Keep a local clone on each machine and sync the source through
+Git; the installer derives the checkout location from its own script, so the clone can live
+anywhere.
 
 From the repository root, these commands work from Bash or PowerShell:
 
 ```sh
 # Preview setup for clients detected on PATH, then apply and verify it.
-pwsh -NoProfile -File ./setup-skills-link.ps1 -WhatIf
-pwsh -NoProfile -File ./setup-skills-link.ps1
-pwsh -NoProfile -File ./verify-setup.ps1
+python3 setup_skills_link.py --what-if
+python3 setup_skills_link.py
+python3 verify_setup.py
 
 # Select clients explicitly, including clients not installed yet.
-pwsh -NoProfile -File ./setup-skills-link.ps1 -Tools codex,claude,opencode
-pwsh -NoProfile -File ./verify-setup.ps1 -Tools codex,claude,opencode
+python3 setup_skills_link.py --tools codex,claude,opencode
+python3 verify_setup.py --tools codex,claude,opencode
 ```
 
 Automatic detection checks the `codex`, `claude`, `opencode`, and `copilot` commands on PATH.
-For desktop/IDE-only clients, or to prepare files before installing a CLI, use `-Tools`.
+For desktop/IDE-only clients, or to prepare files before installing a CLI, use `--tools`.
 When adding a client, install it and rerun setup. No client authentication or Docker is needed
-for skill linking. Windows symlinks require Developer Mode or an elevated PowerShell session;
+for skill linking. Windows symlinks require Developer Mode or an elevated shell;
 Linux and macOS need no elevation when writing your own home directory. Run as your normal user.
 
 | Repository source | Client | Default destination |
@@ -183,13 +183,13 @@ entries stay local. Global Claude instructions and agents keep their Claude-spec
 
 The installer honors `CLAUDE_CONFIG_DIR` for Claude destinations and `CODEX_HOME` when migrating
 old Codex links. Shared skills remain under the user's `~/.agents/skills`, independent of
-`CODEX_HOME`. `-HomeDirectory <path>` redirects **all skill destinations** to an isolated home
+`CODEX_HOME`. `--home-directory <path>` redirects **all skill destinations** to an isolated home
 and ignores these environment overrides; use it for testing, not to configure a client that
 still reads your normal home.
 
 Setup is idempotent. Conflicting files, directories, and foreign links are preserved and reported
 as incomplete setup (nonzero exit). To replace them deliberately, preview with
-`-ReplaceConflicts -WhatIf`, then rerun with `-ReplaceConflicts`. Originals move to a unique
+`--replace-conflicts --what-if`, then rerun with `--replace-conflicts`. Originals move to a unique
 folder under `~/.prompts-backups`, outside skill discovery. Nothing is silently overwritten.
 Missing source files and link failures are errors, with a Windows privilege hint when applicable.
 
@@ -210,8 +210,6 @@ Claude's status line also needs its machine-local settings entry and a terminal 
 - PR helpers use PowerShell 7 and an authenticated `gh` CLI on Windows, Linux, or macOS. From Bash, invoke
   them with `pwsh -NoProfile -File <script.ps1>`.
 - The Claude status line needs Node.js and Git.
-- Word editing helpers require **Windows and desktop Microsoft Word**. They report that
-  requirement explicitly on Linux and macOS.
 - MCP configuration is a separate opt-in step; see [`mcp/README.md`](mcp/README.md). Docker
   Engine alone is insufficient: the profiles also require the Docker MCP Toolkit and their
   configured secret backend. Credentials and generated configuration stay machine-local.
@@ -219,7 +217,7 @@ Claude's status line also needs its machine-local settings entry and a terminal 
 ### Validation
 
 ```sh
-pwsh -NoProfile -File ./tests/Setup.Tests.ps1
+python3 -m unittest discover -s tests -t .
 pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
 ```
 
