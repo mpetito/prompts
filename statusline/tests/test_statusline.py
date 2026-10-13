@@ -143,6 +143,12 @@ class Branch(StatusLineTest):
         self.assertEqual(out, self.dir_part(self.repo) + SEP + paint("35", f"{ICON['branch']} feature"))
 
 
+class Source(unittest.TestCase):
+    def test_the_script_is_pure_ascii(self):
+        # Glyphs are written as escapes: a shell heredoc once corrupted a literal one (statusline/README.md).
+        SCRIPT.read_bytes().decode("ascii")
+
+
 class Porcelain(unittest.TestCase):
     """parse_status on the header and entry forms of `git status --porcelain=v1 --branch`."""
 

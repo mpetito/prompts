@@ -269,7 +269,7 @@ Fixture prose in `.md` files is updated with its skill.
   As the step's last action, the owner switches each machine's `statusLine` command.
 
   Linux, 2026-10-13: done except the two owner items below.
-  - [x] `statusline.py` and its suite, 48 tests, one per behaviour of `statusline.js`, which had no suite. It
+  - [x] `statusline.py` and its suite, 49 tests, one per behaviour of `statusline.js`, which had no suite. It
     printed the same bytes as `statusline.js` in 456 comparisons. Those covered 38 payloads in a plain folder and a
     repository, in six git states. It differs only on malformed payloads, and none makes it exit non-zero or print
     nothing:

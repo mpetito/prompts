@@ -30,16 +30,16 @@ DRAIN = 1.0         # seconds for the tree kill, and again to read a killed comm
 # Written as escapes so this file stays pure ASCII. Every glyph below was checked against the font's cmap. U+2387 (the
 # old branch mark), U+2717 and U+2718 (ballot X) are NOT in Cascadia Code NF -- do not reach for them.
 ICON = {
-    "dir":      "",      # fa folder-open
-    "repo":     "",      # octicon repo
-    "branch":   "",      # devicon git-branch
-    "clean":    "✓",      # check -- working tree clean
-    "dirty":    "●",      # filled circle -- uncommitted changes
-    "conflict": "",      # fa warning -- unmerged paths
+    "dir":      "\uF07C",      # fa folder-open
+    "repo":     "\uF401",      # octicon repo
+    "branch":   "\uE725",      # devicon git-branch
+    "clean":    "\u2713",      # check -- working tree clean
+    "dirty":    "\u25CF",      # filled circle -- uncommitted changes
+    "conflict": "\uF071",      # fa warning -- unmerged paths
     "model":    "\U000F06A9",  # md robot
-    "effort":   "",      # fa bolt
-    "context":  "",      # octicon graph
-    "sep":      "│",      # box-drawing vertical bar
+    "effort":   "\uF0E7",      # fa bolt
+    "context":  "\uF437",      # octicon graph
+    "sep":      "\u2502",      # box-drawing vertical bar
 }
 
 
@@ -54,7 +54,7 @@ BRANCH_MAX = 32
 
 def short_branch(b):
     s = re.sub(r"^users/[^/]+/", "", b)
-    return s[:BRANCH_MAX - 1] + "…" if len(s) > BRANCH_MAX else s
+    return s[:BRANCH_MAX - 1] + "\u2026" if len(s) > BRANCH_MAX else s
 
 
 def context_pct(pct):
