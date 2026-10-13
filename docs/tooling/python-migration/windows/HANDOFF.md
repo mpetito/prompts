@@ -171,25 +171,28 @@ Commit and push it as in step 0. If the script is interrupted, check that no `sm
 
 The model council's scripts are Python now, on branch `py/council`. The Codex member runs
 `codex exec --ignore-user-config`, which also drops the owner's `[windows] sandbox` setting, so on
-Windows `codex_member.py` passes `-c windows.sandbox="unelevated"` itself. The fourth probe run showed
-that mode running commands here. `council_round.py` runs one real blind round, a Codex member and a
-Claude member on a throwaway repository, and shows whether Codex's commands run under the override.
-Don't edit `~/.codex/config.toml`.
+Windows `codex_member.py` passes `-c windows.sandbox="unelevated"` itself. `council_round.py` runs one
+real blind round, a Codex member and a Claude member on a throwaway repository, and proves from Codex's
+own sandbox log which mode ran the member's commands. Don't edit `~/.codex/config.toml`.
 
 1. **Check out the branch:** `git fetch mpetito py/council`, then
    `git worktree add -b py/council ..\prompts-council mpetito/py/council` and `cd ..\prompts-council`.
-2. **Run the round from PowerShell 7's MSI build,** in a new window, so a non-Store `pwsh` comes first
+2. **Quit the Codex desktop app** and confirm no `node_repl` process is left
+   (`Get-Process node_repl -ErrorAction SilentlyContinue`). The round reads the lines it adds to
+   `%USERPROFILE%\.codex\.sandbox\sandbox.<date>.log`, and the app would write there too.
+3. **Run the round from PowerShell 7's MSI build,** in a new window, so a non-Store `pwsh` comes first
    on PATH as in the fourth probe run:
    `python3 docs\tooling\python-migration\windows\council_round.py`. It makes one Codex call and one
    Claude call, takes about five minutes, and prints one `ROUND` line per check.
-3. **Record the results.** The script writes `docs/tooling/python-migration/windows/results/council-round-windows/`:
-   the prompts, both answers, Codex's event stream and log, the codex argv, and the `ROUND` lines in
-   `round.txt`. Commit that folder, then `git pull --rebase mpetito py/council` and
-   `git push mpetito py/council`.
-4. **Then:**
+4. **Record the results.** The script writes `docs/tooling/python-migration/windows/results/council-round-windows/`,
+   already scrubbed for a public repository (`%USERPROFILE%`, `<user>`, `<session>`, no command output).
+   The `scrubbed` check fails if anything survives; then commit nothing and report. Otherwise commit that
+   folder, then `git pull --rebase mpetito py/council` and `git push mpetito py/council`.
+5. **Then:**
    - **Every check passes:** report that, and the round is done.
-   - **`sandbox-mode` fails with `setup_refresh_errors=True`:** the override did not reach Codex, which
-     fell back to the elevated sandbox. Stop and report, with the `round0-codex.log` lines that show it.
-   - **`sandbox-mode` fails, and the log shows `CreateProcessAsUserW ... Access is denied`:** the Store
-     `pwsh` came first on PATH. Record `(Get-Command pwsh -All).Source`, stop and report.
+   - **`sandbox-mode` fails with `sandbox_log_setup_helper` above 0:** Codex took the elevated path, so
+     the override did not reach it. Stop and report, with `sandbox-log.txt`.
+   - **`sandbox-mode` fails with `sandbox_log_start=0`:** no command went through the Windows sandbox.
+     If `round0-codex.log` shows `CreateProcessAsUserW ... Access is denied`, the Store `pwsh` came first
+     on PATH: record `(Get-Command pwsh -All).Source`. Stop and report.
    - **Any other failure:** stop and report the `ROUND` lines and the matching evidence file.

@@ -1,7 +1,8 @@
 [
+ "codex",
  "exec",
  "--cd",
- "/tmp/council-round-3lkwpypi/repo",
+ "/tmp/council-round-sc_dsc0p/repo",
  "--sandbox",
  "read-only",
  "--ignore-user-config",
@@ -11,7 +12,7 @@
  "gpt-6.1-sol",
  "--json",
  "--output-last-message",
- "/home/mpetito/dev/prompts-wt-council/docs/tooling/python-migration/windows/results/council-round-linux/round0-codex.md",
+ "~/dev/prompts-wt-council/docs/tooling/python-migration/windows/results/council-round-linux/round0-codex.md",
  "-c",
  "model_reasoning_effort=\"high\"",
  "-"

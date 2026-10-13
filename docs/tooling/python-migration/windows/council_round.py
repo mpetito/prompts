@@ -2,24 +2,39 @@
 
     python3 council_round.py [--codex-model <id>] [--claude-model <id>] [--minutes <n, default 20>]
 
-Run it from PowerShell on Windows; on Linux it checks the script itself. It builds a throwaway repository holding
-one small decision, fills the blind-round template in references/member-prompt.md for each member, runs the Codex
-member through codex_member.py and the Claude member through `claude -p` with no edit tools, tallies the round with
-tally.py, and prints one line per check:
+Run it from PowerShell on Windows, with the Codex desktop app closed; on Linux it checks the script itself. It builds
+a throwaway repository holding one small decision, fills the blind-round template in references/member-prompt.md
+for each member, runs the Codex member through codex_member.py and the Claude member through `claude -p` with no
+edit tools, tallies the round with tally.py, and prints one line per check:
 
     ROUND <check> pass|fail <facts>
 
-Checks: preflight (codex and claude on PATH, their versions), codex-member (a MEMBER done line), sandbox-mode (the
-codex argv carries -c windows.sandbox="unelevated" on Windows and no windows.sandbox elsewhere, and Codex ran shell
-commands inside its sandbox: on a machine where the elevated sandbox is broken, openai/codex#52488, none would run
-in any other mode), claude-member (an answer block), read-only (the repository is unchanged), tally (a COUNCIL line
-that is not incomplete). Then it exits 1 if any check failed.
+Checks:
+- preflight: codex and claude are on PATH; their versions.
+- codex-member: a MEMBER done line.
+- sandbox-mode: the argv codex_member.py's run() received carries -c windows.sandbox="unelevated" on Windows and no
+  windows.sandbox elsewhere, and Codex ran shell commands. On Windows, Codex's own sandbox log
+  ($CODEX_HOME/.sandbox/sandbox*.log) must also show the mode: this run added START lines, which Codex writes for
+  each command it runs in its Windows sandbox, and no "setup refresh: spawning" line, which only the elevated path
+  writes, once per command, as it starts codex-windows-sandbox-setup.exe. That is codex-rs/windows-sandbox-rs at
+  rust-v0.162.1 (identity.rs require_logon_sandbox_creds, setup.rs run_setup_refresh_payload,
+  unified_exec/backends/legacy.rs); the docs say nothing about the log.
+- claude-member: an answer block.
+- read-only: the repository is unchanged.
+- tally: a COUNCIL line that is not incomplete.
+- scrubbed: no home path, user name or command output is left in the saved evidence (below).
+Then it exits 1 if any check failed.
 
-Evidence goes to results/council-round-<windows|linux>/ beside this script, replaced on each run: the packet and
-both prompts, both answers, Codex's event stream and log, the codex argv, and the printed lines (round.txt). The
-Codex session id is replaced by <session> in every saved file, since they are committed to a public repository.
+Evidence goes to results/council-round-<windows|linux>/ beside this script, replaced on each run: both prompts, both
+answers, Codex's event stream and log, the argv run() received, the sandbox log lines this run added, and the printed
+lines (round.txt). The folder is committed to a public repository, so every saved file is scrubbed: the home folder
+becomes ~ (%USERPROFILE% on Windows), the user name <user> and the Codex session id <session>, and the event
+stream keeps each command but not its output.
 """
 import argparse
+import contextlib
+import getpass
+import io
 import json
 import os
 import re
@@ -34,6 +49,7 @@ COUNCIL = HERE.parents[3] / "skills" / "model-council"
 sys.path.insert(0, str(COUNCIL / "scripts"))
 
 import codex_member  # noqa: E402
+import run as spawn  # noqa: E402  (codex_member's spawn helper)
 
 FILES = {
     "cache.py": '''"""The per-request cache, one process-wide dict shared by every tenant."""
@@ -118,6 +134,40 @@ def commands(events):
     return ran, bad
 
 
+def member(argv):
+    """Run codex_member.main(argv) in-process: (exit code, its one line, the argv its run() handed to the spawn)."""
+    spawned, real = [], spawn.run
+
+    def recording(args, **kw):
+        spawned.append(list(args))
+        return real(args, **kw)
+
+    out, err = io.StringIO(), io.StringIO()
+    spawn.run = recording
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = codex_member.main([str(x) for x in argv])
+    finally:
+        spawn.run = real
+    return code, (out.getvalue() or err.getvalue()).strip(), spawned[0] if spawned else []
+
+
+def sandbox_logs():
+    """{path: size} of Codex's Windows sandbox logs, $CODEX_HOME/.sandbox/sandbox*.log (CODEX_HOME: ~/.codex)."""
+    d = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex") / ".sandbox"
+    return {f: f.stat().st_size for f in d.glob("sandbox*.log")} if d.is_dir() else {}
+
+
+def log_lines_since(before):
+    """The lines added to the sandbox logs since the sizes in before, including any new log file."""
+    added = []
+    for f in sorted(sandbox_logs()):
+        with open(f, "rb") as h:
+            h.seek(before.get(f, 0))
+            added += h.read().decode("utf-8", "replace").splitlines()
+    return added
+
+
 def council_round(a, repo, out):
     codex, claude = shutil.which("codex"), shutil.which("claude")
     versions = {name: run([exe, "--version"])[1].strip() if exe else "missing"
@@ -132,24 +182,29 @@ def council_round(a, repo, out):
     git(repo, "add", ".")
     git(repo, "-c", "user.name=council", "-c", "user.email=council@example.invalid", "commit", "-q", "-m", "init")
     head = git(repo, "rev-parse", "HEAD")
-    for member in ("codex", "claude"):
-        (out / f"round0-{member}.prompt.md").write_text(blind_prompt(member, repo, head), encoding="utf-8")
+    for name in ("codex", "claude"):
+        (out / f"round0-{name}.prompt.md").write_text(blind_prompt(name, repo, head), encoding="utf-8")
 
-    argv = codex_member.codex_args(str(repo), str(out / "round0-codex.md"), a.codex_model, "high", "")
+    before = sandbox_logs()
+    code, member_line, argv = member([repo, out / "round0-codex.prompt.md", out / "round0-codex.md",
+                                      "--model", a.codex_model, "--effort", "high", "--timeout", f"{a.minutes}m"])
+    sandbox_log = log_lines_since(before)
     (out / "codex-argv.json").write_text(json.dumps(argv, indent=1), encoding="utf-8")
-    code, stdout, stderr = run([sys.executable, COUNCIL / "scripts" / "codex_member.py", repo,
-                                out / "round0-codex.prompt.md", out / "round0-codex.md", "--model", a.codex_model,
-                                "--effort", "high", "--timeout", f"{a.minutes}m"])
-    member_line = stdout.strip() or stderr.strip()
+    (out / "sandbox-log.txt").write_text("".join(line + "\n" for line in sandbox_log), encoding="utf-8")
     report("codex-member", code == 0 and member_line.startswith("MEMBER done "), member_line)
-    windows_flag = any(x.startswith("windows.sandbox=") for x in argv)
-    want_flag = 'windows.sandbox="unelevated"' in argv if os.name == "nt" else not windows_flag
+    flag = 'windows.sandbox="unelevated"' in argv
+    any_flag = any(x.startswith("windows.sandbox=") for x in argv)
     events = out / "round0-codex.jsonl"
     ran, bad = commands(events) if events.is_file() else (0, 0)
-    setup_failed = events.is_file() and "setup refresh had errors" in events.read_text(encoding="utf-8", errors="replace")
-    report("sandbox-mode", want_flag and ran > bad and not setup_failed,
-           f"os={os.name} windows_flag={windows_flag} commands_ran={ran} commands_failed={bad} "
-           f"setup_refresh_errors={setup_failed}")
+    starts = sum("START: " in line for line in sandbox_log)
+    helper = sum("setup refresh: spawning" in line for line in sandbox_log)
+    if os.name == "nt":
+        mode_ok = flag and starts > 0 and helper == 0
+    else:
+        mode_ok = not any_flag
+    report("sandbox-mode", mode_ok and ran > bad,
+           f"os={os.name} argv_unelevated={flag} commands_ran={ran} commands_failed={bad} "
+           f"sandbox_log_start={starts} sandbox_log_setup_helper={helper}")
 
     code, stdout, stderr = run([claude, "-p", "--model", a.claude_model, "--disallowedTools", "Edit,Write,NotebookEdit"],
                                cwd=repo, timeout=a.minutes * 60, stdin=out / "round0-claude.prompt.md")
@@ -168,15 +223,55 @@ def council_round(a, repo, out):
            tally_line)
 
 
-def redact(out):
-    """Replace the Codex session id with <session> in every evidence file."""
+def home_forms():
+    """Every spelling of the home folder a saved file may hold: as stored, resolved, with forward slashes, its
+    Windows 8.3 short name (TEMP often uses it), and each of those JSON-escaped."""
+    home = str(Path.home())
+    forms = {home, os.path.realpath(home), Path(home).as_posix()}
+    if os.name == "nt":
+        import ctypes
+        buf = ctypes.create_unicode_buffer(1024)
+        if ctypes.windll.kernel32.GetShortPathNameW(home, buf, 1024):
+            forms |= {buf.value, Path(buf.value).as_posix()}
+    forms |= {json.dumps(f)[1:-1] for f in forms}
+    return sorted(forms, key=len, reverse=True)
+
+
+# A home path the masking missed, in any spelling: C:\Users\<name>, C:/Users/<name>, /home/<name>, /Users/<name>.
+HOME_PATH = re.compile(r"(?i)\b[a-z]:(?:\\+|/)users(?:\\+|/)(?!public\b)[^\\/\s\"']+|/home/[^/\s\"']+|/Users/[^/\s\"']+")
+
+
+def scrub(out):
+    """Make the evidence safe to commit (see the module header). Returns the files a home path, the user name or a
+    command's output still survives in, which should be none."""
     events = out / "round0-codex.jsonl"
-    m = events.is_file() and re.search(r'"thread_id": *"([^"]+)"', events.read_text(encoding="utf-8", errors="replace"))
-    if not m:
-        return
-    for f in out.iterdir():
+    session = None
+    if events.is_file():
+        kept = []
+        for line in events.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                kept.append(line)
+                continue
+            session = session or event.get("thread_id")
+            (event.get("item") or {}).pop("aggregated_output", None)
+            kept.append(json.dumps(event, ensure_ascii=False))
+        events.write_text("".join(line + "\n" for line in kept), encoding="utf-8")
+    mask = "%USERPROFILE%" if os.name == "nt" else "~"
+    user = re.compile(rf"(?i)\b{re.escape(getpass.getuser())}\b")
+    left = []
+    for f in sorted(out.iterdir()):
         text = f.read_text(encoding="utf-8", errors="replace")
-        f.write_text(text.replace(m[1], "<session>"), encoding="utf-8")
+        for form in home_forms():
+            text = re.sub(re.escape(form), lambda _: mask, text, flags=re.IGNORECASE if os.name == "nt" else 0)
+        text = user.sub("<user>", text)
+        if session:
+            text = text.replace(session, "<session>")
+        f.write_text(text, encoding="utf-8")
+        if HOME_PATH.search(text) or user.search(text) or '"aggregated_output"' in text:
+            left.append(f.name)
+    return left
 
 
 def main(argv):
@@ -196,7 +291,10 @@ def main(argv):
     finally:
         shutil.rmtree(root, ignore_errors=True)
         (out / "round.txt").write_text("".join(line + "\n" for line in lines), encoding="utf-8")
-        redact(out)
+        left = scrub(out)
+        report("scrubbed", not left, f"files_with_a_home_path_user_name_or_command_output={left or 'none'}")
+        with open(out / "round.txt", "a", encoding="utf-8") as f:
+            f.write(lines[-1] + "\n")
     return 1 if failed else 0
 
 

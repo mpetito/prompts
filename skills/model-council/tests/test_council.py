@@ -58,11 +58,11 @@ elif mode == "grandchild":
 
 
 def output(main, argv):
-    """Call a script's main(argv) in-process: (exit code, stdout)."""
-    out = io.StringIO()
-    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+    """Call a script's main(argv) in-process: (exit code, stdout, stderr), each stream without its final newline."""
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         code = main([str(a) for a in argv])
-    return code, out.getvalue().rstrip("\n")
+    return code, out.getvalue().removesuffix("\n"), err.getvalue().removesuffix("\n")
 
 
 def pair(argv, a, b):
@@ -88,6 +88,7 @@ class CouncilTest(unittest.TestCase):
         self.addCleanup(env.stop)
         os.environ.pop("MOCK_CODEX", None)
         self.argv, self.cwd = [], None
+        self.out, self.log = self.tmp / "out" / "a.md", self.tmp / "out" / "a.log"
 
         def fake_run(args, **kw):
             self.assertEqual(args[0], "codex")
@@ -106,12 +107,25 @@ class CouncilTest(unittest.TestCase):
     def line(self, *args, mode="ok"):
         return self.member(*args, mode=mode)[1]
 
+    def done(self, session, stance, disposition):
+        """The MEMBER done line for model m1 writing the default answer file."""
+        return (f"MEMBER done member=codex model=m1 session={session} stance={stance} disposition={disposition} "
+                f"out={self.out}")
+
+    def timeout(self, after):
+        return f"MEMBER timeout member=codex model=m1 session=none after {after}; log {self.log}"
+
+    def failed(self, code):
+        return f"MEMBER failed member=codex model=m1 session=none exit={code}; log {self.log}"
+
+    def malformed(self):
+        return f"MEMBER malformed member=codex model=m1 session=none out={self.out} (no answer block)"
+
 
 class MemberCommand(CouncilTest):
     def test_a_fresh_run_is_read_only_inside_the_repository(self):
         line = self.line("--model", "m1", "--effort", "high")
-        self.assertEqual(line, "MEMBER done member=codex model=m1 session=t-123 stance=initial disposition=defect "
-                               f"out={self.tmp / 'out' / 'a.md'}")
+        self.assertEqual(line, self.done("t-123", "initial", "defect"))
         self.assertTrue(pair(self.argv, "--sandbox", "read-only"), "fresh run lacks --sandbox read-only")
         self.assertTrue(pair(self.argv, "-c", 'sandbox_mode="read-only"'), "fresh run lacks the read-only override")
         self.assertTrue(pair(self.argv, "-c", 'model_reasoning_effort="high"'), "fresh run dropped the effort")
@@ -125,7 +139,7 @@ class MemberCommand(CouncilTest):
         self.assertTrue(pair(self.argv, "--model", "m1"), "resume dropped the model")
         self.assertIn("--ignore-user-config", self.argv, "resume loaded the user's Codex config")
         self.assertEqual(self.cwd, str(self.tmp / "repo"), "resume did not run inside the repository")
-        self.assertIn(" session=r-999 ", line, "resume line did not report the resumed session")
+        self.assertEqual(line, self.done("r-999", "initial", "defect"), "resume line did not report the resumed session")
 
     def test_no_run_widens_the_sandbox(self):
         for kind, args in (("fresh", ()), ("resume", ("--resume", "t-123"))):
@@ -144,16 +158,16 @@ class MemberCommand(CouncilTest):
 
 class MemberOutcomes(CouncilTest):
     def test_reads_the_last_answer_block(self):
-        self.assertIn("stance=hold disposition=false-positive", self.line("--model", "m1", mode="quoted"))
+        self.assertEqual(self.line("--model", "m1", mode="quoted"), self.done("none", "hold", "false-positive"))
 
     def test_an_answer_without_a_block_is_malformed(self):
-        self.assertTrue(self.line("--model", "m1", mode="prose").startswith("MEMBER malformed "))
+        self.assertEqual(self.line("--model", "m1", mode="prose"), self.malformed())
 
     def test_a_failing_codex_is_reported(self):
-        self.assertRegex(self.line("--model", "m1", mode="fail"), r"^MEMBER failed .* exit=3;")
+        self.assertEqual(self.line("--model", "m1", mode="fail"), self.failed(3))
 
     def test_a_slow_codex_is_a_timeout(self):
-        self.assertTrue(self.line("--model", "m1", "--timeout", "1s", mode="slow").startswith("MEMBER timeout "))
+        self.assertEqual(self.line("--model", "m1", "--timeout", "1s", mode="slow"), self.timeout("1s"))
 
     def test_needs_a_codex_model(self):
         self.assertEqual(self.member()[0], 1, "ran without --model")
@@ -162,25 +176,26 @@ class MemberOutcomes(CouncilTest):
                 self.assertEqual(self.member("--model", m)[0], 1, f"accepted the Anthropic model {m} for Codex")
 
     def test_no_answer_file_survives_a_failure_or_a_timeout(self):
-        answer = self.tmp / "out" / "a.md"
-        self.line("--model", "m1", mode="writefail")
-        self.assertFalse(answer.exists(), "a failed run left its answer file")
-        self.line("--model", "m1", "--timeout", "1s", mode="slow")
-        self.assertFalse(answer.exists(), "a timed-out run left an answer file")
+        self.assertEqual(self.line("--model", "m1", mode="writefail"), self.failed(3))
+        self.assertFalse(self.out.exists(), "a failed run left its answer file")
+        self.assertEqual(self.line("--model", "m1", "--timeout", "1s", mode="slow"), self.timeout("1s"))
+        self.assertFalse(self.out.exists(), "a timed-out run left an answer file")
 
     def test_a_stale_answer_is_never_read(self):
-        answer = self.tmp / "out" / "a.md"
-        answer.write_text(ANSWER, encoding="utf-8")
-        self.assertTrue(self.line("--model", "m1", mode="silent").startswith("MEMBER malformed "),
-                        "a stale answer file was read as this run's answer")
-        self.assertFalse(answer.exists(), "a stale answer file survived the run")
+        self.out.write_text(ANSWER, encoding="utf-8")
+        self.assertEqual(self.line("--model", "m1", mode="silent"), self.malformed(),
+                         "a stale answer file was read as this run's answer")
+        self.assertFalse(self.out.exists(), "a stale answer file survived the run")
 
     def test_a_timeout_kills_what_codex_started(self):
         # The fake starts a grandchild that writes the answer after the timeout: killing only codex would let it.
+        # The fake itself sleeps 30 s, so a kill that misses it shows as a run that outlasts its timeout.
+        start = time.monotonic()
         line = self.line("--model", "m1", "--timeout", "1s", mode="grandchild")
-        self.assertTrue(line.startswith("MEMBER timeout "))
+        self.assertLess(time.monotonic() - start, 10, "the timeout did not kill codex at once")
+        self.assertEqual(line, self.timeout("1s"))
         time.sleep(4)
-        self.assertFalse((self.tmp / "out" / "a.md").exists(), "a grandchild wrote the answer after the timeout")
+        self.assertFalse(self.out.exists(), "a grandchild wrote the answer after the timeout")
 
     def test_a_symlinked_path_is_refused(self):
         # Its target is neither removed nor written beside. On Windows a symlink needs Developer Mode or elevation.
@@ -194,7 +209,7 @@ class MemberOutcomes(CouncilTest):
                 f.unlink()
             os.symlink(target, links / f"a.{suffix}")
             with self.subTest(suffix):
-                code, _ = self.member("--model", "m1", mode="fail", out=links / "a.md")
+                code = self.member("--model", "m1", mode="fail", out=links / "a.md")[0]
                 self.assertEqual(code, 1, f"a symlinked .{suffix} path was not refused")
                 self.assertEqual(target.read_text(encoding="utf-8"), "keep\n",
                                  f"the target of a symlinked .{suffix} path was changed or removed")
@@ -214,64 +229,81 @@ class Tally(unittest.TestCase):
     def tally(self, k):
         return output(tally.main, [self.tmp / "a", self.tmp / "b", "--exchange", k])[1]
 
+    @staticmethod
+    def exchange(k, cap=2):
+        return f"COUNCIL exchange next={k + 1} of {cap}; send each member the other's answer, unattributed"
+
+    @staticmethod
+    def consensus(k, disposition):
+        return (f"COUNCIL consensus after-exchange={k} disposition={disposition}; "
+                "verify the decisive citations before reporting it")
+
+    @staticmethod
+    def no_consensus(reason, k):
+        return f"COUNCIL no-consensus reason={reason} after-exchange={k}; report each final position and its crux"
+
+    def incomplete(self, member, reason):
+        return f"COUNCIL incomplete member={self.tmp / member} reason={reason}"
+
     def test_blind_disagreement_goes_to_an_exchange(self):
         self.ans("a", "initial", "defect", "add the tenant id to the cache key")
         self.ans("b", "initial", "false-positive", "no change")
-        self.assertTrue(self.tally(0).startswith("COUNCIL exchange next=1 of 2"))
+        self.assertEqual(self.tally(0), self.exchange(0))
         self.ans("b", "initial", "defect", "partition the cache per tenant")
-        self.assertTrue(self.tally(0).startswith("COUNCIL exchange"), "same disposition, different action")
+        self.assertEqual(self.tally(0), self.exchange(0), "same disposition, different action")
 
     def test_the_council_stops(self):
         self.ans("a", "hold", "defect", "add the tenant id to the cache key")
         self.ans("b", "revise", "defect", "partition the cache per tenant")
-        self.assertTrue(self.tally(2).startswith("COUNCIL no-consensus reason=round-cap"))
+        self.assertEqual(self.tally(2), self.no_consensus("round-cap", "2 of 2"))
         self.ans("a", "hold", "defect", "x")
         self.ans("b", "hold", "false-positive", "no change")
-        self.assertTrue(self.tally(1).startswith("COUNCIL no-consensus reason=both-hold"))
+        self.assertEqual(self.tally(1), self.no_consensus("both-hold", 1))
 
     def test_identical_positions_are_consensus(self):
         self.ans("a", "agree", "defect", "add the tenant id  to the cache key")
         self.ans("b", "hold", "defect", "add the tenant id to the cache key")
-        self.assertTrue(self.tally(1).startswith("COUNCIL consensus after-exchange=1 disposition=defect"))
+        self.assertEqual(self.tally(1), self.consensus(1, "defect"))
         self.ans("a", "initial", "defect", "no change")
         self.ans("b", "initial", "defect", "no change")
-        self.assertTrue(self.tally(0).startswith("COUNCIL consensus after-exchange=0"), "identical blind positions")
+        self.assertEqual(self.tally(0), self.consensus(0, "defect"), "identical blind positions")
         self.ans("a", "initial", "Defect", "x")
         self.ans("b", "initial", "defect", "x")
-        self.assertTrue(self.tally(0).startswith("COUNCIL consensus"), "dispositions compared case-sensitively")
+        self.assertEqual(self.tally(0), self.consensus(0, "defect"), "dispositions compared case-sensitively")
 
     def test_crossed_agreement_is_not_consensus(self):
         self.ans("a", "agree", "false-positive", "no change")
         self.ans("b", "agree", "defect", "add the tenant id to the cache key")
-        self.assertTrue(self.tally(1).startswith("COUNCIL exchange next=2"))
+        self.assertEqual(self.tally(1), self.exchange(1))
 
     def test_an_answer_that_cannot_be_tallied_is_incomplete(self):
         self.ans("a", "initial", "defect", "x")
         (self.tmp / "b").write_text("", encoding="utf-8")
-        self.assertRegex(self.tally(0), r"^COUNCIL incomplete .*no-answer")
+        self.assertEqual(self.tally(0), self.incomplete("b", "no-answer"))
         self.ans("b", "initial", "maybe", "x")
-        self.assertRegex(self.tally(0), r"^COUNCIL incomplete .*disposition")
+        self.assertEqual(self.tally(0), self.incomplete("b", "disposition 'maybe'"))
         (self.tmp / "b").write_text("stance: initial\ndisposition: defect\ndecisive: a.ts:1\n", encoding="utf-8")
-        self.assertRegex(self.tally(0), r"^COUNCIL incomplete .*no-action")
+        self.assertEqual(self.tally(0), self.incomplete("b", "no-action"))
         (self.tmp / "b").write_text("stance: initial\ndisposition: defect\naction: no change\ncrux: x\n",
                                     encoding="utf-8")
-        self.assertRegex(self.tally(0), r"^COUNCIL incomplete .*no-decisive-citation")
+        self.assertEqual(self.tally(0), self.incomplete("b", "no-decisive-citation"))
 
     def test_a_stance_must_fit_the_round(self):
         self.ans("a", "agree", "defect", "x")
         self.ans("b", "agree", "defect", "x")
-        self.assertRegex(self.tally(0), r"^COUNCIL incomplete .*blind round", "an exchange stance in the blind round")
+        self.assertEqual(self.tally(0), self.incomplete("a", "stance 'agree' in the blind round"),
+                         "an exchange stance in the blind round")
         self.ans("a", "initial", "defect", "x")
         self.ans("b", "initial", "false-positive", "y")
-        self.assertRegex(self.tally(1), r"^COUNCIL incomplete .*stance 'initial'", "a blind stance in an exchange")
+        self.assertEqual(self.tally(1), self.incomplete("a", "stance 'initial'"), "a blind stance in an exchange")
 
     def test_the_same_action_needs_the_same_disposition(self):
         self.ans("a", "hold", "defect", "no change")
         self.ans("b", "hold", "false-positive", "no change")
-        self.assertFalse(self.tally(1).startswith("COUNCIL consensus"))
+        self.assertEqual(self.tally(1), self.no_consensus("both-hold", 1))
         self.ans("a", "revise", "defect", "no change")
         self.ans("b", "revise", "false-positive", "no change")
-        self.assertTrue(self.tally(1).startswith("COUNCIL exchange"))
+        self.assertEqual(self.tally(1), self.exchange(1))
 
     def test_a_members_own_block_decides_over_one_it_quotes(self):
         self.ans("a", "hold", "defect", "add the tenant id")
@@ -279,26 +311,27 @@ class Tally(unittest.TestCase):
         quoted, own = (self.tmp / "a").read_text(encoding="utf-8"), (self.tmp / "x").read_text(encoding="utf-8")
         (self.tmp / "b").write_text(f"They wrote:\n{quoted}\nMine:\n{own}", encoding="utf-8")
         self.ans("a", "revise", "false-positive", "no change")
-        self.assertTrue(self.tally(1).startswith("COUNCIL consensus"), "the member's own block did not decide")
+        self.assertEqual(self.tally(1), self.consensus(1, "false-positive"), "the member's own block did not decide")
         self.ans("a", "hold", "defect", "add the tenant id")
-        self.assertTrue(self.tally(1).startswith("COUNCIL exchange"), "a quoted block was read instead")
+        self.assertEqual(self.tally(1), self.exchange(1), "a quoted block was read instead")
 
     def test_the_round_cap_is_the_one_named_constant(self):
         self.assertEqual(tally.MAX_EXCHANGE_ROUNDS, 2)
         self.ans("a", "hold", "defect", "x")
         self.ans("b", "revise", "defect", "y")
         with unittest.mock.patch.object(tally, "MAX_EXCHANGE_ROUNDS", 3):
-            self.assertTrue(self.tally(2).startswith("COUNCIL exchange next=3 of 3"))
+            self.assertEqual(self.tally(2), self.exchange(2, cap=3))
 
 
 class Usage(unittest.TestCase):
     def test_a_usage_error_exits_1(self):
-        for module, argv in ((codex_member, ["repo"]), (tally, ["a", "b"]), (tally, ["a", "b", "--exchange", "one"])):
+        cases = ((codex_member, ["repo"], codex_member.USAGE),
+                 (tally, ["a", "b"], tally.USAGE),
+                 (tally, ["a", "b", "--exchange", "one"], f"--exchange takes a round number; {tally.USAGE}"))
+        for module, argv, message in cases:
             with self.subTest(module.__name__, argv=argv):
                 r = subprocess.run([sys.executable, module.__file__, *argv], capture_output=True, text=True)
-                self.assertEqual((r.returncode, r.stdout), (1, ""))
-                self.assertIn(module.USAGE, r.stderr)
-
+                self.assertEqual((r.returncode, r.stdout, r.stderr), (1, "", message + "\n"))
 
 if __name__ == "__main__":
     unittest.main()
