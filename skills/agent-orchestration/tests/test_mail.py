@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import unittest.mock
+from pathlib import Path
 
 from .support import OrchTest, ROOT, SCRIPTS, call, load
 
@@ -80,6 +81,10 @@ class Send(MailTest):
                         "accepted an unknown option")
         self.assertTrue(self.refused("send", "b1/main", "--from", "b1/thread", "--quite", stdin="STATUS: done - typo\n"),
                         "sent an unknown option as the message")
+        utf16 = self.tmp / "utf16.md"
+        utf16.write_bytes("STATUS: done - from PowerShell\n".encode("utf-16"))
+        self.assertTrue(self.refused("send", "b1/main", "--from", "b1/thread", "--file", utf16),
+                        "sent a file that isn't UTF-8")
         self.assertFalse((self.box / "b1" / "main").exists(), "a refused send made a box")
 
     def test_delivery_is_a_rename_from_tmp_into_new(self):
@@ -190,6 +195,40 @@ class Watch(MailTest):
         self.age("b3/thread")
         self.agents("b3 working")
         self.assertEqual(self.wait("b3/main", "--watch", "b3=b3/thread"), "TIMEOUT")
+
+    def test_a_message_filed_while_wait_counts_is_skipped(self):
+        self.agents("b3 idle")
+        for text in ("STEER: one", "STEER: two"):
+            self.out("send", "b3/thread", "--from", "b3/main", text)
+        self.age("b3/thread")
+        listdir = Path.iterdir
+
+        def read_meanwhile(folder):
+            listed = list(listdir(folder))
+            if folder == self.box / "b3" / "thread" / "new":
+                os.replace(listed[0], folder.parent / "cur" / listed[0].name)
+            return iter(listed)
+
+        with unittest.mock.patch.object(Path, "iterdir", read_meanwhile):
+            self.assertEqual(self.wait("b3/main", "--watch", "b3=b3/thread"), "UNREAD b3 1")
+
+    def test_an_unreadable_record_counts_as_none(self):
+        watch = self.box / "m" / "main" / ".watch"
+        watch.mkdir(parents=True)
+        self.agents("b1 blocked", "b2 blocked")
+        (watch / "b1").write_text("", encoding="utf-8")
+        (watch / "b2").write_text("blocked 0 extra\n", encoding="utf-8")
+        self.assertEqual(self.wait("m/main", "--watch", "b1"), "BLOCKED b1")
+        self.assertEqual(self.wait("m/main", "--watch", "b2"), "BLOCKED b2")
+
+    def test_a_listed_agent_without_a_status_is_not_gone(self):
+        self.agents("b1 working")
+        self.wait("m/main", "--watch", "b1")
+        self.herdr.agents = [{"name": "b1", "agent_status": None}]
+        self.assertEqual(self.wait("m/main", "--watch", "b1"), "TIMEOUT")
+        self.assertEqual((self.box / "m" / "main" / ".watch" / "b1").read_text(encoding="utf-8"), "null 0\n")
+        self.agents()
+        self.assertEqual(self.wait("m/main", "--watch", "b1"), "GONE b1")
 
 
 class Waiting(MailTest):

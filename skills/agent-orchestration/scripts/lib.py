@@ -5,6 +5,7 @@ expands 8.3 short names of existing paths; same_path compares two paths the way 
 Windows); native gives the form to write into a prompt or brief an agent reads, forward slashes, which bash and
 native tools both open. External commands run only through run(), so tests replace that one function.
 """
+import contextlib
 import json
 import os
 import re
@@ -102,14 +103,27 @@ def replace_lines(file, lines):
 
 # --- paths -------------------------------------------------------------------------------------------------------
 
+def from_msys(path):
+    """A Git Bash drive path, /c/rest or /c, in Windows form, C:/rest or C:/; any other path unchanged. Only a
+    single-letter first component is a drive: /tmp and //server/share are left as they are."""
+    m = re.fullmatch(r"/([A-Za-z])(/.*)?", path, re.DOTALL)
+    return f"{m[1].upper()}:{m[2] or '/'}" if m else path
+
+
+def windows_form(path):
+    """On Windows, path with a Git Bash drive spelling turned into a Windows one by from_msys; elsewhere path itself.
+    Windows itself would read /c/Users/x as a folder c at the root of the current drive."""
+    return from_msys(os.fspath(path)) if os.name == "nt" else path
+
+
 def canon(path):
     """The absolute, resolved form every stored path uses."""
-    return os.path.realpath(path)
+    return os.path.realpath(windows_form(path))
 
 
 def canon_from(base, path):
     """canon of path, resolving a relative one against base instead of the current directory."""
-    return canon(os.path.join(base, path))
+    return canon(os.path.join(base, windows_form(path)))
 
 
 def same_path(a, b):
@@ -128,26 +142,30 @@ def inside(path, root):
 
 # --- processes ---------------------------------------------------------------------------------------------------
 
-def run(args, *, input=None, cwd=None, timeout=None, env=None):
+def run(args, *, input=None, cwd=None, timeout=None, env=None, log=None):
     """Run args (a list, no shell) and return a CompletedProcess with text stdout and stderr, decoded as UTF-8.
 
     args[0] is resolved on PATH (PATHEXT on Windows, so an npm .cmd shim is found); a command that isn't found
     returns code 127 with the reason on stderr, as a shell would. On timeout the whole process tree is killed and
-    the result has code 124, as timeout(1) gives."""
+    the result has code 124, as timeout(1) gives. With log, a file path, stdout and stderr both go into that file,
+    replacing it, as the command writes them, so a command that hangs can be read meanwhile; the result's stdout and
+    stderr are then empty."""
     exe = shutil.which(args[0], path=(env or os.environ).get("PATH"))
     if not exe:
         return subprocess.CompletedProcess(args, 127, "", f"{args[0]}: command not found\n")
     kw = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
-    with subprocess.Popen([exe, *args[1:]], stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
-                          errors="replace", cwd=cwd, env=env, **kw) as p:
+    with open(log, "wb") if log else contextlib.nullcontext() as sink, \
+            subprocess.Popen([exe, *args[1:]], stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
+                             stdout=sink or subprocess.PIPE, stderr=subprocess.STDOUT if sink else subprocess.PIPE,
+                             text=True, encoding="utf-8", errors="replace", cwd=cwd, env=env, **kw) as p:
         try:
             out, err = p.communicate(input, timeout=timeout)
+            code = p.returncode
         except subprocess.TimeoutExpired:
             kill_tree(p)
             out, err = p.communicate()
-            return subprocess.CompletedProcess(args, 124, out, err)
-    return subprocess.CompletedProcess(args, p.returncode, out, err)
+            code = 124
+    return subprocess.CompletedProcess(args, code, out or "", err or "")
 
 
 def kill_tree(p):

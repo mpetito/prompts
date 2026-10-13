@@ -118,6 +118,9 @@ class Thread(OrchTest):
         before = self.text()
         self.assertEqual(self.state("resume", "-", stdin="   \n")[0], 1)
         self.assertEqual(self.state("resume", str(self.tmp / "missing"))[0], 1)
+        utf16 = self.tmp / "utf16.md"
+        utf16.write_bytes("From PowerShell.\n".encode("utf-16"))
+        self.assertEqual(self.state("resume", str(utf16))[0], 1)
         self.assertEqual(self.text(), before)
         body = self.tmp / "resume.md"
         body.write_text("From a file.\n", encoding="utf-8")
@@ -267,6 +270,7 @@ class WakeAt(OrchTest):
         (code, out, _), sleep = self.wake("2000-01-01T00:00Z")
         self.assertRegex(out, "^WAKE timer ")
         sleep.assert_called_once_with(0)
+        self.assertRegex(self.wake("+0m", "")[0][1], "^WAKE timer ")
 
     def test_sleeps_until_the_target(self):
         (code, out, _), sleep = self.wake("+2m")

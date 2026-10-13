@@ -39,6 +39,17 @@ def herdr(*args):
         return False, out
 
 
+def field(out, *keys):
+    """The value at keys in herdr's JSON reply out; Failed carrying the reply when it has another shape."""
+    try:
+        value = json.loads(out)
+        for key in keys:
+            value = value[key]
+        return value
+    except (ValueError, KeyError, IndexError, TypeError):
+        raise Failed(f"unexpected herdr reply: {out.strip()}") from None
+
+
 def main(argv):
     if len(argv) < 4:
         lib.usage_from(__doc__, 3, 3)
@@ -79,14 +90,14 @@ def start(build, lane, wt, brief, kind, model, network):
         raise Failed(f"--kind takes claude or codex, got {kind or 'nothing'}")
 
     ok, out = herdr("agent", "get", build)
-    ws = json.loads(out)["result"]["agent"].get("workspace_id") if ok else None
+    ws = field(out, "result", "agent", "workspace_id") if ok else None
     if not ws:
         raise Failed(f"no live thread named {build} to put the lane beside; run lane.py from the build's thread")
     env = ["--env", f"ORCHESTRATION_HOME={home}"] if home else []
     ok, out = herdr("tab", "create", "--workspace", ws, "--cwd", wt, "--label", lane, "--no-focus", *env)
     if not ok:
         raise Failed(f"herdr tab create: {out}")
-    pane = json.loads(out)["result"]["root_pane"]["pane_id"]
+    pane = field(out, "result", "root_pane", "pane_id")
     ok, out = herdr("agent", "start", name, "--kind", kind, "--pane", pane, "--timeout", "120000", "--", *args)
     if not ok:
         if out.startswith("agent_not_ready:"):

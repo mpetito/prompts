@@ -56,7 +56,16 @@ def waking(box, before=None):
     """The unread messages in box that are not quiet; when before is given, only those last modified before that
     epoch second."""
     return sum(1 for p in (box / "new").iterdir()
-               if not p.name.endswith(".quiet.md") and (before is None or p.stat().st_mtime < before))
+               if not p.name.endswith(".quiet.md") and (before is None or older(p, before)))
+
+
+def older(path, epoch):
+    """True when path was last modified before epoch; False when it is gone, as a read may file a message between
+    the listing and this look."""
+    try:
+        return path.stat().st_mtime < epoch
+    except FileNotFoundError:
+        return False
 
 
 def send(root, args, opts):
@@ -67,8 +76,8 @@ def send(root, args, opts):
     if "--file" in opts:
         try:
             body = Path(opts["--file"]).read_text(encoding="utf-8").rstrip("\n")
-        except OSError as e:
-            raise lib.Fail(f"cannot read {opts['--file']}: {e}") from e
+        except (OSError, UnicodeDecodeError) as e:
+            raise lib.Fail(f"cannot read {opts['--file']} as UTF-8 text: {e}") from e
     elif len(args) == 2:
         body = args[1]
     else:
@@ -114,12 +123,13 @@ def watch_once(root, box, specs):
         agents = None
     if agents is None:
         return None
-    states = {a["name"]: a.get("agent_status") for a in agents if a.get("name")}
+    # herdr's null status is the state "null", as jq printed it; only an agent missing from the list is gone.
+    states = {a["name"]: a.get("agent_status") or "null" for a in agents if a.get("name")}
     for spec in filter(None, specs.split(",")):
         agent, _, inbox = spec.partition("=")
         state = states.get(agent) or "gone"
         seen = box / ".watch" / agent
-        last, reported = seen.read_text(encoding="utf-8").split() if seen.exists() else ("", "0")
+        last, reported = last_seen(seen)
         if state == "working":
             reported = "0"
         unread = 0
@@ -135,6 +145,12 @@ def watch_once(root, box, specs):
         if unread:
             return f"UNREAD {agent} {unread}"
     return None
+
+
+def last_seen(seen):
+    """The "<herdr state> <unread reported>" a waiter last wrote, or ("", "0") for none or one it can't read."""
+    fields = seen.read_text(encoding="utf-8").split() if seen.exists() else []
+    return tuple(fields) if len(fields) == 2 else ("", "0")
 
 
 def wait(root, args, opts):

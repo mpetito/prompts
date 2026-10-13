@@ -113,16 +113,31 @@ def valid_name(build):
 # --- herdr -------------------------------------------------------------------------------------------------------
 
 def herdr(*args):
-    """herdr's JSON reply to args, parsed; HerdrError names herdr's reason when it fails."""
+    """herdr's JSON reply to args, parsed; HerdrError names herdr's reason when it fails, or carries its output when
+    a reply isn't JSON."""
     r = lib.run(["herdr", *args])
     if r.returncode == 0:
-        return json.loads(r.stdout or "{}")
+        try:
+            return json.loads(r.stdout or "{}")
+        except ValueError:
+            raise HerdrError(f"unexpected reply: {r.stdout.rstrip(chr(10))}") from None
     out = r.stdout + r.stderr
     try:
         err = json.loads(out)["error"]
         raise HerdrError(f"{err['code']}: {err['message']}")
     except (ValueError, KeyError, TypeError):
         raise HerdrError(out.rstrip("\n")) from None
+
+
+def field(reply, *keys):
+    """The value at keys in a herdr reply; HerdrError carrying the reply when it has another shape."""
+    value = reply
+    try:
+        for key in keys:
+            value = value[key]
+        return value
+    except (KeyError, IndexError, TypeError):
+        raise HerdrError(f"unexpected reply: {json.dumps(reply)}") from None
 
 
 def quietly(*args):
@@ -133,8 +148,8 @@ def quietly(*args):
 def agent(build):
     """herdr's record of the live agent named build, or {} when there is none."""
     try:
-        return herdr("agent", "get", build).get("result", {}).get("agent") or {}
-    except (HerdrError, ValueError):
+        return field(herdr("agent", "get", build), "result", "agent") or {}
+    except HerdrError:
         return {}
 
 
@@ -155,11 +170,11 @@ def new_pane(build, wt, ws):
         try:
             out = herdr("tab", "create", "--workspace", ws, "--cwd", str(wt), "--label", build, "--no-focus",
                         *home_env())
-            return out["result"]["root_pane"]["pane_id"], ws
+            return field(out, "result", "root_pane", "pane_id"), ws
         except HerdrError:
             pass
     out = herdr("workspace", "create", "--cwd", str(wt), "--label", build, "--no-focus", *home_env())
-    return out["result"]["root_pane"]["pane_id"], out["result"]["workspace"]["workspace_id"]
+    return field(out, "result", "root_pane", "pane_id"), field(out, "result", "workspace", "workspace_id")
 
 
 def start_thread(build, pane, brief):
@@ -278,6 +293,10 @@ def launch(args):
         raise Failed(f"no repository checkout at {repo}")
     if not os.path.isfile(brief) or os.path.getsize(brief) == 0:
         raise Failed(f"no brief at {brief}")
+    try:
+        body = Path(brief).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        raise Failed(f"cannot read the brief {brief} as UTF-8 text: {e}") from None
     common = common_dir(repo)
     if not common:
         raise Failed(f"{repo} is not a git checkout")
@@ -309,8 +328,7 @@ def launch(args):
     # The row exists before the agent starts, so a thread waiting on a startup prompt is still known by name.
     put_row(build, [build, main, wt, ws, lib.utc_now()])
     brief_file = os.path.join(wt, ".orchestration", "launch-brief.md")
-    write(brief_file, brief_text(build, os.path.join(wt, ".orchestration", "state.md"),
-                                 Path(brief).read_text(encoding="utf-8")))
+    write(brief_file, brief_text(build, os.path.join(wt, ".orchestration", "state.md"), body))
     try:
         waiting = start_thread(build, pane, brief_file)
     except HerdrError as e:
@@ -545,8 +563,8 @@ def list_threads(args):
         print("NONE")
         return 0
     try:
-        agents = herdr("agent", "list")["result"]["agents"]
-    except (HerdrError, ValueError, KeyError):
+        agents = field(herdr("agent", "list"), "result", "agents")
+    except HerdrError:
         agents = None
     for build, _, wt, ws, launched in found:
         status = "unknown"

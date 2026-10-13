@@ -269,6 +269,11 @@ class GuardWrites(HooksFixture):
                 self.assertDenied(self.writes(form(self.coord), "..\\app\\a.txt"))
                 self.assertIsNone(self.writes(form(self.coord / "sub"), form(self.coord / "src" / "app.ts")))
 
+    @unittest.skipUnless(os.name == "nt", "Git Bash drive paths exist only on Windows")
+    def test_reads_a_git_bash_drive_path(self):
+        target = str(self.app / "a.txt")
+        self.assertDenied(self.writes(self.coord, "/" + target[0].lower() + target[2:].replace("\\", "/")))
+
 
 class GuardTimestamps(HooksFixture):
     def setUp(self):

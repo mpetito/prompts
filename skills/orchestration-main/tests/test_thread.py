@@ -164,6 +164,16 @@ class Launch(ThreadCase):
         self.assertIsNone(self.row_of("t-f"))
         self.assertTrue(any(line.startswith("workspace close w") for line in self.herdr.log))
 
+    def test_a_brief_it_cannot_read_fails_before_anything_is_made(self):
+        # PowerShell 5.1's > writes UTF-16LE with a byte order mark.
+        self.brief.write_bytes("Build the signup slice.\n".encode("utf-16"))
+        code, out, _ = self.t("launch", "t-u", self.app, self.brief)
+        self.assertEqual(code, 1)
+        self.assertRegex(out, f"^FAILED cannot read the brief {re.escape(str(self.brief))}")
+        self.assertFalse((self.proj / "app-orch-t-u").exists())
+        self.assertIsNone(self.row_of("t-u"))
+        self.assertEqual(self.herdr.log, [])
+
     def test_a_linked_worktree_still_places_the_coordination_worktree_beside_the_main_checkout(self):
         git(self.app, "worktree", "add", "-q", str(self.proj / "app-wt-lane-b"), "-b", "lane-b")
         wtb = self.launch("signup", self.proj / "app-wt-lane-b", "--base", "dev")
@@ -297,6 +307,44 @@ class NoWorkspace(ThreadCase):
             self.assertEqual(self.out("launch", "t-b", self.app, self.brief),
                              "FAILED herdr workspace create: no_space: full")
             self.assertEqual(self.out("rotate", "t-a"), "FAILED no pane for the new thread: no_space: full")
+
+
+class OddReplies(ThreadCase):
+    """herdr succeeds but replies in another shape: a FAILED line carrying the reply, never a traceback."""
+
+    def answering(self, verbs, reply):
+        call = support.FakeHerdr.__call__
+
+        def odd(fake, args):
+            return support.result(args, out=reply + "\n") if args[:2] in verbs else call(fake, args)
+
+        return unittest.mock.patch.object(support.FakeHerdr, "__call__", odd)
+
+    def test_launch_fails_on_a_workspace_reply_it_cannot_read(self):
+        for reply in ("not json", '{"result": {"workspace": {}}}',
+                      '{"result": {"root_pane": {"pane_id": "w9:p1"}, "workspace": {}}}'):
+            with self.subTest(reply=reply), self.answering([["workspace", "create"]], reply):
+                code, out, _ = self.t("launch", "t-b", self.app, self.brief)
+                self.assertEqual(code, 1)
+                self.assertRegex(out, "^FAILED herdr workspace create: ")
+                self.assertIn(reply, out)
+                self.assertIsNone(self.row_of("t-b"))
+
+    def test_rotate_falls_back_from_an_odd_tab_reply_and_fails_on_an_odd_workspace_reply(self):
+        self.launch("t-a")
+        reply = '{"result": {"tab": {}}}'
+        with self.answering([["tab", "create"]], reply):
+            self.assertEqual(self.out("rotate", "t-a", "--force"), "ROTATED t-a")
+        with self.answering([["tab", "create"], ["workspace", "create"]], reply):
+            out = self.out("rotate", "t-a", "--force")
+        self.assertRegex(out, "^FAILED no pane for the new thread: ")
+        self.assertIn(reply, out)
+
+    def test_list_and_stop_read_an_odd_agent_reply_as_no_agent(self):
+        self.launch("t-a")
+        with self.answering([["agent", "list"], ["agent", "get"]], '{"result": []}'):
+            self.assertRegex(self.out("list"), "^t-a status=unknown ")
+            self.assertEqual(self.out("stop", "t-a"), "STOPPED t-a")
 
 
 class FromABranch(ThreadCase):

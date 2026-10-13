@@ -71,6 +71,13 @@ class Paths(OrchTest):
         self.assertEqual(lib.canon_from(str(self.tmp), "x/../y"), lib.canon(self.tmp / "y"))
         self.assertEqual(lib.canon_from("/elsewhere", str(self.tmp)), lib.canon(self.tmp))
 
+    def test_from_msys_reads_only_a_drive_letter(self):
+        self.assertEqual(lib.from_msys("/c/Users/x"), "C:/Users/x")
+        self.assertEqual(lib.from_msys("/d"), "D:/")
+        self.assertEqual(lib.from_msys("/c/"), "C:/")
+        for other in ("/tmp/x", "/cd/x", "//server/share", "c/x", "C:/Users/x", "C:\\Users\\x", "x"):
+            self.assertEqual(lib.from_msys(other), other)
+
     def test_native_uses_forward_slashes(self):
         self.assertNotIn("\\", lib.native(self.tmp / "a" / "b"))
 
@@ -85,6 +92,14 @@ class Run(OrchTest):
         arg = 'a b "c" $HOME; echo x'
         r = REAL_RUN([sys.executable, "-c", "import sys; print(sys.argv[1])", arg])
         self.assertEqual((r.returncode, r.stdout), (0, arg + "\n"))
+
+    def test_a_log_takes_both_streams_as_they_are_written(self):
+        log = self.tmp / "run.log"
+        child = ("import sys; print('out', flush=True); print('err', file=sys.stderr, flush=True); "
+                 f"sys.exit(0 if open({str(log)!r}).read() == 'out\\nerr\\n' else 5)")
+        r = REAL_RUN([sys.executable, "-c", child], log=log)
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", ""))
+        self.assertEqual(log.read_text(encoding="utf-8"), "out\nerr\n")
 
     def test_a_timeout_kills_the_tree(self):
         # The child starts a grandchild that writes a file after the timeout: killing only the child would let it.

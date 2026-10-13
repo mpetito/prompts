@@ -13,7 +13,7 @@ def main(argv):
         raise lib.Fail("usage: wake_at.py <UTC time | +<N>m | +<N>h> [label]")
     target = lib.to_epoch(argv[0])
     time.sleep(max(0, target - time.time()))
-    label = argv[1] if len(argv) == 2 else "timer"
+    label = argv[1] if len(argv) == 2 and argv[1] else "timer"
     print(f"WAKE {label} {lib.utc_now()} (armed for {lib.fmt_utc(target)})")
     return 0
 

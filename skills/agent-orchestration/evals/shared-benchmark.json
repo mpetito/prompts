@@ -104,7 +104,7 @@
         {
           "name": "no-new-lanes",
           "type": "not_regex",
-          "pattern": "(?m)^\\s*(?:python3\\s+)?(?:\\S*/)?lane\\.py\"?\\s"
+          "pattern": "(?m)^\\s*(?:python3?\\s+)?(?:\\S*[\\\\/])?lane\\.py[\"']?\\s"
         },
         {
           "name": "no-new-workers",
@@ -200,7 +200,7 @@
         {
           "name": "no-pr-landing",
           "type": "not_regex",
-          "pattern": "(?m)^\\s*(?:python3\\s+)?(?:\\S*/)?land\\.py\"?\\s|^\\s*gh pr (?:create|merge)|^\\s*git (?:-C \\S+ )?push"
+          "pattern": "(?m)^\\s*(?:python3?\\s+)?(?:\\S*[\\\\/])?land\\.py[\"']?\\s|^\\s*gh pr (?:create|merge)|^\\s*git (?:-C \\S+ )?push"
         },
         {
           "name": "reports-to-main",

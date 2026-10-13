@@ -4,9 +4,10 @@ import re
 import subprocess
 import sys
 import unittest
+import unittest.mock
 from pathlib import Path
 
-from .support import SCRIPTS, OrchTest, call, lib, load
+from .support import SCRIPTS, OrchTest, call, lib, load, result
 
 
 def git(cwd, *args):
@@ -128,6 +129,40 @@ class Land(Remote):
         self.assertRegex(out, r"^STOPPED pr=7 after 2 rounds; ")
         self.assertEqual(err.count("main moved"), 2)
 
+    def land_with_git_answering(self, answer):
+        """run_land after main moved, with each git call for which answer(args) returns a result answered by it. The
+        STOPPED or LANDED line, and whether anything was pushed or posted."""
+        self.move_main({"g.txt": "base\nmore\n"}, "base2")
+        pushed, inner, calls = git(self.origin, "rev-parse", "feat"), lib.run, []
+
+        def run(args, **kw):
+            calls.append(args)
+            return (answer(args[3:]) if args[0] == "git" else None) or inner(args, **kw)
+
+        with unittest.mock.patch.object(lib, "run", run):
+            out = self.run_land()[1]
+        pushed = git(self.origin, "rev-parse", "feat") != pushed or any("push" in a for a in calls)
+        posted = any(l.startswith(("pr comment", "pr merge")) for l in self.gh.log)
+        return out, pushed or posted
+
+    def test_stops_before_pushing_a_merge_off_the_previous_head(self):
+        out, sent = self.land_with_git_answering(
+            lambda a: result(a, out="0" * 40 + "\n") if a[0] == "rev-parse" and a[-1].endswith("^1") else None)
+        self.assertRegex(out, r"^STOPPED pr=7 first parent of [0-9a-f]{7} is not the previous head")
+        self.assertFalse(sent)
+
+    def test_stops_before_pushing_a_second_parent_off_the_base(self):
+        out, sent = self.land_with_git_answering(
+            lambda a: result(a, 1) if a[:2] == ["merge-base", "--is-ancestor"] and a[2].endswith("^2") else None)
+        self.assertRegex(out, r"^STOPPED pr=7 second parent of [0-9a-f]{7} is not on main")
+        self.assertFalse(sent)
+
+    def test_stops_before_pushing_a_merge_the_remerge_diff_finds_changed(self):
+        out, sent = self.land_with_git_answering(
+            lambda a: result(a, out="g.txt\nf.txt\ng.txt\n") if "--remerge-diff" in a else None)
+        self.assertRegex(out, r"^STOPPED pr=7 remerge-diff touches: f\.txt g\.txt \(needs a delta review\)")
+        self.assertFalse(sent)
+
 
 class WatchGates(Remote):
     def setUp(self):
@@ -221,6 +256,18 @@ class Lane(OrchTest):
         self.herdr.mode = "notab"
         out = self.start("lb", "x", "--kind", "claude", "--model", "o")[1]
         self.assertEqual(out, "FAILED herdr tab create: workspace_not_found: no such workspace\n")
+
+    def test_a_reply_of_another_shape_is_a_failed_line_with_the_reply(self):
+        call_herdr = type(self.herdr).__call__
+        for verb, reply in ((["agent", "get"], "not json"), (["agent", "get"], '{"result": {}}'),
+                            (["tab", "create"], '{"result": {"tab": {}}}')):
+            with self.subTest(verb=verb, reply=reply), unittest.mock.patch.object(
+                    type(self.herdr), "__call__",
+                    lambda fake, args: result(args, out=reply + "\n") if args[:2] == verb else call_herdr(fake, args)):
+                code, out, _ = self.start("lb", "x", "--kind", "claude", "--model", "o")
+                self.assertEqual(code, 1)
+                self.assertRegex(out, "^FAILED ")
+                self.assertIn(reply, out)
 
     def test_a_startup_prompt_blocks_without_a_pointer_prompt(self):
         self.herdr.mode = "notready"
@@ -387,6 +434,10 @@ class LandLocal(OrchTest):
         log = self.wtc / ".orchestration" / "results" / "land-lane-l1.log"
         self.assertEqual(log.read_text(encoding="utf-8"), "err\nout\n")
 
+    def test_the_log_fills_while_the_check_runs(self):
+        check = "echo started; grep -q started .orchestration/results/land-lane-l1.log"
+        self.assertRegex(self.land("lane/l1", self.l1, "--check", check)[1], r"^LANDED lane=lane/l1 ")
+
     def test_lands_the_approved_head_with_a_no_ff_merge(self):
         # From a folder below the worktree's root: the check still runs at the root.
         code, out, _ = self.land("lane/l1", self.l1, "--check", "test -f L1.md", "--subject", "feat: l1",
@@ -451,9 +502,15 @@ class FindBash(OrchTest):
     def path(self, *folders):
         return os.pathsep.join(str(f) for f in folders)
 
-    def test_the_variable_wins_on_windows(self):
-        env = {"CLAUDE_CODE_GIT_BASH_PATH": r"D:\Git\bin\bash.exe", "PATH": self.path(self.wsl, self.git_cmd)}
-        self.assertEqual(self.find("nt", env), r"D:\Git\bin\bash.exe")
+    def test_the_variable_wins_on_windows_when_it_names_a_file(self):
+        other = self.tmp / "Other" / "bash.exe"
+        other.parent.mkdir()
+        other.write_text("", encoding="utf-8")
+        env = {"CLAUDE_CODE_GIT_BASH_PATH": str(other), "PATH": self.path(self.wsl, self.git_cmd)}
+        self.assertEqual(self.find("nt", env), str(other))
+        for stale in (str(self.tmp / "Gone" / "bash.exe"), str(other.parent)):
+            env["CLAUDE_CODE_GIT_BASH_PATH"] = stale
+            self.assertEqual(self.find("nt", env), str(self.git_bash))
 
     def test_windows_finds_git_bash_beside_git_and_skips_wsl_on_path(self):
         self.assertEqual(self.find("nt", {"PATH": self.path(self.git_cmd)}), str(self.git_bash))

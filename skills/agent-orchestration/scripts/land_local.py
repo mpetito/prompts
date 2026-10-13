@@ -5,7 +5,7 @@ thread.py integrate.
   land_local.py <lane branch> <approved sha> --check "<command>" [--subject "<text>"]
 Run from the coordination worktree. Prints one final line: LANDED lane=<branch> head=<sha7> merge=<sha7>, or
 STOPPED lane=<branch> <reason>. The check command is bash text, run with bash -c (Git Bash on Windows); its output
-goes to .orchestration/results/land-<lane>.log.
+goes to .orchestration/results/land-<lane>.log as it runs.
 """
 import os
 import shutil
@@ -78,10 +78,7 @@ def land(top, lane, sha, check, subject):
     merge = git("rev-parse", "HEAD")
     log = Path(top, ".orchestration", "results", f"land-{lane.replace('/', '-')}.log")
     log.parent.mkdir(parents=True, exist_ok=True)
-    # exec 2>&1 interleaves the check's errors with its output in the log, in the order it wrote them.
-    r = lib.run([bash, "-c", f"exec 2>&1\n{check}"], cwd=top)
-    log.write_text(r.stdout + r.stderr, encoding="utf-8")
-    if r.returncode:
+    if lib.run([bash, "-c", check], cwd=top, log=log).returncode:
         # The tree was clean before the merge, so resetting to it drops only this merge.
         git("reset", "-q", "--hard", before)
         raise Stopped(f"check failed on merge {merge[:7]}, merge undone; output in {lib.native(log)}")
@@ -89,15 +86,15 @@ def land(top, lane, sha, check, subject):
 
 
 def find_bash(os_name=os.name, env=None):
-    """The bash that runs the check command, or None. On Windows it is Git Bash: $CLAUDE_CODE_GIT_BASH_PATH when set,
-    else the bin\\bash.exe of the Git for Windows install holding the git on PATH (git.exe sits in its cmd\\, bin\\ or
-    mingw64\\bin\\). Never a bash found by name on PATH there: from PowerShell that is WSL's launcher,
+    """The bash that runs the check command, or None. On Windows it is Git Bash: $CLAUDE_CODE_GIT_BASH_PATH when it
+    names a file, else the bin\\bash.exe of the Git for Windows install holding the git on PATH (git.exe sits in its
+    cmd\\, bin\\ or mingw64\\bin\\). Never a bash found by name on PATH there: from PowerShell that is WSL's launcher,
     C:\\Windows\\System32\\bash.exe, which runs the check in a Linux distribution. Elsewhere it is bash on PATH."""
     env = os.environ if env is None else env
     path = env.get("PATH")
     if os_name != "nt":
         return shutil.which("bash", path=path)
-    if env.get("CLAUDE_CODE_GIT_BASH_PATH"):
+    if os.path.isfile(env.get("CLAUDE_CODE_GIT_BASH_PATH", "")):
         return env["CLAUDE_CODE_GIT_BASH_PATH"]
     git = shutil.which("git", path=path)
     if not git:

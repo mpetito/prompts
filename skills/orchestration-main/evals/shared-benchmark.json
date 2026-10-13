@@ -188,7 +188,7 @@
         {
           "name": "rings-web-with-pointer",
           "type": "regex",
-          "pattern": "herdr agent prompt shopfront-web\\s+[\\\"'][^\\\"\\n]{0,240}mail\\.py'? read shopfront-web/thread"
+          "pattern": "herdr agent prompt shopfront-web\\s+(?:\"[^\"\\n]{0,240}mail\\.py'?|'[^'\\n]{0,240}mail\\.py) read shopfront-web/thread"
         },
         {
           "name": "leaves-blocked-dialog",

@@ -151,7 +151,10 @@ def resume(args, now):
     if args[0] == "-":
         body = sys.stdin.read()
     elif os.path.isfile(args[0]):
-        body = Path(args[0]).read_text(encoding="utf-8")
+        try:
+            body = Path(args[0]).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            raise lib.Fail(f"cannot read {args[0]} as UTF-8 text: {e}") from e
     else:
         raise lib.Fail(f"no file {args[0]}")
     # A copied stamp would leave two; the helper writes the only one.
