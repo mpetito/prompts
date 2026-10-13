@@ -187,8 +187,22 @@ def start_thread(build, pane, brief):
     except HerdrError as e:
         if str(e).startswith("agent_not_ready:"):
             return f"waiting on a startup prompt: answer it in workspace {build}"
-        raise
+        # herdr waits for the agent to go idle, but the orchestrator's initialPrompt starts its first turn at once,
+        # and a real brief outlasts the wait. herdr then drops the name while the agent keeps working in the pane.
+        if not (str(e).startswith("timeout:") and adopt(build, pane)):
+            raise
     return ""
+
+
+def adopt(build, pane):
+    """Name build the Claude agent herdr detects in pane; False when there is none."""
+    try:
+        if field(herdr("agent", "get", pane), "result", "agent").get("agent") != "claude":
+            return False
+        herdr("agent", "rename", pane, build)
+    except HerdrError:
+        return False
+    return True
 
 
 # --- git ---------------------------------------------------------------------------------------------------------

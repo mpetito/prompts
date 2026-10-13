@@ -164,6 +164,19 @@ class Launch(ThreadCase):
         self.assertIsNone(self.row_of("t-f"))
         self.assertTrue(any(line.startswith("workspace close w") for line in self.herdr.log))
 
+    def test_a_thread_still_on_its_first_turn_when_the_start_times_out_is_named_and_kept(self):
+        self.herdr.mode = "busy"
+        self.assertRegex(self.out("launch", "t-b", self.app, self.brief), "^LAUNCHED t-b ")
+        self.assertIsNotNone(self.row_of("t-b"))
+        self.herdr.mode = ""
+        self.assertEqual(thread.agent("t-b")["agent_status"], "working")
+        self.assertFalse(any(line.startswith("workspace close") for line in self.herdr.log))
+        self.herdr.mode = "lost"
+        code, out, _ = self.t("launch", "t-l", self.app, self.brief)
+        self.assertEqual((code, out), (1, "FAILED herdr agent start: timeout: timed out waiting for agent startup\n"))
+        self.assertIsNone(self.row_of("t-l"))
+        self.assertTrue(any(line.startswith("workspace close w") for line in self.herdr.log))
+
     def test_a_brief_it_cannot_read_fails_before_anything_is_made(self):
         # PowerShell 5.1's > writes UTF-16LE with a byte order mark.
         self.brief.write_bytes("Build the signup slice.\n".encode("utf-16"))

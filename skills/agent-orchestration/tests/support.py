@@ -65,7 +65,8 @@ def result(args, code=0, out="", err=""):
 
 
 class FakeHerdr:
-    """A herdr that keeps its agents in memory. mode: down, garbled, notab, startfail, notready or closefail."""
+    """A herdr that keeps its agents in memory. mode: down, garbled, notab, startfail, notready, busy, lost or
+    closefail. busy and lost time out the start: busy leaves an unnamed agent working in the pane, lost none."""
 
     def __init__(self):
         self.agents, self.log, self.started, self.mode, self.n = [], [], {}, "", 0
@@ -82,7 +83,7 @@ class FakeHerdr:
                 {"result": {"agents": self.agents}}))
         if verb == "agent get":
             for ag in self.agents:
-                if ag["name"] == a[2]:
+                if a[2] in (ag["name"], ag.get("pane_id")):
                     return result(args, out=json.dumps({"result": {"agent": {
                         **ag, "workspace_id": (ag.get("pane_id") or "").split(":")[0]}}}))
             return self.err(args, "agent_not_found", f"agent target {a[2]} not found")
@@ -105,6 +106,12 @@ class FakeHerdr:
                                                            "root_pane": {"pane_id": f"{ws}:p{self.n}"}}}))
         if verb == "agent start":
             return self.start(args)
+        if verb == "agent rename":
+            for ag in self.agents:
+                if a[2] in (ag["name"], ag.get("pane_id")):
+                    ag["name"] = args[3]
+                    return result(args, out=json.dumps({"result": {"agent": ag}}))
+            return self.err(args, "agent_not_found", f"agent target {a[2]} not found")
         if verb == "pane close":
             if self.mode == "closefail":
                 return self.err(args, "pane_not_found", f"pane {a[2]} not found")
@@ -133,6 +140,10 @@ class FakeHerdr:
         self.started[name] = agent_args
         if self.mode == "startfail":
             return self.err(args, "agent_start_failed", "the agent exited")
+        if self.mode in ("busy", "lost"):
+            if self.mode == "busy":
+                self.agents.append({"name": None, "agent": "claude", "agent_status": "working", "pane_id": pane})
+            return self.err(args, "timeout", "timed out waiting for agent startup")
         state = "blocked" if self.mode == "notready" else "idle"
         self.agents.append({"name": name, "agent_status": state, "pane_id": pane})
         if state != "idle":
