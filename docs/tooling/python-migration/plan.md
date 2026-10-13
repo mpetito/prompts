@@ -81,6 +81,16 @@ Fixture prose in `.md` files is updated with its skill.
   the value unchanged. If (a) or (c) fails, stop and ask the owner. (b) decides the hook form for
   step 2.
 
+  Windows, 2026-10-13 (`windows/results/probe.md`; Claude Code 2.1.296, codex-cli 0.161.0):
+  - **(b) passed.** Exec-form and shell-form hooks both fire. Median spawn costs were exec 233 ms and shell 342 ms
+    with `python3`, which goes through the App Execution Alias, and exec 57 ms and shell 181 ms with `python`.
+  - **(c) passed.** A quoted `-c` reaches codex intact through the npm `codex.CMD` shim.
+  - **(a) failed, and is waiting on the owner.** It failed for a reason outside this migration. The probe passed
+    `--ignore-user-config`, which drops the owner's `[windows] sandbox = "elevated"`, so codex fell back to
+    read-only. That flag is now gone. With the owner's config, the sandbox comes up with the `--add-dir` folder
+    granted, but every command fails with `setup refresh had errors`. The sandbox log names `node_repl.exe` files
+    locked by the running Codex desktop app (os error 32). No command runs in that sandbox, in any language.
+
 ## Phase 1: orchestration and its hooks (branch `py/orchestration`)
 
 - [x] 1. `skills/agent-orchestration/scripts/lib.py`, `skills/agent-orchestration/tests/__init__.py`,
@@ -106,7 +116,10 @@ Fixture prose in `.md` files is updated with its skill.
   - Add a case for a foreground `python3 …/mail.py wait`.
   - The inode warning uses `os.statvfs` and is skipped where that doesn't exist (Windows).
 
-  Hook entries use the form step 0 chose. Delete `guard-bash.sh`, `guard-writes.sh` and
+  Hook entries use the form step 0 chose: exec form,
+  `command: python3` with `args: ["-c", "<runpy of os.path.expanduser('~/.claude/.../<hook>.py')>"]`, since exec
+  form expands no `$HOME`. Exec-form hooks were confirmed to fire in an agent definition, and `test_hooks.py`
+  AgentHooks runs every declared hook as Claude Code would and checks its guard answers. Delete `guard-bash.sh`, `guard-writes.sh` and
   `guard-timestamps.py`.
 
   Check: the suite passes with the hook assertion count of `tests/run.sh`, plus the new case. On
@@ -192,9 +205,21 @@ Fixture prose in `.md` files is updated with its skill.
   - The thread rotated, and close left no agent, worktree, branch or registry row.
   - Hook medians, shell form through bash: guard_bash 31 ms, guard_writes 30 ms, guard_timestamps 31 ms.
   - The run needed the owner to answer two startup prompts: the thread's folder trust and the Codex lane's.
-- [ ] 10. Evals: run `agent-orchestration` and `orchestration-main` against main's revision, as
+- [x] 10. Evals: run `agent-orchestration` and `orchestration-main` against main's revision, as
   `docs/evaluating-skills.md` describes. Check: pass rates and trigger rates are no lower than the
   baseline's, or the owner accepts the difference. Then the owner merges the phase's pull request.
+
+  2026-10-13, Opus at high effort, baseline main's revision (0ba7828). The baseline's objective score is low partly
+  by construction, because the graders now expect `.py` names; the judge score is the fair comparison.
+
+  | Skill | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
+  |---|---|---|---|
+  | agent-orchestration, 1 run per arm | 0.97 / 0.86 | 0.63 / 0.76 | 0.49 / 0.49 |
+  | orchestration-main, 3 runs per arm | 0.97 / 0.74 | 0.75 / 0.67 | 0.35 / 0.27 |
+
+  - orchestration-main's single run judged the new skill 0.68 against 0.83. The 3-run rerun shows that was noise.
+  - Triggers: orchestration-main fired 9/9 and held back 9/9. agent-orchestration has no trigger cases, because
+    the orchestrator agent loads it.
 
 ## Phase 2: model council (branch `py/council`)
 

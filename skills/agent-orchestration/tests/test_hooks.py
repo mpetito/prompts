@@ -1,6 +1,8 @@
 """The hooks: guard_bash.py, guard_writes.py and guard_timestamps.py."""
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
 import unittest
@@ -8,7 +10,9 @@ import unittest.mock
 from pathlib import Path
 from types import SimpleNamespace
 
-from .support import HOOKS, OrchTest, call, lib, load
+from .support import HOOKS, SCRIPTS, OrchTest, call, lib, load
+
+AGENTS = Path(__file__).resolve().parents[3] / "agents"
 
 guard_bash = load(HOOKS / "guard_bash.py")
 guard_writes = load(HOOKS / "guard_writes.py")
@@ -315,6 +319,45 @@ class GuardTimestamps(HooksFixture):
             self.assertIsNone(self.edit("approved at noon"))
             self.assertIsNone(self.edit("at 14:30Z", self.coord, self.coord / "docs" / "plan.md"))
         self.assertEqual(spawned, [])
+
+
+class AgentHooks(HooksFixture):
+    """Every hook agents/*.md declares runs the way Claude Code starts an exec-form hook (its command and args, no
+    shell) and reaches its guard. A broken entry fails as a non-blocking hook error, or runs nothing, so its guard
+    would silently stop guarding."""
+
+    def declared(self):
+        for agent in sorted(AGENTS.glob("*.md")):
+            lines = agent.read_text(encoding="utf-8").split("---")[1].splitlines()
+            for i, line in enumerate(lines):
+                if line.strip() == "command: python3":
+                    yield agent.stem, json.loads(lines[i + 1].strip().removeprefix("args: "))
+
+    def test_each_declared_hook_runs_its_guard(self):
+        skill = self.home / ".claude" / "skills" / "agent-orchestration"
+        shutil.copytree(HOOKS, skill / "hooks")
+        shutil.copytree(SCRIPTS, skill / "scripts")
+        hooks = list(self.declared())
+        self.assertEqual(sorted(a for a, _ in hooks), ["lane", "lane", "orchestrator", "orchestrator", "orchestrator"])
+        for agent, args in hooks:
+            name = re.search(r"hooks/(\w+)\.py", args[1])[1]
+            # Each payload is one the guard answers, as the agent that declares it: a lane's hooks run from its
+            # worktree with --lane, the thread's from the coordination worktree.
+            cwd = self.lane if agent == "lane" else self.coord
+            payload, decision = {
+                "guard_bash": ({"tool_name": "Bash", "tool_input": {"command": "pkill node"}}, "deny"),
+                "guard_writes": ({"tool_name": "Write", "tool_input": {"file_path": str(self.app / "a.txt")}}, "deny"),
+                "guard_timestamps": ({"tool_name": "Edit", "tool_input": {
+                    "file_path": str(self.coord / ".orchestration" / "notes.md"), "new_string": "approved at 14:30Z"}},
+                    None),
+            }[name]
+            r = subprocess.run([sys.executable, *args], input=json.dumps({**payload, "cwd": str(cwd)}),
+                               capture_output=True, text=True, encoding="utf-8", cwd=cwd)
+            with self.subTest(agent=agent, hook=name):
+                self.assertEqual((r.returncode, r.stderr), (0, ""))
+                answer = reply(r.stdout)
+                self.assertIsNotNone(answer, "the hook answered nothing")
+                self.assertEqual(answer.get("permissionDecision"), decision)
 
 
 class Processes(unittest.TestCase):

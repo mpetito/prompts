@@ -6,12 +6,14 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: python3 "$HOME/.claude/skills/agent-orchestration/hooks/guard_bash.py" --lane
+          command: python3
+          args: ["-c", "import os,runpy,sys; p=os.path.expanduser('~/.claude/skills/agent-orchestration/hooks/guard_bash.py'); sys.argv=[p, '--lane']; runpy.run_path(p, run_name='__main__')"]
           timeout: 10
     - matcher: "Edit|Write|MultiEdit|NotebookEdit"
       hooks:
         - type: command
-          command: python3 "$HOME/.claude/skills/agent-orchestration/hooks/guard_writes.py" --lane
+          command: python3
+          args: ["-c", "import os,runpy,sys; p=os.path.expanduser('~/.claude/skills/agent-orchestration/hooks/guard_writes.py'); sys.argv=[p, '--lane']; runpy.run_path(p, run_name='__main__')"]
           timeout: 10
 color: cyan
 ---

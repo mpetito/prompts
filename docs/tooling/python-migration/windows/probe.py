@@ -101,7 +101,9 @@ def codex_sandbox(evidence, model):
     target = mail / "probe"
     command = f"python3 -c \"import pathlib,sys; pathlib.Path(sys.argv[1]).write_text('ok')\" {target.as_posix()}"
     try:
-        r = spawn([codex, "exec", "--skip-git-repo-check", "--ignore-user-config", "-m", model,
+        # The owner's own config, as a lane runs: on Windows, workspace-write needs its [windows] sandbox setting, and
+        # --ignore-user-config would drop it and fall back to read-only.
+        r = spawn([codex, "exec", "--skip-git-repo-check", "-m", model,
                    "-c", 'sandbox_mode="workspace-write"', "--add-dir", str(mail), "-C", str(work),
                    f"Run exactly this shell command once, then reply DONE: {command}"], evidence, "codex-sandbox",
                   cwd=work)

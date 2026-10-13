@@ -13,7 +13,7 @@ refused), lanes (a Claude lane and a Codex lane each commit in their worktree an
 through mail.py --home from its sandbox), lane-guard (the Claude lane's Write into the checkout is refused),
 finish-running (finish_lane.py refuses while the lane runs, given its path native, with forward slashes and
 relative), finish-closed (it retires both lanes once their panes close), rotate, hook-cost:<hook> (median ms of
-<runs> runs as Claude Code starts a shell-form hook: bash -c, Git Bash on Windows, under 700 ms), close, cleanup
+<runs> runs as Claude Code starts the agents' exec-form hooks: python3 -c, no shell, under 700 ms), close, cleanup
 (no agent, worktree, branch or registry row of the build is left). Then it exits 1 if any item failed.
 
 Agents can stall on a startup or permission prompt: the script says which pane to answer and keeps waiting, up to
@@ -116,19 +116,6 @@ def guard_payload(path, cwd):
     return json.dumps({"tool_name": "Write", "cwd": str(cwd), "tool_input": {"file_path": str(path), "content": "x"}})
 
 
-def git_bash():
-    """The bash Claude Code runs a shell-form hook in: Git Bash on Windows, found as Claude Code finds it."""
-    if os.name != "nt":
-        return shutil.which("bash")
-    if os.environ.get("CLAUDE_CODE_GIT_BASH_PATH"):
-        return os.environ["CLAUDE_CODE_GIT_BASH_PATH"]
-    found = shutil.which("git")
-    for d in Path(found).resolve().parents if found else []:
-        if (d / "bin" / "bash.exe").is_file():
-            return str(d / "bin" / "bash.exe")
-    return None
-
-
 def preflight():
     missing = [t for t in ("python3", "git", "herdr", "claude", "codex") if not shutil.which(t)]
     linked = (HOOKS / "guard_bash.py").is_file() and THREAD.is_file()
@@ -164,7 +151,6 @@ def lane_brief(build, lane, kind, checkout, home):
 
 
 def hook_costs(coord, checkout, runs):
-    bash = git_bash()
     payloads = {
         "guard_bash": json.dumps({"tool_name": "Bash", "cwd": str(coord), "tool_input": {"command": "git status"}}),
         "guard_writes": guard_payload(Path(coord, "notes.md"), coord),
@@ -173,14 +159,13 @@ def hook_costs(coord, checkout, runs):
     }
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(coord)}
     for hook, payload in payloads.items():
-        if not bash:
-            report(f"hook-cost:{hook}", False, "no bash found for a shell-form hook")
-            continue
         times, code = [], 0
+        start_hook = (f"import os,runpy,sys; p=os.path.expanduser('~/.claude/skills/agent-orchestration/hooks/{hook}.py'); "
+                      "sys.argv=[p]; runpy.run_path(p, run_name='__main__')")
         for _ in range(runs):
             start = time.perf_counter()
-            r = subprocess.run([bash, "-c", f'python3 "$HOME/.claude/skills/agent-orchestration/hooks/{hook}.py"'],
-                               input=payload, capture_output=True, text=True, cwd=coord, env=env)
+            r = subprocess.run(["python3", "-c", start_hook], input=payload, capture_output=True, text=True, cwd=coord,
+                               env=env)
             times.append((time.perf_counter() - start) * 1000)
             code = r.returncode or code
         median = statistics.median(times)
