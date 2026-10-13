@@ -60,7 +60,7 @@ Fixture prose in `.md` files is updated with its skill.
 
 ## Phase 0: Windows probe (before any port)
 
-- [ ] 0. `docs/tooling/python-migration/windows/probe.py`, `docs/tooling/python-migration/windows/HANDOFF.md`.
+- [x] 0. `docs/tooling/python-migration/windows/probe.py`, `docs/tooling/python-migration/windows/HANDOFF.md`.
   The probe is a script the owner's Windows agent runs from PowerShell. It also runs on Linux, which
   checks the script itself. It prints one `PROBE` line per check and saves its evidence to a folder.
   Porting goes on while the results are pending; the results go into this plan under the step.
@@ -90,6 +90,11 @@ Fixture prose in `.md` files is updated with its skill.
     read-only. That flag is now gone. With the owner's config, the sandbox comes up with the `--add-dir` folder
     granted, but every command fails with `setup refresh had errors`. The sandbox log names `node_repl.exe` files
     locked by the running Codex desktop app (os error 32). No command runs in that sandbox, in any language.
+  - **Second run, desktop app quit:** the same os error 32. This is a known Codex bug, openai/codex#52488.
+  - **Third run, `-c windows.sandbox="unelevated"`, config untouched:** setup succeeds, but the sandbox can't start
+    the shell Codex picks, the Microsoft Store build of PowerShell 7 (`CreateProcessAsUserW ... Access is denied`).
+  - **Owner's call:** phase 1 goes ahead without a Codex lane on Windows; see Follow-ups. (a) stays failed,
+    blocked outside this migration. (b) chose exec form and (c) passed.
 
 ## Phase 1: orchestration and its hooks (branch `py/orchestration`)
 
@@ -182,7 +187,7 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: CI is green on `ubuntu-latest` and `windows-latest`, and the version step shows 3.12 on
   both.
-- [ ] 9. `docs/tooling/python-migration/windows/smoke.py`, plus a section added to
+- [x] 9. `docs/tooling/python-migration/windows/smoke.py`, plus a section added to
   `docs/tooling/python-migration/windows/HANDOFF.md`. The script runs on Windows with the branch
   checked out in the main checkout, and uses a separate `ORCHESTRATION_HOME`. It covers:
   - a thread launch;
@@ -205,6 +210,15 @@ Fixture prose in `.md` files is updated with its skill.
   - The thread rotated, and close left no agent, worktree, branch or registry row.
   - Hook medians, shell form through bash: guard_bash 31 ms, guard_writes 30 ms, guard_timestamps 31 ms.
   - The run needed the owner to answer two startup prompts: the thread's folder trust and the Codex lane's.
+
+  Windows, 2026-10-13, at 0eb2f71 with `--skip-codex` (`windows/results/smoke.md`): every item passed.
+  - The guards refused the thread's write and the lane's write into the checkout.
+  - The Claude lane committed and mailed the thread.
+  - finish_lane refused the running lane for each path spelling, then retired it.
+  - Rotate, close and cleanup passed.
+  - Exec-form hook medians, where the bash hooks took 2,853 and 1,560 ms: guard_bash 230 ms, guard_writes
+    336 ms, guard_timestamps 284 ms.
+  - Its two script bugs are fixed: a relative path across drives, and read-only git objects left behind.
 - [x] 10. Evals: run `agent-orchestration` and `orchestration-main` against main's revision, as
   `docs/evaluating-skills.md` describes. Check: pass rates and trigger rates are no lower than the
   baseline's, or the owner accepts the difference. Then the owner merges the phase's pull request.
@@ -319,3 +333,16 @@ Fixture prose in `.md` files is updated with its skill.
   `git grep -nE '\b(pwsh|node) [^ ]*\.(ps1|js)\b' -- <reference excludes>` prints nothing.
 - [ ] 20. Evals for each skill whose text changed in this phase, as in step 10. Then the owner merges the phase's
   pull request.
+
+## Follow-ups
+
+- **Codex lanes on Windows** don't run on the owner's machine in any language.
+  - The elevated sandbox's setup fails with os error 32 (openai/codex#52488).
+  - The unelevated sandbox can't launch the Store-packaged PowerShell 7 Codex picks.
+  - If unelevated can't launch any Store-packaged program, `python3` would be blocked too: on that machine it is a
+    Store App Execution Alias, while `python` is a python.org install. That is untested.
+  - Paths to try:
+    - a Codex fix;
+    - an MSI install of PowerShell 7, with Codex pointed at it;
+    - lanes on Windows invoking a non-Store Python.
+  - The last one would revisit decision 1 for Windows Codex lanes only.

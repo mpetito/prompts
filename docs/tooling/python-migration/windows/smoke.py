@@ -27,6 +27,7 @@ import json
 import os
 import secrets
 import shutil
+import stat
 import statistics
 import subprocess
 import sys
@@ -117,6 +118,19 @@ def await_idle(name, minutes):
 
 def guard_payload(path, cwd):
     return json.dumps({"tool_name": "Write", "cwd": str(cwd), "tool_input": {"file_path": str(path), "content": "x"}})
+
+
+def remove(root):
+    """Delete root. Git makes its object files read-only, which rmtree can't delete on Windows: clear the bit and
+    retry, and say what still couldn't be removed."""
+    def writable(func, path, _exc):
+        for each in (os.path.dirname(path), path):
+            os.chmod(each, os.stat(each).st_mode | stat.S_IWRITE | stat.S_IEXEC * os.path.isdir(each))
+        func(path)
+    try:
+        shutil.rmtree(root, onexc=writable)
+    except OSError as e:
+        say(f"  could not remove {Path(root).as_posix()}: {e}")
 
 
 def preflight():
@@ -224,8 +238,10 @@ def smoke(a, root, build, home):
            f"file_written={(checkout / 'smoke-lane-guard.txt').exists()}")
 
     wt, _ = lanes["cl"]
-    spellings = {"native": str(wt), "slashes": wt.as_posix(), "relative": os.path.relpath(wt)}
-    refused = {k: script("finish_lane", v, root / "archive-early")[0] == 1 for k, v in spellings.items()}
+    # The relative spelling is taken from the worktree's own parent, so it never crosses drives on Windows.
+    spellings = {"native": (str(wt), None), "slashes": (wt.as_posix(), None), "relative": (wt.name, wt.parent)}
+    refused = {k: script("finish_lane", path, root / "archive-early", cwd=cwd)[0] == 1
+               for k, (path, cwd) in spellings.items()}
     report("finish-running", all(refused.values()), f"refused={refused}")
 
     for lane, (wt, pane) in lanes.items():
@@ -288,7 +304,7 @@ def main(argv):
         try:
             cleanup(root, build, root / "smoke-repo")
         finally:
-            shutil.rmtree(root, ignore_errors=True)
+            remove(root)
     return 1 if failed else 0
 
 
