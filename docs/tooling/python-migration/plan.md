@@ -284,8 +284,14 @@ Fixture prose in `.md` files is updated with its skill.
     link.
   - [x] Linux medians of 20 runs, `windows/statusline_timing.py`, through bash and direct: Node 32 and 33 ms,
     Python 28 and 26 ms ([performance.md](performance.md)).
-  - [ ] Windows medians: the owner's Windows agent runs `windows/statusline_timing.py` (HANDOFF.md, step 13).
-  - [ ] The owner switches each machine's `statusLine` command to `python3 "<home>/.claude/statusline.py"`.
+  - [x] Windows medians of 20, the owner's machine, 2026-10-13 at 4f7b053 (`windows/results/statusline-timing.md`).
+    Through Git Bash and direct: Node 228 and 105 ms, `python3` 405 and 239 ms, `python` 212 and 114 ms. All
+    printed the same line. `python3` through Git Bash takes about 1.8 times as long as Node because `python3` is the
+    Store's App Execution Alias. Without the alias, python.org's `python` takes 212 ms.
+  - [ ] The owner switches each machine's `statusLine` command. Candidates, by median through the shell: Linux
+    `python3 "/home/<you>/.claude/statusline.py"`, 28 ms. Windows `python3 "C:/Users/<you>/.claude/statusline.py"`,
+    405 ms (decision 1), or `python "C:/Users/<you>/.claude/statusline.py"`, 212 ms. `python` leaves decision 1 and
+    needs python.org's Python 3.12+ on PATH ([performance.md](performance.md)).
 - [x] 14. Pull-request scripts and everything that names them:
   - `skills/pull-request/scripts/get_pr_feedback.py`, `resolve_pr_thread.py`, `run.py`
   - `skills/pull-request/tests/__init__.py`, `skills/pull-request/tests/test_pr_scripts.py`
