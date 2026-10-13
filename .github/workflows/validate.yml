@@ -35,10 +35,8 @@ jobs:
         run: ./tests/Setup.Tests.ps1
       - name: Check MCP installation with mocked CLIs
         run: ./tests/Mcp.Tests.ps1
-      - name: Check the pull-request feedback script with a mocked gh
-        run: ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
-      - name: Check the pull-request thread script with a mocked gh
-        run: ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
+      - name: Check the pull-request scripts with a mocked gh
+        run: python3 -m unittest discover -v -s skills/pull-request/tests -t skills/pull-request
       - name: Check orchestration scripts and hooks
         run: python3 -m unittest discover -v -s skills/agent-orchestration/tests -t skills/agent-orchestration
       - name: Check orchestration threads
@@ -47,8 +45,4 @@ jobs:
         shell: bash
         run: bash skills/model-council/tests/run.sh
       - name: Check status line
-        run: |
-          node --check statusline/statusline.js
-          if ($LASTEXITCODE -ne 0) { throw 'Status line syntax check failed.' }
-          '{}' | node statusline/statusline.js
-          if ($LASTEXITCODE -ne 0) { throw 'Status line smoke check failed.' }
+        run: python3 -m unittest discover -v -s statusline/tests -t statusline

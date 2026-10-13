@@ -65,6 +65,40 @@ These are medians of 20 runs of an empty hook on Windows, from the step 0 probe,
   a decision.
 - **On Linux, both forms take 17 ms** for an empty hook.
 
+## The status line, Node and Python
+
+These are medians of 20 runs of `statusline/statusline.js` (Node) and `statusline/statusline.py` (Python), measured
+with `windows/statusline_timing.py`. Each run gets the same payload on stdin, with the repository as its working
+folder, so each includes one `git status`. Every interpreter printed the same line, on both machines.
+
+| Command | Linux, through bash | Linux, direct | Windows, through Git Bash | Windows, direct |
+| --- | ---: | ---: | ---: | ---: |
+| `node statusline.js` | 32 ms | 33 ms | 228 ms | 105 ms |
+| `python3 statusline.py` | 28 ms | 26 ms | 405 ms | 239 ms |
+| `python statusline.py` (python.org) | not installed | not installed | 212 ms | 114 ms |
+
+- **Linux** is Python 3.14.4 and Node 24.21.0. **Windows** is the owner's Windows 11 machine, with Python 3.14.2 as
+  `python3`, Node 24.13.0 and Git Bash (`windows/results/statusline-timing.md`, at 4f7b053). Both were measured on
+  2026-10-13.
+- **On Windows, `python3` through Git Bash takes about 1.8 times as long as Node** (405 against 228 ms). The cause is
+  the App Execution Alias. `python3` there is the Microsoft Store alias, which costs about 190 ms through Git Bash and
+  125 ms direct on top of the interpreter. python.org's `python`, with no alias, runs the same script in 212 ms,
+  slightly faster than Node.
+- **On Linux, Python is slightly faster than Node** (28 against 32 ms through bash).
+- **How Claude Code runs it.** Claude Code's statusline docs (code.claude.com/docs/en/statusline, read 2026-10-13):
+  "On Windows, Claude Code runs status line commands through Git Bash when Git Bash is installed, or through
+  PowerShell when Git Bash is absent." The "through Git Bash" column is what the status line costs on the owner's
+  Windows machine. The direct column is the interpreter alone.
+- **The `statusLine` command is the owner's choice,** made in each machine's own settings. The candidates:
+
+  | Machine | Command | Median through the shell | Cost |
+  | --- | --- | ---: | --- |
+  | Linux | `python3 "/home/<you>/.claude/statusline.py"` | 28 ms | none: decision 1's form |
+  | Windows | `python3 "C:/Users/<you>/.claude/statusline.py"` | 405 ms | decision 1's form; about 180 ms slower than Node was |
+  | Windows | `python "C:/Users/<you>/.claude/statusline.py"` | 212 ms | leaves decision 1's `python3`. It needs python.org's install on PATH as `python`, version 3.12 or later, which on this machine is a different install from `python3`. |
+
+  Node's 228 ms on Windows is the reference only. `statusline.js` is gone once the pull request merges.
+
 ## Test suites
 
 | Suite | Linux | Windows |
@@ -86,6 +120,6 @@ These are medians of 20 runs of an empty hook on Windows, from the step 0 probe,
 
 ## Not measured
 
-- Node on Windows.
+- Node start-up on Windows. Only the status line was timed under Node there.
 - The bash orchestration suite's runtime on Linux.
 - Hook latency as Claude Code reports it end to end. Every figure here is the hook's own process, from start to exit.

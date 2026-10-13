@@ -267,7 +267,32 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes, including a case where stdin never closes, which must exit within the
   deadline. Node's and Python's medians of 20 runs on both machines are recorded under this step.
   As the step's last action, the owner switches each machine's `statusLine` command.
-- [ ] 14. Pull-request scripts and everything that names them:
+
+  Linux, 2026-10-13: done except the two owner items below.
+  - [x] `statusline.py` and its suite, 49 tests, one per behaviour of `statusline.js`, which had no suite. It
+    printed the same bytes as `statusline.js` in 456 comparisons. Those covered 38 payloads in a plain folder and a
+    repository, in six git states. It differs only on malformed payloads, and none makes it exit non-zero or print
+    nothing:
+    - Node crashes on `null` and on a path or branch that is not a string; Python treats the payload or the value
+      as absent.
+    - A repo without an owner shows `/name` where Node showed `undefined/name`.
+  - [x] `run()` is tested against real hung commands, with bounds in absolute seconds. The kill stops the
+    grandchild too, and draining a pipe that an escaped process still holds stops after 1 s.
+  - [x] The never-closing-stdin case exits at the deadline, and fails against a reader that waits for EOF.
+  - [x] Setup links `~/.claude/statusline.py`. `Remove-RetiredStatusLineLink` removes the old link only when it
+    points into this checkout. `tests/Setup.Tests.ps1` covers verification, `-WhatIf`, a real file and a foreign
+    link.
+  - [x] Linux medians of 20 runs, `windows/statusline_timing.py`, through bash and direct: Node 32 and 33 ms,
+    Python 28 and 26 ms ([performance.md](performance.md)).
+  - [x] Windows medians of 20, the owner's machine, 2026-10-13 at 4f7b053 (`windows/results/statusline-timing.md`).
+    Through Git Bash and direct: Node 228 and 105 ms, `python3` 405 and 239 ms, `python` 212 and 114 ms. All
+    printed the same line. `python3` through Git Bash takes about 1.8 times as long as Node because `python3` is the
+    Store's App Execution Alias. Without the alias, python.org's `python` takes 212 ms.
+  - [ ] The owner switches each machine's `statusLine` command. Candidates, by median through the shell: Linux
+    `python3 "/home/<you>/.claude/statusline.py"`, 28 ms. Windows `python3 "C:/Users/<you>/.claude/statusline.py"`,
+    405 ms (decision 1), or `python "C:/Users/<you>/.claude/statusline.py"`, 212 ms. `python` leaves decision 1 and
+    needs python.org's Python 3.12+ on PATH ([performance.md](performance.md)).
+- [x] 14. Pull-request scripts and everything that names them:
   - `skills/pull-request/scripts/get_pr_feedback.py`, `resolve_pr_thread.py`, `run.py`
   - `skills/pull-request/tests/__init__.py`, `skills/pull-request/tests/test_pr_scripts.py`
   - `skills/pull-request/SKILL.md`
@@ -281,7 +306,33 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes with the source count, and
   `git grep -nE 'Resolve-PrThread|Get-PrFeedback|-ThreadId' -- <reference excludes>` prints
   nothing.
-- [ ] 15. Evals for `pull-request` as in step 10. Then the owner merges the phase's pull request.
+
+  Linux, 2026-10-13: the suite has 24 tests. They port all 20 assertions of `Get-PrFeedback.Tests.ps1` and all 9 of
+  `Resolve-PrThread.Tests.ps1`, with none dropped. Two cases are added: a usage error, and an abbreviated option,
+  which is refused. The grep prints nothing. The graders match `resolve_pr_thread(.py)` with `--thread-id`, spaced
+  or with `=`, across bash or PowerShell line continuations. The old PowerShell form now fails f2, f3 and f5's
+  reply graders. `check-assertions.py` catches 41 of 41 wrong answers and passes 50 of 50 right ones, against
+  main's 41 and 49; the added right answer uses `--thread-id=` and continued lines.
+- [x] 15. Evals for `pull-request` as in step 10. Then the owner merges the phase's pull request.
+
+  2026-10-13, Opus at high effort, against main's revision (189be66).
+
+  | Runs per arm | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
+  |---|---|---|---|
+  | 1 | 1.00 / 0.84 | 1.00 / 0.94 | 0.82 / 0.80 |
+  | 3 | 1.00 / 0.96 | 1.00 / 0.96 | 0.79 / 0.70 |
+
+  - The single run's judge gap came from one criterion: a1's `validation-honest`, where the new arm claimed "pytest
+    passed locally" in a body nothing had run (0.1 against 1.0). The retrospective recorded the same lapse on Opus
+    before the port, and the PR-body text is unchanged. The 3-run rerun ties.
+  - The baseline's objective score stays at 1.00 here: its answers replied through raw `gh api` calls, never the
+    PowerShell script. 6 of the new arm's 21 runs used `resolve_pr_thread.py --thread-id`, and they passed the
+    graders.
+  - Triggers, 3 runs per query: should-fire 15/15. Should-not-fire 11/15 by the harness's count, none of them a
+    `pull-request` Skill call. Three were reads of the mounted file on the CONTRIBUTING.md query. One was a read
+    after the model had called `code-review` for "review my uncommitted changes". The description is unchanged; the
+    earlier Opus measurement counted 5 such reads in 15, also with no Skill call.
+  - Cost: about USD 19, made up of answer runs 13.06, judge 1.64 and triggers 4.52.
 
 ## Phase 4: setup, MCP and eval tooling (branch `py/setup`)
 

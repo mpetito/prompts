@@ -10,13 +10,14 @@ file stays under about 120 lines.
 
 Branch, commit and PR policy come from the project's CONTRIBUTING.md; a PR title follows the
 commit convention. The two scripts in
-`scripts/` in this skill's folder need PowerShell 7; on a host without `pwsh`, run the raw `gh api`
-calls shown with them.
+`scripts/` in this skill's folder run as `python3 "<skill dir>/scripts/<name>.py"` (Python 3.12+),
+with `<skill dir>` written as a full path such as `$HOME/.claude/skills/pull-request`; on a host
+without `python3`, run the raw `gh api` calls shown with them.
 
 ## Answer review feedback on your own PR
 
 1. Fetch every unresolved thread (id, `isOutdated`, comments with their REST `fullDatabaseId`)
-   and every review body: `pwsh <skill dir>/scripts/Get-PrFeedback.ps1 -Pr <n>`, or
+   and every review body: `python3 "<skill dir>/scripts/get_pr_feedback.py" --pr <n>`, or
 
    ```sh
    gh api graphql --paginate --slurp -f owner=<owner> -f name=<repo> -F pr=<n> -f query='
@@ -40,7 +41,7 @@ calls shown with them.
 4. Commit the fixes, run the project's checks, and `git push`.
 5. Reply to every thread. Resolve threads you fixed, and Copilot threads you declined with
    evidence. A human reviewer's disagreement or deferral stays open for that reviewer.
-   - Reply, then resolve: `pwsh <skill dir>/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_... -Body '<reply>'`
+   - Reply, then resolve: `python3 "<skill dir>/scripts/resolve_pr_thread.py" --thread-id PRRT_... --body '<reply>'`
      (it never resolves when the reply fails), or
 
      ```sh
