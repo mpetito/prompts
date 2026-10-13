@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -309,6 +310,63 @@ class Stdin(unittest.TestCase):
         self.assertEqual(r.returncode, 0)
         self.assertFalse(r.stdout.endswith(b"\n"))
         self.assertTrue(r.stdout.decode("utf-8").startswith(paint("36", ICON["dir"]).removesuffix("\x1b[0m")))
+
+
+# A command that prints, starts a sleeping grandchild sharing its stdout, writes the grandchild's pid to argv[1] when
+# given, and sleeps: only a tree kill stops the grandchild.
+HANG = ("import subprocess, sys, time; print('## main', flush=True); "
+        "g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], stdout=sys.stdout); "
+        "sys.argv[1:] and open(sys.argv[1], 'w').write(str(g.pid)); time.sleep(30)")
+
+
+class RunTimeout(unittest.TestCase):
+    """run() against real hung commands. Bounds are absolute seconds, so a longer timeout fails them."""
+
+    def timed(self, call):
+        result = []
+        t = threading.Thread(target=lambda: result.append(call()), daemon=True)
+        start = time.monotonic()
+        t.start()
+        t.join(8)
+        self.assertFalse(t.is_alive(), "the command held the status line past its timeout")
+        return result[0], time.monotonic() - start
+
+    def pidfile(self):
+        path = Path(tempfile.mkdtemp(prefix="statusline-test-")) / "pid"
+        self.addCleanup(shutil.rmtree, path.parent, ignore_errors=True)
+        self.addCleanup(lambda: path.exists() and kill(int(path.read_text())))
+        return path
+
+    def test_a_hung_command_and_its_children_stop_at_the_timeout(self):
+        pidfile = self.pidfile()
+        r, took = self.timed(lambda: sl.run([sys.executable, "-c", HANG, str(pidfile)], 0.5))
+        self.assertLess(took, 4)
+        self.assertEqual(r.returncode, 124)
+        grandchild = int(pidfile.read_text())
+        deadline = time.monotonic() + 3
+        while alive(grandchild) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(alive(grandchild), "the kill left the command's child running")
+
+
+def alive(pid):
+    """Whether pid is a running process. On Windows tasklist answers, since os.kill there would terminate it."""
+    if os.name == "nt":
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH", "/FO", "CSV"], capture_output=True,
+                             text=True).stdout
+        return f'"{pid}"' in out
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+def kill(pid):
+    try:
+        os.kill(pid, signal.SIGKILL if os.name != "nt" else signal.SIGTERM)
+    except OSError:
+        pass
 
 
 if __name__ == "__main__":
