@@ -302,7 +302,26 @@ Fixture prose in `.md` files is updated with its skill.
   continuations. The old PowerShell form now fails f2, f3 and f5's reply graders. `check-assertions.py` catches
   41 of 41 wrong answers and passes 50 of 50 right ones, against main's 41 and 49; the added right answer uses
   `--thread-id=` and continued lines.
-- [ ] 15. Evals for `pull-request` as in step 10. Then the owner merges the phase's pull request.
+- [x] 15. Evals for `pull-request` as in step 10. Then the owner merges the phase's pull request.
+
+  2026-10-13, Opus at high effort, against main's revision (189be66).
+
+  | Runs per arm | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
+  |---|---|---|---|
+  | 1 | 1.00 / 0.84 | 1.00 / 0.94 | 0.82 / 0.80 |
+  | 3 | 1.00 / 0.96 | 1.00 / 0.96 | 0.79 / 0.70 |
+
+  - The single run's judge gap came from one criterion: a1's `validation-honest`, where the new arm claimed "pytest
+    passed locally" in a body nothing had run (0.1 against 1.0). The retrospective recorded the same lapse on Opus
+    before the port, and the PR-body text is unchanged. The 3-run rerun ties.
+  - The baseline's objective score stays at 1.00 here: its answers replied through raw `gh api` calls, never the
+    PowerShell script. 6 of the new arm's 21 runs used `resolve_pr_thread.py --thread-id`, and they passed the
+    graders.
+  - Triggers, 3 runs per query: should-fire 15/15. Should-not-fire 11/15 by the harness's count, none of them a
+    `pull-request` Skill call. Three were reads of the mounted file on the CONTRIBUTING.md query. One was a read
+    after the model had called `code-review` for "review my uncommitted changes". The description is unchanged; the
+    earlier Opus measurement counted 5 such reads in 15, also with no Skill call.
+  - Cost: about USD 19, made up of answer runs 13.06, judge 1.64 and triggers 4.52.
 
 ## Phase 4: setup, MCP and eval tooling (branch `py/setup`)
 
