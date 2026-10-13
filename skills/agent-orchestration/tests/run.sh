@@ -7,6 +7,9 @@ set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
 thread="$(cd "$here/../orchestration-main/scripts" && pwd)/thread.sh"
 tmp=$(mktemp -d)
+# GitHub's Windows runners spell TEMP in 8.3 form (C:\Users\RUNNER~1), which realpath keeps and git expands: start
+# from the long form so the paths this suite expects match the ones the scripts derive from git.
+case ${OSTYPE:-} in msys*|cygwin*) tmp=$(cygpath -u -- "$(cygpath -m -l -- "$tmp")") ;; esac
 trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 export HOME="$tmp/home" ORCHESTRATION_HOME="$tmp/orch" MOCK_DIR="$tmp/mock"
