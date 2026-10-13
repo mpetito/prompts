@@ -3,8 +3,8 @@
     python3 statusline_timing.py [--runs <n, default 20>] [--node-ref <git ref>] [--out <file>]
 
 Run it from the checkout that holds this script. It takes statusline.js from --node-ref (default: the last revision
-of HEAD's history that has it) and statusline.py from this checkout, feeds each the same realistic payload on stdin, closed, with this
-checkout as the working folder, and prints one line per measurement:
+of HEAD's history that has it) and statusline.py from this checkout. It feeds each the same realistic payload on
+stdin, closed, with this checkout as the working folder, and prints one line per measurement:
 
     TIMING <interpreter> <shell|direct> median=<ms> min=<ms> max=<ms> runs=<n>
 
@@ -18,8 +18,9 @@ line:
 
 It saves those lines, the versions and both outputs to --out (default results/statusline-timing.md beside this
 script), and exits 1 if the outputs differ or a measurement failed. The saved text is for a public repository: the
-home folder is written as %USERPROFILE% on Windows and <home> elsewhere, and if the home folder or the user name
-still appears after that, the script saves nothing and exits 1 with a LEAK line.
+home folder is written as %USERPROFILE% on Windows and <home> elsewhere, and if the home folder, the user name or an
+8.3 short path (which carries the start of the user name) still appears after that, the script saves nothing and
+exits 1 with a LEAK line.
 """
 import argparse
 import getpass
@@ -76,6 +77,9 @@ def leak(text):
     user = getpass.getuser()
     if re.search(rf"(?<![\w-]){re.escape(user)}(?![\w-])", text, re.I):
         return f"the user name ({len(user)} characters)"
+    # An 8.3 short name such as ABCDEF~1 carries the start of the user name, and the home mask can't see it.
+    if re.search(r"(?<![^\\/\s'\"])[^\\/\s'\"~]{1,6}~\d+(?:\.[^\\/\s'\"]{1,3})?(?=[\\/\s'\"]|$)", text):
+        return "an 8.3 short path"
     return None
 
 
@@ -100,6 +104,10 @@ def version(args):
         return "unknown"
 
 
+def short(ref):
+    return version(["git", "-C", str(CHECKOUT), "rev-parse", "--short", ref])
+
+
 def main(argv):
     parser = argparse.ArgumentParser(prog="statusline_timing.py")
     parser.add_argument("--runs", type=int, default=20)
@@ -119,13 +127,15 @@ def main(argv):
     if node_source.returncode != 0:
         print(f"no statusline/statusline.js at {args.node_ref}: {node_source.stderr.decode().strip()}")
         return 1
-    tmp = Path(tempfile.mkdtemp(prefix="statusline-timing-"))
+    # realpath: TEMP can be spelled in 8.3 form (C:\Users\ABCDEF~1\...), which the home mask would not match.
+    tmp = Path(os.path.realpath(tempfile.mkdtemp(prefix="statusline-timing-")))
     node_script = tmp / "statusline.js"
     node_script.write_bytes(node_source.stdout)
 
     payload = json.dumps({
         "cwd": str(CHECKOUT), "session_name": "timing",
-        "workspace": {"current_dir": str(CHECKOUT), "repo": {"host": "github.com", "owner": "example", "name": "prompts"}},
+        "workspace": {"current_dir": str(CHECKOUT),
+                      "repo": {"host": "github.com", "owner": "example", "name": "prompts"}},
         "model": {"id": "claude-opus-5-5", "display_name": "Opus 5.5"}, "effort": {"level": "high"},
         "context_window": {"used_percentage": 43.4}}).encode()
 
@@ -162,8 +172,8 @@ def main(argv):
 
     versions = [f"- {platform.platform()}", f"- node {version(['node', '--version'])}",
                 f"- python3 {version(['python3', '--version'])}", f"- bash {bash or 'none'}",
-                f"- statusline.js from {args.node_ref} ({version(['git', '-C', str(CHECKOUT), 'rev-parse', '--short', args.node_ref])})",
-                f"- statusline.py from {version(['git', '-C', str(CHECKOUT), 'rev-parse', '--short', 'HEAD'])}"]
+                f"- statusline.js from {args.node_ref} ({short(args.node_ref)})",
+                f"- statusline.py from {short('HEAD')}"]
     shown = [f"- {name}: `{out.decode('utf-8', 'replace')!r}`" for name, out in outputs.items()]
     saved = mask("\n".join([f"# Status line timing, {date.today().isoformat()}", "", "```", *lines, "```", "",
                              "Versions:", *versions, "", "Outputs:", *shown, ""]))

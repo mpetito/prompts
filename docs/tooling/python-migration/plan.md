@@ -302,11 +302,11 @@ Fixture prose in `.md` files is updated with its skill.
   nothing.
 
   Linux, 2026-10-13: the suite has 24 tests. They port all 20 assertions of `Get-PrFeedback.Tests.ps1` and all 9 of
-  `Resolve-PrThread.Tests.ps1`, with none dropped, and add a usage-error case and an abbreviated-option case (abbreviations are refused). The grep prints nothing. The graders
-  match `resolve_pr_thread(.py)` with `--thread-id`, spaced or with `=`, across bash or PowerShell line
-  continuations. The old PowerShell form now fails f2, f3 and f5's reply graders. `check-assertions.py` catches
-  41 of 41 wrong answers and passes 50 of 50 right ones, against main's 41 and 49; the added right answer uses
-  `--thread-id=` and continued lines.
+  `Resolve-PrThread.Tests.ps1`, with none dropped. Two cases are added: a usage error, and an abbreviated option,
+  which is refused. The grep prints nothing. The graders match `resolve_pr_thread(.py)` with `--thread-id`, spaced
+  or with `=`, across bash or PowerShell line continuations. The old PowerShell form now fails f2, f3 and f5's
+  reply graders. `check-assertions.py` catches 41 of 41 wrong answers and passes 50 of 50 right ones, against
+  main's 41 and 49; the added right answer uses `--thread-id=` and continued lines.
 - [x] 15. Evals for `pull-request` as in step 10. Then the owner merges the phase's pull request.
 
   2026-10-13, Opus at high effort, against main's revision (189be66).
