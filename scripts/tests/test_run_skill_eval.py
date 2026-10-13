@@ -2,6 +2,7 @@
 reads are the repository's own (skill-authoring, pull-request, the verifier agent); every run directory goes under
 a temporary --out-root, and a regrade gets a run directory built here."""
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -101,8 +102,20 @@ TRIGGER_LINES = ["  trigger claude/sonnet: should-fire 4/5  should-not-fire 5/5"
                  "    missed (2 of 3 runs): open a PR"]
 
 
+# The live files a run reads; no run may write them. The run manifest is a copy beside the run.
+LIVE = [rse.REPO / p for p in ("skills/skill-authoring/evals/shared-benchmark.json", "skills/skill-authoring/SKILL.md",
+                               "skills/pull-request/evals/shared-benchmark.json", "skills/pull-request/SKILL.md",
+                               "evals/agents/verifier/shared-benchmark.json", "agents/verifier.md")]
+
+
+def digests(paths):
+    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
+
+
 class RunnerTest(unittest.TestCase):
     def setUp(self):
+        before = digests(LIVE)
+        self.addCleanup(lambda: self.assertEqual(digests(LIVE), before, "a run wrote a live manifest or SKILL.md"))
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.tmp = Path(tmp.name)
@@ -116,17 +129,26 @@ class RunnerTest(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
 
-    def main(self, *argv, out_root=True):
-        """rse.main as its __main__ block runs it: (exit code, stdout, stderr)."""
+    def main(self, *argv, out_root=True, cwd=None):
+        """rse.main as its __main__ block runs it, in cwd when given: (exit code, stdout, stderr)."""
         argv = [*argv, "--out-root", str(self.out_root)] if out_root else list(argv)
         out, err = io.StringIO(), io.StringIO()
-        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            try:
-                code = rse.main(argv)
-            except rse.Fail as e:
-                print(e, file=sys.stderr)
-                code = 1
+        old = os.getcwd()
+        try:
+            if cwd:
+                os.chdir(cwd)
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                try:
+                    code = rse.main(argv)
+                except rse.Fail as e:
+                    print(e, file=sys.stderr)
+                    code = 1
+        finally:
+            os.chdir(old)
         return code, out.getvalue(), err.getvalue()
+
+    def wrapper(self, d, name):
+        return str(d / f"{name}{'.cmd' if os.name == 'nt' else '.sh'}")
 
     def run_dir(self, name):
         (stamp,) = (self.out_root / name).iterdir()
@@ -419,10 +441,12 @@ class ArmsTest(RunnerTest):
         old = self.tmp / "old" / "verifier.md"
         old.parent.mkdir()
         old.write_text("---\nname: verifier\nmodel: opus\n---\nold body\n", encoding="utf-8")
-        code, out, _ = self.main("--agent-definition", "verifier", "--baseline", str(old), "--skip-trigger")
+        code, out, _ = self.main("--agent-definition", "verifier", "--baseline", os.path.join("old", "verifier.md"),
+                                 "--skip-trigger", cwd=self.tmp)
         self.assertEqual(code, 0)
         d = self.run_dir("agent-verifier")
-        self.assertEqual((d / "baseline.txt").read_text(encoding="utf-8"), f"{old}\n")
+        recorded = (d / "baseline.txt").read_text(encoding="utf-8").strip()
+        self.assertTrue(os.path.isabs(recorded) and os.path.samefile(recorded, old), recorded)
         staged_old = d / "definitions" / "old_skill" / "verifier.md"
         self.assertEqual(json.loads((d / "manifest.json").read_text(encoding="utf-8"))["old_skill_paths"],
                          [str(staged_old)])
@@ -515,6 +539,158 @@ class RegradeTest(RunnerTest):
         self.assertEqual(code, 1)
         self.assertIn(str(self.tmp), err)
         self.assertEqual(self.fake.verbs("benchmark"), [])
+
+
+B = "skill-benchmark"
+
+
+class ArgvTest(RunnerTest):
+    """Every command a run makes, each argv in full: an option dropped, added or misrouted fails here."""
+
+    def shim(self, *args):
+        return [str(self.python), "-X", "utf8", str(rse.SCRIPTS / "trigger_matrix_shim.py"), *args]
+
+    def test_skill_run(self):
+        code, _, _ = self.main("--skill", "skill-authoring", "--runs", "3", "--trigger-runs", "2", "--model", "opus",
+                               "--judge-model", "haiku", "--effort", "high", "--split", "holdout",
+                               "--timeout-seconds", "30", "--parallel", "2")
+        self.assertEqual(code, 0)
+        d = self.run_dir("skill-authoring")
+        m, runs = str(rse.REPO / "skills" / "skill-authoring" / "evals" / "shared-benchmark.json"), str(d / "runs")
+        answer, judge = self.wrapper(d, "claude-eval"), self.wrapper(d, "claude-judge")
+        self.assertCountEqual(self.fake.calls, [
+            ["uv", "tool", "dir"],
+            [B, "validate", m, "--strict-leakage"],
+            self.shim("--agent", "claude", "--model", "opus", "--runs-per-query", "2", "--timeout", "30",
+                      "--trace-runs", str(d / "trigger-traces"), "--out", str(d / "trigger-matrix.json"), m,
+                      "--claude-bin", answer),
+            [B, "prepare", m, "--split", "holdout", "--runs-per-variant", "3", "--out", str(d / "tasks.jsonl")],
+            *([B, "run-agent", "--agent", "claude", "--model", "opus", "--timeout", "30", "--tasks",
+               str(d / f"tasks-{i}.jsonl"), "--runs", runs, "--claude-bin", answer] for i in range(2)),
+            *([B, "judge", m, "--runs", runs, "--split", "holdout", "--judge-backend", "claude", "--judge-model", "haiku",
+               "--variant", v, "--out", str(d / f"judge-results-{v}.jsonl"), "--claude-bin", judge]
+              for v in ("with_skill", "without_skill")),
+            [B, "benchmark", m, "--runs", runs, "--split", "holdout", "--out", str(d / "benchmark.json"),
+             "--variant", "with_skill", "--variant", "without_skill", "--judge-results", str(d / "judge-results.jsonl")],
+            [B, "render-viewer", "--benchmark", str(d / "benchmark.json"), "--runs", runs, "--out", str(d / "review.html")],
+        ])
+
+    def test_codex_run(self):
+        code, _, _ = self.main("--skill", "skill-authoring", "--agent", "codex", "--model", "gpt", "--judge-model", "gpt",
+                               "--effort", "high")
+        self.assertEqual(code, 0)
+        d = self.run_dir("skill-authoring")
+        m, runs = str(rse.REPO / "skills" / "skill-authoring" / "evals" / "shared-benchmark.json"), str(d / "runs")
+        self.assertCountEqual(self.fake.calls, [
+            ["uv", "tool", "dir"],
+            [B, "validate", m, "--strict-leakage"],
+            self.shim("--agent", "codex", "--model", "gpt", "--runs-per-query", "1", "--timeout", "600",
+                      "--trace-runs", str(d / "trigger-traces"), "--out", str(d / "trigger-matrix.json"), m),
+            [B, "prepare", m, "--split", "tune", "--runs-per-variant", "1", "--out", str(d / "tasks.jsonl")],
+            *([B, "run-agent", "--agent", "codex", "--model", "gpt", "--timeout", "600", "--tasks",
+               str(d / f"tasks-{i}.jsonl"), "--runs", runs, "--codex-cmd",
+               "codex exec --json -c model_reasoning_effort=high"] for i in range(4)),
+            *([B, "judge", m, "--runs", runs, "--split", "tune", "--judge-backend", "codex", "--judge-model", "gpt",
+               "--variant", v, "--out", str(d / f"judge-results-{v}.jsonl")] for v in ("with_skill", "without_skill")),
+            [B, "benchmark", m, "--runs", runs, "--split", "tune", "--out", str(d / "benchmark.json"),
+             "--variant", "with_skill", "--variant", "without_skill", "--judge-results", str(d / "judge-results.jsonl")],
+            [B, "render-viewer", "--benchmark", str(d / "benchmark.json"), "--runs", runs, "--out", str(d / "review.html")],
+        ])
+
+    def test_codex_without_effort_keeps_its_own_command(self):
+        code, _, _ = self.main("--skill", "skill-authoring", "--agent", "codex", "--skip-trigger", "--skip-judge",
+                               "--parallel", "1")
+        self.assertEqual(code, 0)
+        d = self.run_dir("skill-authoring")
+        self.assertEqual(self.fake.verbs("run-agent"), [
+            [B, "run-agent", "--agent", "codex", "--model", "sonnet", "--timeout", "600", "--tasks",
+             str(d / "tasks-0.jsonl"), "--runs", str(d / "runs")]])
+
+    def test_relative_baseline_run(self):
+        baseline = self.tmp / "base" / "prev-skill"
+        baseline.mkdir(parents=True)
+        (baseline / "SKILL.md").write_text("---\nname: x\n---\n", encoding="utf-8")
+        code, _, _ = self.main("--skill", "skill-authoring", "--baseline", os.path.join("base", "prev-skill"),
+                               "--skip-trigger", cwd=self.tmp)
+        self.assertEqual(code, 0)
+        d = self.run_dir("skill-authoring")
+        am, runs = str(d / "manifest.json"), str(d / "runs")
+        old = json.loads(Path(am).read_text(encoding="utf-8"))["old_skill_paths"]
+        self.assertEqual(len(old), 1)
+        self.assertTrue(os.path.isabs(old[0]), old)
+        self.assertTrue(os.path.samefile(old[0], baseline / "SKILL.md"))
+        recorded = (d / "baseline.txt").read_text(encoding="utf-8").strip()
+        self.assertTrue(os.path.isabs(recorded) and os.path.samefile(recorded, baseline / "SKILL.md"), recorded)
+        arms = ("with_skill", "without_skill", "old_skill")
+        self.assertCountEqual(self.fake.calls, [
+            ["uv", "tool", "dir"],
+            [B, "validate", am, "--strict-leakage"],
+            [B, "prepare", am, "--split", "tune", "--runs-per-variant", "1", "--out", str(d / "tasks.jsonl"),
+             "--include-old-skill"],
+            *([B, "run-agent", "--agent", "claude", "--model", "sonnet", "--timeout", "600", "--tasks",
+               str(d / f"tasks-{i}.jsonl"), "--runs", runs, "--claude-bin", self.wrapper(d, "claude-eval")]
+              for i in range(4)),
+            *([B, "judge", am, "--runs", runs, "--split", "tune", "--judge-backend", "claude", "--judge-model", "sonnet",
+               "--variant", v, "--out", str(d / f"judge-results-{v}.jsonl"), "--claude-bin",
+               self.wrapper(d, "claude-judge")] for v in arms),
+            [B, "benchmark", am, "--runs", runs, "--split", "tune", "--out", str(d / "benchmark.json"),
+             *(a for v in arms for a in ("--variant", v)), "--judge-results", str(d / "judge-results.jsonl")],
+            [B, "render-viewer", "--benchmark", str(d / "benchmark.json"), "--runs", runs, "--out", str(d / "review.html")],
+        ])
+
+    def test_agent_definition_run(self):
+        code, _, _ = self.main("--agent-definition", "verifier", "--timeout-seconds", "30", "--model", "haiku")
+        self.assertEqual(code, 0)
+        d = self.run_dir("agent-verifier")
+        definition = rse.REPO / "agents" / "verifier.md"
+        pinned, effort = rse.frontmatter_value(definition, "model"), rse.frontmatter_value(definition, "effort")
+        model = pinned if pinned and pinned != "inherit" else "haiku"
+        am, runs = str(d / "manifest.json"), str(d / "runs")
+        cmd = (f'"{self.python}" "{rse.SCRIPTS / "agent_eval_backend.py"}" --claude-bin "{self.wrapper(d, "claude-eval")}"'
+               + (f" --effort {effort}" if effort else ""))
+        self.assertCountEqual(self.fake.calls, [
+            ["uv", "tool", "dir"],
+            [B, "validate", am, "--strict-leakage"],
+            [B, "prepare", am, "--split", "tune", "--runs-per-variant", "1", "--out", str(d / "tasks.jsonl")],
+            *([B, "run-subagent", "--model", model, "--timeout", "30", "--tasks", str(d / f"tasks-{i}.jsonl"),
+               "--runs", runs, "--agent-cmd", cmd] for i in range(4)),
+            *([B, "judge", am, "--runs", runs, "--split", "tune", "--judge-backend", "claude", "--judge-model", "sonnet",
+               "--variant", v, "--out", str(d / f"judge-results-{v}.jsonl"), "--claude-bin",
+               self.wrapper(d, "claude-judge")] for v in ("with_skill", "without_skill")),
+            [B, "benchmark", am, "--runs", runs, "--split", "tune", "--out", str(d / "benchmark.json"),
+             "--variant", "with_skill", "--variant", "without_skill", "--judge-results", str(d / "judge-results.jsonl")],
+            [B, "render-viewer", "--benchmark", str(d / "benchmark.json"), "--runs", runs, "--out", str(d / "review.html")],
+        ])
+
+
+class ManifestTest(unittest.TestCase):
+    def test_the_run_copy_is_all_absolute_and_the_live_one_is_untouched(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            skill = Path(tmp) / "skills" / "s"
+            (skill / "evals").mkdir(parents=True)
+            live = skill / "evals" / "shared-benchmark.json"
+            live.write_text(json.dumps({"skill_paths": ["SKILL.md"], "cases": [
+                {"id": "c", "files": ["fixtures/a.md"], "prompt_ref": "prompts/c.md"}, {"id": "t"}]}), encoding="utf-8")
+            before = live.read_bytes()
+            out = Path(tmp) / "run"
+            out.mkdir()
+            copy = Path(rse.run_manifest(str(live), str(out), baseline_path="/b/SKILL.md"))
+            self.assertEqual(copy, out / "manifest.json")
+            self.assertEqual(live.read_bytes(), before)
+            m = json.loads(copy.read_text(encoding="utf-8"))
+            self.assertEqual(m["skill_paths"], [os.path.abspath(skill / "SKILL.md")])
+            self.assertEqual(m["cases"][0]["files"], [os.path.abspath(skill / "evals" / "fixtures" / "a.md")])
+            self.assertEqual(m["cases"][0]["prompt_ref"], os.path.abspath(skill / "evals" / "prompts" / "c.md"))
+            self.assertEqual(m["old_skill_paths"], ["/b/SKILL.md"])
+            self.assertNotIn("files", m["cases"][1])
+
+    def test_a_manifest_outside_evals_resolves_skill_paths_against_its_own_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            live = Path(tmp) / "suite.json"
+            live.write_text(json.dumps({"skill_paths": ["SKILL.md"], "cases": []}), encoding="utf-8")
+            copy = rse.run_manifest(str(live), tmp, skill_path="/staged/x.md")
+            self.assertEqual(json.loads(Path(copy).read_text(encoding="utf-8"))["skill_paths"], ["/staged/x.md"])
+            self.assertNotIn("old_skill_paths", json.loads(Path(copy).read_text(encoding="utf-8")))
 
 
 class FailureTest(RunnerTest):
