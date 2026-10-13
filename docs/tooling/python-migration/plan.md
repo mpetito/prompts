@@ -257,7 +257,17 @@ Fixture prose in `.md` files is updated with its skill.
   grandchild case, the Windows sandbox flag (the platform injected) and the usage errors. The
   reference grep prints nothing. `windows/council_round.py` passes every check on Linux
   (`windows/results/council-round-linux/`). The Windows round is pending (HANDOFF.md, phase 2).
-- [ ] 12. Evals for `model-council` as in step 10. Then the owner merges the phase's pull request.
+- [x] 12. Evals for `model-council` as in step 10. Then the owner merges the phase's pull request.
+
+  2026-10-13, Opus at high effort, baseline main's revision (189be66). The description is unchanged, so the
+  trigger rates measure the same text.
+
+  | Skill | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
+  |---|---|---|---|
+  | model-council, 1 run per arm | 1.00 / 0.96 | 1.00 / 0.91 | 0.79 / 0.33 |
+
+  - Triggers, two runs of `-TriggerRuns 3`: the skill fired 15/15 both times, and held back 8/9, then 9/9. The one
+    stray fire, on "Review my staged changes for bugs before I commit." in 1 of 3 runs, didn't recur on the rerun.
 
 ## Phase 3: status line and pull-request scripts (branch `py/statusline-pr`)
 
