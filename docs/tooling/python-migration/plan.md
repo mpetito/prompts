@@ -162,7 +162,7 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: `git grep -nE '\b(lib|state|decisions|meter|wake-at|mail|lane|finish-lane|land|land-local|watch-gates|thread|guard-bash|guard-writes)\.sh\b|guard-timestamps\.py|~/\.claude/skills/[a-z-]+/scripts/[a-z_]+\.py' -- <reference excludes>`
   prints nothing.
-- [ ] 8. `.github/workflows/validate.yml`:
+- [x] 8. `.github/workflows/validate.yml`:
   - `actions/setup-python` with `3.12` on both operating systems, plus a step that fails unless
     `python3 --version` prints `3.12`.
   - The "orchestration scripts and hooks" bash step becomes the two `unittest` commands.
