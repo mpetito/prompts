@@ -47,6 +47,27 @@ What the Linux session does with each result:
   bash plus Python.
 - **The `hook-cost` lines:** they set what the 700 ms hook bound has to absorb.
 
+## Step 0, second run: the Codex sandbox (now)
+
+The first run is recorded in `results/probe.md`. codex-sandbox failed: with the owner's config, every command in
+the sandbox failed with `setup refresh had errors`. The sandbox log blamed `node_repl.exe` files that the running
+Codex desktop app held open. The owner chose to test that explanation:
+
+1. Pull the branch. The probe's codex check no longer passes `--ignore-user-config`, so it runs with the owner's
+   `[windows] sandbox` setting, as a real lane does.
+2. The owner closes the Codex desktop app. Confirm that no `node_repl.exe` from
+   `%USERPROFILE%\AppData\Local\OpenAI\Codex\runtimes` is still running
+   (`Get-Process node_repl -ErrorAction SilentlyContinue`).
+3. Run the probe again from PowerShell, exactly as before.
+4. Append a "Second run" section to `results/probe.md`. Include:
+   - the `PROBE` lines, verbatim;
+   - whether any `node_repl` process was running;
+   - if codex-sandbox fails again, the new lines of `%USERPROFILE%\.codex\.sandbox\sandbox.<date>.log`.
+5. Commit, pull with rebase, and push, as before. The owner can reopen the Codex app afterwards.
+
+If codex-sandbox passes, go on to step 9 with the Codex app still closed. If it fails, stop and report: the
+Linux session takes it to the owner.
+
 ## Step 9: smoke test
 
 `smoke.py` runs one throwaway build with real agents and real herdr: a thread, a Claude lane and a Codex lane. Along
