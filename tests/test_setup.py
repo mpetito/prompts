@@ -22,6 +22,22 @@ def files_below(folder):
     return sorted(str(p) for p in Path(folder).rglob("*"))
 
 
+def tree(root):
+    """Every entry below root with its kind and its link target or file bytes, links not followed: what a preview
+    must leave exactly as it found it."""
+    entries = {}
+    for folder, dirs, files in os.walk(root):
+        for name in dirs + files:
+            path = os.path.join(folder, name)
+            if sc.is_link(path):
+                entries[path] = ("link", os.readlink(path))
+            elif os.path.isdir(path):
+                entries[path] = ("dir",)
+            else:
+                entries[path] = ("file", Path(path).read_bytes())
+    return entries
+
+
 class Linking(SetupTest):
     def setUp(self):
         super().setUp()
@@ -124,6 +140,15 @@ class Linking(SetupTest):
         self.assertTrue((self.legacy / ".system" / "keep.txt").exists())
         self.assertTrue(os.path.lexists(self.legacy / "other"))
 
+    def test_migration_leaves_a_linked_legacy_folder_alone(self):
+        elsewhere = self.tmp / "elsewhere"
+        elsewhere.mkdir()
+        symlink(self.source, elsewhere / "example")
+        os.makedirs(self.paths.codex_root)
+        symlink(str(elsewhere), self.legacy)
+        self.assertEqual(self.setup("--tools", "codex")[0], 0)
+        self.assertTrue(sc.is_repo_link(elsewhere / "example", self.source))
+
     def test_migration_keeps_the_legacy_link_when_its_replacement_failed(self):
         self.setup("--tools", "codex")
         os.unlink(self.link)
@@ -161,10 +186,79 @@ class Linking(SetupTest):
         Path(self.paths.shared_skills).write_text("mine")
         self.assert_incomplete("--tools", "codex")
         self.assertEqual(Path(self.paths.shared_skills).read_text(), "mine")
+        self.assertEqual(self.setup("--tools", "codex", "--replace-conflicts", "--what-if")[0], 0)
+        self.assertEqual(Path(self.paths.shared_skills).read_text(), "mine")
         self.assertEqual(self.setup("--tools", "codex", "--replace-conflicts")[0], 0)
         self.assertTrue(sc.is_repo_link(self.link, self.source))
         backups = [p for p in Path(self.paths.backup_root).rglob("*") if p.is_file()]
         self.assertEqual([p.read_text() for p in backups], ["mine"])
+
+    def test_a_preview_writes_nothing_and_exits_0_whatever_each_destination_holds(self):
+        foreign = self.tmp / "foreign"
+        (foreign / "inside").mkdir(parents=True)
+        claude = {name: os.path.join(self.repo, *source.split("/")) for source, name in sc.CLAUDE_FILES}
+        # Every destination setup touches, with the source an owned link to it would point at.
+        skills = self.repo / "skills"
+        destinations = [(self.paths.shared_skills, skills), (self.paths.copilot_skills, skills),
+                        (os.path.join(self.paths.claude_root, "skills"), skills), (str(self.legacy), skills),
+                        *((os.path.join(self.paths.claude_root, name), source) for name, source in claude.items())]
+
+        def conflicting_folder(path, _):
+            os.makedirs(os.path.join(path, "example"))
+            Path(path, "example", "personal.txt").write_text("keep me")
+            symlink(str(self.tmp / "missing"), os.path.join(path, "foreign"))
+            symlink(str(self.repo / "skills" / "removed-skill"), os.path.join(path, "removed-skill"))
+            symlink(str(self.repo / "skills" / "pr-scripts"), os.path.join(path, "pr-scripts"))
+
+        states = {
+            "missing": lambda path, source: None,
+            "a file": lambda path, source: Path(path).write_text("mine"),
+            "a folder of conflicts": conflicting_folder,
+            "a link to its source": lambda path, source: symlink(str(source), path),
+            "a link elsewhere": lambda path, source: symlink(str(foreign), path),
+            "a dangling link": lambda path, source: symlink(str(self.tmp / "missing"), path),
+        }
+        for state, make in states.items():
+            for replace in ((), ("--replace-conflicts",)):
+                with self.subTest(state=state, replace=bool(replace)):
+                    home = self.tmp / f"home-{state}-{bool(replace)}"
+                    paths = sc.setup_paths(str(home))
+                    for path, source in destinations:
+                        path = os.path.join(home, os.path.relpath(path, self.dest))
+                        os.makedirs(os.path.dirname(path), exist_ok=True)
+                        make(path, source)
+                    before, repo = tree(home), tree(self.repo)
+                    code, _, err = self.setup("--tools", ALL, "--what-if", *replace, home=home)
+                    self.assertEqual(code, 0, err)
+                    self.assertEqual(tree(home), before)
+                    self.assertEqual(tree(self.repo), repo)
+                    self.assertFalse(os.path.exists(paths.backup_root))
+        for parent in (".agents", ".copilot", ".claude", ".codex"):
+            with self.subTest(state=f"{parent} is a file"):
+                home = self.tmp / f"home-file-{parent}"
+                home.mkdir()
+                (home / parent).write_text("mine")
+                before = tree(home)
+                code, _, err = self.setup("--tools", ALL, "--what-if", "--replace-conflicts", home=home)
+                self.assertEqual(code, 0, err)
+                self.assertEqual(tree(home), before)
+
+    @unittest.skipUnless(os.name == "nt", "junctions exist only on Windows")
+    def test_a_junction_to_the_skills_folder_is_converted_and_the_checkout_kept(self):
+        import _winapi
+        for replace in ((), ("--replace-conflicts",)):
+            with self.subTest(replace=bool(replace)):
+                home = self.tmp / f"junction-{bool(replace)}"
+                paths = sc.setup_paths(str(home))
+                os.makedirs(os.path.dirname(paths.shared_skills))
+                _winapi.CreateJunction(str(self.repo / "skills"), paths.shared_skills)
+                before = tree(self.repo)
+                code, _, err = self.setup("--tools", "codex", *replace, home=home)
+                self.assertEqual(code, 0, err)
+                self.assertEqual(tree(self.repo), before)
+                self.assertFalse(os.path.exists(paths.backup_root))
+                self.assertFalse(sc.is_link(paths.shared_skills))
+                self.assertTrue(sc.is_repo_link(os.path.join(paths.shared_skills, "example"), self.source))
 
     def test_a_failed_link_puts_the_replaced_entry_back(self):
         self.setup("--tools", "codex")

@@ -283,7 +283,8 @@ class Linker:
         for name, child in skill_dirs(source):
             if not self.link(child, os.path.join(path, name)):
                 complete = False
-        if os.path.exists(path):
+        # Under what_if a conflicting root is still there, and may be a file.
+        if os.path.isdir(path):
             for name in sorted(os.listdir(path)):
                 self.remove_stale(os.path.join(path, name), os.path.join(source, name))
         return complete

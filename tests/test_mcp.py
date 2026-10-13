@@ -239,14 +239,14 @@ class Install(McpTest):
 
     def test_credentials_reach_docker_on_stdin(self):
         Path(self.paths.claude_config).write_text(
-            '{"mcpServers":{"agent-mail":{"url":"https://mail.test/mcp?x=1&apiKey=mail%2Bkey"},'
+            '{"mcpServers":{"agent-mail":{"url":"https://mail.test/mcp?x=1&apiKey=mail+key%2B"},'
             '"firecrawl":{"headers":{"Authorization":"Bearer fc-key"}}}}')
         os.environ.update(AZURE_DEVOPS_PAT="pat-value", SONAR_TOKEN="sonar-value")
         for name in ("AGENTMAIL_API_KEY", "FIRECRAWL_API_KEY"):
             os.environ.pop(name, None)
         self.assertEqual(self.install("--tools", "codex", "--skip-gateway-setup")[0], 0)
         self.assertEqual(self.cli.secrets, {"azure-devops.pat": "pat-value", "sonarqube.token": "sonar-value",
-                                            "agentmail.api_key": "mail+key", "firecrawl.api_key": "fc-key"})
+                                            "agentmail.api_key": "mail+key+", "firecrawl.api_key": "fc-key"})
         for value in self.cli.secrets.values():
             self.assertFalse([c for c in self.cli.calls if value in c])
 

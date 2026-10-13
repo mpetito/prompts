@@ -157,8 +157,9 @@ def copy_credentials(claude_config_path):
     agent_mail = servers.get("agent-mail") or {}
     key = os.environ.get("AGENTMAIL_API_KEY")
     if not key and agent_mail.get("url"):
-        key = next(iter(urllib.parse.parse_qs(urllib.parse.urlsplit(agent_mail["url"]).query).get("apiKey", [])),
-                   None)
+        # unquote, not unquote_plus: a + in the key is kept, as .NET's UnescapeDataString keeps it.
+        pairs = urllib.parse.urlsplit(agent_mail["url"]).query.split("&")
+        key = next((urllib.parse.unquote(p.split("=", 1)[1]) for p in pairs if p.startswith("apiKey=")), None)
     key = key or (agent_mail.get("headers") or {}).get("x-api-key")
     if key:
         set_docker_secret("agentmail.api_key", key)
