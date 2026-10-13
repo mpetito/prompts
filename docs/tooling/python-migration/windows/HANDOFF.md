@@ -106,7 +106,8 @@ It passed every item on Linux on 2026-10-13.
    branch, so first make sure no orchestration build is running (`python3 ...\thread.py list` prints NONE, or
    check `threads.tsv`).
 2. **Run it from a PowerShell pane inside herdr,** so codex starts the way a PowerShell-hosted lane would:
-   `python3 docs\tooling\python-migration\windows\smoke.py`. It takes 5–10 minutes. Its build and its
+   `python3 docs\tooling\python-migration\windows\smoke.py`, adding `--skip-codex` when step 0 says to. It takes
+   5–10 minutes. Its build and its
    `ORCHESTRATION_HOME` live in a temporary folder.
 3. **The owner answers the startup prompts.** Each new folder gets Claude Code's trust prompt: the thread's
    workspace and possibly the Claude lane's worktree. The Codex lane may show its own first-run prompt. The script
