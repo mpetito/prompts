@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 """Count skill loads across local agent sessions, so readmission and retention rest on usage.
 
-usage: python3 scripts/skill-usage.py [--days 60] [--home ~]
+usage: python3 scripts/skill_usage.py [--days 60] [--home <folder>]   (--home defaults to the user's home)
 
 Reads Claude Code main-session and subagent transcripts (~/.claude/projects/**.jsonl, Skill tool
 calls) and Codex session logs (~/.codex/sessions/**.jsonl, reads of a skills/<name>/SKILL.md path).
@@ -14,6 +13,8 @@ import glob
 import json
 import os
 import re
+import sys
+from pathlib import Path
 
 SKILL_PATH = re.compile(r"skills/([a-z0-9-]+)/SKILL\.md")
 
@@ -27,9 +28,9 @@ def claude_loads(home, since):
     for path in paths:
         if dt.datetime.fromtimestamp(os.path.getmtime(path)) < since:
             continue
-        is_sub = "/subagents/" in path
+        is_sub = "subagents" in Path(path).parts
         main_sessions += not is_sub
-        with open(path, errors="replace") as fh:
+        with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 if '"Skill"' not in line:
                     continue
@@ -51,18 +52,24 @@ def codex_reads(home, since):
     for path in glob.glob(os.path.join(home, ".codex/sessions/*/*/*/*.jsonl")):
         if dt.datetime.fromtimestamp(os.path.getmtime(path)) < since:
             continue
-        with open(path, errors="replace") as fh:
+        with open(path, encoding="utf-8", errors="replace") as fh:
             for line in fh:
                 for name in SKILL_PATH.findall(line):
                     reads[name] += 1
     return reads
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.exit(1, f"{self.prog}: error: {message}\n")
+
+
+def main(argv):
+    parser = Parser(prog="skill_usage.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--days", type=int, default=60)
-    parser.add_argument("--home", default=os.path.expanduser("~"))
-    args = parser.parse_args()
+    parser.add_argument("--home", default=str(Path.home()))
+    args = parser.parse_args(argv)
     since = dt.datetime.now() - dt.timedelta(days=args.days)
     main_loads, sub_loads, sessions = claude_loads(args.home, since)
     codex = codex_reads(args.home, since)
@@ -71,7 +78,10 @@ def main():
     print("skill | main session loads | subagent loads | codex file reads")
     for name in names:
         print(f"{name} | {main_loads[name]} | {sub_loads[name]} | {codex[name]}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8")
+    sys.exit(main(sys.argv[1:]))

@@ -51,11 +51,11 @@ with one pass and one fail example in its text. Assertions rely on two contracts
 ## Checks
 
 ```sh
-"$(uv tool dir)/skill-eval-harness/bin/python" skills/pull-request/evals/check-assertions.py
+"$(uv tool dir)/skill-eval-harness/bin/python" skills/pull-request/evals/check_assertions.py
 skill-benchmark validate skills/pull-request/evals/shared-benchmark.json --strict-leakage
 ```
 
-`check-assertions.py` grades `planted/<case id>/` with the harness's own grader: each `right*.md`
+`check_assertions.py` grades `planted/<case id>/` with the harness's own grader: each `right*.md`
 must pass every objective assertion, and each `wrong*.md` must fail at least one. A
 `judge-wrong*.md` is a wrong answer that only phrasing shows; its case must carry a judge criterion,
 and the check only reports it. The check also makes sure that empty and refusing answers fail, and
@@ -75,9 +75,10 @@ assertion changes. Judge criteria are not run offline.
 
 ## Plugin arm
 
-`stage-plugin-baseline.ps1` builds the commit-commands, code-review and pr-review-toolkit
-commands into one skill folder outside the repository, from the installed plugins. Pass that
-folder as `-Baseline`. Compare that arm only on the cases tagged `plugin-arm` (a1, r1); no
+`python3 skills/pull-request/evals/stage_plugin_baseline.py` builds the commit-commands,
+code-review and pr-review-toolkit commands into one skill folder outside the repository, from the
+installed plugins (`--destination`, or `$CLAUDE_JOB_DIR/tmp/plugin-baseline/pr-plugins` by default).
+Pass that folder as `--baseline`. Compare that arm only on the cases tagged `plugin-arm` (a1, r1); no
 plugin answers review threads. What the comparison measures:
 
 - a1 compares the PR body against commit-push-pr, which only creates the PR.

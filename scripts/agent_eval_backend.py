@@ -17,13 +17,15 @@ import sys
 import time
 from pathlib import Path
 
+USAGE = "usage: agent_eval_backend.py --claude-bin <path> [--effort <level>]"
+
 # The harness's prompt layout: an arm-specific opening, then this marker and the case prompt.
 TASK_MARKER = "\n\nTask prompt:\n"
 
 
 def fail(message: str) -> None:
     # A nonzero exit makes the harness record the run as failed instead of grading an answer.
-    print(f"agent-eval-backend: {message}", file=sys.stderr)
+    print(f"agent_eval_backend: {message}", file=sys.stderr)
     sys.exit(2)
 
 
@@ -57,11 +59,18 @@ def neutral_prompt(prompt: str) -> str:
     return "Task prompt:\n" + prompt.split(TASK_MARKER, 1)[1]
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
+class Parser(argparse.ArgumentParser):
+    def error(self, message):
+        # A usage error exits 1, apart from the 2 that fail() gives a run that went wrong.
+        print(f"{USAGE}\nagent_eval_backend: {message}", file=sys.stderr)
+        sys.exit(1)
+
+
+def main(argv: list[str]) -> int:
+    parser = Parser(usage=USAGE)
     parser.add_argument("--claude-bin", required=True)
     parser.add_argument("--effort")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     payload = json.load(sys.stdin)
     workspace = Path(payload["workspace"])
     agent = mount_definition(workspace)
@@ -114,7 +123,10 @@ def main() -> None:
     usage = {k: v for k, v in usage.items() if v is not None}
     print(json.dumps({"answer": answer, "returncode": 0, "elapsed_ms": elapsed_ms, "usage": usage, "trace": trace,
                       "served_models": sorted(m for m in served if m)}))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8")
+    sys.exit(main(sys.argv[1:]))

@@ -31,13 +31,14 @@ pwsh -NoProfile -File ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
 node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js
 python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration   # Python 3.12+
 python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
+python3 -m unittest discover -s scripts/tests -t scripts
 bash skills/model-council/tests/run.sh
 ```
 
 On Windows, run the bash suite from Git Bash: PowerShell's `bash` is WSL's launcher. The
 model-council suite makes native symlinks, which need Developer Mode or an elevated shell.
 
-All eight are offline: they use disposable directories and mocked CLIs, and touch neither your
+All nine are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set plus a
 PowerShell parse check over every `.ps1` and `.psm1`, on Windows and Ubuntu.
 
@@ -57,7 +58,7 @@ invisible to every client. A skill (old or new) enters `skills/` only through th
 [docs/skill-audit/readmission.md](docs/skill-audit/readmission.md): a recorded gap in
 `docs/skill-audit/candidates.md`, three behaviour evals that fail without it, one named
 consumer role with its line budget, no overlap with the harness or a sibling, and loads within
-30 days of readmission (`python3 scripts/skill-usage.py`). Start a readmission from the
+30 days of readmission (`python3 scripts/skill_usage.py`). Start a readmission from the
 archived text and the audit's review of it, never from a blank file.
 
 ## After adding or renaming a skill
@@ -73,7 +74,7 @@ Edits *inside* an already-linked skill need no rerun — they are visible immedi
 
 ## After changing a skill
 
-If the skill has an `evals/` suite, run it with the previous revision as the `-Baseline` arm
+If the skill has an `evals/` suite, run it with the previous revision as the `--baseline` arm
 and compare pass rates, judge scores and trigger rates.
 [docs/evaluating-skills.md](docs/evaluating-skills.md) gives the commands and says which run
 fits which edit.
