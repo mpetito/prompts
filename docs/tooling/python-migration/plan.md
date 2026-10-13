@@ -111,7 +111,7 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: the suite passes with the hook assertion count of `tests/run.sh`, plus the new case. On
   Linux, each hook's median of 20 runs on a realistic payload is under 100 ms.
-- [ ] 3. `skills/agent-orchestration/scripts/state.py`, `decisions.py`, `meter.py`, `wake_at.py`,
+- [x] 3. `skills/agent-orchestration/scripts/state.py`, `decisions.py`, `meter.py`, `wake_at.py`,
   `skills/agent-orchestration/tests/test_state.py`. Port their cases from `tests/run.sh`, then delete
   the four `.sh` files. Check: the suite passes with the source count.
 - [ ] 4. `skills/agent-orchestration/scripts/mail.py` and

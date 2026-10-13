@@ -12,6 +12,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,9 +69,35 @@ def take_options(args, spec):
     return positionals, options
 
 
+def only_options(args, spec, usage):
+    """take_options for a command that takes no further positionals: any error, or a stray argument, raises Fail
+    with usage appended."""
+    try:
+        rest, options = take_options(args, spec)
+    except Fail as e:
+        raise Fail(f"{e}; {usage}") from None
+    if rest:
+        raise Fail(f"unknown option {rest[0]}; {usage}")
+    return options
+
+
 def usage_from(doc, first, last):
     """Fail with lines first..last (1-based) of a script's docstring: its usage block."""
     raise Fail("\n".join(doc.splitlines()[first - 1:last]))
+
+
+def read_lines(file):
+    """The lines of a UTF-8 text file, without their line endings."""
+    text = Path(file).read_text(encoding="utf-8")
+    return text.removesuffix("\n").split("\n") if text else []
+
+
+def replace_lines(file, lines):
+    """Write lines to file through a temporary file beside it, so a reader never sees half a file."""
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(file) or ".", prefix=os.path.basename(file) + ".")
+    with open(fd, "w", encoding="utf-8", newline="\n") as f:
+        f.write("".join(line + "\n" for line in lines))
+    os.replace(tmp, file)
 
 
 # --- paths -------------------------------------------------------------------------------------------------------
