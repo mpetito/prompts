@@ -24,6 +24,7 @@ if os.name == "nt":
 # does not wait for the reader thread still blocked on stdin.
 DEADLINE = 2.0      # seconds
 GIT_TIMEOUT = 1.0   # seconds
+DRAIN = 1.0         # seconds for the tree kill, and again to read a killed command's pipe
 
 # Nerd Font glyphs -- these require a Nerd Font (Cascadia Code NF is installed and set as the Windows Terminal face).
 # Written as escapes so this file stays pure ASCII. Every glyph below was checked against the font's cmap. U+2387 (the
@@ -66,24 +67,31 @@ def context_pct(pct):
 
 def run(args, timeout):
     """Run args (a list, no shell) and return a CompletedProcess with text stdout, decoded as UTF-8; stderr is
-    dropped. A command not on PATH gives code 127. On timeout the whole process tree is killed and the code is 124."""
+    dropped. A command not on PATH gives code 127. On timeout (seconds) the whole process tree is killed and the code
+    is 124; draining the pipe afterwards is bounded by DRAIN seconds too, so a process that escaped the kill and still
+    holds the pipe can't hold the status line (os._exit leaves it behind). The kill itself is bounded by DRAIN."""
     exe = shutil.which(args[0])
     if not exe:
         return subprocess.CompletedProcess(args, 127, "", "")
     kw = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
-    with subprocess.Popen([exe, *args[1:]], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                          stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace", **kw) as p:
+    p = subprocess.Popen([exe, *args[1:]], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                         stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace", **kw)
+    try:
+        out, _ = p.communicate(timeout=timeout)
+        return subprocess.CompletedProcess(args, p.returncode, out or "", "")
+    except subprocess.TimeoutExpired:
         try:
-            out, _ = p.communicate(timeout=timeout)
-            code = p.returncode
-        except subprocess.TimeoutExpired:
             if os.name == "nt":
-                subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True)
+                subprocess.run(["taskkill", "/T", "/F", "/PID", str(p.pid)], capture_output=True, timeout=DRAIN)
             else:
                 os.killpg(p.pid, signal.SIGKILL)
-            out, _ = p.communicate()
-            code = 124
-    return subprocess.CompletedProcess(args, code, out or "", "")
+        except (ProcessLookupError, subprocess.TimeoutExpired):
+            pass
+        try:
+            p.communicate(timeout=DRAIN)
+        except subprocess.TimeoutExpired:
+            pass
+        return subprocess.CompletedProcess(args, 124, "", "")
 
 
 def parse_status(out):
@@ -115,7 +123,10 @@ def parse_status(out):
 def git_info(cwd):
     """`git status --porcelain=v1 --branch` returns the branch and the working-tree state together, so the status
     indicator costs no extra subprocess over the `rev-parse` it replaces. None when git fails or times out."""
-    r = run(["git", "-C", cwd, "status", "--porcelain=v1", "--branch"], GIT_TIMEOUT)
+    try:
+        r = run(["git", "-C", cwd, "status", "--porcelain=v1", "--branch"], GIT_TIMEOUT)
+    except (OSError, ValueError):  # a path git can't be given, such as one with a NUL
+        return None
     return parse_status(r.stdout) if r.returncode == 0 else None
 
 
@@ -138,16 +149,29 @@ def field(d, *keys):
     return d
 
 
-def render(text):
-    """The status line for the payload text; a payload that is not a JSON object renders as {}."""
+def text(v):
+    """v when it is a string, else None: a path or branch of another type is treated as absent."""
+    return v if isinstance(v, str) else None
+
+
+def process_dir():
     try:
-        d = json.loads(text)
-    except ValueError:
+        return os.getcwd()
+    except OSError:  # the folder was removed under us
+        return ""
+
+
+def render(payload):
+    """The status line for the payload; a payload that is not a JSON object, or nests too deep to parse, renders as
+    {}. No payload makes it raise."""
+    try:
+        d = json.loads(payload)
+    except (ValueError, RecursionError):
         d = {}
     if not isinstance(d, dict):
         d = {}
 
-    cwd = field(d, "workspace", "current_dir") or d.get("cwd") or os.getcwd()
+    cwd = text(field(d, "workspace", "current_dir")) or text(d.get("cwd")) or process_dir()
 
     home = os.path.expanduser("~")
     path = cwd
@@ -157,8 +181,8 @@ def render(text):
 
     # The payload carries repo identity (host/owner/name) but never the checked-out branch outside --worktree
     # sessions, so ask git directly.
-    git = git_info(cwd)
-    branch = field(d, "worktree", "branch") or (git and git["branch"]) or ""
+    git = git_info(cwd) if cwd else None  # `git -C ""` would ask about whatever folder git starts in
+    branch = text(field(d, "worktree", "branch")) or (git and git["branch"]) or ""
 
     # session_name is deliberately omitted -- the TUI already shows it by the input box. vim.mode and pr.number are
     # omitted too: Claude Code renders both natively (the built-in "-- INSERT --" text and the footer PR badge, which
@@ -216,7 +240,8 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
+    # replace: a lone surrogate from the JSON, or a non-UTF-8 folder name, prints as "?" instead of failing.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     code = main(sys.argv[1:])
     sys.stdout.flush()
     os._exit(code)

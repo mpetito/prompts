@@ -17,12 +17,16 @@ line:
     OUTPUT same|differs
 
 It saves those lines, the versions and both outputs to --out (default results/statusline-timing.md beside this
-script), and exits 1 if the outputs differ or a measurement failed.
+script), and exits 1 if the outputs differ or a measurement failed. The saved text is for a public repository: the
+home folder is written as %USERPROFILE% on Windows and <home> elsewhere, and if the home folder or the user name
+still appears after that, the script saves nothing and exits 1 with a LEAK line.
 """
 import argparse
+import getpass
 import json
 import os
 import platform
+import re
 import shutil
 import statistics
 import subprocess
@@ -50,6 +54,28 @@ def git_bash():
     for up in Path(git).resolve().parents:
         if (up / "bin" / "bash.exe").is_file():
             return str(up / "bin" / "bash.exe")
+    return None
+
+
+def home_pattern():
+    """The home folder as a regex matching either slash, and doubled backslashes as repr() writes them."""
+    home = str(Path.home())
+    parts = [re.escape(part) for part in re.split(r"[\\/]+", home) if part]
+    lead = r"[\\/]+" if home[:1] in "/\\" else ""
+    return re.compile(lead + r"[\\/]+".join(parts) + r"(?![\w.-])", re.I if os.name == "nt" else 0)
+
+
+def mask(text):
+    return home_pattern().sub("%USERPROFILE%" if os.name == "nt" else "<home>", text)
+
+
+def leak(text):
+    """What private name is left in text, or None."""
+    if home_pattern().search(text):
+        return "the home folder"
+    user = getpass.getuser()
+    if re.search(rf"(?<![\w-]){re.escape(user)}(?![\w-])", text, re.I):
+        return f"the user name ({len(user)} characters)"
     return None
 
 
@@ -99,7 +125,7 @@ def main(argv):
 
     payload = json.dumps({
         "cwd": str(CHECKOUT), "session_name": "timing",
-        "workspace": {"current_dir": str(CHECKOUT), "repo": {"host": "github.com", "owner": "mpetito", "name": "prompts"}},
+        "workspace": {"current_dir": str(CHECKOUT), "repo": {"host": "github.com", "owner": "example", "name": "prompts"}},
         "model": {"id": "claude-opus-5-5", "display_name": "Opus 5.5"}, "effort": {"level": "high"},
         "context_window": {"used_percentage": 43.4}}).encode()
 
@@ -139,9 +165,14 @@ def main(argv):
                 f"- statusline.js from {args.node_ref} ({version(['git', '-C', str(CHECKOUT), 'rev-parse', '--short', args.node_ref])})",
                 f"- statusline.py from {version(['git', '-C', str(CHECKOUT), 'rev-parse', '--short', 'HEAD'])}"]
     shown = [f"- {name}: `{out.decode('utf-8', 'replace')!r}`" for name, out in outputs.items()]
+    saved = mask("\n".join([f"# Status line timing, {date.today().isoformat()}", "", "```", *lines, "```", "",
+                             "Versions:", *versions, "", "Outputs:", *shown, ""]))
+    if found := leak(saved):
+        print(f"LEAK {found} is still in the results after masking; nothing saved")
+        shutil.rmtree(tmp, ignore_errors=True)
+        return 1
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text("\n".join([f"# Status line timing, {date.today().isoformat()}", "", "```", *lines, "```", "",
-                                   "Versions:", *versions, "", "Outputs:", *shown, ""]), encoding="utf-8")
+    args.out.write_text(saved, encoding="utf-8")
     print(f"saved {args.out}")
     shutil.rmtree(tmp, ignore_errors=True)
     return 0 if ok else 1

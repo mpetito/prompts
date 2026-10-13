@@ -78,8 +78,10 @@ folder, so each includes one `git status`. Both scripts printed the same line.
 
 - **Linux** is Python 3.14.4 and Node 24.21.0, on 2026-10-13.
 - **Windows** is pending: the owner's Windows agent runs the script (HANDOFF.md, step 13).
-- **How Claude Code runs it.** Claude Code's statusline docs say only that the command "runs in a shell". On Windows
-  the script assumes Git Bash, the shell Claude Code runs commands in.
+- **How Claude Code runs it.** Claude Code's statusline docs (code.claude.com/docs/en/statusline, read 2026-10-13):
+  "On Windows, Claude Code runs status line commands through Git Bash when Git Bash is installed, or through
+  PowerShell when Git Bash is absent." The script times the Git Bash path, and direct starts for the interpreter
+  alone.
 - **Who switches.** Each machine's `statusLine` command is in its own settings, so the owner switches it once these
   numbers are reported.
 

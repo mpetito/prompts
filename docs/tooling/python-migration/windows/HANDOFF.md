@@ -190,6 +190,9 @@ python3 docs\tooling\python-migration\windows\statusline_timing.py
 
 It takes under a minute and prints one `TIMING` line per measurement, then `OUTPUT same` or `OUTPUT differs`. It
 exits 1 if the outputs differ or a run failed. The saved file has both outputs, so a difference can be read there.
+The saved file is masked for this public repository: the home folder appears as `%USERPROFILE%`. If the home
+folder or the user name survives the masking, the script prints a `LEAK` line, saves nothing and exits 1; report
+that instead of committing anything.
 
 Commit `docs/tooling/python-migration/windows/results/statusline-timing.md`, and only that file. Then run
 `git pull --rebase mpetito py/statusline-pr` and `git push mpetito HEAD:py/statusline-pr`. Remove the worktree

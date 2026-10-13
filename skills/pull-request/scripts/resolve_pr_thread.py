@@ -15,7 +15,7 @@ RESOLVE = "mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { th
 
 
 def main(argv):
-    parser = Parser(prog="resolve_pr_thread.py")
+    parser = Parser(prog="resolve_pr_thread.py", allow_abbrev=False)
     parser.add_argument("--thread-id", required=True, help="the thread's node id, PRRT_...")
     parser.add_argument("--body", required=True)
     args = parser.parse_args(argv)

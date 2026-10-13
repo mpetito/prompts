@@ -269,10 +269,15 @@ Fixture prose in `.md` files is updated with its skill.
   As the step's last action, the owner switches each machine's `statusLine` command.
 
   Linux, 2026-10-13: done except the two owner items below.
-  - [x] `statusline.py` and its suite, 39 tests, one per behaviour of `statusline.js`, which had no suite. It
+  - [x] `statusline.py` and its suite, 48 tests, one per behaviour of `statusline.js`, which had no suite. It
     printed the same bytes as `statusline.js` in 456 comparisons. Those covered 38 payloads in a plain folder and a
-    repository, in six git states. It differs only on malformed payloads: Node crashes on `null` where Python
-    renders `{}`, and a repo without an owner shows `/name` where Node showed `undefined/name`.
+    repository, in six git states. It differs only on malformed payloads, and none makes it exit non-zero or print
+    nothing:
+    - Node crashes on `null` and on a path or branch that is not a string; Python treats the payload or the value
+      as absent.
+    - A repo without an owner shows `/name` where Node showed `undefined/name`.
+  - [x] `run()` is tested against real hung commands, with bounds in absolute seconds. The kill stops the
+    grandchild too, and draining a pipe that an escaped process still holds stops after 1 s.
   - [x] The never-closing-stdin case exits at the deadline, and fails against a reader that waits for EOF.
   - [x] Setup links `~/.claude/statusline.py`. `Remove-RetiredStatusLineLink` removes the old link only when it
     points into this checkout. `tests/Setup.Tests.ps1` covers verification, `-WhatIf`, a real file and a foreign
@@ -296,8 +301,8 @@ Fixture prose in `.md` files is updated with its skill.
   `git grep -nE 'Resolve-PrThread|Get-PrFeedback|-ThreadId' -- <reference excludes>` prints
   nothing.
 
-  Linux, 2026-10-13: the suite has 23 tests. They port all 20 assertions of `Get-PrFeedback.Tests.ps1` and all 9 of
-  `Resolve-PrThread.Tests.ps1`, with none dropped, and add a usage-error case. The grep prints nothing. The graders
+  Linux, 2026-10-13: the suite has 24 tests. They port all 20 assertions of `Get-PrFeedback.Tests.ps1` and all 9 of
+  `Resolve-PrThread.Tests.ps1`, with none dropped, and add a usage-error case and an abbreviated-option case (abbreviations are refused). The grep prints nothing. The graders
   match `resolve_pr_thread(.py)` with `--thread-id`, spaced or with `=`, across bash or PowerShell line
   continuations. The old PowerShell form now fails f2, f3 and f5's reply graders. `check-assertions.py` catches
   41 of 41 wrong answers and passes 50 of 50 right ones, against main's 41 and 49; the added right answer uses

@@ -1,6 +1,6 @@
 """get_pr_feedback.py and resolve_pr_thread.py against a faked gh: no GitHub access.
 
-Ports Get-PrFeedback.Tests.ps1 and Resolve-PrThread.Tests.ps1 one for one. Each script's run() is replaced by a gh
+Ports the two PowerShell suites these scripts replaced one for one. Each script's run() is replaced by a gh
 that answers only the calls it recognises; any other call fails the test, so the network is never reached.
 """
 import contextlib
@@ -104,7 +104,7 @@ def call(module, gh, *argv):
 
 
 class GetPrFeedback(unittest.TestCase):
-    """Get-PrFeedback.Tests.ps1: paginated threads and reviews, suppressed bodies, body-only feedback, defaults, three
+    """The feedback suite: paginated threads and reviews, suppressed bodies, body-only feedback, defaults, three
     failure paths."""
 
     @classmethod
@@ -120,6 +120,8 @@ class GetPrFeedback(unittest.TestCase):
 
     def test_names_the_repository_and_pull_request(self):
         self.assertEqual((self.result["repo"], self.result["pr"]), ("example/repo", 123))
+        self.assertFalse([c for c in self.gh.calls if c.startswith(("pr view", "repo view"))],
+                         "--pr and --repo must be used as given, not looked up")
 
     def test_carries_is_outdated_path_and_line(self):
         t = self.result["threads"][0]
@@ -195,7 +197,7 @@ class GetPrFeedback(unittest.TestCase):
 
 
 class ResolvePrThread(unittest.TestCase):
-    """Resolve-PrThread.Tests.ps1: reply then resolve, one output line, no resolve after a failed reply."""
+    """The thread suite: reply then resolve, one output line, no resolve after a failed reply."""
 
     def resolve(self, scenario=""):
         self.gh = FakeGh(scenario)
@@ -230,13 +232,25 @@ class ResolvePrThread(unittest.TestCase):
         self.assertIn("example.test/c1", err)
 
 
+class Abbreviations(unittest.TestCase):
+    """An abbreviated option is a usage error, so a transcript the graders read names every option in full."""
+
+    def test_an_abbreviated_option_is_refused_before_any_call(self):
+        for module, argv in ((RESOLVE, ["--thread", "PRRT_x", "--body", "b"]),
+                             (FEEDBACK, ["--p", "123", "--repo", "example/repo"])):
+            with self.subTest(argv=argv):
+                gh = FakeGh()
+                code, _, _ = call(module, gh, *argv)
+                self.assertEqual((code, gh.calls), (1, []))
+
+
 class Usage(unittest.TestCase):
     """Each entry point run as a process: a usage error exits 1."""
 
     def test_usage_errors_exit_1(self):
         for script, argv in (("resolve_pr_thread.py", ["--thread-id", "PRRT_x"]),
                              ("get_pr_feedback.py", ["--pr", "not-a-number"])):
-            with self.subTest(script=script):
+            with self.subTest(script=script, argv=argv):
                 r = subprocess.run([sys.executable, str(SCRIPTS / script), *argv], capture_output=True, text=True,
                                    timeout=30)
                 self.assertEqual(r.returncode, 1)

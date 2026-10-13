@@ -41,7 +41,7 @@ def gh_value(args, missing):
 
 
 def main(argv):
-    parser = Parser(prog="get_pr_feedback.py")
+    parser = Parser(prog="get_pr_feedback.py", allow_abbrev=False)
     parser.add_argument("--pr", type=int)
     parser.add_argument("--repo")
     args = parser.parse_args(argv)

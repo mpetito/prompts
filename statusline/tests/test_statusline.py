@@ -142,14 +142,6 @@ class Branch(StatusLineTest):
             out = self.render(cwd=str(self.repo), worktree={"branch": "feature"})
         self.assertEqual(out, self.dir_part(self.repo) + SEP + paint("35", f"{ICON['branch']} feature"))
 
-    def test_git_runs_with_a_timeout(self):
-        calls = []
-        with unittest.mock.patch.object(sl, "run", lambda args, timeout: calls.append((args, timeout))
-                                        or subprocess.CompletedProcess(args, 124, "", "")):
-            self.render(cwd=str(self.repo))
-        self.assertEqual(calls, [(["git", "-C", str(self.repo), "status", "--porcelain=v1", "--branch"],
-                                  sl.GIT_TIMEOUT)])
-
 
 class Porcelain(unittest.TestCase):
     """parse_status on the header and entry forms of `git status --porcelain=v1 --branch`."""
@@ -293,7 +285,7 @@ class Stdin(unittest.TestCase):
         start = time.monotonic()
         try:
             # wait, not communicate: communicate would close stdin, which is the EOF this case withholds.
-            code = p.wait(timeout=sl.DEADLINE + 3)
+            code = p.wait(timeout=6)  # absolute, not DEADLINE: a longer deadline must fail this case
         except subprocess.TimeoutExpired:
             p.kill()
             p.wait()
@@ -302,6 +294,7 @@ class Stdin(unittest.TestCase):
             out = p.stdout.read()
             p.stdout.close()
         self.assertGreaterEqual(time.monotonic() - start, sl.DEADLINE - 0.5)
+        self.assertLess(time.monotonic() - start, 5)
         self.assertEqual(code, 0)
         self.assertEqual(out.decode("utf-8"), sl.render(json.dumps({"cwd": folder})))
 
@@ -317,6 +310,11 @@ class Stdin(unittest.TestCase):
 HANG = ("import subprocess, sys, time; print('## main', flush=True); "
         "g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], stdout=sys.stdout); "
         "sys.argv[1:] and open(sys.argv[1], 'w').write(str(g.pid)); time.sleep(30)")
+# A command that leaves behind a grandchild the tree kill can't reach (its own session on POSIX, an orphan on
+# Windows), holding the pipe, and writes the grandchild's pid to argv[1].
+ESCAPE = ("import os, subprocess, sys; kw = {'start_new_session': True} if os.name != 'nt' else {}; "
+          "g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], stdout=sys.stdout, **kw); "
+          "open(sys.argv[1], 'w').write(str(g.pid)); print('## main', flush=True)")
 
 
 class RunTimeout(unittest.TestCase):
@@ -348,6 +346,19 @@ class RunTimeout(unittest.TestCase):
             time.sleep(0.05)
         self.assertFalse(alive(grandchild), "the kill left the command's child running")
 
+    def test_git_status_is_cut_off_at_its_timeout(self):
+        real = sl.run
+        with unittest.mock.patch.object(sl, "run", lambda args, timeout: real([sys.executable, "-c", HANG], timeout)):
+            g, took = self.timed(lambda: sl.git_info("."))
+        self.assertIsNone(g)
+        self.assertLess(took, 4)
+
+    def test_draining_after_the_kill_is_bounded(self):
+        pidfile = self.pidfile()
+        r, took = self.timed(lambda: sl.run([sys.executable, "-c", ESCAPE, str(pidfile)], 0.5))
+        self.assertLess(took, 5)
+        self.assertEqual(r.returncode, 124)
+
 
 def alive(pid):
     """Whether pid is a running process. On Windows tasklist answers, since os.kill there would terminate it."""
@@ -367,6 +378,50 @@ def kill(pid):
         os.kill(pid, signal.SIGKILL if os.name != "nt" else signal.SIGTERM)
     except OSError:
         pass
+
+
+class Hostile(unittest.TestCase):
+    """No payload, and no working folder, makes the status line exit non-zero or print nothing: Claude Code shows
+    the line only after exit 0. Each runs the script as a process, so the output encoding is the real one."""
+
+    def line(self, payload, cwd=None):
+        r = subprocess.run([sys.executable, str(SCRIPT)], input=payload, capture_output=True, timeout=20, cwd=cwd)
+        self.assertEqual(r.returncode, 0, r.stderr.decode("utf-8", "replace"))
+        self.assertTrue(r.stdout.startswith(paint("36", ICON["dir"]).removesuffix("\x1b[0m").encode()), r.stdout)
+        return r.stdout.decode("utf-8")
+
+    def test_a_lone_surrogate_prints(self):
+        for payload in ('{"model": {"display_name": "\\ud800"}}', '{"cwd": "/x/\\udcff"}', '"\\ud800"'):
+            with self.subTest(payload=payload):
+                self.line(payload.encode())
+
+    def test_deep_nesting_renders_as_empty(self):
+        self.line(b"[" * 100000)
+
+    def test_non_utf8_bytes_render_as_replacement_characters(self):
+        out = self.line(b'{"cwd": "/x", "model": {"display_name": "M\xff"}}')
+        self.assertIn(paint("33", f"{ICON['model']} M\ufffd"), out)
+
+    def test_values_of_the_wrong_type_are_treated_as_absent(self):
+        for payload in ('{"cwd": 5}', '{"workspace": {"current_dir": ["x"]}}', '{"worktree": {"branch": 7}}',
+                        '{"cwd": "/x", "workspace": {"repo": {"name": 3, "owner": {}}}}', '{"cwd": {"a": 1}}'):
+            with self.subTest(payload=payload):
+                self.line(payload.encode())
+
+    def test_a_path_git_cannot_take_renders_without_git(self):
+        self.line(b'{"cwd": "/x/a\\u0000b"}')
+
+    @unittest.skipIf(os.name == "nt" or sys.platform == "darwin", "folder names there are always Unicode")
+    def test_a_non_utf8_working_folder_prints(self):
+        root = tempfile.mkdtemp(prefix="statusline-test-")
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        folder = os.path.join(os.fsencode(root), b"bad\xff")
+        os.mkdir(folder)
+        self.line(b"{}", cwd=folder)
+
+    def test_a_removed_working_folder_renders_as_empty(self):
+        with unittest.mock.patch.object(sl.os, "getcwd", side_effect=FileNotFoundError):
+            self.assertEqual(sl.render("{}"), paint("36", f"{ICON['dir']} "))
 
 
 if __name__ == "__main__":
