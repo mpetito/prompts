@@ -65,3 +65,56 @@ differ.
 read-only, `shutil.rmtree` cannot delete read-only files on Windows, and `ignore_errors=True` hides the
 failure. The agent removed both folders by hand afterwards. Possible fix: pass `rmtree` an error handler
 (`onexc=` on Python 3.12+) that clears the read-only bit (`os.chmod(path, stat.S_IWRITE)`) and retries.
+
+## Second run, with Codex
+
+Date: 2026-10-13, about 21:22Z–21:29Z, at `9a7ae82`. The checkout that `~/.claude` links to was detached on that
+commit for the run, then put back on `main`. Before the run, `thread.py list` printed `NONE`.
+
+Setup for the Codex lane, per the fourth probe:
+- The owner set `[windows] sandbox = "unelevated"` in `~/.codex/config.toml`.
+- The owner restarted herdr from the MSI PowerShell 7. The herdr server's parent and the pane shells are now
+  `C:\Program Files\PowerShell\7\pwsh.exe`, so the MSI `pwsh` comes first on every pane's PATH. Before the
+  restart, herdr had been started from the Store build. Each pane then put that build first on PATH, and a Codex
+  lane would have launched it, which the unelevated sandbox refuses.
+- No `node_repl` process was running.
+
+The command was `python3 ...\smoke.py --codex-python python`, run from `%TEMP%` in PowerShell 7 (MSI) inside a
+herdr pane. The owner answered two prompts: the thread's trust prompt and the Codex lane's startup prompt.
+
+- `claude --version`: `2.1.296 (Claude Code)`
+- `codex --version`: `codex-cli 0.161.0`
+- `herdr --version`: `herdr 0.9.3`
+
+Every item passed. Exit status 0. The user name in the temp paths is replaced with `<user>`.
+
+```
+SMOKE preflight pass missing=none hooks_linked=True inside_herdr=True
+SMOKE setup build=smk8242 root=C:/Users/<user>/AppData/Local/Temp/orch-smoke-cgvks5iq
+SMOKE launch:start pass BLOCKED smk8242 waiting on a startup prompt: answer it in workspace smk8242
+SMOKE launch pass mail=1
+SMOKE thread-guard pass file_written=False said=['STATUS: working - smoke thread up; guard refused']
+SMOKE lane-start:cl pass LANE smk8242-cl pane=wR:p2 kind=claude
+SMOKE lane-start:cx pass BLOCKED smk8242-cx waiting on a startup prompt: answer it in workspace smk8242, tab cx
+SMOKE lane-ready:cx pass
+SMOKE lanes pass mail=2 committed={'cl': True, 'cx': True}
+SMOKE lane-guard pass file_written=False
+SMOKE finish-running pass refused={'native': True, 'slashes': True, 'relative': True}
+SMOKE finish-closed pass retired={'cl': True, 'cx': True}
+SMOKE rotate pass ROTATED smk8242
+SMOKE hook-cost:guard_bash pass median_ms=209 runs=20 exit=0
+SMOKE hook-cost:guard_writes pass median_ms=298 runs=20 exit=0
+SMOKE hook-cost:guard_timestamps pass median_ms=247 runs=20 exit=0
+SMOKE close pass CLOSED smk8242 archive=C:/Users/<user>/AppData/Local/Temp/orch-smoke-cgvks5iq/orch/archive/smk8242-20261013T212839Z
+SMOKE cleanup pass agents=[] worktrees=1 branches=[] rows=0
+```
+
+Both `smoke.py` fixes held:
+- The relative-path spelling now runs from the worktree's parent and was refused like the others.
+- The temp folder was removed with no `could not remove` line, so the read-only git objects no longer survive.
+
+No `smk*` agent was left afterwards.
+
+A requirement for Codex lanes on Windows came out of this run. Configuring Codex is not enough: whatever starts
+herdr, and so every pane, must put a non-Store `pwsh` first on PATH. Starting herdr from the MSI PowerShell 7
+does that.
