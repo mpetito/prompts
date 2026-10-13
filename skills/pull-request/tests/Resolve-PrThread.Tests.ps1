@@ -42,3 +42,5 @@ Assert ($global:ghCalls.Count -eq 1) 'A failed reply must never be followed by a
 $message = Invoke-Case 'resolve'
 Assert ($message -match 'resolving it failed' -and $message -match 'example.test/c1') 'A failed resolve must throw and name the posted reply.'
 Write-Output 'PASS Resolve-PrThread: reply then resolve, one output line, no resolve after a failed reply.'
+# The last case leaves the mocked gh's LASTEXITCODE at 1, which a pwsh -command host would exit with.
+exit 0
