@@ -6,12 +6,12 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: bash "$HOME/.claude/skills/agent-orchestration/hooks/guard-bash.sh" --lane
+          command: python3 "$HOME/.claude/skills/agent-orchestration/hooks/guard_bash.py" --lane
           timeout: 10
     - matcher: "Edit|Write|MultiEdit|NotebookEdit"
       hooks:
         - type: command
-          command: bash "$HOME/.claude/skills/agent-orchestration/hooks/guard-writes.sh" --lane
+          command: python3 "$HOME/.claude/skills/agent-orchestration/hooks/guard_writes.py" --lane
           timeout: 10
 color: cyan
 ---

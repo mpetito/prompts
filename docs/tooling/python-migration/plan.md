@@ -94,7 +94,7 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: the suite passes. On Windows, `same_path` makes `C:\x`, `C:/x` and an 8.3 spelling of an
   existing folder equal. `archive_ignored` keeps an ignored file's relative path.
-- [ ] 2. Hooks and their tests:
+- [x] 2. Hooks and their tests:
   - `skills/agent-orchestration/hooks/guard_bash.py`, `guard_writes.py`, and `guard_timestamps.py`
     (renamed from `guard-timestamps.py`)
   - `agents/orchestrator.md`, `agents/lane.md`

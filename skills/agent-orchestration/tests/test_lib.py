@@ -5,7 +5,6 @@ import subprocess
 import sys
 import time
 import unittest
-from pathlib import Path
 
 from .support import OrchTest, REAL_RUN, UTC, lib
 

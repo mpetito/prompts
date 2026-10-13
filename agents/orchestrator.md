@@ -9,15 +9,15 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: bash "$HOME/.claude/skills/agent-orchestration/hooks/guard-bash.sh"
+          command: python3 "$HOME/.claude/skills/agent-orchestration/hooks/guard_bash.py"
           timeout: 10
     - matcher: "Edit|Write|MultiEdit|NotebookEdit"
       hooks:
         - type: command
-          command: bash "$HOME/.claude/skills/agent-orchestration/hooks/guard-writes.sh"
+          command: python3 "$HOME/.claude/skills/agent-orchestration/hooks/guard_writes.py"
           timeout: 10
         - type: command
-          command: python3 -I "$HOME/.claude/skills/agent-orchestration/hooks/guard-timestamps.py"
+          command: python3 "$HOME/.claude/skills/agent-orchestration/hooks/guard_timestamps.py"
           timeout: 10
 color: purple
 ---

@@ -65,7 +65,7 @@ def result(args, code=0, out="", err=""):
 
 
 class FakeHerdr:
-    """A herdr that keeps its agents in memory. mode: down, notab, startfail, notready or closefail."""
+    """A herdr that keeps its agents in memory. mode: down, garbled, notab, startfail, notready or closefail."""
 
     def __init__(self):
         self.agents, self.log, self.started, self.mode, self.n = [], [], {}, "", 0
@@ -76,6 +76,8 @@ class FakeHerdr:
         a = args + ["", ""]
         verb = f"{a[0]} {a[1]}"
         if verb == "agent list":
+            if self.mode == "garbled":
+                return result(args, out="herdr: not json\n")
             return result(args, 1) if self.mode == "down" else result(args, out=json.dumps(
                 {"result": {"agents": self.agents}}))
         if verb == "agent get":
@@ -197,7 +199,7 @@ class OrchTest(unittest.TestCase):
         fakes = {"herdr": self.herdr, "gh": self.gh}
 
         def fake_run(args, **kw):
-            return fakes[args[0]](list(args)) if args[0] in fakes else REAL_RUN(args, **kw)
+            return fakes[args[0]](list(args[1:])) if args[0] in fakes else REAL_RUN(args, **kw)
 
         run_patch = unittest.mock.patch.object(lib, "run", fake_run)
         run_patch.start()
