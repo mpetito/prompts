@@ -80,7 +80,7 @@ start_thread() {
   # it is ready, a reason for the owner when it waits on a startup prompt (a folder trust question), or fails with
   # herdr's reason.
   local err
-  if err=$(herdr_json agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --agent orchestrator "Read $3 and follow it." 2>&1 >/dev/null); then
+  if err=$(herdr_json agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --agent orchestrator "Read $(native "$3") and follow it." 2>&1 >/dev/null); then
     return 0
   fi
   case $err in
@@ -102,7 +102,7 @@ identity_warnings() {
 }
 # brief_text <build> <state> <body>: the header lines, a blank line, then the body. One printf, because a command
 # substitution would strip the blank line that separates them.
-brief_text() { printf 'BUILD: %s\nMAIL: %s/thread is yours; send MAIN %s/main\nSTATE: %s\n\n%s' "$1" "$1" "$1" "$2" "$3"; }
+brief_text() { printf 'BUILD: %s\nMAIL: %s/thread is yours; send MAIN %s/main\nSTATE: %s\n\n%s' "$1" "$1" "$1" "$(native "$2")" "$3"; }
 write_record() {
   # write_record <worktree> <build> <checkout> <base> <base ref> <lane base> <landing>
   local file="$1/.orchestration/thread.md"
@@ -142,9 +142,9 @@ ensure_worktree() {
   if [ -e "$wt" ]; then
     local its_common its_top
     its_common=$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
-    its_top=$(git -C "$wt" rev-parse --show-toplevel 2>/dev/null || true)
-    if [ -n "$its_common" ] && [ -n "$its_top" ] && [ "$(realpath -m "$its_common")" = "$common" ] \
-      && [ "$(realpath -m "$its_top")" = "$wt" ] && [ "$(git -C "$wt" rev-parse --abbrev-ref HEAD)" = "$branch" ]; then
+    its_top=$(toplevel "$wt" || true)
+    if [ -n "$its_common" ] && [ -n "$its_top" ] && [ "$(canon "$its_common")" = "$common" ] \
+      && [ "$its_top" = "$wt" ] && [ "$(git -C "$wt" rev-parse --abbrev-ref HEAD)" = "$branch" ]; then
       return 0
     fi
     fail "$wt exists and is not the coordination worktree for build $build (branch $branch of $main); move it aside or pick another --build"
@@ -174,8 +174,8 @@ case "$cmd" in
     [ -d "$repo" ] || fail "no repository checkout at $repo"
     [ -s "$brief" ] || fail "no brief at $brief"
     common=$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || fail "$repo is not a git checkout"
-    common=$(realpath -m "$common")
-    checkout=$(realpath -m "$(git -C "$repo" rev-parse --show-toplevel)")
+    common=$(canon "$common")
+    checkout=$(toplevel "$repo")
     # The main checkout holds the common git dir, so a linked worktree passed here still names the main one.
     main=$(dirname "$common")
     wt="$(dirname "$main")/$(basename "$main")-orch-$build"
@@ -254,7 +254,7 @@ case "$cmd" in
     [ -n "$rows" ] || { echo NONE; exit 0; }
     # Only this repository's threads, unless --all or outside git: other main sessions own the rest.
     here=""
-    if [ "$all" = 0 ] && c=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then here=$(dirname "$(realpath -m "$c")"); fi
+    if [ "$all" = 0 ] && c=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then here=$(dirname "$(canon "$c")"); fi
     printed=0
     while IFS= read -r repo; do
       [ -n "$repo" ] || continue
@@ -269,8 +269,8 @@ case "$cmd" in
     landing=$(thread_field "$wt" LANDING); base=$(thread_field "$wt" BASE); checkout=$(thread_field "$wt" CHECKOUT)
     [ "$landing" = local ] || fail "$1 lands by pull request (LANDING: ${landing:-unknown}), so its base moves on origin; pull it instead"
     [ -n "$base" ] && [ -d "$checkout" ] || fail "no BASE or CHECKOUT in $wt/.orchestration/thread.md"
-    [ "$(realpath -m "$(git -C "$checkout" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)")" \
-      = "$(realpath -m "$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)")" ] \
+    [ "$(canon "$(git -C "$checkout" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)")" \
+      = "$(canon "$(git -C "$repo" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)")" ] \
       || fail "$checkout is not a checkout of $repo"
     cur=$(git -C "$checkout" symbolic-ref --quiet --short HEAD 2>/dev/null || echo 'a detached HEAD')
     [ "$cur" = "$base" ] || fail "$checkout is on $cur, not $base; check out $base there first"
@@ -289,7 +289,7 @@ case "$cmd" in
     name=""; wt=""; base=""; force=0
     while [ $# -gt 0 ]; do
       case $1 in
-        --worktree) need_value "$1" $#; wt=$(realpath -m -- "$2"); shift 2 ;;
+        --worktree) need_value "$1" $#; wt=$2; shift 2 ;;
         --base) need_value "$1" $#; base=$2; shift 2 ;;
         --force) force=1; shift ;;
         -*) usage ;;
@@ -302,11 +302,12 @@ case "$cmd" in
       found=$(row_by 1 "$name"); [ -n "$found" ] || fail "no thread for build $name in $reg; for a build the registry no longer lists, pass --worktree <coordination worktree>"
       IFS=$'\t' read -r _ _ wt ws _ <<< "$found"
     fi
+    wt=$(canon "$wt")
     [ -d "$wt" ] || fail "no coordination worktree at $wt"
     branch=$(git -C "$wt" symbolic-ref --quiet --short HEAD 2>/dev/null) || fail "$wt has a detached HEAD; it is not a coordination worktree"
     [[ $branch == orchestration/* ]] || fail "$wt is on $branch, not orchestration/<build>; it is not a coordination worktree"
     build=${branch#orchestration/}
-    repo=$(dirname "$(realpath -m "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)")")
+    repo=$(dirname "$(canon "$(git -C "$wt" rev-parse --path-format=absolute --git-common-dir)")")
     [ "$wt" = "$(dirname "$repo")/$(basename "$repo")-orch-$build" ] || fail "$wt is not $(basename "$repo")-orch-$build beside $repo"
     [ -n "$base" ] || base=$(thread_field "$wt" BASE)
     landing=$(thread_field "$wt" LANDING)
@@ -343,7 +344,9 @@ case "$cmd" in
     git -C "$repo" worktree remove --force "$wt" || fail "git worktree remove $wt failed; the archive is at $archive"
     git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
     [ -z "$name" ] || delete_row "$name"
-    lanes=$(git -C "$repo" worktree list --porcelain | sed -n "s#^worktree \($(dirname "$repo")/$(basename "$repo")-wt-[^/]*\)\$#\1#p" | tr '\n' ' ')
+    # git lists worktrees in its own path form, so each is matched in canon form.
+    lanes=$(git -C "$repo" worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r p; do canon "$p"; done \
+      | sed -n "s#^\($(dirname "$repo")/$(basename "$repo")-wt-[^/]*\)\$#\1#p" | tr '\n' ' ')
     echo "CLOSED $build archive=$archive${lanes:+ lanes still present: $lanes}" ;;
   list)
     [ $# -eq 0 ] || usage

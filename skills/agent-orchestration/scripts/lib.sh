@@ -25,9 +25,28 @@ need_value() {
   [ "$2" -ge 2 ] || { echo "option $1 needs a value" >&2; exit 1; }
 }
 
+# Git for Windows: native tools (git, herdr) report paths as C:/x or C:\x where bash says /c/x, and a native jq.exe
+# ends its lines with CRLF unless given -b (jq manual, --binary). canon <path> prints the one absolute form every
+# comparison uses: realpath -m of bash's own spelling, resolving a relative path against $PWD. Convert a native
+# tool's path with canon where it enters; native tools accept the bash form as an argument. canon_from <dir> <path>
+# is canon of <path>, resolving a relative one against <dir> instead; there C:\x and C:/x are absolute too.
+# MSYS converts a path argument for a native tool, but not a path inside prose: native <path> is the form to write
+# into a prompt or brief an agent reads, C:/x on Windows, which bash and native tools both open.
+case ${OSTYPE:-} in
+  msys*|cygwin*)
+    canon() { realpath -m -- "$(cygpath -u -- "$1")"; }
+    canon_from() { local p; p=$(cygpath -u -- "$2"); [[ $p == /* ]] || p="$1/$p"; canon "$p"; }
+    native() { cygpath -m -- "$1"; }
+    jq() { command jq -b "$@"; } ;;
+  *)
+    canon() { realpath -m -- "$1"; }
+    canon_from() { local p=$2; [[ $p == /* ]] || p="$1/$p"; canon "$p"; }
+    native() { printf '%s\n' "$1"; } ;;
+esac
+
 # The thread's files live in its coordination worktree's untracked .orchestration/ folder, found from any
-# directory inside that worktree. toplevel <dir> prints the worktree root, or fails outside git.
-toplevel() { git -C "$1" rev-parse --show-toplevel 2>/dev/null; }
+# directory inside that worktree. toplevel <dir> prints the worktree root, in canon form, or fails outside git.
+toplevel() { local top; top=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) && canon "$top"; }
 
 # resolve_state <dir> <env var to name in errors>: print the state file, from $ORCHESTRATION_STATE when set,
 # else <git toplevel of dir>/.orchestration/state.md. Fails with a message naming the variable.
@@ -59,9 +78,9 @@ owner_checkouts() {
   # (the directory holding the common git dir) and, when the owner works in a linked worktree, the record's CHECKOUT.
   local common dir
   common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
-  { dirname -- "$(realpath -m -- "$common")"
+  { dirname -- "$(canon "$common")"
     dir=$(thread_field "$1" CHECKOUT)
-    [ -z "$dir" ] || realpath -m -- "$dir"; } | awk '!seen[$0]++'
+    [ -z "$dir" ] || canon "$dir"; } | awk '!seen[$0]++'
 }
 
 archive_ignored() {

@@ -34,11 +34,9 @@ jobs:
       - name: Check the pull-request thread script with a mocked gh
         run: ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
       - name: Check orchestration scripts and hooks
-        if: runner.os == 'Linux'
         shell: bash
         run: bash skills/agent-orchestration/tests/run.sh
       - name: Check model-council scripts
-        if: runner.os == 'Linux'
         shell: bash
         run: bash skills/model-council/tests/run.sh
       - name: Check status line

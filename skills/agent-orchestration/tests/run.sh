@@ -7,6 +7,9 @@ set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
 thread="$(cd "$here/../orchestration-main/scripts" && pwd)/thread.sh"
 tmp=$(mktemp -d)
+# GitHub's Windows runners spell TEMP in 8.3 form (C:\Users\RUNNER~1), which realpath keeps and git expands: start
+# from the long form so the paths this suite expects match the ones the scripts derive from git.
+case ${OSTYPE:-} in msys*|cygwin*) tmp=$(cygpath -u -- "$(cygpath -m -l -- "$tmp")") ;; esac
 trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
 export HOME="$tmp/home" ORCHESTRATION_HOME="$tmp/orch" MOCK_DIR="$tmp/mock"
@@ -271,6 +274,11 @@ git clone -q "$tmp/origin.git" "$tmp/wt"
 export MOCK_WT="$tmp/wt" LAND_POLL_SECONDS=0 WATCH_POLL_SECONDS=0
 printf 'body\n' > "$tmp/body.md"
 land() { "$here/scripts/land.sh" 7 "$tmp/wt" --check ci --subject "feat: x" --body-file "$tmp/body.md" 2>/dev/null; }
+# native <path>: <path> as a native tool (herdr, Claude Code, Python) gives it under Git for Windows, C:\x; elsewhere
+# unchanged. MSYS converts a /x argument for a native program but never a path inside JSON.
+native() { if command -v cygpath >/dev/null; then cygpath -w -- "$1"; else printf '%s\n' "$1"; fi; }
+# The form the scripts write into prompts and briefs, which MSYS never converts: C:/x on Windows.
+prose() { if command -v cygpath >/dev/null; then cygpath -m -- "$1"; else printf '%s\n' "$1"; fi; }
 
 # --- land.sh -------------------------------------------------------------------------------------------------
 "$here/scripts/land.sh" >/dev/null 2>&1 && fail "land.sh ran without arguments"
@@ -307,7 +315,7 @@ out=$("$lane" lb api "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 
 grep -qx "tab create --workspace w7 --cwd $tmp/lanewt --label api --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" || fail "lane.sh did not open a tab for the lane in the thread's workspace: $(cat "$MOCK_DIR/herdr.log")"
 [ "$(tr '\n' '|' < "$MOCK_DIR/start-lb-api.args")" = "--approve-for-me|--add-dir|$ORCHESTRATION_HOME/mail/lb|--model|m1|" ] || fail "lane.sh started Codex with: $(cat "$MOCK_DIR/start-lb-api.args")"
 [ -d "$ORCHESTRATION_HOME/mail/lb" ] || fail "lane.sh did not create the mail folder it lets Codex write"
-grep -qx "agent prompt lb-api Read $tmp/lane-brief.md and follow it." "$MOCK_DIR/herdr.log" || fail "lane.sh did not hand the lane its brief"
+grep -qx "agent prompt lb-api Read $(prose "$tmp/lane-brief.md") and follow it." "$MOCK_DIR/herdr.log" || fail "lane.sh did not hand the lane its brief"
 "$lane" lb net "$tmp/lanewt" "$tmp/lane-brief.md" --kind codex --model m1 --network >/dev/null
 grep -qx 'sandbox_workspace_write.network_access=true' "$MOCK_DIR/start-lb-net.args" || fail "lane.sh --network did not open Codex's sandbox to the network"
 "$lane" lb ui "$tmp/lanewt" "$tmp/lane-brief.md" --kind claude --model opus | grep -q '^LANE lb-ui ' || fail "lane.sh did not start a Claude lane"
@@ -343,8 +351,8 @@ printf '%s' "$out" | grep -q 'archived ignored .eval-runs/' || fail "finish-lane
 printf '%s' "$out" | grep -q 'deleted branch lane-x' || fail "finish-lane.sh did not delete the lane branch"
 # Inside herdr, a lane named by a relative path is still refused while an agent runs there; a sibling isn't it.
 git -C "$tmp/seed" worktree add -q "$tmp/lane4" -b lane-w
-printf '{"result":{"agents":[{"name":"t-l4","agent_status":"idle","cwd":"%s/src"},{"name":"t-l40","agent_status":"idle","cwd":"%s0"}]}}' \
-  "$(realpath "$tmp/lane4")" "$(realpath "$tmp/lane4")" > "$MOCK_DIR/herdr-agents.json"
+jq -n --arg in "$(native "$(realpath -m "$tmp/lane4/src")")" --arg sib "$(native "$(realpath -m "$tmp/lane40")")" \
+  '{result:{agents:[{name:"t-l4",agent_status:"idle",cwd:$in},{name:"t-l40",agent_status:"idle",cwd:$sib}]}}' > "$MOCK_DIR/herdr-agents.json"
 (cd "$tmp" && HERDR_ENV=1 "$here/scripts/finish-lane.sh" lane4 "$tmp/archive4" 2>&1) | grep -qx "refusing: agent(s) still run in lane4: t-l4" || fail "finish-lane.sh missed an agent in a lane named by a relative path"
 jq '.result.agents |= map(select(.name != "t-l4"))' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
 (cd "$tmp" && HERDR_ENV=1 "$here/scripts/finish-lane.sh" lane4 "$tmp/archive4" >/dev/null 2>&1) && [ ! -d "$tmp/lane4" ] || fail "finish-lane.sh took an agent in a sibling worktree for one in the lane"
@@ -444,7 +452,7 @@ AGENT=w1 writes "$gwc" "$gwapp/a.txt" | reason | grep -q 'Make the change in you
 # The session is the folder it started in: a cd into the owner's checkout changes nothing.
 CLAUDE_PROJECT_DIR="$gwc" writes "$gwapp" "$gwapp/a.txt" | denied || fail "guard-writes trusted a cwd moved into the owner's checkout"
 # An owner working in a linked worktree is protected through the record's CHECKOUT, and the main checkout always.
-sed -i "s#^CHECKOUT: .*#CHECKOUT: $gwl#" "$gwc/.orchestration/thread.md"
+printf '%s\n' '# record' 'BUILD: b1' "CHECKOUT: $(native "$gwl")" > "$gwc/.orchestration/thread.md"
 writes "$gwc" "$gwl/src/app.ts" | denied || fail "guard-writes ignored the record's CHECKOUT"
 writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes dropped the main checkout when the record named another"
 sed -i '/^CHECKOUT:/d' "$gwc/.orchestration/thread.md"
@@ -452,10 +460,18 @@ writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes did not fall back to
 printf 'CHECKOUT: %s\n' "$gwapp" >> "$gwc/.orchestration/thread.md"
 [ -z "$(writes "$tmp/plain" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from outside git"
 [ -z "$(writes "$tmp/nostate" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from a worktree with no thread files"
+# Claude Code on Windows sends native paths, with either separator.
+if command -v cygpath >/dev/null; then
+  for form in -w -m; do
+    writes "$(cygpath $form "$gwc")" "$(cygpath $form "$gwapp/a.txt")" | denied || fail "guard-writes allowed the owner's checkout given cygpath $form paths"
+    writes "$(cygpath $form "$gwc")" "..\\app\\a.txt" | denied || fail "guard-writes allowed a relative path into the owner's checkout given a cygpath $form cwd"
+    [ -z "$(writes "$(cygpath $form "$gwc/sub")" "$(cygpath $form "$gwc/src/app.ts")")" ] || fail "guard-writes noted its own worktree given cygpath $form paths"
+  done
+fi
 
 # --- guard-timestamps.py -------------------------------------------------------------------------------------
 printf 'state at 10:00Z\n' > "$gwc/.orchestration/notes.md"
-edit() { jq -n --arg cwd "${2:-$gwc}" --arg p "${3:-$gwc/.orchestration/notes.md}" --arg s "$1" '{cwd:$cwd,tool_input:{file_path:$p,new_string:$s}}' | with_agent | python3 -I "$here/hooks/guard-timestamps.py"; }
+edit() { jq -n --arg cwd "$(native "${2:-$gwc}")" --arg p "$(native "${3:-$gwc/.orchestration/notes.md}")" --arg s "$1" '{cwd:$cwd,tool_input:{file_path:$p,new_string:$s}}' | with_agent | python3 -I "$here/hooks/guard-timestamps.py"; }
 edit "approved at 14:30Z" | noted '14:30Z' || fail "timestamps hook should advise on a new clock time"
 edit "stopped 07:3xZ" | noted '07:3xZ' || fail "timestamps hook should advise on an estimated time"
 [ -z "$(edit "see 10:00Z above")" ] || fail "timestamps hook noted a time already in the file"
@@ -497,9 +513,9 @@ grep -qx "workspace create --cwd $wta --label t-a --no-focus --env ORCHESTRATION
 wsa=$(row_of t-a | cut -f4)
 [ "$(row_of t-a | cut -f1-3)" = "t-a	$app	$wta" ] && [[ $wsa =~ ^w[0-9]+$ ]] || fail "thread.sh launch registry row is wrong: $(row_of t-a)"
 [ "$(thread_pane t-a)" = "$wsa:p1" ] || fail "thread.sh did not start the thread in the workspace's root pane"
-[ "$(tr '\n' '|' < "$MOCK_DIR/start-t-a.args")" = "--agent|orchestrator|Read $wta/.orchestration/launch-brief.md and follow it.|" ] \
+[ "$(tr '\n' '|' < "$MOCK_DIR/start-t-a.args")" = "--agent|orchestrator|Read $(prose "$wta/.orchestration/launch-brief.md") and follow it.|" ] \
   || fail "thread.sh started the wrong agent or prompt: $(cat "$MOCK_DIR/start-t-a.args")"
-[ "$(head -3 "$wta/.orchestration/launch-brief.md" | tr '\n' '|')" = "BUILD: t-a|MAIL: t-a/thread is yours; send MAIN t-a/main|STATE: $wta/.orchestration/state.md|" ] \
+[ "$(head -3 "$wta/.orchestration/launch-brief.md" | tr '\n' '|')" = "BUILD: t-a|MAIL: t-a/thread is yours; send MAIN t-a/main|STATE: $(prose "$wta/.orchestration/state.md")|" ] \
   || fail "thread.sh wrote the wrong brief header: $(head -3 "$wta/.orchestration/launch-brief.md")"
 grep -q 'Build the signup slice.' "$wta/.orchestration/launch-brief.md" || fail "thread.sh launch dropped the brief"
 # The state file and the hooks work from inside the new worktree, and .orchestration stays untracked.
@@ -555,7 +571,7 @@ olda=$(thread_pane t-a)
 grep -qx "tab create --workspace $wsa --cwd $wta --label t-a --no-focus --env ORCHESTRATION_HOME=$ORCHESTRATION_HOME" "$MOCK_DIR/herdr.log" || fail "thread.sh rotate did not open the new thread in the build's workspace"
 newa=$(thread_pane t-a)
 grep -qx "pane close $olda" "$MOCK_DIR/herdr.log" && [ -n "$newa" ] && [ "$newa" != "$olda" ] || fail "thread.sh rotate did not replace the old pane: old=$olda new=$newa"
-grep -qx "Read $wta/.orchestration/rotate-brief.md and follow it." "$MOCK_DIR/start-t-a.args" \
+grep -qx "Read $(prose "$wta/.orchestration/rotate-brief.md") and follow it." "$MOCK_DIR/start-t-a.args" \
   && grep -qx 'Resume: read STATE first and continue from its RESUME section without redoing finished work.' "$wta/.orchestration/rotate-brief.md" \
   || fail "thread.sh rotate brief is wrong"
 [ "$(row_of t-a | cut -f1-4)" = "t-a	$app	$wta	$wsa" ] || fail "thread.sh rotate changed the build, worktree or workspace: $(row_of t-a)"
@@ -712,7 +728,9 @@ out=$("$thread" close --worktree "$tmp/proj/app-orch-z" --base main --force || t
 [ -d "$tmp/proj/app-orch-z" ] || fail "thread.sh close removed a worktree it could not list"
 cp "$tmp/z.index.bak" "$idx"
 jq '.result.agents += [{name: "z", agent_status: "idle", pane_id: "w88:p1"}]' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
-"$thread" close --worktree "$tmp/proj/app-orch-z" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
+# Given as a native tool spells it on Git for Windows (C:/x), the worktree is still found beside its checkout.
+zwt="$tmp/proj/app-orch-z"; if command -v cygpath >/dev/null; then zwt=$(cygpath -m "$zwt"); fi
+"$thread" close --worktree "$zwt" --base main | grep -q '^CLOSED z ' || fail "thread.sh did not close an unregistered build"
 grep -qx 'workspace close w88' "$MOCK_DIR/herdr.log" || fail "thread.sh close --worktree left the build's workspace open"
 "$thread" close --worktree "$app" | grep -q 'is on .*, not orchestration/<build>' || fail "thread.sh closed a checkout that is not a coordination worktree"
 "$thread" close t-nope | grep -q '^FAILED no thread for build t-nope' || fail "thread.sh closed an unknown thread"

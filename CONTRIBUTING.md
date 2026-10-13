@@ -29,10 +29,14 @@ pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
 pwsh -NoProfile -File ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
 node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js
-bash skills/agent-orchestration/tests/run.sh   # Linux or WSL: bash 5, jq, python3, GNU coreutils
+bash skills/agent-orchestration/tests/run.sh   # bash 5, jq, python3, GNU coreutils
+bash skills/model-council/tests/run.sh
 ```
 
-All six are offline: they use disposable directories and mocked CLIs, and touch neither your
+On Windows, run the two bash suites from Git Bash: PowerShell's `bash` is WSL's launcher. The
+model-council suite makes native symlinks, which need Developer Mode or an elevated shell.
+
+All seven are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set plus a
 PowerShell parse check over every `.ps1` and `.psm1`, on Windows and Ubuntu.
 
