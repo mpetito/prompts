@@ -336,13 +336,14 @@ Fixture prose in `.md` files is updated with its skill.
 
 ## Follow-ups
 
-- **Codex lanes on Windows** don't run on the owner's machine in any language.
-  - The elevated sandbox's setup fails with os error 32 (openai/codex#52488).
-  - The unelevated sandbox can't launch the Store-packaged PowerShell 7 Codex picks.
-  - If unelevated can't launch any Store-packaged program, `python3` would be blocked too: on that machine it is a
-    Store App Execution Alias, while `python` is a python.org install. That is untested.
-  - Paths to try:
-    - a Codex fix;
-    - an MSI install of PowerShell 7, with Codex pointed at it;
-    - lanes on Windows invoking a non-Store Python.
-  - The last one would revisit decision 1 for Windows Codex lanes only.
+- **Codex lanes on Windows: resolved on 2026-10-13** (`windows/results/probe.md` fourth run, and `windows/results/smoke.md`
+  "Second run, with Codex"). A Codex lane runs commands when both hold:
+  - Codex's config sets `[windows] sandbox = "unelevated"`. The elevated sandbox's setup still fails on
+    `node_repl.exe` (openai/codex#52488).
+  - herdr is started from the MSI PowerShell 7. Codex runs every command in the first `pwsh` on PATH, and the
+    unelevated sandbox refuses only the Store build, under `C:\Program Files\WindowsApps`.
+
+  The Store `python3` alias does run inside the unelevated sandbox, so decision 1 stands for Codex lanes too.
+  `skills/agent-orchestration/references/herdr.md` states the two requirements. The full Windows smoke test, with
+  the Codex lane, passed every item. Hook medians were guard_bash 209 ms, guard_writes 298 ms and
+  guard_timestamps 247 ms.

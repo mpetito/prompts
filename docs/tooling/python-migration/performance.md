@@ -29,9 +29,9 @@ These figures are start-up only, with no script work.
 
 | Hook | Bash, Linux | Bash, Windows | Python, Linux | Python, Windows |
 | --- | ---: | ---: | ---: | ---: |
-| guard_bash | 27–47 ms | 2,853 ms | 26–31 ms | 230 ms |
-| guard_writes | 33 ms | 1,560 ms | 28–30 ms | 336 ms |
-| guard_timestamps | 21 ms | 220–386 ms | 26–31 ms | 284 ms |
+| guard_bash | 27–47 ms | 2,853 ms | 26–31 ms | 209–230 ms |
+| guard_writes | 33 ms | 1,560 ms | 28–30 ms | 298–336 ms |
+| guard_timestamps | 21 ms | 220–386 ms | 26–31 ms | 247–284 ms |
 
 - **The bash hooks.**
   - Windows figures are averages of 20, measured outside Claude Code. guard_timestamps was already Python: 220 ms
@@ -39,11 +39,11 @@ These figures are start-up only, with no script work.
   - Linux figures are medians of 20 process runs.
 - **The Python hooks.**
   - Linux figures are medians of 20, as a process and as the smoke test starts them.
-  - Windows figures are medians of 20 in the smoke test, started as Claude Code starts the agents' exec-form hooks:
-    `python3 -c` with runpy, no shell.
+  - Windows figures are medians of 20 in the smoke test, across its two runs, started as Claude Code starts the
+    agents' exec-form hooks: `python3 -c` with runpy, no shell.
 - **On Windows, each bash hook started a dozen or more processes** (jq, git, cygpath, realpath, grep, awk), and each
   paid Windows' start-up cost. Each Python hook is one process, and it starts git only when its answer needs it.
-  Bash commands got about 12 times faster and edits about 4.6 times faster.
+  Bash commands got about 12–14 times faster and edits about 4.6–5.2 times faster.
 - **guard_writes is the slowest Python hook** because it runs two git commands.
 - **On Linux, both versions take about the same time,** because process start-up is cheap there.
 
@@ -82,7 +82,7 @@ These are medians of 20 runs of an empty hook on Windows, from the step 0 probe,
 | Node | Not chosen. It starts close to Python on Linux. Neither council member chose it. |
 | Python 3.12+, standard library only | Chosen. It starts fastest of the scripting languages, has argument lists with no shell quoting, has JSON built in, and resolves native paths. |
 | Hook shell form or exec form | Exec form. Both fire, and exec form is 110–130 ms faster per hook on Windows. |
-| `python3` or `python` on Windows | `python3` everywhere for now. `python` is about 175 ms faster per start on the owner's machine, and Codex lanes on Windows may need it: see the plan's follow-ups. |
+| `python3` or `python` on Windows | `python3` everywhere. `python` is about 175 ms faster per start on the owner's machine. Codex lanes don't need it: the Store `python3` alias runs inside the unelevated sandbox. |
 
 ## Not measured
 

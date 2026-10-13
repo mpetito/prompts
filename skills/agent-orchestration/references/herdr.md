@@ -29,6 +29,13 @@ A script's short name, such as `mail.py`, means
      write the build's mail folder. Its sandbox sees neither the pane's environment nor herdr, which is
      why every lane names itself when it sends, and why a Codex lane's brief gives
      `mail.py send --home <home>` when `ORCHESTRATION_HOME` is set ([briefs.md](briefs.md)).
+   - On native Windows, a Codex lane runs commands only when Codex's config sets
+     `[windows] sandbox = "unelevated"` and herdr was started from a non-Store PowerShell 7 (the MSI
+     build), so a non-Store `pwsh` comes first on the pane's PATH. Codex runs every command in the first
+     `pwsh` on PATH. The elevated sandbox's setup fails, and the unelevated one can't launch the Store
+     build. A lane whose every command fails with `setup refresh had errors` or
+     `CreateProcessAsUserW ... Access is denied` is missing one of the two: send MAIN
+     `STATUS: blocked - Codex on Windows needs <the missing setup>`, and don't retry.
    - `BLOCKED` means the lane waits on a startup prompt. For a Codex lane in a project Codex hasn't
      been approved for, send MAIN `STATUS: blocked - Codex needs the owner to run it once in <worktree>`.
      Once the owner has answered and the lane is idle, send the pointer prompt yourself (below).
