@@ -26,7 +26,7 @@ for the human, not for models.
    out.
 2. **Choose two members.** Claude: a fresh subagent with explicit model `opus`, of a type without
    file-edit tools where the host has one; it still has a shell, so it is read-only by its prompt
-   alone. Codex: `scripts/codex-member.sh` in this skill's folder, with an explicit high-capability
+   alone. Codex: `scripts/codex_member.py` in this skill's folder, with an explicit high-capability
    model from the installed catalogue (`codex debug models` in codex-cli 0.160; never an Anthropic
    alias) and `--effort high`. Give each a focus (correctness and contract; simplicity and
    maintenance; or one narrow domain question); a focus is where to look, never an assigned
@@ -38,7 +38,7 @@ for the human, not for models.
    sees the other's answer. Codex, as a host background task so its exit wakes you:
 
    ```sh
-   <skill dir>/scripts/codex-member.sh <repo> <dir>/round0-codex.prompt.md <dir>/round0-codex.md --model <codex model id> --effort high
+   python3 "$HOME/.claude/skills/model-council/scripts/codex_member.py" <repo> <dir>/round0-codex.prompt.md <dir>/round0-codex.md --model <codex model id> --effort high
    ```
 
    It prints `MEMBER done|failed|timeout|malformed ... session=<id> ...`; keep the session for the
@@ -46,7 +46,7 @@ for the human, not for models.
 4. **Tally the round** (k = 0 for the blind round):
 
    ```sh
-   <skill dir>/scripts/tally.sh <dir>/round<k>-claude.md <dir>/round<k>-codex.md --exchange <k>
+   python3 "$HOME/.claude/skills/model-council/scripts/tally.py" <dir>/round<k>-claude.md <dir>/round<k>-codex.md --exchange <k>
    ```
 
    It prints one line and you follow it: `consensus` (go to step 6), `exchange` (step 5),

@@ -1,0 +1,6 @@
+ROUND preflight pass python=3.14.4 codex='codex-cli 0.162.1' claude='2.1.296 (Claude Code)'
+ROUND codex-member pass MEMBER done member=codex model=gpt-6.1-sol session=<session> stance=initial disposition=defect out=/home/mpetito/dev/prompts-wt-council/docs/tooling/python-migration/windows/results/council-round-linux/round0-codex.md
+ROUND sandbox-mode pass os=posix windows_flag=False commands_ran=6 commands_failed=1 setup_refresh_errors=False
+ROUND claude-member pass exit=0 disposition=defect
+ROUND read-only pass head=fb729f557b4c status=''
+ROUND tally pass COUNCIL exchange next=1 of 2; send each member the other's answer, unattributed

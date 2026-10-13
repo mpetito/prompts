@@ -31,11 +31,11 @@ pwsh -NoProfile -File ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
 node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js
 python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration   # Python 3.12+
 python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
-bash skills/model-council/tests/run.sh
+python3 -m unittest discover -s skills/model-council/tests -t skills/model-council
 ```
 
-On Windows, run the bash suite from Git Bash: PowerShell's `bash` is WSL's launcher. The
-model-council suite makes native symlinks, which need Developer Mode or an elevated shell.
+On Windows, the model-council suite makes native symlinks, which need Developer Mode or an
+elevated shell.
 
 All eight are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set plus a

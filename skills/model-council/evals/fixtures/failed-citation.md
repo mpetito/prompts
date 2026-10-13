@@ -36,9 +36,9 @@ sleeping for `Retry-After` when the error carries one.
 ## Members
 
 - Claude: subagent, model opus, effort high; focus correctness and contract.
-- Codex: `codex-member.sh`, model gpt-6-astra, effort high; focus simplicity and maintenance.
+- Codex: `codex_member.py`, model gpt-6-astra, effort high; focus simplicity and maintenance.
 - Blind round: Claude `improvement`, narrow the wrapper; Codex `improvement`, delete the wrapper.
-- Exchange 1: Claude answered `agree`. `tally.sh` printed:
+- Exchange 1: Claude answered `agree`. `tally.py` printed:
   `COUNCIL consensus after-exchange=1 disposition=improvement; verify the decisive citations before reporting it`
 
 ## /tmp/council-4d17/round1-claude.md

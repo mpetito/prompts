@@ -251,6 +251,12 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes with the source count of 46 assertions plus the new case, on both CI
   operating systems. `git grep -nE 'codex-member\.sh|tally\.sh' -- <reference excludes>` prints
   nothing. One real blind round runs from PowerShell on Windows.
+
+  Linux, 2026-10-13: done except the Windows round. The source has 45 assertions, not 46: the count
+  `grep -c 'fail "'` also matched the command `MOCK_CODEX=fail "$here/..."`. All 45 are ported, plus the
+  grandchild case, the Windows sandbox flag (the platform injected) and the usage errors. The
+  reference grep prints nothing. `windows/council_round.py` passes every check on Linux
+  (`windows/results/council-round-linux/`). The Windows round is pending (HANDOFF.md, phase 2).
 - [ ] 12. Evals for `model-council` as in step 10. Then the owner merges the phase's pull request.
 
 ## Phase 3: status line and pull-request scripts (branch `py/statusline-pr`)

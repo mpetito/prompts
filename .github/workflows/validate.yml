@@ -44,8 +44,7 @@ jobs:
       - name: Check orchestration threads
         run: python3 -m unittest discover -v -s skills/orchestration-main/tests -t skills/orchestration-main
       - name: Check model-council scripts
-        shell: bash
-        run: bash skills/model-council/tests/run.sh
+        run: python3 -m unittest discover -v -s skills/model-council/tests -t skills/model-council
       - name: Check status line
         run: |
           node --check statusline/statusline.js

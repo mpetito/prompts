@@ -12,7 +12,7 @@ Candidate actions: no change; add the unique constraint; dedupe in the writer in
 ## Members (chosen before the blind round)
 
 - Claude: subagent, model opus, effort high; focus correctness and contract.
-- Codex: `codex-member.sh`, model gpt-6-astra, effort high; focus simplicity and maintenance.
+- Codex: `codex_member.py`, model gpt-6-astra, effort high; focus simplicity and maintenance.
   Printed, after the blind-round launch: `MEMBER timeout member=codex model=gpt-6-astra session=0199d4b0-7c11-7a02-9f3e-2e6b1c0d8a55 after 20m; log /tmp/council-e5b2/round0-codex.log`
   The log ends: `stream error: 503 Service Unavailable; retrying (5/5)`.
 

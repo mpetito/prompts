@@ -166,3 +166,30 @@ Then write `docs/tooling/python-migration/windows/results/smoke.md` containing:
 
 Commit and push it as in step 0. If the script is interrupted, check that no `smk*` agents are left
 (`herdr agent list`); its cleanup closes them and removes its temporary folder.
+
+## Phase 2: one blind round of the model council (now)
+
+The model council's scripts are Python now, on branch `py/council`. The Codex member runs
+`codex exec --ignore-user-config`, which also drops the owner's `[windows] sandbox` setting, so on
+Windows `codex_member.py` passes `-c windows.sandbox="unelevated"` itself. The fourth probe run showed
+that mode running commands here. `council_round.py` runs one real blind round, a Codex member and a
+Claude member on a throwaway repository, and shows whether Codex's commands run under the override.
+Don't edit `~/.codex/config.toml`.
+
+1. **Check out the branch:** `git fetch mpetito py/council`, then
+   `git worktree add -b py/council ..\prompts-council mpetito/py/council` and `cd ..\prompts-council`.
+2. **Run the round from PowerShell 7's MSI build,** in a new window, so a non-Store `pwsh` comes first
+   on PATH as in the fourth probe run:
+   `python3 docs\tooling\python-migration\windows\council_round.py`. It makes one Codex call and one
+   Claude call, takes about five minutes, and prints one `ROUND` line per check.
+3. **Record the results.** The script writes `docs/tooling/python-migration/windows/results/council-round-windows/`:
+   the prompts, both answers, Codex's event stream and log, the codex argv, and the `ROUND` lines in
+   `round.txt`. Commit that folder, then `git pull --rebase mpetito py/council` and
+   `git push mpetito py/council`.
+4. **Then:**
+   - **Every check passes:** report that, and the round is done.
+   - **`sandbox-mode` fails with `setup_refresh_errors=True`:** the override did not reach Codex, which
+     fell back to the elevated sandbox. Stop and report, with the `round0-codex.log` lines that show it.
+   - **`sandbox-mode` fails, and the log shows `CreateProcessAsUserW ... Access is denied`:** the Store
+     `pwsh` came first on PATH. Record `(Get-Command pwsh -All).Source`, stop and report.
+   - **Any other failure:** stop and report the `ROUND` lines and the matching evidence file.
