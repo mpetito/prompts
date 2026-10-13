@@ -1,0 +1,152 @@
+"""Times the Node status line against the Python one on this machine (plan.md step 13, spec decision 6).
+
+    python3 statusline_timing.py [--runs <n, default 20>] [--node-ref <git ref>] [--out <file>]
+
+Run it from the checkout that holds this script. It takes statusline.js from --node-ref (default: the last revision
+of HEAD's history that has it) and statusline.py from this checkout, feeds each the same realistic payload on stdin, closed, with this
+checkout as the working folder, and prints one line per measurement:
+
+    TIMING <interpreter> <shell|direct> median=<ms> min=<ms> max=<ms> runs=<n>
+
+shell is how Claude Code runs a statusLine command, through a shell: Git Bash on Windows (CLAUDE_CODE_GIT_BASH_PATH,
+else the bin/bash.exe of the Git install that holds git), bash on Linux. direct starts the interpreter with no shell.
+The interpreters are node and python3, and python too when it is on PATH and is not python3. An interpreter that is
+missing prints `TIMING <interpreter> missing`. Then one line says whether every interpreter printed the same status
+line:
+
+    OUTPUT same|differs
+
+It saves those lines, the versions and both outputs to --out (default results/statusline-timing.md beside this
+script), and exits 1 if the outputs differ or a measurement failed.
+"""
+import argparse
+import json
+import os
+import platform
+import shutil
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import date
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+CHECKOUT = HERE.parents[3]
+PYTHON_SCRIPT = CHECKOUT / "statusline" / "statusline.py"
+
+
+def git_bash():
+    """The bash Claude Code runs commands in, or None."""
+    if os.name != "nt":
+        return shutil.which("bash")
+    if os.environ.get("CLAUDE_CODE_GIT_BASH_PATH"):
+        return os.environ["CLAUDE_CODE_GIT_BASH_PATH"]
+    git = shutil.which("git")
+    if not git:
+        return None
+    # git.exe lives in <install>\cmd or <install>\mingw64\bin; bash.exe in <install>\bin.
+    for up in Path(git).resolve().parents:
+        if (up / "bin" / "bash.exe").is_file():
+            return str(up / "bin" / "bash.exe")
+    return None
+
+
+def timed(args, payload, runs):
+    """(median, min, max) ms of runs starts of args with payload on stdin, and the last stdout; None on a failure."""
+    times, out = [], b""
+    for _ in range(runs):
+        start = time.perf_counter()
+        r = subprocess.run(args, input=payload, capture_output=True, cwd=CHECKOUT, timeout=30)
+        times.append((time.perf_counter() - start) * 1000)
+        if r.returncode != 0:
+            return None, r.stderr.decode("utf-8", "replace")
+        out = r.stdout
+    return (statistics.median(times), min(times), max(times)), out
+
+
+def version(args):
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=30)
+        return (r.stdout or r.stderr).strip().splitlines()[0]
+    except (OSError, IndexError, subprocess.TimeoutExpired):
+        return "unknown"
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(prog="statusline_timing.py")
+    parser.add_argument("--runs", type=int, default=20)
+    parser.add_argument("--node-ref")
+    parser.add_argument("--out", type=Path, default=HERE / "results" / "statusline-timing.md")
+    args = parser.parse_args(argv)
+
+    if not args.node_ref:
+        # The commit that last touched statusline.js: it has the file, unless it is the one that deleted it.
+        last = subprocess.run(["git", "-C", str(CHECKOUT), "rev-list", "-1", "HEAD", "--", "statusline/statusline.js"],
+                              capture_output=True, text=True).stdout.strip()
+        exists = subprocess.run(["git", "-C", str(CHECKOUT), "cat-file", "-e", f"{last}:statusline/statusline.js"],
+                                capture_output=True).returncode == 0
+        args.node_ref = last if exists else f"{last}^"
+    node_source = subprocess.run(["git", "-C", str(CHECKOUT), "show", f"{args.node_ref}:statusline/statusline.js"],
+                                 capture_output=True)
+    if node_source.returncode != 0:
+        print(f"no statusline/statusline.js at {args.node_ref}: {node_source.stderr.decode().strip()}")
+        return 1
+    tmp = Path(tempfile.mkdtemp(prefix="statusline-timing-"))
+    node_script = tmp / "statusline.js"
+    node_script.write_bytes(node_source.stdout)
+
+    payload = json.dumps({
+        "cwd": str(CHECKOUT), "session_name": "timing",
+        "workspace": {"current_dir": str(CHECKOUT), "repo": {"host": "github.com", "owner": "mpetito", "name": "prompts"}},
+        "model": {"id": "claude-opus-5-5", "display_name": "Opus 5.5"}, "effort": {"level": "high"},
+        "context_window": {"used_percentage": 43.4}}).encode()
+
+    interpreters = [("node", node_script), ("python3", PYTHON_SCRIPT)]
+    python, python3 = shutil.which("python"), shutil.which("python3")
+    if python and (not python3 or os.path.realpath(python) != os.path.realpath(python3)):
+        interpreters.append(("python", PYTHON_SCRIPT))
+    bash = git_bash()
+
+    lines, outputs, ok = [], {}, True
+    for name, script in interpreters:
+        exe = shutil.which(name)
+        if not exe:
+            lines.append(f"TIMING {name} missing")
+            print(lines[-1], flush=True)
+            continue
+        forms = [("direct", [exe, str(script)])]
+        if bash:
+            forms.insert(0, ("shell", [bash, "-c", f'{name} "{script.as_posix()}"']))
+        for form, command in forms:
+            stats, out = timed(command, payload, args.runs)
+            if stats is None:
+                lines.append(f"TIMING {name} {form} failed {out.strip()[:200]}")
+                ok = False
+            else:
+                lines.append(f"TIMING {name} {form} median={stats[0]:.0f} min={stats[1]:.0f} max={stats[2]:.0f} "
+                             f"runs={args.runs}")
+                outputs[name] = out
+            print(lines[-1], flush=True)
+    same = len(set(outputs.values())) <= 1
+    ok &= same
+    lines.append(f"OUTPUT {'same' if same else 'differs'}")
+    print(lines[-1], flush=True)
+
+    versions = [f"- {platform.platform()}", f"- node {version(['node', '--version'])}",
+                f"- python3 {version(['python3', '--version'])}", f"- bash {bash or 'none'}",
+                f"- statusline.js from {args.node_ref} ({version(['git', '-C', str(CHECKOUT), 'rev-parse', '--short', args.node_ref])})",
+                f"- statusline.py from {version(['git', '-C', str(CHECKOUT), 'rev-parse', '--short', 'HEAD'])}"]
+    shown = [f"- {name}: `{out.decode('utf-8', 'replace')!r}`" for name, out in outputs.items()]
+    args.out.parent.mkdir(parents=True, exist_ok=True)
+    args.out.write_text("\n".join([f"# Status line timing, {date.today().isoformat()}", "", "```", *lines, "```", "",
+                                   "Versions:", *versions, "", "Outputs:", *shown, ""]), encoding="utf-8")
+    print(f"saved {args.out}")
+    shutil.rmtree(tmp, ignore_errors=True)
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.exit(main(sys.argv[1:]))

@@ -65,6 +65,24 @@ These are medians of 20 runs of an empty hook on Windows, from the step 0 probe,
   a decision.
 - **On Linux, both forms take 17 ms** for an empty hook.
 
+## The status line, Node and Python
+
+These are medians of 20 runs of `statusline/statusline.js` (Node) and `statusline/statusline.py` (Python), measured
+with `windows/statusline_timing.py`. Each run gets the same payload on stdin, with the repository as its working
+folder, so each includes one `git status`. Both scripts printed the same line.
+
+| Command | Linux, through bash | Linux, direct | Windows, through Git Bash | Windows, direct |
+| --- | ---: | ---: | ---: | ---: |
+| `node statusline.js` | 32 ms | 33 ms | pending | pending |
+| `python3 statusline.py` | 28 ms | 26 ms | pending | pending |
+
+- **Linux** is Python 3.14.4 and Node 24.21.0, on 2026-10-13.
+- **Windows** is pending: the owner's Windows agent runs the script (HANDOFF.md, step 13).
+- **How Claude Code runs it.** Claude Code's statusline docs say only that the command "runs in a shell". On Windows
+  the script assumes Git Bash, the shell Claude Code runs commands in.
+- **Who switches.** Each machine's `statusLine` command is in its own settings, so the owner switches it once these
+  numbers are reported.
+
 ## Test suites
 
 | Suite | Linux | Windows |
@@ -86,6 +104,6 @@ These are medians of 20 runs of an empty hook on Windows, from the step 0 probe,
 
 ## Not measured
 
-- Node on Windows.
+- Node on Windows, until the status line timings arrive.
 - The bash orchestration suite's runtime on Linux.
 - Hook latency as Claude Code reports it end to end. Every figure here is the hook's own process, from start to exit.

@@ -267,7 +267,21 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes, including a case where stdin never closes, which must exit within the
   deadline. Node's and Python's medians of 20 runs on both machines are recorded under this step.
   As the step's last action, the owner switches each machine's `statusLine` command.
-- [ ] 14. Pull-request scripts and everything that names them:
+
+  Linux, 2026-10-13: done except the two owner items below.
+  - [x] `statusline.py` and its suite, 39 tests, one per behaviour of `statusline.js`, which had no suite. It
+    printed the same bytes as `statusline.js` in 456 comparisons. Those covered 38 payloads in a plain folder and a
+    repository, in six git states. It differs only on malformed payloads: Node crashes on `null` where Python
+    renders `{}`, and a repo without an owner shows `/name` where Node showed `undefined/name`.
+  - [x] The never-closing-stdin case exits at the deadline, and fails against a reader that waits for EOF.
+  - [x] Setup links `~/.claude/statusline.py`. `Remove-RetiredStatusLineLink` removes the old link only when it
+    points into this checkout. `tests/Setup.Tests.ps1` covers verification, `-WhatIf`, a real file and a foreign
+    link.
+  - [x] Linux medians of 20 runs, `windows/statusline_timing.py`, through bash and direct: Node 32 and 33 ms,
+    Python 28 and 26 ms ([performance.md](performance.md)).
+  - [ ] Windows medians: the owner's Windows agent runs `windows/statusline_timing.py` (HANDOFF.md, step 13).
+  - [ ] The owner switches each machine's `statusLine` command to `python3 "<home>/.claude/statusline.py"`.
+- [x] 14. Pull-request scripts and everything that names them:
   - `skills/pull-request/scripts/get_pr_feedback.py`, `resolve_pr_thread.py`, `run.py`
   - `skills/pull-request/tests/__init__.py`, `skills/pull-request/tests/test_pr_scripts.py`
   - `skills/pull-request/SKILL.md`
@@ -281,6 +295,13 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes with the source count, and
   `git grep -nE 'Resolve-PrThread|Get-PrFeedback|-ThreadId' -- <reference excludes>` prints
   nothing.
+
+  Linux, 2026-10-13: the suite has 23 tests. They port all 20 assertions of `Get-PrFeedback.Tests.ps1` and all 9 of
+  `Resolve-PrThread.Tests.ps1`, with none dropped, and add a usage-error case. The grep prints nothing. The graders
+  match `resolve_pr_thread(.py)` with `--thread-id`, spaced or with `=`, across bash or PowerShell line
+  continuations. The old PowerShell form now fails f2, f3 and f5's reply graders. `check-assertions.py` catches
+  41 of 41 wrong answers and passes 50 of 50 right ones, against main's 41 and 49; the added right answer uses
+  `--thread-id=` and continued lines.
 - [ ] 15. Evals for `pull-request` as in step 10. Then the owner merges the phase's pull request.
 
 ## Phase 4: setup, MCP and eval tooling (branch `py/setup`)
