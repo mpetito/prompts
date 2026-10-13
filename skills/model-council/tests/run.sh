@@ -65,11 +65,12 @@ printf 'stance: initial\ndisposition: defect\naction: x\ndecisive: a.ts:1\n' > "
 [[ $(MOCK_CODEX=silent member --model m1) == "MEMBER malformed"* ]] || fail "a stale answer file was read as this run's answer"
 [ -e "$tmp/out/a.md" ] && fail "a stale answer file survived the run"
 
-# A symlinked answer, log or event path is refused: its target is neither removed nor written beside.
+# A symlinked answer, log or event path is refused: its target is neither removed nor written beside. Git for
+# Windows' ln -s copies unless MSYS asks for a native symlink, which needs Developer Mode or elevation.
 mkdir -p "$tmp/keep" "$tmp/links"
 for suffix in md log jsonl; do
   printf 'keep\n' > "$tmp/keep/target.$suffix"; rm -f "$tmp/links"/*
-  ln -s "$tmp/keep/target.$suffix" "$tmp/links/a.$suffix"
+  MSYS=winsymlinks:nativestrict ln -s "$tmp/keep/target.$suffix" "$tmp/links/a.$suffix"
   MOCK_CODEX=fail "$here/scripts/codex-member.sh" "$tmp/repo" "$tmp/prompt.md" "$tmp/links/a.md" --model m1 >/dev/null 2>&1 \
     && fail "a symlinked .$suffix path was not refused"
   [ "$(cat "$tmp/keep/target.$suffix")" = keep ] || fail "the target of a symlinked .$suffix path was changed or removed"

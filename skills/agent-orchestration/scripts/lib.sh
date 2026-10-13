@@ -25,9 +25,20 @@ need_value() {
   [ "$2" -ge 2 ] || { echo "option $1 needs a value" >&2; exit 1; }
 }
 
+# Git for Windows: native tools (git, herdr) report paths as C:/x or C:\x where bash says /c/x, and a native jq.exe
+# ends its lines with CRLF unless given -b (jq manual, --binary). canon <path> prints the one absolute form every
+# comparison uses: realpath -m of bash's own spelling, resolving a relative path against $PWD. Convert a native
+# tool's path with canon where it enters; native tools accept the bash form as an argument.
+case ${OSTYPE:-} in
+  msys*|cygwin*)
+    canon() { realpath -m -- "$(cygpath -u -- "$1")"; }
+    jq() { command jq -b "$@"; } ;;
+  *) canon() { realpath -m -- "$1"; } ;;
+esac
+
 # The thread's files live in its coordination worktree's untracked .orchestration/ folder, found from any
-# directory inside that worktree. toplevel <dir> prints the worktree root, or fails outside git.
-toplevel() { git -C "$1" rev-parse --show-toplevel 2>/dev/null; }
+# directory inside that worktree. toplevel <dir> prints the worktree root, in canon form, or fails outside git.
+toplevel() { local top; top=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) && canon "$top"; }
 
 # resolve_state <dir> <env var to name in errors>: print the state file, from $ORCHESTRATION_STATE when set,
 # else <git toplevel of dir>/.orchestration/state.md. Fails with a message naming the variable.
