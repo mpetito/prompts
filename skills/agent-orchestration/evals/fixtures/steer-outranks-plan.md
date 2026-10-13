@@ -10,7 +10,7 @@ Time now (from `date -u`): 2026-10-11T10:05Z.
 
 ## The mail
 
-Your mail wait printed `MAIL 3`, and `mail.sh read shopfront-web/thread` printed, oldest first:
+Your mail wait printed `MAIL 3`, and `mail.py read shopfront-web/thread` printed, oldest first:
 
     From: shopfront-web/spend-ledger-review
     VERDICT: approve for c41a9e0

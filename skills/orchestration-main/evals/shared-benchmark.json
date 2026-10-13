@@ -76,29 +76,29 @@
       ],
       "expected_behavior": [
         "The owner is told a message cannot compact another session; the thread is rotated instead",
-        "Both threads are rotated before the overnight absence, the idle shopfront-web one included: ROTATE goes to each, and each thread.sh rotate runs only after that thread's STATUS: rotating arrives",
+        "Both threads are rotated before the overnight absence, the idle shopfront-web one included: ROTATE goes to each, and each thread.py rotate runs only after that thread's STATUS: rotating arrives",
         "After the rotations, both threads are told the owner is away until 09:00 and that defaults apply at their deadlines"
       ],
       "assertions": [
         {
           "name": "sends-rotate",
           "type": "regex",
-          "pattern": "(?s)(?:Mail to shopfront-api/thread:|mail\\.sh send shopfront-api/thread).{0,200}?ROTATE"
+          "pattern": "(?s)(?:Mail to shopfront-api/thread:|mail\\.py\"? send shopfront-api/thread).{0,200}?ROTATE"
         },
         {
           "name": "no-compact-message",
           "type": "not_regex",
-          "pattern": "(?s)Mail to [^\\n]+:\\s*```[^\\n]*\\n\\s*/compact|mail\\.sh send [^\\n]*/compact"
+          "pattern": "(?s)Mail to [^\\n]+:\\s*```[^\\n]*\\n\\s*/compact|mail\\.py\"? send [^\\n]*/compact"
         },
         {
           "name": "uses-rotate-script",
           "type": "regex",
-          "pattern": "thread\\.sh rotate shopfront-api"
+          "pattern": "thread\\.py\"? rotate shopfront-api"
         },
         {
           "name": "rotates-idle-web-before-absence",
           "type": "regex",
-          "pattern": "(?s)(?:Mail to shopfront-web/thread:|mail\\.sh send shopfront-web/thread).{0,200}?ROTATE.*thread\\.sh rotate shopfront-web"
+          "pattern": "(?s)(?:Mail to shopfront-web/thread:|mail\\.py\"? send shopfront-web/thread).{0,200}?ROTATE.*thread\\.py\"? rotate shopfront-web"
         },
         {
           "name": "away-steer",
@@ -111,7 +111,7 @@
           "rubric": [
             "The reply explains in one or two sentences why /compact cannot be sent and what happens instead",
             "Both threads are rotated before the overnight absence, the idle shopfront-web one included, and the reply mentions that in at most a clause",
-            "thread.sh rotate is described as waiting for each thread's STATUS: rotating, not run immediately after ROTATE",
+            "thread.py rotate is described as waiting for each thread's STATUS: rotating, not run immediately after ROTATE",
             "The away steer goes to the threads after rotation and says defaults apply at their deadlines and owner-before items wait",
             "The reply to the owner is short"
           ]
@@ -134,17 +134,17 @@
         {
           "name": "steers-web-thread",
           "type": "regex",
-          "pattern": "(?s)(?:Mail to shopfront-web/thread:|mail\\.sh send shopfront-web/thread).{0,300}?STEER:"
+          "pattern": "(?s)(?:Mail to shopfront-web/thread:|mail\\.py\"? send shopfront-web/thread).{0,300}?STEER:"
         },
         {
           "name": "steers-api-to-park-evals",
           "type": "regex",
-          "pattern": "(?is)(?:Mail to shopfront-api/thread:|mail\\.sh send shopfront-api/thread).{0,400}?STEER:.{0,300}?(?:eval|park|drop)"
+          "pattern": "(?is)(?:Mail to shopfront-api/thread:|mail\\.py\"? send shopfront-api/thread).{0,400}?STEER:.{0,300}?(?:eval|park|drop)"
         },
         {
           "name": "typo-routed-to-web",
           "type": "regex",
-          "pattern": "(?is)(?:Mail to shopfront-web/thread:|mail\\.sh send shopfront-web/thread)[\\s\\S]{0,800}?signup\\.tsx"
+          "pattern": "(?is)(?:Mail to shopfront-web/thread:|mail\\.py\"? send shopfront-web/thread)[\\s\\S]{0,800}?signup\\.tsx"
         },
         {
           "name": "no-self-fix",
@@ -188,7 +188,7 @@
         {
           "name": "rings-web-with-pointer",
           "type": "regex",
-          "pattern": "herdr agent prompt shopfront-web\\s+[\\\"'][^\\\"'\\n]{0,240}mail\\.sh read shopfront-web/thread"
+          "pattern": "herdr agent prompt shopfront-web\\s+(?:\"[^\"\\n]{0,240}mail\\.py'?|'[^'\\n]{0,240}mail\\.py) read shopfront-web/thread"
         },
         {
           "name": "leaves-blocked-dialog",
@@ -198,7 +198,7 @@
         {
           "name": "rearms-both-waits",
           "type": "regex",
-          "pattern": "(?s)mail\\.sh wait shopfront/main.*mail\\.sh wait shopfront-web/main|mail\\.sh wait shopfront-web/main.*mail\\.sh wait shopfront/main"
+          "pattern": "(?s)mail\\.py\"? wait shopfront/main.*mail\\.py\"? wait shopfront-web/main|mail\\.py\"? wait shopfront-web/main.*mail\\.py\"? wait shopfront/main"
         },
         {
           "name": "wake-quality",
@@ -220,7 +220,7 @@
         "fixtures/finish-local-build.md"
       ],
       "expected_behavior": [
-        "With local landing and the owner's go-ahead, MAIN runs thread.sh integrate shopfront, and thread.sh close shopfront either now (the archive keeps the pending diff) or once the owner has answered about the diff",
+        "With local landing and the owner's go-ahead, MAIN runs thread.py integrate shopfront, and thread.py close shopfront either now (the archive keeps the pending diff) or once the owner has answered about the diff",
         "The agents/researcher.md diff is not applied: the owner approved merging, not that change, so MAIN asks about it",
         "No hand-made git merge, worktree removal or branch deletion"
       ],
@@ -228,12 +228,12 @@
         {
           "name": "integrates",
           "type": "regex",
-          "pattern": "thread\\.sh integrate shopfront"
+          "pattern": "thread\\.py\"? integrate shopfront"
         },
         {
           "name": "closes-after-integrate",
           "type": "regex",
-          "pattern": "(?s)thread\\.sh integrate shopfront.*thread\\.sh close shopfront"
+          "pattern": "(?s)thread\\.py\"? integrate shopfront.*thread\\.py\"? close shopfront"
         },
         {
           "name": "no-manual-merge",
@@ -249,7 +249,7 @@
           "name": "finish-quality",
           "type": "judge",
           "rubric": [
-            "integrate runs through thread.sh; close runs through thread.sh after it, either now or deferred until the owner answers about the diff (the archive keeps the diff either way)",
+            "integrate runs through thread.py; close runs through thread.py after it, either now or deferred until the owner answers about the diff (the archive keeps the diff either way)",
             "The agents/researcher.md diff is shown or summarised and put to the owner for approval, not applied",
             "The reply is short and tells the owner what was merged where"
           ]

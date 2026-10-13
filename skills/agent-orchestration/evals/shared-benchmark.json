@@ -29,7 +29,7 @@
         {
           "name": "decision-request-to-main",
           "type": "regex",
-          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.sh send shopfront/main).{0,400}?STATUS: need-decision"
+          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.py\"? send shopfront/main).{0,400}?STATUS: need-decision"
         },
         {
           "name": "decision-has-default-and-deadline",
@@ -44,17 +44,17 @@
         {
           "name": "starts-signup-web",
           "type": "regex",
-          "pattern": "(?is)Agent:[^\\n]{0,200}signup-web|signup-web[^\\n]{0,120}\\bAgent:|lane\\.sh\\s+shopfront\\s+signup-web\\b"
+          "pattern": "(?is)Agent:[^\\n]{0,200}signup-web|signup-web[^\\n]{0,120}\\bAgent:|lane\\.py\"?\\s+shopfront\\s+signup-web\\b"
         },
         {
           "name": "arms-deadline-timer",
           "type": "regex",
-          "pattern": "wake-at\\.sh"
+          "pattern": "wake_at\\.py"
         },
         {
           "name": "records-through-state-helper",
           "type": "regex",
-          "pattern": "state\\.sh (?:log|set)|state\\.sh\\b[\\s\\S]{0,400}?\\$\\{?\\w+\\}? (?:log|set)\\b"
+          "pattern": "state\\.py\"? (?:log|set)|state\\.py\\b[\\s\\S]{0,400}?\\$\\{?\\w+\\}?\"? (?:log|set)\\b"
         },
         {
           "name": "turn-quality",
@@ -84,7 +84,7 @@
         {
           "name": "writes-resume-with-helper",
           "type": "regex",
-          "pattern": "state\\.sh resume"
+          "pattern": "state\\.py\"? resume"
         },
         {
           "name": "status-rotating",
@@ -94,7 +94,7 @@
         {
           "name": "resume-restarts-watchers",
           "type": "regex",
-          "pattern": "(?is)watch-gates\\.sh.{0,3000}wake-at\\.sh|wake-at\\.sh.{0,3000}watch-gates\\.sh"
+          "pattern": "(?is)watch_gates\\.py.{0,3000}wake_at\\.py|wake_at\\.py.{0,3000}watch_gates\\.py"
         },
         {
           "name": "no-compact",
@@ -104,7 +104,7 @@
         {
           "name": "no-new-lanes",
           "type": "not_regex",
-          "pattern": "(?m)^\\s*(?:\\S*/)?lane\\.sh\\s"
+          "pattern": "(?m)^\\s*(?:python3?\\s+)?(?:\\S*[\\\\/])?lane\\.py[\"']?\\s"
         },
         {
           "name": "no-new-workers",
@@ -140,7 +140,7 @@
         {
           "name": "status-working-to-main",
           "type": "regex",
-          "pattern": "(?s)(?:Mail to shopfront-web/main:|mail\\.sh send shopfront-web/main).{0,300}?STATUS: working"
+          "pattern": "(?s)(?:Mail to shopfront-web/main:|mail\\.py\"? send shopfront-web/main).{0,300}?STATUS: working"
         },
         {
           "name": "parks-ledger-and-evals",
@@ -155,12 +155,12 @@
         {
           "name": "typo-to-worker",
           "type": "regex",
-          "pattern": "(?is)Agent:[^\\n]{0,200}(?:opus|sonnet)[\\s\\S]{0,1500}?signup\\.tsx|lane\\.sh\\s+shopfront-web\\s+signup-web\\b[^\\n]*--model\\s+\\S+"
+          "pattern": "(?is)Agent:[^\\n]{0,200}(?:opus|sonnet)[\\s\\S]{0,1500}?signup\\.tsx|lane\\.py\"?\\s+shopfront-web\\s+signup-web\\b[^\\n]*--model\\s+\\S+"
         },
         {
           "name": "no-rate-limit-lane",
           "type": "not_regex",
-          "pattern": "(?i)(?:Agent:|lane\\.sh)[^\\n]{0,160}rate-limit"
+          "pattern": "(?i)(?:Agent:|lane\\.py)[^\\n]{0,160}rate-limit"
         },
         {
           "name": "steer-quality",
@@ -182,41 +182,41 @@
         "fixtures/land-local-approved.md"
       ],
       "expected_behavior": [
-        "LANDING is local, so the approved head lands with land-local.sh lane/signup-web 7e41c0a, checked with the repository's CI steps",
-        "No pull request, no push and no land.sh",
-        "The turn is recorded with state.sh and MAIN hears STATUS: working"
+        "LANDING is local, so the approved head lands with land_local.py lane/signup-web 7e41c0a, checked with the repository's CI steps",
+        "No pull request, no push and no land.py",
+        "The turn is recorded with state.py and MAIN hears STATUS: working"
       ],
       "assertions": [
         {
           "name": "lands-locally",
           "type": "regex",
-          "pattern": "land-local\\.sh\\s+lane/signup-web\\s+7e41c0a"
+          "pattern": "land_local\\.py\"?\\s+lane/signup-web\\s+7e41c0a"
         },
         {
           "name": "runs-repo-ci",
           "type": "regex",
-          "pattern": "land-local\\.sh(?:[^\\n]|\\\\\\n)*?--check(?:[^\\n]|\\\\\\n)*?npm (?:test|run lint)"
+          "pattern": "land_local\\.py(?:[^\\n]|\\\\\\n)*?--check(?:[^\\n]|\\\\\\n)*?npm (?:test|run lint)"
         },
         {
           "name": "no-pr-landing",
           "type": "not_regex",
-          "pattern": "(?m)^\\s*(?:\\S*/)?land\\.sh\\s|^\\s*gh pr (?:create|merge)|^\\s*git (?:-C \\S+ )?push"
+          "pattern": "(?m)^\\s*(?:python3?\\s+)?(?:\\S*[\\\\/])?land\\.py[\"']?\\s|^\\s*gh pr (?:create|merge)|^\\s*git (?:-C \\S+ )?push"
         },
         {
           "name": "reports-to-main",
           "type": "regex",
-          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.sh send shopfront/main).{0,300}?STATUS: working"
+          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.py\"? send shopfront/main).{0,300}?STATUS: working"
         },
         {
           "name": "records-state",
           "type": "regex",
-          "pattern": "state\\.sh (?:log|set)|state\\.sh\\b[\\s\\S]{0,400}?\\$\\{?\\w+\\}? (?:log|set)\\b"
+          "pattern": "state\\.py\"? (?:log|set)|state\\.py\\b[\\s\\S]{0,400}?\\$\\{?\\w+\\}?\"? (?:log|set)\\b"
         },
         {
           "name": "landing-quality",
           "type": "judge",
           "rubric": [
-            "The approved commit 7e41c0a is landed locally with land-local.sh and the repository's CI command, not by a pull request or a push",
+            "The approved commit 7e41c0a is landed locally with land_local.py and the repository's CI command, not by a pull request or a push",
             "The thread records the landing and tells MAIN in the protocol's format"
           ]
         }
@@ -230,7 +230,7 @@
         "fixtures/wake-on-mail.md"
       ],
       "expected_behavior": [
-        "mail.sh read shopfront/thread runs first, then the next mail wait starts in the background watching both lanes, before anything is acted on",
+        "mail.py read shopfront/thread runs first, then the next mail wait starts in the background watching both lanes, before anything is acted on",
         "MAIN's question is answered by mail from shopfront/thread with a STATUS first line",
         "catalog-web's hand-back is acted on: its review is started or queued with a brief"
       ],
@@ -238,17 +238,17 @@
         {
           "name": "reads-before-rearming",
           "type": "regex",
-          "pattern": "(?s)mail\\.sh read shopfront/thread.*?mail\\.sh wait shopfront/thread"
+          "pattern": "(?s)mail\\.py\"? read shopfront/thread.*?mail\\.py\"? wait shopfront/thread"
         },
         {
           "name": "rearm-watches-both-lanes",
           "type": "regex",
-          "pattern": "mail\\.sh wait shopfront/thread[^\\n]*--watch[^\\n]*(?:shopfront-catalog-web[^\\n]*shopfront-checkout-api|shopfront-checkout-api[^\\n]*shopfront-catalog-web)"
+          "pattern": "mail\\.py\"? wait shopfront/thread[^\\n]*--watch[^\\n]*(?:shopfront-catalog-web[^\\n]*shopfront-checkout-api|shopfront-checkout-api[^\\n]*shopfront-catalog-web)"
         },
         {
           "name": "answers-main-by-mail",
           "type": "regex",
-          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.sh send shopfront/main).{0,300}?STATUS: "
+          "pattern": "(?s)(?:Mail to shopfront/main:|mail\\.py\"? send shopfront/main).{0,300}?STATUS: "
         },
         {
           "name": "no-sendmessage",

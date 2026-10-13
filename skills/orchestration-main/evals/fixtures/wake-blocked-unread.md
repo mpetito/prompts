@@ -5,8 +5,8 @@ wrote at 13:30Z: "Carry on, ping me if you need me."
 
 Two builds run, `shopfront` and `shopfront-web`, and you keep one background wait for each:
 
-    ~/.claude/skills/agent-orchestration/scripts/mail.sh wait shopfront/main --watch shopfront=shopfront/thread
-    ~/.claude/skills/agent-orchestration/scripts/mail.sh wait shopfront-web/main --watch shopfront-web=shopfront-web/thread
+    python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py" wait shopfront/main --watch shopfront=shopfront/thread
+    python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py" wait shopfront-web/main --watch shopfront-web=shopfront-web/thread
 
 ## What woke you
 

@@ -10,7 +10,7 @@ Time now (from `date -u`): 2026-10-11T02:15Z.
 
 ## The message
 
-Your mail wait printed `MAIL 1`, and `mail.sh read shopfront-api/thread` printed:
+Your mail wait printed `MAIL 1`, and `mail.py read shopfront-api/thread` printed:
 
     From: shopfront-api/main
     Date: 2026-10-11T02:14:52Z
@@ -23,13 +23,13 @@ Your mail wait printed `MAIL 1`, and `mail.sh read shopfront-api/thread` printed
   worktree /home/dev/shopfront-wt-catalog-api on branch lane/catalog-api. Started 01:58Z; about 30 minutes
   left. Its brief is /home/dev/shopfront-api-orch-shopfront-api/.orchestration/briefs/catalog-api-fix-2.md.
 - Codex lane checkout-api, herdr agent `shopfront-api-checkout-api` (gpt-6), started 01:40Z with
-  `lane.sh shopfront-api checkout-api /home/dev/shopfront-wt-checkout-api .orchestration/briefs/checkout-api-author.md --kind codex --model gpt-6`.
+  `lane.py shopfront-api checkout-api /home/dev/shopfront-wt-checkout-api .orchestration/briefs/checkout-api-author.md --kind codex --model gpt-6`.
 - Subagent `b2f9` (opus) is reviewing plan v3 with the plan-review skill; about 10 minutes left. Its brief
   is /home/dev/shopfront-api-orch-shopfront-api/.orchestration/briefs/plan-v3-review.md.
-- Background task: `mail.sh wait shopfront-api/thread --watch shopfront-api-catalog-api,shopfront-api-checkout-api`;
+- Background task: `mail.py wait shopfront-api/thread --watch shopfront-api-catalog-api,shopfront-api-checkout-api`;
   it just ended with the mail above.
-- Background task: `watch-gates.sh 14 7d3e9aa --check ci`, waiting on PR #14 (signup-web).
-- Background task: `wake-at.sh 2026-10-11T09:00Z D2-deadline`, for decision D2.
+- Background task: `watch_gates.py 14 7d3e9aa --check ci`, waiting on PR #14 (signup-web).
+- Background task: `wake_at.py 2026-10-11T09:00Z D2-deadline`, for decision D2.
 
 ## Lanes, as in state.md
 

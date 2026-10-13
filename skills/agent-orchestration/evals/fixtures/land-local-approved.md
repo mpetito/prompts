@@ -28,7 +28,7 @@ Time now (from `date -u`): 2026-10-11T10:15Z.
 
     npm ci && npm run lint && npm test
 
-## What woke you: mail from the signup-web reviewer, read with `mail.sh read shopfront/thread`
+## What woke you: mail from the signup-web reviewer, read with `mail.py read shopfront/thread`
 
     From: shopfront/signup-web-review
 

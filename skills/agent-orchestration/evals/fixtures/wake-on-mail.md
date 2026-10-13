@@ -19,13 +19,13 @@ Time now (from `date -u`): 2026-10-11T11:20Z.
 
 Your background task
 
-    ~/.claude/skills/agent-orchestration/scripts/mail.sh wait shopfront/thread --watch shopfront-catalog-web,shopfront-checkout-api
+    python3 "$HOME/.claude/skills/agent-orchestration/scripts/mail.py" wait shopfront/thread --watch shopfront-catalog-web,shopfront-checkout-api
 
 ended with:
 
     MAIL 2
 
-## What `mail.sh read shopfront/thread` prints when you run it
+## What `mail.py read shopfront/thread` prints when you run it
 
     === 20261011T111805.412000000Z-40211.md
     From: shopfront/main

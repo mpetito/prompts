@@ -2,7 +2,7 @@
 
 Time now: 2026-10-11T09:20Z. The owner wrote: "Back. What do you need from me?"
 
-## Mail from the threads while the owner was away, from `mail.sh read <build>/main`, oldest first
+## Mail from the threads while the owner was away, from `mail.py read <build>/main`, oldest first
 
 1. From shopfront-api/thread, 23:10Z:
 
@@ -45,7 +45,7 @@ Time now: 2026-10-11T09:20Z. The owner wrote: "Back. What do you need from me?"
        Options: enable | keep free runners
        Default: none, owner-before
 
-## Output of `thread.sh decisions`
+## Output of `thread.py decisions`
 
     shopfront-web D4 Enable paid CI runners ($200/month) | owner-before
     shopfront-api D2 Payment provider for checkout | default: Stripe | applies at 2026-10-11T12:00Z
