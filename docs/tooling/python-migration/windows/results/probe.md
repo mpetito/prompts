@@ -139,3 +139,42 @@ it, and it was not tried here because it changes the owner's Codex config.
 
 Result: codex-sandbox fails with the desktop app quit. Per the handoff, the agent stopped here and did not
 run step 9.
+
+## Third run
+
+Date: 2026-10-13, about 19:51Z, at `0eb2f71`. The run used
+`--codex-windows-sandbox unelevated`, a per-run `-c windows.sandbox="unelevated"` override. The owner's
+`~/.codex/config.toml` was unchanged: its SHA-256 was the same before and after. The Codex desktop app was still
+quit (0 `node_repl` processes). Otherwise the run was as before; the evidence folder is `py-probe-3`.
+
+```
+PROBE host Windows-11-10.0.26220-SP0 python=3.14.2 evidence=%USERPROFILE%/AppData/Local/Temp/py-probe-3
+PROBE interpreters:python3 pass path=%USERPROFILE%\AppData\Local\Microsoft\WindowsApps\python3.EXE runs=True version='3.14.2 %USERPROFILE%\AppData\Local\Python\pythoncore-3.14-64\python.exe'
+PROBE interpreters:python pass path=%USERPROFILE%\AppData\Local\Programs\Python\Python314\python.EXE runs=True version='3.14.3 %USERPROFILE%\AppData\Local\Programs\Python\Python314\python.EXE'
+PROBE interpreters:py pass path=%USERPROFILE%\AppData\Local\Microsoft\WindowsApps\py.EXE runs=True version='3.14.2 %USERPROFILE%\AppData\Local\Python\pythoncore-3.14-64\python.exe'
+PROBE codex-sandbox fail launcher=codex.CMD windows_sandbox=unelevated exit=0 header='sandbox: workspace-write [workdir, /tmp, $TMPDIR, %USERPROFILE%\.orchestration-probe-42552\mail]' wrote=False
+PROBE hook-fires pass fired=exec,shell exit=0 claude=2.1.296 (Claude Code)
+PROBE hook-cost:exec:python3 pass median_ms=228 runs=20
+PROBE hook-cost:shell:python3 pass median_ms=340 runs=20
+PROBE hook-cost:exec:python pass median_ms=54 runs=20
+PROBE hook-cost:shell:python pass median_ms=169 runs=20
+```
+
+From `codex-sandbox.err.txt`, trimmed. The setup error is gone, but the command's shell never started:
+
+```
+exec
+"C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe\pwsh.exe" -Command "python3 -c ... .../mail/probe" in ...\probe-work-yvz__ej0
+ exited -1 in 0ms:
+Failed to create unified exec process: CreateProcessAsUserW failed: 5 (Access is denied.) | cwd=...\probe-work-yvz__ej0 | cmd="C:\Program Files\WindowsApps\Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe\pwsh.exe" -Command "..." | env_u16_len=7394 | si_flags=256 | creation_flags=134743040
+codex
+The command could not run: process creation failed with "Access is denied." I did not retry.
+```
+
+The shell codex chose is the Microsoft Store (MSIX) build of PowerShell 7, under `C:\Program Files\WindowsApps`. An
+untested hypothesis: the unelevated sandbox's restricted token cannot launch an executable from a Store package.
+If so, the same block would hit `python3` and `py` here, which are WindowsApps aliases, even with a
+non-Store shell. This was not tried, because it means installing a non-Store PowerShell or changing which shell
+codex uses.
+
+Result: codex-sandbox fails under the unelevated sandbox too. Per the handoff, step 9 runs with `--skip-codex`.
