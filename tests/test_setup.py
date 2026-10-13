@@ -385,6 +385,15 @@ class Run(SetupTest):
         self.assertLess(time.monotonic() - started, 15)
 
 
+class LinkDestination(SetupTest):
+    @unittest.skipUnless(os.name == "nt", "readlink gives \\\\?\\ substitute names only on Windows")
+    def test_a_unc_substitute_name_reads_as_a_share_path(self):
+        link = str(self.tmp / "link")
+        with unittest.mock.patch.object(sc, "is_link", return_value=True), \
+                unittest.mock.patch.object(os, "readlink", return_value="\\\\?\\UNC\\server\\share\\skills"):
+            self.assertTrue(sc.same_path(sc.link_destination(link), "\\\\server\\share\\skills"))
+
+
 class Usage(SetupTest):
     """Each script run as a program: a usage error exits 1."""
 

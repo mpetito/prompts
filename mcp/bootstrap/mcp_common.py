@@ -64,7 +64,9 @@ def read_json(path):
     if not os.path.exists(path):
         return {}
     text = Path(path).read_text(encoding="utf-8-sig")
-    text = _TRAILING_COMMA.sub(lambda m: m[1] or "", _COMMENT.sub(lambda m: m[1] or "", text))
+    # A comment gives way to its own line breaks, so a parse error names the line it is on in the file.
+    text = _COMMENT.sub(lambda m: m[1] or "\n" * m[0].count("\n"), text)
+    text = _TRAILING_COMMA.sub(lambda m: m[1] or "", text)
     try:
         config = json.loads(text)
     except ValueError as e:
@@ -100,7 +102,7 @@ def set_opencode_config(path, *, validate_only=False, what_if=False):
                                 " backup)"):
         backup_config(path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        Path(path).write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+        Path(path).write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def set_codex_startup_timeout(config_path, server_name, seconds=30):

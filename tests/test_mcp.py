@@ -237,6 +237,17 @@ class Install(McpTest):
         self.assertIn("JSON", err)
         self.assertEqual(self.cli.calls, [])
 
+    def test_a_json_error_names_its_line_in_the_file(self):
+        Path(self.paths.opencode_config).write_text('{\n/* a\nlong\ncomment */ // and one more\n"a": 1,\n"b" 2\n}\n')
+        code, _, err = self.install("--tools", "opencode", "--skip-credential-migration")
+        self.assertEqual(code, 1)
+        self.assertIn("line 6", err)
+
+    def test_non_ascii_text_is_written_as_it_was(self):
+        Path(self.paths.opencode_config).write_text('{"model": "café"}', encoding="utf-8")
+        self.install("--tools", "opencode", "--skip-gateway-setup", "--skip-credential-migration")
+        self.assertIn('"café"', Path(self.paths.opencode_config).read_text(encoding="utf-8"))
+
     def test_credentials_reach_docker_on_stdin(self):
         Path(self.paths.claude_config).write_text(
             '{"mcpServers":{"agent-mail":{"url":"https://mail.test/mcp?x=1&apiKey=mail+key%2B"},'

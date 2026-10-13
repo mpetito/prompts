@@ -31,7 +31,8 @@ def check_python():
         return f"python3 --version failed (exit {version.returncode})."
     info = sc.run(["python3", "-c", "import sys; print(sys.version_info[:2])"], timeout=60)
     found = tuple(int(n) for n in re.findall(r"\d+", info.stdout))
-    if info.returncode or found < MINIMUM:
+    # A failed -c prints no version, and () is below MINIMUM.
+    if found < MINIMUM:
         return f"python3 is {version.stdout.strip() or info.stdout.strip()}; scripts need 3.12 or later."
     print(f"[OK] python3: {version.stdout.strip()}")
     return None

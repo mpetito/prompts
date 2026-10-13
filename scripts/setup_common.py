@@ -2,8 +2,13 @@
 
 setup_paths gives every destination in one home. Linker makes a home's links to this checkout: it keeps a conflicting
 entry unless told to replace it, backs up what it replaces outside every skill discovery folder, and with what_if
-changes nothing and prints what it would do. A link belongs to this checkout when it points, one hop, at the exact
-repository path it would be made for. External commands run only through run(), so tests replace that one function.
+changes nothing and prints what it would do. External commands run only through run(), so tests replace that one
+function.
+
+A link belongs to this checkout only when it points, one hop, at the exact absolute repository path setup would make
+it for. That is deliberately not realpath, unlike the plan's path convention: ownership decides what setup may
+remove or replace, so it fails closed. A link spelled another way (an 8.3 name, a checkout reached through another
+link) reads as a conflict and is kept, never taken for ours.
 """
 import argparse
 import os
@@ -188,7 +193,9 @@ def link_destination(path):
     if not is_link(path):
         return None
     target = os.readlink(path)
-    # On Windows readlink gives the substitute name, which spells an absolute target \\?\C:\...
+    # On Windows readlink gives the substitute name, which spells an absolute target \\?\C:\... or \\?\UNC\server\...
+    if target.startswith("\\\\?\\UNC\\"):
+        target = "\\\\" + target[len("\\\\?\\UNC\\"):]
     target = target.removeprefix("\\\\?\\")
     return os.path.abspath(os.path.join(os.path.dirname(path), target))
 
