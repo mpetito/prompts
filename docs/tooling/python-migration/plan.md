@@ -114,7 +114,7 @@ Fixture prose in `.md` files is updated with its skill.
 - [x] 3. `skills/agent-orchestration/scripts/state.py`, `decisions.py`, `meter.py`, `wake_at.py`,
   `skills/agent-orchestration/tests/test_state.py`. Port their cases from `tests/run.sh`, then delete
   the four `.sh` files. Check: the suite passes with the source count.
-- [ ] 4. `skills/agent-orchestration/scripts/mail.py` and
+- [x] 4. `skills/agent-orchestration/scripts/mail.py` and
   `skills/agent-orchestration/tests/test_mail.py`: send, read and wait, plus `--home <path>` on
   every subcommand. A Codex lane's sandbox cannot see its pane's environment, so lane briefs pass
   `--home`, not an environment prefix.
