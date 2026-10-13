@@ -16,9 +16,7 @@ lane=""; [ "${1:-}" != --lane ] || { lane=1; worker=lane; }
 top=$(session_top "$cwd") || exit 0
 # A lane session starts in its own worktree, which holds no thread files; its owner's checkout is the repository's.
 [ -n "$lane" ] || [ -f "$top/.orchestration/thread.md" ] || [ -f "$top/.orchestration/state.md" ] || exit 0
-top=$(realpath -m -- "$top")
-case $path in /*) target=$path ;; *) target="$cwd/$path" ;; esac
-target=$(realpath -m -- "$target")
+target=$(canon_from "$cwd" "$path")
 while IFS= read -r owner; do
   [ -n "$owner" ] && [ "$owner" != "$top" ] || continue
   case "$target/" in "$owner/"*) ;; *) continue ;; esac

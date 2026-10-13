@@ -37,7 +37,8 @@ def main() -> None:
         return
     path = tool_input.get("file_path") or ""
     path = os.path.realpath(os.path.join(cwd, path))
-    if not path.startswith(build.rstrip("/") + "/"):
+    # join(build, "") ends it with the platform's separator, a backslash on Windows.
+    if not path.startswith(os.path.join(build, "")):
         return
     text = tool_input.get("new_string") or tool_input.get("content") or ""
     found = set(CLOCK.findall(text))
