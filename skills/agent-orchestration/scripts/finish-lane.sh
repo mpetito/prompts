@@ -18,12 +18,15 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -d "$wt" ] || { echo "no worktree at $wt" >&2; exit 1; }
-archive=$(realpath -m -- "$archive")
+archive=$(canon "$archive")
 git -C "$wt" rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "not a git worktree: $wt" >&2; exit 1; }
 # Only inside Herdr can a peer agent be running in the worktree; elsewhere there is nothing to ask.
 if command -v herdr >/dev/null && [ "${HERDR_ENV:-}" = 1 ]; then
-  # herdr reports absolute working directories, and a lane's sibling may share its name as a prefix.
-  live=$(herdr agent list 2>/dev/null | jq -r --arg wt "$(realpath -- "$wt")" '.result.agents[]? | select((.cwd // "") as $c | $c == $wt or ($c | startswith($wt + "/"))) | .name // .pane_id' || true)
+  # herdr reports absolute working directories in its own platform's form, and a lane's sibling may share its name
+  # as a prefix.
+  wtc=$(canon "$wt")
+  live=$(herdr agent list 2>/dev/null | jq -r '.result.agents[]? | select(.cwd) | [.cwd, .name // .pane_id] | @tsv' \
+    | while IFS=$'\t' read -r c name; do case "$(canon "$c")/" in "$wtc/"*) echo "$name" ;; esac; done || true)
   [ -z "$live" ] || { echo "refusing: agent(s) still run in $wt: $live" >&2; exit 1; }
 fi
 if [ -d "$wt/$scratch" ]; then

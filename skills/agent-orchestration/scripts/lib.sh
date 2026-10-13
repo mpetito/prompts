@@ -28,12 +28,16 @@ need_value() {
 # Git for Windows: native tools (git, herdr) report paths as C:/x or C:\x where bash says /c/x, and a native jq.exe
 # ends its lines with CRLF unless given -b (jq manual, --binary). canon <path> prints the one absolute form every
 # comparison uses: realpath -m of bash's own spelling, resolving a relative path against $PWD. Convert a native
-# tool's path with canon where it enters; native tools accept the bash form as an argument.
+# tool's path with canon where it enters; native tools accept the bash form as an argument. canon_from <dir> <path>
+# is canon of <path>, resolving a relative one against <dir> instead; there C:\x and C:/x are absolute too.
 case ${OSTYPE:-} in
   msys*|cygwin*)
     canon() { realpath -m -- "$(cygpath -u -- "$1")"; }
+    canon_from() { local p; p=$(cygpath -u -- "$2"); [[ $p == /* ]] || p="$1/$p"; canon "$p"; }
     jq() { command jq -b "$@"; } ;;
-  *) canon() { realpath -m -- "$1"; } ;;
+  *)
+    canon() { realpath -m -- "$1"; }
+    canon_from() { local p=$2; [[ $p == /* ]] || p="$1/$p"; canon "$p"; } ;;
 esac
 
 # The thread's files live in its coordination worktree's untracked .orchestration/ folder, found from any
@@ -70,9 +74,9 @@ owner_checkouts() {
   # (the directory holding the common git dir) and, when the owner works in a linked worktree, the record's CHECKOUT.
   local common dir
   common=$(git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
-  { dirname -- "$(realpath -m -- "$common")"
+  { dirname -- "$(canon "$common")"
     dir=$(thread_field "$1" CHECKOUT)
-    [ -z "$dir" ] || realpath -m -- "$dir"; } | awk '!seen[$0]++'
+    [ -z "$dir" ] || canon "$dir"; } | awk '!seen[$0]++'
 }
 
 archive_ignored() {

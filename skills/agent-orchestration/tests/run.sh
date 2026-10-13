@@ -271,6 +271,9 @@ git clone -q "$tmp/origin.git" "$tmp/wt"
 export MOCK_WT="$tmp/wt" LAND_POLL_SECONDS=0 WATCH_POLL_SECONDS=0
 printf 'body\n' > "$tmp/body.md"
 land() { "$here/scripts/land.sh" 7 "$tmp/wt" --check ci --subject "feat: x" --body-file "$tmp/body.md" 2>/dev/null; }
+# native <path>: <path> as a native tool (herdr, Claude Code, Python) gives it under Git for Windows, C:\x; elsewhere
+# unchanged. MSYS converts a /x argument for a native program but never a path inside JSON.
+native() { if command -v cygpath >/dev/null; then cygpath -w -- "$1"; else printf '%s\n' "$1"; fi; }
 
 # --- land.sh -------------------------------------------------------------------------------------------------
 "$here/scripts/land.sh" >/dev/null 2>&1 && fail "land.sh ran without arguments"
@@ -343,8 +346,8 @@ printf '%s' "$out" | grep -q 'archived ignored .eval-runs/' || fail "finish-lane
 printf '%s' "$out" | grep -q 'deleted branch lane-x' || fail "finish-lane.sh did not delete the lane branch"
 # Inside herdr, a lane named by a relative path is still refused while an agent runs there; a sibling isn't it.
 git -C "$tmp/seed" worktree add -q "$tmp/lane4" -b lane-w
-printf '{"result":{"agents":[{"name":"t-l4","agent_status":"idle","cwd":"%s/src"},{"name":"t-l40","agent_status":"idle","cwd":"%s0"}]}}' \
-  "$(realpath "$tmp/lane4")" "$(realpath "$tmp/lane4")" > "$MOCK_DIR/herdr-agents.json"
+jq -n --arg in "$(native "$(realpath -m "$tmp/lane4/src")")" --arg sib "$(native "$(realpath -m "$tmp/lane40")")" \
+  '{result:{agents:[{name:"t-l4",agent_status:"idle",cwd:$in},{name:"t-l40",agent_status:"idle",cwd:$sib}]}}' > "$MOCK_DIR/herdr-agents.json"
 (cd "$tmp" && HERDR_ENV=1 "$here/scripts/finish-lane.sh" lane4 "$tmp/archive4" 2>&1) | grep -qx "refusing: agent(s) still run in lane4: t-l4" || fail "finish-lane.sh missed an agent in a lane named by a relative path"
 jq '.result.agents |= map(select(.name != "t-l4"))' "$MOCK_DIR/herdr-agents.json" > "$tmp/db" && mv "$tmp/db" "$MOCK_DIR/herdr-agents.json"
 (cd "$tmp" && HERDR_ENV=1 "$here/scripts/finish-lane.sh" lane4 "$tmp/archive4" >/dev/null 2>&1) && [ ! -d "$tmp/lane4" ] || fail "finish-lane.sh took an agent in a sibling worktree for one in the lane"
@@ -444,7 +447,7 @@ AGENT=w1 writes "$gwc" "$gwapp/a.txt" | reason | grep -q 'Make the change in you
 # The session is the folder it started in: a cd into the owner's checkout changes nothing.
 CLAUDE_PROJECT_DIR="$gwc" writes "$gwapp" "$gwapp/a.txt" | denied || fail "guard-writes trusted a cwd moved into the owner's checkout"
 # An owner working in a linked worktree is protected through the record's CHECKOUT, and the main checkout always.
-sed -i "s#^CHECKOUT: .*#CHECKOUT: $gwl#" "$gwc/.orchestration/thread.md"
+printf '%s\n' '# record' 'BUILD: b1' "CHECKOUT: $(native "$gwl")" > "$gwc/.orchestration/thread.md"
 writes "$gwc" "$gwl/src/app.ts" | denied || fail "guard-writes ignored the record's CHECKOUT"
 writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes dropped the main checkout when the record named another"
 sed -i '/^CHECKOUT:/d' "$gwc/.orchestration/thread.md"
@@ -452,10 +455,18 @@ writes "$gwc" "$gwapp/a.txt" | denied || fail "guard-writes did not fall back to
 printf 'CHECKOUT: %s\n' "$gwapp" >> "$gwc/.orchestration/thread.md"
 [ -z "$(writes "$tmp/plain" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from outside git"
 [ -z "$(writes "$tmp/nostate" "$gwapp/a.txt")" ] || fail "guard-writes noted a write from a worktree with no thread files"
+# Claude Code on Windows sends native paths, with either separator.
+if command -v cygpath >/dev/null; then
+  for form in -w -m; do
+    writes "$(cygpath $form "$gwc")" "$(cygpath $form "$gwapp/a.txt")" | denied || fail "guard-writes allowed the owner's checkout given cygpath $form paths"
+    writes "$(cygpath $form "$gwc")" "..\\app\\a.txt" | denied || fail "guard-writes allowed a relative path into the owner's checkout given a cygpath $form cwd"
+    [ -z "$(writes "$(cygpath $form "$gwc/sub")" "$(cygpath $form "$gwc/src/app.ts")")" ] || fail "guard-writes noted its own worktree given cygpath $form paths"
+  done
+fi
 
 # --- guard-timestamps.py -------------------------------------------------------------------------------------
 printf 'state at 10:00Z\n' > "$gwc/.orchestration/notes.md"
-edit() { jq -n --arg cwd "${2:-$gwc}" --arg p "${3:-$gwc/.orchestration/notes.md}" --arg s "$1" '{cwd:$cwd,tool_input:{file_path:$p,new_string:$s}}' | with_agent | python3 -I "$here/hooks/guard-timestamps.py"; }
+edit() { jq -n --arg cwd "$(native "${2:-$gwc}")" --arg p "$(native "${3:-$gwc/.orchestration/notes.md}")" --arg s "$1" '{cwd:$cwd,tool_input:{file_path:$p,new_string:$s}}' | with_agent | python3 -I "$here/hooks/guard-timestamps.py"; }
 edit "approved at 14:30Z" | noted '14:30Z' || fail "timestamps hook should advise on a new clock time"
 edit "stopped 07:3xZ" | noted '07:3xZ' || fail "timestamps hook should advise on an estimated time"
 [ -z "$(edit "see 10:00Z above")" ] || fail "timestamps hook noted a time already in the file"
