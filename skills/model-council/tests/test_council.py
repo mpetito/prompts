@@ -382,5 +382,6 @@ class Usage(unittest.TestCase):
                 r = subprocess.run([sys.executable, module.__file__, *argv], capture_output=True, text=True)
                 self.assertEqual((r.returncode, r.stdout, r.stderr), (1, "", message + "\n"))
 
+
 if __name__ == "__main__":
     unittest.main()

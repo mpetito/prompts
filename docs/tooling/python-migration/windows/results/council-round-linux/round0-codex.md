@@ -1,13 +1,23 @@
-The defect is real at the cache API boundary. User IDs overlap across tenants by contract (`users.py:1`), but `cache_key` ignores its existing `tenant_id` argument (`cache.py:5–6`). The dictionary is shared across tenants (`cache.py:1–2`), and a cache hit returns the stored object without running the requesting tenant’s loader (`cache.py:11–13`).
+The defect is real: `cache_key` accepts `tenant_id` but omits it from the key (`cache.py:5–6`). The cache is shared across tenants (`cache.py:1–2`), and user IDs repeat across tenants by design (`users.py:1–6`). Two tenants requesting the same resource for user `1` therefore share a cache entry. A hit returns the existing value without invoking the second tenant’s loader (`cache.py:9–13`).
 
-A read-only, in-memory Python probe confirmed the failure: after tenant A cached user `1`’s `profile`, tenant B’s lookup returned A’s exact object and never called B’s loader. Leaving this unchanged permits cross-tenant disclosure whenever cached values contain tenant-private data; it also returns incorrect results even for nonsensitive values.
+A read-only reproduction using `python3 -B` confirmed this behavior:
 
-The smallest valid change is `return f"{tenant_id}:{user_id}:{resource}"`. It preserves the existing string-key convention and requires no signature or caller changes (`cache.py:5–10`). An in-memory replacement passed assertions for separate tenant results and repeated same-tenant cache hits. Its maintenance cost is one additional key component.
+```text
+user ids: 1, 1
+keys: '1:profile', '1:profile'
+tenant-b result: 'tenant-a private entry'
+loaders invoked: ['tenant-a']
+CONFIRMED: tenant-b receives tenant-a cached value and bypasses its loader
+```
 
-The strongest evidence against this conclusion is the “per-request cache” wording (`cache.py:1`): external code might clear or isolate the cache between requests. However, that same line explicitly describes a process-wide dictionary shared by every tenant, and the supplied implementation contains no reset (`cache.py:1–13`). No application callers were supplied, so I could not verify deployment reachability, actual private payloads, or external isolation. Identifier types and delimiter constraints are also unspecified; the probe validates ordinary distinct tenant IDs, not every possible string encoding.
+Leaving the code unchanged permits cross-tenant disclosure if cached values contain private data; it also returns the wrong tenant’s data even when confidentiality is irrelevant (`cache.py:12–13`). The reproduction establishes the mechanism, not an observed production disclosure.
+
+Adding `tenant_id` to the existing string key is a one-line change that follows the current formatting convention (`cache.py:6`). Both lookup and insertion already use that helper, so no caller or cache-management changes are needed (`cache.py:10–13`).
+
+The strongest evidence against changing it is the absence of application call sites: I could not verify that deployed requests actually share resources or cache tenant-specific values. However, tenant-local user IDs and the explicitly shared cache support the collision directly (`users.py:1`, `cache.py:1`). I also could not verify identifier-format constraints; adding a tenant prefix does not establish collision freedom for arbitrary colon-containing inputs. No files were edited.
 
 stance: initial
 disposition: defect
 action: Change cache.py:6 to return f"{tenant_id}:{user_id}:{resource}".
 decisive: cache.py:6
-crux: Different tenants can access the same cache dictionary using overlapping user IDs and the same resource.
+crux: Different tenants can call this shared cache with equal user_id and resource values for tenant-specific data.

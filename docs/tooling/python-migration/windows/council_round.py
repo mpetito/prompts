@@ -2,7 +2,7 @@
 
     python3 council_round.py [--codex-model <id>] [--claude-model <id>] [--minutes <n, default 20>]
 
-Run it from PowerShell on Windows, with the Codex desktop app closed; on Linux it checks the script itself. It builds
+Run it from PowerShell on Windows, with every other Codex session closed; on Linux it checks the script itself. It builds
 a throwaway repository holding one small decision, fills the blind-round template in references/member-prompt.md
 for each member, runs the Codex member through codex_member.py and the Claude member through `claude -p` with no
 edit tools, tallies the round with tally.py, and prints one line per check:
@@ -10,15 +10,19 @@ edit tools, tallies the round with tally.py, and prints one line per check:
     ROUND <check> pass|fail <facts>
 
 Checks:
-- preflight: codex and claude are on PATH; their versions.
+- preflight: codex and claude are on PATH; their versions. On Windows it refuses to start while any other Codex
+  process runs (the CLI, the desktop app, an IDE's): they all write the same sandbox log, so another session's lines
+  could stand in for this run's.
 - codex-member: a MEMBER done line.
 - sandbox-mode: the argv codex_member.py's run() received carries -c windows.sandbox="unelevated" on Windows and no
   windows.sandbox elsewhere, and Codex ran shell commands. On Windows, Codex's own sandbox log
   ($CODEX_HOME/.sandbox/sandbox*.log) must also show the mode: this run added START lines, which Codex writes for
   each command it runs in its Windows sandbox, and no "setup refresh: spawning" line, which only the elevated path
-  writes, once per command, as it starts codex-windows-sandbox-setup.exe. That is codex-rs/windows-sandbox-rs at
-  rust-v0.162.1 (identity.rs require_logon_sandbox_creds, setup.rs run_setup_refresh_payload,
-  unified_exec/backends/legacy.rs); the docs say nothing about the log.
+  writes, once per command, as it starts codex-windows-sandbox-setup.exe; and no other Codex process may be running
+  once the member is done. That is codex-rs/windows-sandbox-rs at rust-v0.162.1 (identity.rs
+  require_logon_sandbox_creds, setup.rs run_setup_refresh_payload, unified_exec/backends/legacy.rs); the docs say
+  nothing about the log, so the facts name the installed version and say when the rule is unverified for it. Only
+  the counts are kept: the log is shared, and its lines are never saved.
 - claude-member: an answer block.
 - read-only: the repository is unchanged.
 - tally: a COUNCIL line that is not incomplete.
@@ -26,13 +30,13 @@ Checks:
 Then it exits 1 if any check failed.
 
 Evidence goes to results/council-round-<windows|linux>/ beside this script, replaced on each run: both prompts, both
-answers, Codex's event stream and log, the argv run() received, the sandbox log lines this run added, and the printed
-lines (round.txt). The folder is committed to a public repository, so every saved file is scrubbed: the home folder
+answers, Codex's event stream and log, the argv run() received, and the printed lines (round.txt). The folder is committed to a public repository, so every saved file is scrubbed: the home folder
 becomes ~ (%USERPROFILE% on Windows), the user name <user> and the Codex session id <session>, and the event
 stream keeps each command but not its output.
 """
 import argparse
 import contextlib
+import csv
 import getpass
 import io
 import json
@@ -50,6 +54,10 @@ sys.path.insert(0, str(COUNCIL / "scripts"))
 
 import codex_member  # noqa: E402
 import run as spawn  # noqa: E402  (codex_member's spawn helper)
+
+WINDOWS = os.name == "nt"
+# The Codex release whose source the sandbox-log rule was read from.
+LOG_RULE_VERSION = "0.162.1"
 
 FILES = {
     "cache.py": '''"""The per-request cache, one process-wide dict shared by every tenant."""
@@ -168,12 +176,24 @@ def log_lines_since(before):
     return added
 
 
+def codex_processes():
+    """'<image> (<pid>)' for each running Codex process on Windows, any image named codex*: the CLI, the desktop app
+    and their sandbox helpers. Empty elsewhere, where Codex keeps no shared sandbox log."""
+    if not WINDOWS:
+        return []
+    rows = csv.reader(run(["tasklist", "/FO", "CSV", "/NH"])[1].splitlines())
+    return [f"{r[0]} ({r[1]})" for r in rows if len(r) > 1 and r[0].lower().startswith("codex")]
+
+
 def council_round(a, repo, out):
     codex, claude = shutil.which("codex"), shutil.which("claude")
     versions = {name: run([exe, "--version"])[1].strip() if exe else "missing"
                 for name, exe in (("codex", codex), ("claude", claude))}
-    if not report("preflight", bool(codex and claude), f"python={sys.version.split()[0]} "
-                  f"codex={versions['codex']!r} claude={versions['claude']!r}"):
+    others = codex_processes()
+    facts = f"python={sys.version.split()[0]} codex={versions['codex']!r} claude={versions['claude']!r}"
+    if others:
+        facts += f" other_codex={others}: close every Codex session (CLI, desktop app, IDE) and run again"
+    if not report("preflight", bool(codex and claude) and not others, facts):
         return
     repo.mkdir()
     for name, body in FILES.items():
@@ -189,8 +209,8 @@ def council_round(a, repo, out):
     code, member_line, argv = member([repo, out / "round0-codex.prompt.md", out / "round0-codex.md",
                                       "--model", a.codex_model, "--effort", "high", "--timeout", f"{a.minutes}m"])
     sandbox_log = log_lines_since(before)
+    others = codex_processes()
     (out / "codex-argv.json").write_text(json.dumps(argv, indent=1), encoding="utf-8")
-    (out / "sandbox-log.txt").write_text("".join(line + "\n" for line in sandbox_log), encoding="utf-8")
     report("codex-member", code == 0 and member_line.startswith("MEMBER done "), member_line)
     flag = 'windows.sandbox="unelevated"' in argv
     any_flag = any(x.startswith("windows.sandbox=") for x in argv)
@@ -198,13 +218,17 @@ def council_round(a, repo, out):
     ran, bad = commands(events) if events.is_file() else (0, 0)
     starts = sum("START: " in line for line in sandbox_log)
     helper = sum("setup refresh: spawning" in line for line in sandbox_log)
-    if os.name == "nt":
-        mode_ok = flag and starts > 0 and helper == 0
+    installed = re.search(r"\d+\.\d+\.\d+", versions["codex"])
+    rule = f"rust-v{LOG_RULE_VERSION}" + ("" if installed and installed[0] == LOG_RULE_VERSION else
+                                          ", unverified for this version")
+    if WINDOWS:
+        mode_ok = flag and starts > 0 and helper == 0 and not others
     else:
         mode_ok = not any_flag
     report("sandbox-mode", mode_ok and ran > bad,
            f"os={os.name} argv_unelevated={flag} commands_ran={ran} commands_failed={bad} "
-           f"sandbox_log_start={starts} sandbox_log_setup_helper={helper}")
+           f"sandbox_log_start={starts} sandbox_log_setup_helper={helper} other_codex={others or 'none'} "
+           f"codex={installed[0] if installed else 'unknown'} log_rule={rule}")
 
     code, stdout, stderr = run([claude, "-p", "--model", a.claude_model, "--disallowedTools", "Edit,Write,NotebookEdit"],
                                cwd=repo, timeout=a.minutes * 60, stdin=out / "round0-claude.prompt.md")
@@ -228,7 +252,7 @@ def home_forms():
     Windows 8.3 short name (TEMP often uses it), and each of those JSON-escaped."""
     home = str(Path.home())
     forms = {home, os.path.realpath(home), Path(home).as_posix()}
-    if os.name == "nt":
+    if os.name == "nt":  # a real Windows API, whatever WINDOWS is set to
         import ctypes
         buf = ctypes.create_unicode_buffer(1024)
         if ctypes.windll.kernel32.GetShortPathNameW(home, buf, 1024):
@@ -258,13 +282,13 @@ def scrub(out):
             (event.get("item") or {}).pop("aggregated_output", None)
             kept.append(json.dumps(event, ensure_ascii=False))
         events.write_text("".join(line + "\n" for line in kept), encoding="utf-8")
-    mask = "%USERPROFILE%" if os.name == "nt" else "~"
+    mask = "%USERPROFILE%" if WINDOWS else "~"
     user = re.compile(rf"(?i)\b{re.escape(getpass.getuser())}\b")
     left = []
     for f in sorted(out.iterdir()):
         text = f.read_text(encoding="utf-8", errors="replace")
         for form in home_forms():
-            text = re.sub(re.escape(form), lambda _: mask, text, flags=re.IGNORECASE if os.name == "nt" else 0)
+            text = re.sub(re.escape(form), lambda _: mask, text, flags=re.IGNORECASE if WINDOWS else 0)
         text = user.sub("<user>", text)
         if session:
             text = text.replace(session, "<session>")
@@ -280,7 +304,7 @@ def main(argv):
     p.add_argument("--claude-model", default="opus")
     p.add_argument("--minutes", type=int, default=20)
     a = p.parse_args(argv)
-    out = HERE / "results" / f"council-round-{'windows' if os.name == 'nt' else 'linux'}"
+    out = HERE / "results" / f"council-round-{'windows' if WINDOWS else 'linux'}"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
     root = Path(tempfile.mkdtemp(prefix="council-round-")).resolve()

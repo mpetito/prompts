@@ -177,21 +177,32 @@ own sandbox log which mode ran the member's commands. Don't edit `~/.codex/confi
 
 1. **Check out the branch:** `git fetch mpetito py/council`, then
    `git worktree add -b py/council ..\prompts-council mpetito/py/council` and `cd ..\prompts-council`.
-2. **Quit the Codex desktop app** and confirm no `node_repl` process is left
-   (`Get-Process node_repl -ErrorAction SilentlyContinue`). The round reads the lines it adds to
-   `%USERPROFILE%\.codex\.sandbox\sandbox.<date>.log`, and the app would write there too.
+2. **Close every Codex session:** the desktop app, any `codex` CLI session or herdr lane, and an IDE's
+   Codex extension. Confirm with `Get-Process codex*, node_repl -ErrorAction SilentlyContinue`, which
+   should print nothing. They all write `%USERPROFILE%\.codex\.sandbox\sandbox.<date>.log`, the log the
+   round reads, so the round's preflight refuses to start while any `codex*` process runs, and
+   sandbox-mode fails if one appears during the round.
 3. **Run the round from PowerShell 7's MSI build,** in a new window, so a non-Store `pwsh` comes first
    on PATH as in the fourth probe run:
    `python3 docs\tooling\python-migration\windows\council_round.py`. It makes one Codex call and one
    Claude call, takes about five minutes, and prints one `ROUND` line per check.
 4. **Record the results.** The script writes `docs/tooling/python-migration/windows/results/council-round-windows/`,
    already scrubbed for a public repository (`%USERPROFILE%`, `<user>`, `<session>`, no command output).
-   The `scrubbed` check fails if anything survives; then commit nothing and report. Otherwise commit that
-   folder, then `git pull --rebase mpetito py/council` and `git push mpetito py/council`.
+   The `scrubbed` check fails if anything survives; then commit nothing and report. Otherwise read every
+   file in the folder before committing: the answers and Codex's messages are kept verbatim, and nothing
+   in them may name a project, a person or a private path. Then commit that folder,
+   `git pull --rebase mpetito py/council` and `git push mpetito py/council`.
 5. **Then:**
-   - **Every check passes:** report that, and the round is done.
+   - **Every check passes:** report that, and the round is done. If sandbox-mode's facts say
+     `unverified for this version`, the installed Codex is not the release the log rule was read from
+     (0.162.1). Report it with the version, and the Linux session rechecks the rule against that release.
+   - **`preflight` fails with `other_codex=...`:** a Codex process is still running. Close it (step 2)
+     and run the round again.
    - **`sandbox-mode` fails with `sandbox_log_setup_helper` above 0:** Codex took the elevated path, so
-     the override did not reach it. Stop and report, with `sandbox-log.txt`.
+     the override did not reach it. Stop and report the `ROUND` lines. The sandbox log is shared and is
+     never committed.
+   - **`sandbox-mode` fails with `other_codex=...`:** another Codex process started during the round.
+     Close it and run the round again.
    - **`sandbox-mode` fails with `sandbox_log_start=0`:** no command went through the Windows sandbox.
      If `round0-codex.log` shows `CreateProcessAsUserW ... Access is denied`, the Store `pwsh` came first
      on PATH: record `(Get-Command pwsh -All).Source`. Stop and report.

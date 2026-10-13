@@ -1,35 +1,29 @@
-## Findings
+I agree with the reviewer: this is a real cross-tenant leak, and the fix is to add `tenant_id` to the key.
 
-**The problem is real.** Nothing in the repo prevents it.
+**Is the problem real?**
+- `cache.py:5-6`: `cache_key(tenant_id, user_id, resource)` takes `tenant_id` but never uses it. It returns `f"{user_id}:{resource}"`.
+- `cache.py:1-2`: the docstring says `_cache` is "one process-wide dict shared by every tenant". So nothing else separates tenants, such as a separate dict per tenant or per process.
+- `users.py:1` and `users.py:4-6`: "User ids are allocated per tenant: every tenant's first user is 1". `next_user_id` increments a counter on each tenant. So user ids repeat across tenants by design.
+- `cache.py:9-13`: `get` stores whatever `load()` returns the first time a key is seen, and returns it on every later call. It never checks which tenant an entry belongs to, and entries never expire.
 
-1. **The key leaves out the tenant.** `cache_key` takes `tenant_id` but never uses it: it returns `f"{user_id}:{resource}"` (`cache.py:5-6`). `get` passes `tenant_id` in (`cache.py:10`), and that argument is the only tenant information `get` has. It is then thrown away.
+**How it fails:** tenant A's user 1 calls `get("A", 1, "profile", loadA)`, which caches A's data under `"1:profile"`. Then tenant B's user 1 calls `get("B", 1, "profile", loadB)`. The key is again `"1:profile"`, so B gets A's data and `loadB` never runs. A different tenant id is the only thing that tells these two calls apart, and the key ignores it.
 
-2. **The store is shared across tenants.** The module docstring says so directly: "one process-wide dict shared by every tenant" (`cache.py:1`). `_cache` is a module global (`cache.py:2`). Nothing in either file clears it, partitions it, or expires entries. The word "per-request" in the docstring might suggest a reset per request, but no code does one.
+**Is there a guard that refutes it?** I found none. The repository has only two files (`git ls-files`: `cache.py`, `users.py`). Nothing checks the tenant before the key is built or after a hit, and there are no tests that pin down any other intended behaviour.
 
-3. **User ids repeat across tenants.** `users.py:1` says "every tenant's first user is 1". `next_user_id` increments a counter stored on each tenant object (`users.py:4-6`). So tenant A's user 1 and tenant B's user 1 both produce the key `"1:<resource>"`.
+**Strongest evidence against my conclusion:** nothing in this repository calls `get` or `cache_key`. So I can't show a live code path that triggers it, and that is the only argument for "no change". It is weak, for two reasons:
+- The function's own signature takes `tenant_id`. The only plausible reason to pass it is to scope the key, so ignoring it breaks the function's evident contract no matter who calls it.
+- The module docstring says the cache is shared across tenants, which is the situation that triggers the bug.
 
-4. **The failure path.** Tenant A calls `get("A", 1, "profile", loadA)`. The entry is stored under `"1:profile"` (`cache.py:11-12`). Tenant B then calls `get("B", 1, "profile", loadB)`. The key is already present, so `loadB` never runs and B receives A's data (`cache.py:13`). This is a cross-tenant read, as the reviewer said.
+A caller elsewhere could put the tenant into `resource` or `user_id`, but nothing in the repository suggests it does. I could not verify callers outside this repository.
 
-**Is there a guard that refutes it?** I looked for one and found none: no tenant prefix in callers, no namespacing, no assertion, no test. The tracked files are only `cache.py` and `users.py`.
+**Is the fix worth it?** Yes. It is a one-line change with no new mechanism: `return f"{tenant_id}:{user_id}:{resource}"`. The function already receives the argument. Old keys simply stop matching, and since the cache lives in one process and starts empty, nothing needs migrating.
 
-## Strongest evidence against my conclusion
+One small point: if any part can contain `:`, joining with `:` can make two different inputs produce the same key. Returning a tuple, `(tenant_id, user_id, resource)`, avoids that and is just as simple. The leak itself is fixed by either form.
 
-- **No callers.** Nothing in the repo calls `get` or `cache_key`. I could not trace a real call site, so I can't show that callers pass a `user_id` from `next_user_id`, or that they don't add a tenant prefix to `resource` themselves.
-  - That is the crux. If every caller already scoped `resource` by tenant, the cache would be safe today, though only by convention.
-  - Even so, `get`'s signature accepts `tenant_id` explicitly. A caller would reasonably expect the cache to use it. Ignoring it breaks the function's evident contract, so the defect remains.
-- **Unverified starting value.** The "first user is 1" claim depends on `last_user_id` starting at 0. That is set wherever tenants are created, which isn't in the repo. I rely on the docstring at `users.py:1` for it.
-- **Nothing was run.** No tests exist and I executed nothing; this conclusion comes from reading the code only.
-
-## Is the fix worth its complexity?
-
-Yes. It is a one-line change that uses an argument the function already receives: `return f"{tenant_id}:{user_id}:{resource}"`.
-
-A tuple key, `(tenant_id, user_id, resource)`, would also avoid ambiguity if an id or resource ever contains `:`. Either way, there is no new mechanism.
-
-Leaving it as is means a cross-tenant data leak, and that cost far outweighs the change.
+**What I could not verify:** I ran nothing, and no tests exist. I don't know of any callers outside this repository, or whether tenant ids or resources can contain `:`.
 
 stance: initial
 disposition: defect
-action: change cache_key in cache.py:6 to include tenant_id, e.g. return f"{tenant_id}:{user_id}:{resource}"
+action: change cache.py:6 to build the key from all three arguments, e.g. return f"{tenant_id}:{user_id}:{resource}" (or the tuple (tenant_id, user_id, resource))
 decisive: cache.py:6
-crux: That user_id values collide across tenants in the shared process-wide _cache (users.py:1 "every tenant's first user is 1"); if user ids were globally unique, the key would not leak across tenants.
+crux: user ids are not unique across tenants (users.py:1 says every tenant's first user is 1); if user ids were globally unique, the key without the tenant could not collide
