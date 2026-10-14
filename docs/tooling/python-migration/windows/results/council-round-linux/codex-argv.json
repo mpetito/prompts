@@ -2,7 +2,7 @@
  "codex",
  "exec",
  "--cd",
- "~/dev/council-round-6a5cbc09",
+ "~/dev/council-round-4570f3f8/repo",
  "--sandbox",
  "read-only",
  "--ignore-user-config",

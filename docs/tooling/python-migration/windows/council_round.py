@@ -3,7 +3,8 @@
     python3 council_round.py [--codex-model <id>] [--claude-model <id>] [--minutes <n, default 20>]
 
 Run it from PowerShell on Windows, with every other Codex session closed; on Linux it checks the script itself. It builds
-a throwaway repository holding one small decision, beside this checkout (below), fills the blind-round template in references/member-prompt.md
+a throwaway repository holding one small decision and a packet folder with one evidence file, both beside this
+checkout (below), fills the blind-round template in references/member-prompt.md
 for each member, runs the Codex member through codex_member.py and the Claude member through `claude -p` with no
 edit tools, tallies the round with tally.py, and prints one line per check:
 
@@ -13,8 +14,9 @@ Checks:
 - preflight: codex and claude are on PATH; their versions. On Windows it refuses to start while any other Codex
   process runs (the CLI, the desktop app, an IDE's): they all write the same sandbox log, so another session's lines
   could stand in for this run's.
-- codex-member: a MEMBER done line, an answer that quotes the REVIEW_PIN value planted in cache.py (only a member
-  that read the repository can), and no command that failed because access was denied.
+- codex-member: a MEMBER done line, an answer that quotes the REVIEW_PIN value planted in cache.py and the
+  PACKET_PIN value planted in the packet file (only a member that read both can), and no command that failed
+  because access was denied.
 - sandbox-mode: the argv codex_member.py's run() received carries -c windows.sandbox="unelevated" on Windows and no
   windows.sandbox elsewhere, and Codex ran shell commands. On Windows, Codex's own sandbox log
   ($CODEX_HOME/.sandbox/sandbox*.log) must also show the mode: this run added START lines, which Codex writes for
@@ -24,14 +26,15 @@ Checks:
   require_logon_sandbox_creds, setup.rs run_setup_refresh_payload, unified_exec/backends/legacy.rs); the docs say
   nothing about the log, so the facts name the installed version and say when the rule is unverified for it. Only
   the counts are kept: the log is shared, and its lines are never saved.
-- claude-member: an answer block that quotes the REVIEW_PIN value.
+- claude-member: an answer block that quotes both values.
 - read-only: the repository is unchanged.
 - tally: a COUNCIL line that is not incomplete.
 - scrubbed: no home path, user name or command output is left in the saved evidence (below).
 Then it exits 1 if any check failed.
 
-The throwaway repository is a sibling of this checkout, where a real council's checkout lives, and is created with
-the folder's inherited permissions. Under %TEMP% it was unreadable to Codex's unelevated sandbox: Python 3.13+ gives a
+The round's folder, council-round-<hex>, holds repo/ and packet/ and is a sibling of this checkout, where a real
+council's checkout lives, created with the folder's inherited permissions. The packet file stands for the scratch
+files SKILL.md step 1 has the coordinator write, which the Codex member also reads inside its sandbox. Under %TEMP% it was unreadable to Codex's unelevated sandbox: Python 3.13+ gives a
 tempfile.mkdtemp folder an ACL for the current user and administrators only (os.mkdir docs), and the sandbox's
 restricted token reads only what the ACL also grants to a group such as Users or Everyone (stablyai/orca#24306;
 Codex's docs say only that it uses ACL-based boundaries).
@@ -128,13 +131,16 @@ def git(cwd, *args):
     return run(["git", "-C", cwd, *args])[1].strip()
 
 
-def blind_prompt(member, repo, head):
-    """The blind-round template from member-prompt.md with this round's decision, focus and evidence filled in."""
+def blind_prompt(member, repo, head, notes):
+    """The blind-round template from member-prompt.md with this round's decision, focus and evidence filled in; notes
+    is the packet's evidence file."""
     text = (COUNCIL / "references" / "member-prompt.md").read_text(encoding="utf-8")
     template = re.search(r"## Blind round\n+~~~~text\n(.*?)~~~~", text, re.DOTALL)[1]
     evidence = (f"Repository {Path(repo).as_posix()} at commit {head}, a clean working tree: read cache.py and "
-                "users.py there, and quote the value of REVIEW_PIN in cache.py once in your answer. Nothing has been "
-                "run; no tests exist. Observed: the code as committed. Assumed: nothing else.")
+                f"users.py there. The operations notes are the packet file {Path(notes).as_posix()}, outside the "
+                "repository. Quote the value of REVIEW_PIN in cache.py and of PACKET_PIN in the notes once each in "
+                "your answer. Nothing has been run; no tests exist. Observed: the code as committed. Assumed: nothing "
+                "else.")
     for label, value in (("Decision:", DECISION), ("Your focus:", FOCUS[member]), ("Evidence", evidence)):
         template = re.sub(rf"({re.escape(label)}[^\n]*\n)<.*?>\n", lambda m: m[1] + value + "\n", template, count=1,
                           flags=re.DOTALL)
@@ -163,13 +169,15 @@ def commands(events):
     return ran, bad, denied
 
 
-def codex_read(out, pin):
-    """(ok, facts) for whether the Codex member read the repository: its answer quotes pin and no command was denied
-    access. A member that could read nothing still answers, so a MEMBER done line alone proves nothing."""
+def codex_read(out, *pins):
+    """(ok, facts) for whether the Codex member read the repository and the packet: its answer quotes every pin and no
+    command was denied access. A member that could read nothing still answers, so a MEMBER done line proves nothing."""
     answer = out / "round0-codex.md"
-    quoted = answer.is_file() and pin in answer.read_text(encoding="utf-8", errors="replace")
+    text = answer.read_text(encoding="utf-8", errors="replace") if answer.is_file() else ""
+    quoted = sum(pin in text for pin in pins)
     ran, bad, denied = commands(out / "round0-codex.jsonl")
-    return quoted and not denied, f"pin_quoted={quoted} commands_failed={bad} access_denied={denied}"
+    return quoted == len(pins) and not denied, \
+        f"pins_quoted={quoted}/{len(pins)} commands_failed={bad} access_denied={denied}"
 
 
 def member(argv):
@@ -216,7 +224,14 @@ def codex_processes():
             if len(r) > 1 and r[0].lower().startswith("codex") and r[0].lower() != SANDBOX_SERVICE]
 
 
-def council_round(a, repo, out):
+# The packet's evidence file; PACKET_PIN is replaced by a fresh value on each run.
+NOTES = """# Operations notes
+PACKET_PIN = @PIN@
+One process serves every tenant, and each tenant numbers its users from 1.
+"""
+
+
+def council_round(a, root, out):
     codex, claude = shutil.which("codex"), shutil.which("claude")
     versions = {name: run([exe, "--version"])[1].strip() if exe else "missing"
                 for name, exe in (("codex", codex), ("claude", claude))}
@@ -226,17 +241,21 @@ def council_round(a, repo, out):
         facts += f" other_codex={others}: close every Codex session (CLI, desktop app, IDE) and run again"
     if not report("preflight", bool(codex and claude) and not others, facts):
         return
-    # Plain mkdir, never mkdtemp: the folder must inherit its parent's ACL, as a real checkout does (module header).
-    repo.mkdir()
-    pin = secrets.token_hex(6)
+    # Plain mkdir, never mkdtemp: the folders must inherit their parent's ACL, as a real checkout does (module header).
+    repo, packet = root / "repo", root / "packet"
+    for d in (root, repo, packet):
+        d.mkdir()
+    pin, packet_pin = secrets.token_hex(6), secrets.token_hex(6)
     for name, body in FILES.items():
         (repo / name).write_text(body.replace("@PIN@", pin), encoding="utf-8", newline="\n")
+    notes = packet / "ops-notes.md"
+    notes.write_text(NOTES.replace("@PIN@", packet_pin), encoding="utf-8", newline="\n")
     run(["git", "init", "-q", repo])
     git(repo, "add", ".")
     git(repo, "-c", "user.name=council", "-c", "user.email=council@example.invalid", "commit", "-q", "-m", "init")
     head = git(repo, "rev-parse", "HEAD")
     for name in ("codex", "claude"):
-        (out / f"round0-{name}.prompt.md").write_text(blind_prompt(name, repo, head), encoding="utf-8")
+        (out / f"round0-{name}.prompt.md").write_text(blind_prompt(name, repo, head, notes), encoding="utf-8")
 
     before = sandbox_logs()
     code, member_line, argv = member([repo, out / "round0-codex.prompt.md", out / "round0-codex.md",
@@ -244,7 +263,7 @@ def council_round(a, repo, out):
     sandbox_log = log_lines_since(before)
     others = codex_processes()
     (out / "codex-argv.json").write_text(json.dumps(argv, indent=1), encoding="utf-8")
-    read, read_facts = codex_read(out, pin)
+    read, read_facts = codex_read(out, pin, packet_pin)
     report("codex-member", code == 0 and member_line.startswith("MEMBER done ") and read, f"{member_line} {read_facts}")
     flag = 'windows.sandbox="unelevated"' in argv
     any_flag = any(x.startswith("windows.sandbox=") for x in argv)
@@ -264,12 +283,14 @@ def council_round(a, repo, out):
            f"sandbox_log_start={starts} sandbox_log_setup_helper={helper} other_codex={others or 'none'} "
            f"codex={installed[0] if installed else 'unknown'} log_rule={rule}")
 
-    code, stdout, stderr = run([claude, "-p", "--model", a.claude_model, "--disallowedTools", "Edit,Write,NotebookEdit"],
+    code, stdout, stderr = run([claude, "-p", "--model", a.claude_model, "--disallowedTools", "Edit,Write,NotebookEdit",
+                                "--add-dir", packet],
                                cwd=repo, timeout=a.minutes * 60, stdin=out / "round0-claude.prompt.md")
     (out / "round0-claude.md").write_text(stdout, encoding="utf-8")
     block = re.search(r"(?im)^\s*disposition:\s*(\S+)", stdout)
-    report("claude-member", code == 0 and bool(block) and pin in stdout,
-           f"exit={code} disposition={block[1] if block else 'none'} pin_quoted={pin in stdout}"
+    quoted = sum(p in stdout for p in (pin, packet_pin))
+    report("claude-member", code == 0 and bool(block) and quoted == 2,
+           f"exit={code} disposition={block[1] if block else 'none'} pins_quoted={quoted}/2"
            + (f" stderr={stderr.strip()[:200]!r}" if code else ""))
 
     status = git(repo, "status", "--porcelain")
@@ -347,15 +368,15 @@ def main(argv):
     out = HERE / "results" / f"council-round-{'windows' if WINDOWS else 'linux'}"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
-    repo = CHECKOUT.parent / f"council-round-{secrets.token_hex(4)}"
+    root = CHECKOUT.parent / f"council-round-{secrets.token_hex(4)}"
     try:
-        council_round(a, repo, out)
+        council_round(a, root, out)
     except KeyboardInterrupt:
         report("interrupted", False)
     finally:
         # git leaves its objects read-only, which stops a delete on Windows.
-        if repo.exists():
-            shutil.rmtree(repo, onexc=lambda f, p, _: (os.chmod(p, stat.S_IWRITE), f(p)))
+        if root.exists():
+            shutil.rmtree(root, onexc=lambda f, p, _: (os.chmod(p, stat.S_IWRITE), f(p)))
         (out / "round.txt").write_text("".join(line + "\n" for line in lines), encoding="utf-8")
         left = scrub(out)
         report("scrubbed", not left, f"files_with_a_home_path_user_name_or_command_output={left or 'none'}")

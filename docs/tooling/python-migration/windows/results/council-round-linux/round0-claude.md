@@ -1,26 +1,28 @@
-**Verdict: this is a real defect.** At commit 0978f82, `cache.py` pins `REVIEW_PIN = "4ef41f8f1114"` (`cache.py:2`). I found nothing in the code that prevents the leak.
+**Is the problem real?** Yes. I traced the claimed failure and found no guard that prevents it.
 
-**Tracing the claimed failure**
-- `cache_key(tenant_id, user_id, resource)` takes `tenant_id` as a parameter but never uses it. It returns `f"{user_id}:{resource}"` (`cache.py:6-7`).
-- `get` builds its key from that function and only calls `load()` on a miss. On a hit it returns the stored value whoever is asking (`cache.py:10-14`).
-- The store is module-level `_cache = {}` (`cache.py:3`). The module docstring calls it "one process-wide dict shared by every tenant" (`cache.py:1`).
-- User ids repeat across tenants: "every tenant's first user is 1" (`users.py:1`). `next_user_id` increments a counter held on each tenant object (`users.py:4-6`), so the ids are not global.
-- So it fails like this. `get("A", 1, "profile", loadA)` stores `"1:profile"` → A's data. Then `get("B", 1, "profile", loadB)` finds `"1:profile"` already there and returns A's data without calling `loadB`. That is a cross-tenant read, as the reviewer said.
+- **The key ignores the tenant.** `cache_key` accepts `tenant_id` but never uses it: `return f"{user_id}:{resource}"` (`cache.py:6-7`).
+- **One dict serves every tenant.** `_cache = {}` is a single module-level dict (`cache.py:3`), and the module docstring says it is "one process-wide dict shared by every tenant" (`cache.py:1`).
+- **User ids repeat across tenants.** The docstring says "every tenant's first user is 1" (`users.py:1`). `next_user_id` increments a counter on each tenant (`users.py:4-6`). The ops notes say the same: "One process serves every tenant, and each tenant numbers its users from 1" (`ops-notes.md:3`).
+- **The first tenant's value wins.** In `get`, if the key is already present, `load()` is skipped and the stored value is returned (`cache.py:10-14`). So tenant A's user 1 loads `profile` under the key `"1:profile"`. Tenant B's user 1 then asks for `profile`, B's own `load` never runs, and B receives A's data.
 
-**Looking for a guard that refutes it**
-- **Nothing namespaces the key or splits the dict by tenant.** `git ls-files` shows only `cache.py` and `users.py`. There is no per-tenant dict, no prefix, and no wrapper.
-- **The cache is never cleared.** The docstring says "per-request cache", which could suggest a reset per request. But nothing in the repo empties `_cache`, and the same docstring says the dict is process-wide and shared by every tenant. Even with a per-request reset, the leak would remain whenever two tenants share a request or a worker is reused without a reset.
-- **`load` can't act as a guard.** A tenant-scoped loader can't help, because on a hit `load` is never called (`cache.py:12`).
-- **User ids are not globally unique.** If they were, the key would be safe. `users.py:1` and `users.py:4-6` say they are per tenant.
+**Looking for something that refutes it, I found nothing:**
+- No code namespaces the cache by tenant and nothing clears it. There is no `clear`, reset, or per-request hook anywhere; the repository is only `cache.py` and `users.py`.
+- "Per-request" in the docstring does not save it. The dict lives at module level for the life of the process, and that same line says it is shared by every tenant.
+- The only thing that would make the key safe is user ids being unique across all tenants. Two independent sources say they are not (`users.py:1`, `ops-notes.md:3`).
+- The strongest argument against acting is that nothing in the repository calls `get` and there are no tests. That makes "reachable in production" an inference from the module contract, not something I observed. But the contract stated in the docstring is exactly the failing configuration, so I don't think that changes the answer.
 
-**The strongest point against my conclusion:** the repo contains no callers of `get` or `cache_key` and no tests, and nothing has been run. So I can't show a real code path where two tenants reach `get` in the same process. I also can't rule out an outside layer, such as a process per tenant or a cache wipe between requests, that isn't in the evidence. Against that, the module says outright that the dict is "shared by every tenant" (`cache.py:1`), which describes exactly that deployment. Also, `tenant_id` being threaded into `cache_key` and then ignored looks like an oversight, not a choice.
+**Is the fix worth its complexity?** Yes. `tenant_id` is already a parameter and `get` already passes it through (`cache.py:11`), so the fix is a one-line body change with no signature change and no caller edits. I'd return a tuple `(tenant_id, user_id, resource)` instead of extending the f-string. With the string, a `tenant_id` or `resource` containing `:` could make two different triples produce the same key. The key is only used as a dict key inside this module, so the tuple costs nothing. An f-string `f"{tenant_id}:{user_id}:{resource}"` would also close the reported leak if tenant ids never contain colons.
 
-**Is the fix worth its complexity?** Yes. It is a one-line change that uses a parameter every caller already passes, so no signature changes. The alternative, a dict per tenant, would add more machinery for the same result. One small point: `f"{tenant_id}:{user_id}:{resource}"` could in principle collide if a tenant id contains `:`. Using a tuple key `(tenant_id, user_id, resource)` avoids that at no extra cost, and either form fixes the reported leak. Existing cached entries use the old key format, which is harmless: they just become misses.
+**Pins:** `REVIEW_PIN = "59c6c96fd35e"` (`cache.py:2`). `PACKET_PIN = 41c5f3bef068` (`ops-notes.md:2`).
 
-**What I couldn't verify:** real callers, the deployment model (process per tenant or not), any per-request reset outside this repo, and the types of `tenant_id` and `resource`. No tests exist, so none were run.
+**What I could not verify:**
+- Real callers of `get`, since none are in the repository.
+- The type and format of `tenant_id`.
+- Whether something outside this repository clears `_cache` between requests or depends on the string key format.
+- Nothing was run and no tests exist.
 
 stance: initial
 disposition: defect
-action: change cache_key in cache.py to include tenant_id, e.g. return f"{tenant_id}:{user_id}:{resource}" (or the tuple (tenant_id, user_id, resource))
+action: change cache_key in cache.py to return (tenant_id, user_id, resource) so the key includes tenant_id
 decisive: cache.py:7
-crux: user ids are allocated per tenant and overlap (users.py:1, users.py:4-6) while _cache is one dict shared by every tenant (cache.py:1,3); if user ids were globally unique, or the cache were isolated per tenant, the key would not leak
+crux: That user_id is unique only within a tenant (users.py:1, ops-notes.md:3); if user ids were globally unique, the key could not collide across tenants.

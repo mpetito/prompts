@@ -187,16 +187,17 @@ own sandbox log which mode ran the member's commands. Don't edit `~/.codex/confi
    on PATH as in the fourth probe run:
    `python3 docs\tooling\python-migration\windows\council_round.py`. It makes one Codex call and one
    Claude call, takes about five minutes, and prints one `ROUND` line per check. It builds its throwaway
-   repository beside the checkout (`D:\council-round-<hex>` for `D:\prompts-council`) and removes it at
-   the end.
+   repository, and a packet folder with one evidence file outside it, beside the checkout
+   (`D:\council-round-<hex>\repo` and `...\packet` for `D:\prompts-council`), and removes both at the end.
    - The first round built it under `%TEMP%` with `tempfile.mkdtemp`, which on Python 3.13+ gets an ACL
      for the current user and administrators only. Codex's unelevated sandbox could list that folder
      but read none of its files.
    - A real council runs on a checkout like `D:\prompts`, whose files inherit the drive's ACL. So the
      round's repository now lives there too, created with the parent's inherited permissions.
-   - Each member must quote a `REVIEW_PIN` value that exists only in the repository's `cache.py`. A member
-     that could not read the repository fails `codex-member` or `claude-member`, and so does any command
-     refused with "access denied".
+   - Each member must quote a `REVIEW_PIN` value that exists only in the repository's `cache.py`, and a
+     `PACKET_PIN` that exists only in the packet file. The packet stands for the scratch files a real
+     council writes (SKILL.md step 1). A member that could not read either fails `codex-member` or
+     `claude-member`, and so does any command refused with "access denied".
 4. **Record the results.** The script writes `docs/tooling/python-migration/windows/results/council-round-windows/`,
    already scrubbed for a public repository (`%USERPROFILE%`, `<user>`, `<session>`, no command output).
    The `scrubbed` check fails if anything survives; then commit nothing and report. Otherwise read every
@@ -217,7 +218,7 @@ own sandbox log which mode ran the member's commands. Don't edit `~/.codex/confi
    - **`sandbox-mode` fails with `sandbox_log_start=0`:** no command went through the Windows sandbox.
      If `round0-codex.log` shows `CreateProcessAsUserW ... Access is denied`, the Store `pwsh` came first
      on PATH: record `(Get-Command pwsh -All).Source`. Stop and report.
-   - **`codex-member` fails with `pin_quoted=False` or `access_denied` above 0:** the Codex member could
-     not read the repository even beside the checkout. Stop and report the `ROUND` lines and
+   - **`codex-member` fails with `pins_quoted` below 2/2 or `access_denied` above 0:** the Codex member
+     could not read the repository or the packet, even beside the checkout. Stop and report the `ROUND` lines and
      `(Get-Acl D:\).Access | Format-Table IdentityReference, FileSystemRights`.
    - **Any other failure:** stop and report the `ROUND` lines and the matching evidence file.

@@ -17,7 +17,9 @@ for the human, not for models.
 
 ## Procedure
 
-1. **Pin the evidence.** One scratch directory per council, absolute paths. Write the packet: the
+1. **Pin the evidence.** One scratch directory per council, absolute paths. On native Windows, keep
+   it outside your user profile (beside the checkout) or inline the evidence: Codex's unelevated
+   sandbox can't read a folder only you may open, such as one in `%TEMP%`. Write the packet: the
    exact question and candidate actions (always including no change), base and head SHAs, the diff
    with untracked contents for uncommitted work, call sites, contracts and docs with versions
    (quoted: members have no network), test results already run, and what is observed versus
