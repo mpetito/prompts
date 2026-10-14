@@ -416,6 +416,21 @@ Fixture prose in `.md` files is updated with its skill.
   `git ls-files ':!archive' ':!**/evals/fixtures/**' | grep -E '\.(sh|ps1|psm1|js)$'` prints
   nothing, and
   `git grep -nE '\b(pwsh|node) [^ ]*\.(ps1|js)\b' -- <reference excludes>` prints nothing.
+
+  That grep misses `pwsh -NoProfile -File ./x.ps1` and bare script names, so the step is checked with a wider
+  one, which prints nothing:
+  `git grep -nE '\b(pwsh|node)\b.*\.(ps1|psm1|js)\b|setup-skills-link\.ps1|verify-setup\.ps1|run-skill-eval|Setup\.Common|Mcp\.Common|check-assertions\.py|stage-plugin-baseline' -- <reference excludes>`.
+  `statusline.js` is checked apart from it: setup removes the old link by that name, so
+  `git grep -l 'statusline\.js' -- <reference excludes>` lists exactly `setup_skills_link.py` and
+  `tests/test_setup.py`.
+
+  Linux, 2026-10-14, before phase 2: both greps hold, and every suite passes 5 times with every core busy.
+  - CI runs the seven suites; the PowerShell parse check is gone.
+  - Setup links `~/.claude/statusline.py`. It removes `~/.claude/statusline.js` only when that is a link into
+    this checkout, and never under `--what-if` or in verification. All 6 assertions phase 3 added to
+    `Setup.Tests.ps1` are ported.
+  - `--what-if` prints the same lines as main's `-WhatIf`, empty home and populated.
+  - The file check still lists model-council's three `.sh` files, which phase 2 ports.
 - [ ] 20. Evals for each skill whose text changed in this phase, as in step 10. Then the owner merges the phase's
   pull request.
 
