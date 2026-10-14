@@ -30,7 +30,7 @@ A skill enters `skills/` only when all five hold. Start from the archived text a
    The first readmissions skip this item: the maintainer accepts their gaps as known
    (skill-authoring, readmitted 2026-10-09, is one). The other four items still apply.
 2. **Three behaviour evals** in the `skill-eval-harness` manifest format used by
-   `scripts/run-skill-eval.ps1`, each with a fixture trap, each failing without the skill and
+   `scripts/run_skill_eval.py`, each with a fixture trap, each failing without the skill and
    passing with it. Trigger cases come after, not instead. Use `skills/pull-request/evals/` as
    the reference suite.
 3. **One consumer role**, named in the first line of the body: orchestrator (loaded once per
@@ -40,7 +40,7 @@ A skill enters `skills/` only when all five hold. Start from the archived text a
 4. **No overlap** with the harness, an enabled plugin, or a sibling skill. The review and
    pull-request skills must beat the official plugins on the same fixtures (`-Baseline`, see
    [evaluating-skills.md](../evaluating-skills.md)) or stay archived. A rule has one home.
-5. **Loads within 30 days** of readmission, measured by `python3 scripts/skill-usage.py`, or
+5. **Loads within 30 days** of readmission, measured by `python3 scripts/skill_usage.py`, or
    it returns to the archive. Run the script monthly.
 
 ## What the audit said to change on the way back

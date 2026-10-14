@@ -29,6 +29,7 @@ python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent
 python3 -m unittest discover -s skills/pull-request/tests -t skills/pull-request
 python3 -m unittest discover -s statusline/tests -t statusline
 python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
+python3 -m unittest discover -s scripts/tests -t scripts
 bash skills/model-council/tests/run.sh
 ```
 
@@ -55,7 +56,7 @@ invisible to every client. A skill (old or new) enters `skills/` only through th
 [docs/skill-audit/readmission.md](docs/skill-audit/readmission.md): a recorded gap in
 `docs/skill-audit/candidates.md`, three behaviour evals that fail without it, one named
 consumer role with its line budget, no overlap with the harness or a sibling, and loads within
-30 days of readmission (`python3 scripts/skill-usage.py`). Start a readmission from the
+30 days of readmission (`python3 scripts/skill_usage.py`). Start a readmission from the
 archived text and the audit's review of it, never from a blank file.
 
 ## After adding or renaming a skill
@@ -71,7 +72,7 @@ Edits *inside* an already-linked skill need no rerun — they are visible immedi
 
 ## After changing a skill
 
-If the skill has an `evals/` suite, run it with the previous revision as the `-Baseline` arm
+If the skill has an `evals/` suite, run it with the previous revision as the `--baseline` arm
 and compare pass rates, judge scores and trigger rates.
 [docs/evaluating-skills.md](docs/evaluating-skills.md) gives the commands and says which run
 fits which edit.

@@ -124,14 +124,14 @@ tokens; shortening, extending or removing a skill is judged by rerunning the sam
 
 ```sh
 uv tool install skill-eval-harness
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pull-request -Runs 3       # one skill
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Skill pull-request -TriggerOnly  # description edits
-pwsh -NoProfile -File ./scripts/run-skill-eval.ps1 -Regrade .eval-runs/<skill>/<timestamp>
+python3 scripts/run_skill_eval.py --skill pull-request --runs 3        # one skill
+python3 scripts/run_skill_eval.py --skill pull-request --trigger-only   # description edits
+python3 scripts/run_skill_eval.py --regrade .eval-runs/<skill>/<timestamp>
 ```
 
 [docs/evaluating-skills.md](docs/evaluating-skills.md) says which run fits which edit, how to
-compare against an earlier revision or a competing skill (`-Baseline`), how to read the
-results, what each arm can see, and how to evaluate an agent definition (`-AgentDefinition`).
+compare against an earlier revision or a competing skill (`--baseline`), how to read the
+results, what each arm can see, and how to evaluate an agent definition (`--agent-definition`).
 
 Authoring rules for a suite: each case produces text from a fixture under `evals/fixtures/`,
 because a headless run has no shell or network; every assertion traces to a rule in the skill
