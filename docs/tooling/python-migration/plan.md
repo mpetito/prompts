@@ -434,6 +434,24 @@ Fixture prose in `.md` files is updated with its skill.
 - [ ] 20. Evals for each skill whose text changed in this phase, as in step 10. Then the owner merges the phase's
   pull request.
 
+  2026-10-14, before phase 2, Opus at high effort, against main's revision (b6d94ce). Phase 4 changed one skill's
+  text so far: pull-request, only in `evals/` (the Python baseline and assertion scripts and their README). The
+  harness mounts a skill without `evals/`, so both arms ran byte-identical skill text. model-council comes with
+  phase 2.
+
+  | Runs per arm | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
+  |---|---|---|---|
+  | 1 | 1.00 / 0.89 | 1.00 / 0.96 | 0.77 / 0.86 |
+
+  - The judge gap is one criterion: f1's `cc-not-settled-alone`, 0.3 against 0.9. The new arm left Cc open but
+    argued its case at length, and offered model-council as an option, where the rubric wants the decision handed
+    to model-council. Elsewhere the baseline lost more: r1's `finds-defects` scored 0.85 against the new arm's 1.0.
+    With the same text in both arms, the gap is one answer's variance.
+  - Triggers, 3 runs per query: should-fire 15/15, should-not-fire 11/15. None of the four is a `pull-request`
+    Skill call: three are reads of the mounted file on the CONTRIBUTING.md query, and one is a read after the model
+    called `code-review`. This matches phase 3's measurement.
+  - Cost: about USD 8.4, made up of answer runs 3.39, judge 0.45 and triggers 4.60.
+
 ## Follow-ups
 
 - **Codex lanes on Windows: resolved on 2026-10-13** (`windows/results/probe.md` fourth run, and `windows/results/smoke.md`
