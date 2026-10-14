@@ -31,7 +31,7 @@ CLIENTS = ("codex", "claude", "opencode", "copilot")
 CLAUDE_FILES = (
     ("agents", "agents"),
     ("instructions/CLAUDE.md", "CLAUDE.md"),
-    ("statusline/statusline.js", "statusline.js"),
+    ("statusline/statusline.py", "statusline.py"),
 )
 
 
@@ -296,11 +296,10 @@ class Linker:
                 self.remove_stale(os.path.join(path, name), os.path.join(source, name))
         return complete
 
-    def remove_stale(self, path, source):
+    def remove_stale(self, path, source, action="Remove stale repository skill link"):
         """Remove the link at path when it points exactly at source and source is gone from the repository. Any
-        other entry, a dangling link elsewhere included, is left alone."""
-        if not os.path.exists(source) and is_repo_link(path, source) and \
-                should(self.what_if, path, "Remove stale repository link"):
+        other entry, a dangling link elsewhere included, is left alone. action names the removal in a preview."""
+        if not os.path.exists(source) and is_repo_link(path, source) and should(self.what_if, path, action):
             os.unlink(path)
 
     def remove_legacy_codex_links(self, repo, paths):

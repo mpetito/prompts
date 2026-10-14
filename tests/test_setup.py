@@ -48,7 +48,7 @@ class Linking(SetupTest):
             (self.repo / "skills" / name).mkdir()
             (self.repo / "skills" / name / "data.txt").write_text("source\n")
         (self.repo / "instructions" / "CLAUDE.md").write_text("instructions\n")
-        (self.repo / "statusline" / "statusline.js").write_text("// script\n")
+        (self.repo / "statusline" / "statusline.py").write_text("# script\n")
         for module in (SETUP, VERIFY):
             patcher = unittest.mock.patch.object(module, "REPO", str(self.repo))
             patcher.start()
@@ -89,6 +89,29 @@ class Linking(SetupTest):
             self.assertTrue(sc.is_repo_link(os.path.join(root, "example"), self.source), root)
         self.assertTrue(sc.is_repo_link(os.path.join(self.paths.claude_root, "CLAUDE.md"),
                                         str(self.repo / "instructions" / "CLAUDE.md")))
+        self.assertTrue(sc.is_repo_link(os.path.join(self.paths.claude_root, "statusline.py"),
+                                        str(self.repo / "statusline" / "statusline.py")))
+
+    def test_setup_alone_removes_the_retired_status_line_link_and_only_when_it_is_ours(self):
+        self.setup("--tools", "claude")
+        retired = os.path.join(self.paths.claude_root, "statusline.js")
+        symlink(str(self.repo / "statusline" / "statusline.js"), retired)
+        call(VERIFY, "--tools", "claude", "--home-directory", self.dest)
+        self.assertTrue(os.path.lexists(retired), "verification must never remove it")
+        self.setup("--tools", "claude", "--what-if")
+        self.assertTrue(os.path.lexists(retired), "a preview must not remove it")
+        self.setup("--tools", "codex")
+        self.assertTrue(os.path.lexists(retired), "setup without claude must not remove it")
+        self.assertEqual(self.setup("--tools", "claude")[0], 0)
+        self.assertFalse(os.path.lexists(retired), "setup must remove the link into this checkout")
+        others = {"a real file": lambda: Path(retired).write_text("mine"),
+                  "a link elsewhere": lambda: symlink(str(self.tmp / "other" / "statusline.js"), retired)}
+        for kind, make in others.items():
+            with self.subTest(kind=kind):
+                make()
+                self.setup("--tools", "claude")
+                self.assertTrue(os.path.lexists(retired), f"a statusline.js that is {kind} must be left alone")
+                os.unlink(retired)
 
     def test_a_valid_relative_link_stays_as_it_is(self):
         self.setup("--tools", "codex")
@@ -201,7 +224,9 @@ class Linking(SetupTest):
         skills = self.repo / "skills"
         destinations = [(self.paths.shared_skills, skills), (self.paths.copilot_skills, skills),
                         (os.path.join(self.paths.claude_root, "skills"), skills), (str(self.legacy), skills),
-                        *((os.path.join(self.paths.claude_root, name), source) for name, source in claude.items())]
+                        *((os.path.join(self.paths.claude_root, name), source) for name, source in claude.items()),
+                        (os.path.join(self.paths.claude_root, "statusline.js"),
+                         self.repo / "statusline" / "statusline.js")]
 
         def conflicting_folder(path, _):
             os.makedirs(os.path.join(path, "example"))
@@ -322,7 +347,6 @@ class Linking(SetupTest):
         self.assertEqual(call(SETUP, "--tools", "codex")[0], 0)
         self.assertTrue(sc.is_repo_link(os.path.join(self.home, ".agents", "skills", "example"), self.source))
 
-
     def test_a_placeholder_first_on_path_fails_verification(self):
         bin_dir = self.tmp / "bin"
         bin_dir.mkdir()
@@ -363,6 +387,11 @@ class Python(SetupTest):
 
     def test_python_3_11_fails(self):
         self.assertRegex(self.check(version=(0, "Python 3.11.9\n"), info=(0, "(3, 11)\n")), "3.11.9")
+
+    def test_a_version_query_that_fails_or_prints_nothing_fails(self):
+        for info in ((1, ""), (0, ""), (1, "Traceback (most recent call last):\n")):
+            with self.subTest(info=info):
+                self.assertIsNotNone(self.check(info=info))
 
     def test_python_3_12_and_later_pass(self):
         self.assertIsNone(self.check())

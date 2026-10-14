@@ -6,6 +6,7 @@ entry is kept and setup ends incomplete (exit 1) unless --replace-conflicts back
 changes nothing and prints what setup would do. An explicit --home-directory isolates every destination and ignores
 the clients' environment overrides.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -34,6 +35,10 @@ def main(argv):
             complete = False
     if "codex" in selected:
         linker.remove_legacy_codex_links(REPO, paths)
+    if "claude" in selected:
+        # The Node status line became statusline.py. Its old link goes only while it points into this checkout.
+        linker.remove_stale(os.path.join(paths.claude_root, "statusline.js"),
+                            os.path.join(REPO, "statusline", "statusline.js"), "Remove retired status line link")
     if args.what_if:
         print("Preview complete. No files were changed.")
     elif not complete:
