@@ -75,6 +75,7 @@ visible immediately after `git pull`; restart clients if they cache their skill 
   with `python3 <script.py>` from Bash or PowerShell.
 - The Claude status line needs Python 3.12+, Git, a machine-local `settings.json` entry and a
   Nerd Font; see [`statusline/README.md`](../statusline/README.md).
+- Claude Code plugins are not linked; install them from the list in [plugins.md](plugins.md).
 - MCP configuration is a separate opt-in step; see [`mcp/README.md`](../mcp/README.md). Docker
   Engine alone is insufficient: the profiles also require the Docker MCP Toolkit and their
   configured secret backend. Credentials and generated configuration stay machine-local.

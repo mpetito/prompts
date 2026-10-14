@@ -9,6 +9,7 @@ Current reference for using and changing the repository.
 | [setup.md](setup.md) | Linking skills, agents, instructions and the status line into each client; overrides, conflicts, migration, optional dependencies |
 | [authoring.md](authoring.md) | Cross-tool portability rules, progressive disclosure, Claude-only frontmatter, agent format |
 | [agents.md](agents.md) | The subagents: what each is for, model tiers, write access, output contracts |
+| [plugins.md](plugins.md) | The Claude Code plugins every machine should have, and the commands to install them |
 | [agent-model-selection.md](agent-model-selection.md) | The canonical policy for choosing a worker's model before any delegation |
 | [evaluating-skills.md](evaluating-skills.md) | Running, reading and writing a skill's or agent's eval suite |
 | [skill-audit/readmission.md](skill-audit/readmission.md) | The bar an archived or new skill must clear to enter `skills/` |
