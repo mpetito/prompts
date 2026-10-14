@@ -2,7 +2,7 @@
  "codex",
  "exec",
  "--cd",
- "%USERPROFILE%\\AppData\\Local\\Temp\\council-round-9m9nr2rr\\repo",
+ "D:\\council-round-95d0007e\\repo",
  "--sandbox",
  "read-only",
  "--ignore-user-config",

@@ -1,7 +1,7 @@
 ROUND preflight pass python=3.14.2 codex='codex-cli 0.161.0' claude='2.1.296 (Claude Code)'
-ROUND codex-member pass MEMBER done member=codex model=gpt-6.1-sol session=<session> stance=initial disposition=needs-human out=D:\prompts-council\docs\tooling\python-migration\windows\results\council-round-windows\round0-codex.md
-ROUND sandbox-mode pass os=nt argv_unelevated=True commands_ran=9 commands_failed=7 sandbox_log_start=9 sandbox_log_setup_helper=0 other_codex=none codex=0.161.0 log_rule=rust-v0.162.1, unverified for this version
-ROUND claude-member pass exit=0 disposition=defect
-ROUND read-only pass head=ba3350e94d55 status=''
+ROUND codex-member pass MEMBER done member=codex model=gpt-6.1-sol session=<session> stance=initial disposition=defect out=D:\prompts-council\docs\tooling\python-migration\windows\results\council-round-windows\round0-codex.md pins_quoted=2/2 commands_failed=0 access_denied=0
+ROUND sandbox-mode pass os=nt argv_unelevated=True commands_ran=8 commands_failed=0 sandbox_log_start=8 sandbox_log_setup_helper=0 other_codex=none codex=0.161.0 log_rule=rust-v0.162.1, unverified for this version
+ROUND claude-member pass exit=0 disposition=defect pins_quoted=2/2
+ROUND read-only pass head=018605055c38 status=''
 ROUND tally pass COUNCIL exchange next=1 of 2; send each member the other's answer, unattributed
 ROUND scrubbed pass files_with_a_home_path_user_name_or_command_output=none

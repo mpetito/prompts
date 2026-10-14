@@ -1,11 +1,17 @@
-I cannot assess the reviewer’s claim because the pinned files are inaccessible. Reading both absolute paths returned “Access to the path … is denied” (`Get-Content` output for `cache.py` and `users.py`). I could not verify the commit, key construction, callers, cache scope, or tenant isolation.
+The defect is real at the cache boundary. `cache.py:7` ignores `tenant_id`, while user IDs restart within each tenant (`users.py:1,4–6`). The operations notes explicitly confirm that all tenants share one process (`D:/council-round-95d0007e/packet/ops-notes.md:3`).
 
-The key question is whether two tenants can generate the same key in a shared cache and receive tenant-specific values without a subsequent ownership check. If so, leaving the code unchanged could disclose another tenant’s data, and adding tenant identity could be the smallest valid fix. If another boundary already isolates entries, adding it could duplicate that boundary. These are conditional possibilities, not findings about this repository.
+Evidence pins: REVIEW_PIN = "acf1390e05ba" (`cache.py:2`); PACKET_PIN = 5610b17d0fda (`D:/council-round-95d0007e/packet/ops-notes.md:2`).
 
-The strongest argument against leaving the code unchanged is the reviewer’s alleged disclosure path; inaccessible source prevents me from confirming or refuting it. “No change” below means withholding an unsupported modification pending readable evidence, not clearing the code as safe. No tests or application code were run.
+For tenants A and B, user 1 requesting the same resource produces the same key. Once A populates it, B receives A’s value and B’s loader never runs (`cache.py:11–14`). A read-only, in-memory probe confirmed: “tenant B received tenant A value; tenant B loader calls = 0.” The real harm is incorrect data returned across tenants, including disclosure if the cached value is private.
+
+Adding the tenant prefix is a one-line change that follows the existing string-key convention (`cache.py:7`). Both reads and writes already use this helper, and its callers already supply `tenant_id`, so no additional plumbing is needed (`cache.py:6,10–14`). The in-memory candidate probe returned each tenant’s own value.
+
+The strongest evidence against changing it is the “per-request” description (`cache.py:1`), which might suggest isolation through lifecycle management. However, the implementation provides a module-level dictionary and no clearing mechanism (`cache.py:3–14`), while the operations notes affirm process sharing. No caller code exists in the supplied repository to establish additional isolation or tenant-independent values.
+
+I verified the pinned commit and clean tree. I could not verify production callers, actual disclosure, cache lifecycle outside these files, or identifier restrictions needed to rule out delimiter collisions. The probes used synthetic values; no repository files were changed.
 
 stance: initial
-disposition: needs-human
-action: no change
-decisive: Reading cache.py returned “Access to the path … is denied”; no file:line evidence was available.
-crux: The pinned source is unavailable for inspection; readable cache.py and users.py would permit a substantive decision.
+disposition: defect
+action: Change cache.py:7 to return f"{tenant_id}:{user_id}:{resource}".
+decisive: cache.py:7
+crux: Different tenants can reach the same cache dictionary with matching user_id and resource values.
