@@ -84,7 +84,7 @@ or edits nothing itself. Skill-level model settings remain independent of counci
 
 ## Status Line
 
-`statusline/statusline.js` is Claude Code's custom status line — the line under the input box
+`statusline/statusline.py` is Claude Code's custom status line — the line under the input box
 showing the working directory, repository, branch with a coloured git-state badge, model and
 reasoning effort, and context-window usage. Claude Code runs it on every render, so it must be
 fast and it must exit; both constraints are documented in
@@ -174,7 +174,7 @@ Linux and macOS need no elevation when writing your own home directory. Run as y
 | `skills/*` | GitHub Copilot | `~/.copilot/skills/*` |
 | `agents/` | Claude Code | `~/.claude/agents` |
 | `instructions/CLAUDE.md` | Claude Code | `~/.claude/CLAUDE.md` |
-| `statusline/statusline.js` | Claude Code | `~/.claude/statusline.js` |
+| `statusline/statusline.py` | Claude Code | `~/.claude/statusline.py` |
 
 [Codex](https://learn.chatgpt.com/docs/build-skills) and
 [OpenCode](https://opencode.ai/docs/skills/) both discover `~/.agents/skills`.
@@ -207,9 +207,9 @@ Claude's status line also needs its machine-local settings entry and a terminal 
 
 ### Optional dependencies and MCP
 
-- PR helpers use PowerShell 7 and an authenticated `gh` CLI on Windows, Linux, or macOS. From Bash, invoke
-  them with `pwsh -NoProfile -File <script.ps1>`.
-- The Claude status line needs Node.js and Git.
+- PR helpers use Python 3.12+ and an authenticated `gh` CLI on Windows, Linux, or macOS. Invoke them
+  with `python3 <script.py>` from Bash or PowerShell.
+- The Claude status line needs Python 3.12+ and Git.
 - MCP configuration is a separate opt-in step; see [`mcp/README.md`](mcp/README.md). Docker
   Engine alone is insufficient: the profiles also require the Docker MCP Toolkit and their
   configured secret backend. Credentials and generated configuration stay machine-local.
@@ -234,7 +234,7 @@ Skills here target the lowest common denominator so they work everywhere:
 - Cross-references are **skill-relative** (`../other-skill/SKILL.md`), never repo-root-relative — the tree is symlinked into user-level folders where no repo root exists
 - `instructions/CLAUDE.md` is the user-level global instruction file, linked only into Claude Code for the same reason. It loads into every session in every project, so keep it short and keep every line load-bearing
 - `agents/` is Claude Code's subagent format and is deliberately **not** cross-tool — other hosts use incompatible agent formats, so the setup script links it into Claude Code only. Keep agent bodies host-generic and project-agnostic (no employer, stack, or repository specifics) so they behave the same in every project. Agents may depend on a readmitted skill two ways — a relative path such as `../skills/<name>/…`, which resolves in both the repository and `~/.claude/`, and a `skills:` frontmatter entry naming a skill to preload; while the collection is archived, agents carry what they need inline. `researcher` also names specific documentation MCP servers in its `tools` list; adjust that line on a machine where those servers are not configured
-- A skill's helper scripts live in its own `scripts/` folder, with their tests beside them, so they link with the skill; `pull-request` keeps its two PowerShell helpers there
+- A skill's helper scripts live in its own `scripts/` folder, with their tests beside them, so they link with the skill; `pull-request` keeps its two Python helpers there
 
 Codex custom agents use standalone TOML files under `~/.codex/agents/` (or `.codex/agents/` for one repository), so the Claude Markdown files in `agents/` cannot be linked there directly. If Codex equivalents are added later, keep them in a separate source folder and link those TOML files into `~/.codex/agents/`; share behavioral instructions deliberately, but translate model, reasoning, sandbox, MCP, and skill settings to Codex's schema.
 

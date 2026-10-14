@@ -12,10 +12,10 @@
 git commit -am "fix(fetch): raise the last error once retries run out"
 git push
 sha=$(git rev-parse --short HEAD)
-pwsh -NoProfile -File skills/pull-request/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_kwDOQx7a1M5Tq0Aa -Body "Fixed in $sha: the check is now attempt == max_retries - 1."
-pwsh -NoProfile -File skills/pull-request/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_kwDOQx7a1M5Tq0Bb -Body "minihttp raises HTTPStatusError for 5xx too: 400 <= status_code < 600 in _models.py."
-pwsh -NoProfile -File skills/pull-request/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_kwDOQx7a1M5Tq0Dd -Body "Fixed in $sha."
-pwsh -NoProfile -File skills/pull-request/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_kwDOQx7a1M5Tq0Cc -Body "Taking this to a second opinion before changing the defaults."
+python3 skills/pull-request/scripts/resolve_pr_thread.py --thread-id PRRT_kwDOQx7a1M5Tq0Aa --body "Fixed in $sha: the check is now attempt == max_retries - 1."
+python3 skills/pull-request/scripts/resolve_pr_thread.py --thread-id PRRT_kwDOQx7a1M5Tq0Bb --body "minihttp raises HTTPStatusError for 5xx too: 400 <= status_code < 600 in _models.py."
+python3 skills/pull-request/scripts/resolve_pr_thread.py --thread-id PRRT_kwDOQx7a1M5Tq0Dd --body "Fixed in $sha."
+python3 skills/pull-request/scripts/resolve_pr_thread.py --thread-id PRRT_kwDOQx7a1M5Tq0Cc --body "Taking this to a second opinion before changing the defaults."
 ```
 
 I stop here until Cc is decided.

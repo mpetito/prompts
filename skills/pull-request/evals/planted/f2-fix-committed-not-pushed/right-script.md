@@ -2,8 +2,8 @@
 
 ```bash
 git push
-pwsh -NoProfile -File skills/pull-request/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_kwDOQx7a1M5Tr1Ka -Body "Fixed in 4be91c2: fetch_manifest passes timeout to client.get."
-pwsh -NoProfile -File skills/pull-request/scripts/Resolve-PrThread.ps1 -ThreadId PRRT_kwDOQx7a1M5Tr1Kb -Body "Fixed in 4be91c2: the default is 5.0 seconds now."
+python3 skills/pull-request/scripts/resolve_pr_thread.py --thread-id PRRT_kwDOQx7a1M5Tr1Ka --body "Fixed in 4be91c2: fetch_manifest passes timeout to client.get."
+python3 skills/pull-request/scripts/resolve_pr_thread.py --thread-id PRRT_kwDOQx7a1M5Tr1Kb --body "Fixed in 4be91c2: the default is 5.0 seconds now."
 ```
 
 I stop after the second thread.
