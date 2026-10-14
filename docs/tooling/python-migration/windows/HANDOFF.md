@@ -167,6 +167,62 @@ Then write `docs/tooling/python-migration/windows/results/smoke.md` containing:
 Commit and push it as in step 0. If the script is interrupted, check that no `smk*` agents are left
 (`herdr agent list`); its cleanup closes them and removes its temporary folder.
 
+## Phase 2: one blind round of the model council (now)
+
+The model council's scripts are Python now, on branch `py/council`. The Codex member runs
+`codex exec --ignore-user-config`, which also drops the owner's `[windows] sandbox` setting, so on
+Windows `codex_member.py` passes `-c windows.sandbox="unelevated"` itself. `council_round.py` runs one
+real blind round, a Codex member and a Claude member on a throwaway repository, and proves from Codex's
+own sandbox log which mode ran the member's commands. Don't edit `~/.codex/config.toml`.
+
+1. **Check out the branch:** `git fetch mpetito py/council`, then
+   `git worktree add -b py/council ..\prompts-council mpetito/py/council` and `cd ..\prompts-council`.
+2. **Close every Codex session:** the desktop app, any `codex` CLI session or herdr lane, and an IDE's
+   Codex extension. Confirm with `Get-Process codex*, node_repl -ErrorAction SilentlyContinue`, which
+   should print only `codex-windows-sandbox-service`: that is Codex's sandbox service, which is expected
+   to keep running, so leave it. Every other session writes `%USERPROFILE%\.codex\.sandbox\sandbox.<date>.log`,
+   the log the round reads, so the round's preflight refuses to start while any other `codex*` process
+   runs, and sandbox-mode fails if one appears during the round.
+3. **Run the round from PowerShell 7's MSI build,** in a new window, so a non-Store `pwsh` comes first
+   on PATH as in the fourth probe run:
+   `python3 docs\tooling\python-migration\windows\council_round.py`. It makes one Codex call and one
+   Claude call, takes about five minutes, and prints one `ROUND` line per check. It builds its throwaway
+   repository, and a packet folder with one evidence file outside it, beside the checkout
+   (`D:\council-round-<hex>\repo` and `...\packet` for `D:\prompts-council`), and removes both at the end.
+   - The first round built it under `%TEMP%` with `tempfile.mkdtemp`, which on Python 3.13+ gets an ACL
+     for the current user and administrators only. Codex's unelevated sandbox could list that folder
+     but read none of its files.
+   - A real council runs on a checkout like `D:\prompts`, whose files inherit the drive's ACL. So the
+     round's repository now lives there too, created with the parent's inherited permissions.
+   - Each member must quote a `REVIEW_PIN` value that exists only in the repository's `cache.py`, and a
+     `PACKET_PIN` that exists only in the packet file. The packet stands for the scratch files a real
+     council writes (SKILL.md step 1). A member that could not read either fails `codex-member` or
+     `claude-member`, and so does any command refused with "access denied".
+4. **Record the results.** The script writes `docs/tooling/python-migration/windows/results/council-round-windows/`,
+   already scrubbed for a public repository (`%USERPROFILE%`, `<user>`, `<session>`, no command output).
+   The `scrubbed` check fails if anything survives; then commit nothing and report. Otherwise read every
+   file in the folder before committing: the answers and Codex's messages are kept verbatim, and nothing
+   in them may name a project, a person or a private path. Then commit that folder,
+   `git pull --rebase mpetito py/council` and `git push mpetito py/council`.
+5. **Then:**
+   - **Every check passes:** report that, and the round is done. If sandbox-mode's facts say
+     `unverified for this version`, the installed Codex is not the release the log rule was read from
+     (0.162.1). Report it with the version, and the Linux session rechecks the rule against that release.
+   - **`preflight` fails with `other_codex=...`:** a Codex process is still running. Close it (step 2)
+     and run the round again.
+   - **`sandbox-mode` fails with `sandbox_log_setup_helper` above 0:** Codex took the elevated path, so
+     the override did not reach it. Stop and report the `ROUND` lines. The sandbox log is shared and is
+     never committed.
+   - **`sandbox-mode` fails with `other_codex=...`:** another Codex process started during the round.
+     Close it and run the round again.
+   - **`sandbox-mode` fails with `sandbox_log_start=0`:** no command went through the Windows sandbox.
+     If `round0-codex.log` shows `CreateProcessAsUserW ... Access is denied`, the Store `pwsh` came first
+     on PATH: record `(Get-Command pwsh -All).Source`. Stop and report.
+   - **`codex-member` fails with `pins_quoted` below 2/2 or `access_denied` above 0:** the Codex member
+     could not read the repository or the packet, even beside the checkout. Stop and report the `ROUND` lines and
+     `(Get-Acl D:\).Access | Format-Table IdentityReference, FileSystemRights`.
+   - **Any other failure:** stop and report the `ROUND` lines and the matching evidence file.
+
 ## Step 13: status line timings (now)
 
 Phase 3 ports the status line from Node to Python, on branch `py/statusline-pr`. Spec decision 6 asks for Node and

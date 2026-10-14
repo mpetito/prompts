@@ -1,0 +1,19 @@
+[
+ "codex",
+ "exec",
+ "--cd",
+ "~/dev/council-round-4570f3f8/repo",
+ "--sandbox",
+ "read-only",
+ "--ignore-user-config",
+ "-c",
+ "sandbox_mode=\"read-only\"",
+ "--model",
+ "gpt-6.1-sol",
+ "--json",
+ "--output-last-message",
+ "~/dev/prompts-wt-council/docs/tooling/python-migration/windows/results/council-round-linux/round0-codex.md",
+ "-c",
+ "model_reasoning_effort=\"high\"",
+ "-"
+]

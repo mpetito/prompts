@@ -21,7 +21,7 @@ change? Candidate actions: no change; add the tenant id to the cache key; someth
 ## Members
 
 - Claude: subagent, model opus, effort high; focus correctness and contract.
-- Codex: `codex-member.sh`, model gpt-6-astra, effort high; focus simplicity and maintenance.
+- Codex: `codex_member.py`, model gpt-6-astra, effort high; focus simplicity and maintenance.
   Printed: `MEMBER done member=codex model=gpt-6-astra session=0199c2f1-6a40-7d11-9e2b-5d0b8e1f4c77 stance=initial disposition=false-positive out=/tmp/council-7f3a/round0-codex.md`
 
 ## /tmp/council-7f3a/round0-claude.md

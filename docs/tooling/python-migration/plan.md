@@ -237,7 +237,7 @@ Fixture prose in `.md` files is updated with its skill.
 
 ## Phase 2: model council (branch `py/council`)
 
-- [ ] 11. Council scripts and their callers:
+- [x] 11. Council scripts and their callers:
   - `skills/model-council/scripts/codex_member.py`, `tally.py`, `run.py` (the spawn helper)
   - `skills/model-council/tests/__init__.py`, `skills/model-council/tests/test_council.py`
   - `skills/model-council/SKILL.md`, the model-council eval fixture prose and benchmark
@@ -251,7 +251,47 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes with the source count of 46 assertions plus the new case, on both CI
   operating systems. `git grep -nE 'codex-member\.sh|tally\.sh' -- <reference excludes>` prints
   nothing. One real blind round runs from PowerShell on Windows.
-- [ ] 12. Evals for `model-council` as in step 10. Then the owner merges the phase's pull request.
+
+  Linux, 2026-10-13. The source has 45 assertions, not 46: the count `grep -c 'fail "'` also matched the
+  command `MOCK_CODEX=fail "$here/..."`. All 45 are ported, plus the grandchild case, the Windows sandbox
+  flag (the platform injected) and the usage errors. The reference grep prints nothing.
+  `windows/council_round.py` passes every check on Linux (`windows/results/council-round-linux/`).
+
+  Windows, 2026-10-13, first round at 8183d31 (Python 3.14.2, codex 0.161.0): a false pass.
+  - Every ROUND check passed, but the Codex member read nothing: 7 of its 9 commands were refused with
+    "access denied", and it answered `needs-human`.
+  - Cause: the round's repository was a `tempfile.mkdtemp` folder, which Python 3.13+ creates with an
+    owner-only ACL on Windows. The unelevated sandbox's restricted token reads only what the ACL also grants a
+    group such as Users or Everyone (stablyai/orca#24306). Codex's docs say only "ACL-based filesystem
+    boundaries".
+  - Fix (78d850c, 3e461c0): the repository and a packet file now sit beside the checkout with inherited
+    permissions, and each member must quote a value planted in each (`pins_quoted=2/2`). A command refused
+    with "access denied" fails `codex-member`. Against 8183d31's evidence the round now fails. SKILL.md step 1
+    keeps a council's scratch directory outside the user profile on native Windows.
+  - The round now starts beside `codex-windows-sandbox-service.exe`, which runs with every session closed
+    (c3b3408).
+
+  Windows, 2026-10-14, second round at bf2bf01 (`windows/results/council-round-windows/`): every check
+  passed. Both members quoted both pins. Codex ran 8 commands with none refused, and its sandbox log shows 8
+  `START:` lines and no elevated setup helper. Codex there was 0.161.0, while the log rule was read from
+  rust-v0.162.1, so the facts say `unverified for this version`. The rule holds for 0.161.0: between
+  rust-v0.161.0 and rust-v0.162.1, `codex-rs/windows-sandbox-rs/src` keeps `logging.rs` (which writes `START:`),
+  `spawn_prep.rs` and `windows_common.rs` byte-identical. The other three changed only in lines that write nothing
+  to the log: `setup.rs` (which writes `setup refresh: spawning`) in 3 hunks, `identity.rs` in one line, and
+  `legacy.rs` in its handle ownership.
+- [x] 12. Evals for `model-council` as in step 10. Then the owner merges the phase's pull request.
+
+  2026-10-13, Opus at high effort, baseline main's revision (189be66). The description is unchanged, so the
+  trigger rates measure the same text.
+
+  | Skill | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
+  |---|---|---|---|
+  | model-council, 1 run per arm | 1.00 / 0.96 | 1.00 / 0.91 | 0.79 / 0.33 |
+
+  - Triggers, two runs of `-TriggerRuns 3`: the skill fired 15/15 both times, and held back 8/9, then 9/9. The one
+    stray fire, on "Review my staged changes for bugs before I commit." in 1 of 3 runs, didn't recur on the rerun.
+  - After the evals, SKILL.md step 1 gained one sentence on where to keep the scratch directory on native Windows
+    (3e461c0). The description is unchanged.
 
 ## Phase 3: status line and pull-request scripts (branch `py/statusline-pr`)
 
