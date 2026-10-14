@@ -446,7 +446,7 @@ Fixture prose in `.md` files is updated with its skill.
   - The runner writes `claude-eval` and `claude-judge` wrappers into each run directory, `.sh` on POSIX and
     `.cmd` on Windows, as the `.ps1` did. They are generated run files, not repository scripts, and the one
     place a shebang and an executable bit are relied on.
-- [ ] 19. `.github/workflows/validate.yml`, `CONTRIBUTING.md`, `README.md`:
+- [x] 19. `.github/workflows/validate.yml`, `CONTRIBUTING.md`, `README.md`:
   - CI runs every `unittest` suite on both operating systems under setup-python 3.12, and drops
     the pwsh steps, the node step and the PowerShell parse check.
   - CONTRIBUTING: "Scripts are Python 3.12+, standard library only, run as
@@ -471,13 +471,19 @@ Fixture prose in `.md` files is updated with its skill.
     `Setup.Tests.ps1` are ported.
   - `--what-if` prints the same lines as main's `-WhatIf`, empty home and populated.
   - The file check still lists model-council's three `.sh` files, which phase 2 ports.
-- [ ] 20. Evals for each skill whose text changed in this phase, as in step 10. Then the owner merges the phase's
+
+  Linux, 2026-10-14, after phase 2 merged (3d572ca): the file check prints nothing, the wider grep with
+  `codex-member\.sh|tally\.sh` added prints nothing, and the `statusline.js` check lists the same two files.
+  CI and CONTRIBUTING run the model-council suite with `unittest`, as phase 2 left them, and CONTRIBUTING's
+  "All seven" counts the seven suites. Every suite passes 5 times with every core busy.
+- [x] 20. Evals for each skill whose text changed in this phase, as in step 10. Then the owner merges the phase's
   pull request.
 
   2026-10-14, before phase 2, Opus at high effort, against main's revision (b6d94ce). Phase 4 changed one skill's
   text so far: pull-request, only in `evals/` (the Python baseline and assertion scripts and their README). The
-  harness mounts a skill without `evals/`, so both arms ran byte-identical skill text. model-council comes with
-  phase 2.
+  harness mounts a skill without `evals/`, so both arms ran byte-identical skill text. After phase 2 merged,
+  `git diff origin/main...HEAD -- skills/model-council` is empty: phase 4 changed no model-council text, so it
+  needs no evals here.
 
   | Runs per arm | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
   |---|---|---|---|
