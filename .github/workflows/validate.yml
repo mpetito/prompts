@@ -33,7 +33,6 @@ jobs:
       - name: Check the eval runner and its helpers
         run: python3 -m unittest discover -v -s scripts/tests -t scripts
       - name: Check model-council scripts
-        shell: bash
-        run: bash skills/model-council/tests/run.sh
+        run: python3 -m unittest discover -v -s skills/model-council/tests -t skills/model-council
       - name: Check status line
         run: python3 -m unittest discover -v -s statusline/tests -t statusline

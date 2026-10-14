@@ -13,7 +13,7 @@ change; round once after summing; switch the ledger to per-line rounding.
 ## Members
 
 - Claude: subagent, model opus, effort high; focus correctness and contract.
-- Codex: `codex-member.sh`, model gpt-6-astra, effort high; focus simplicity and maintenance.
+- Codex: `codex_member.py`, model gpt-6-astra, effort high; focus simplicity and maintenance.
 
 ## Rounds
 

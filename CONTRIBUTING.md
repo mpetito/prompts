@@ -30,11 +30,11 @@ python3 -m unittest discover -s skills/pull-request/tests -t skills/pull-request
 python3 -m unittest discover -s statusline/tests -t statusline
 python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
 python3 -m unittest discover -s scripts/tests -t scripts
-bash skills/model-council/tests/run.sh
+python3 -m unittest discover -s skills/model-council/tests -t skills/model-council
 ```
 
-On Windows, run the bash suite from Git Bash: PowerShell's `bash` is WSL's launcher. The
-model-council suite makes native symlinks, which need Developer Mode or an elevated shell.
+On Windows, the model-council suite makes native symlinks, which need Developer Mode or an
+elevated shell.
 
 All seven are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set on Windows and

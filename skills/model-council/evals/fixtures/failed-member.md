@@ -12,7 +12,7 @@ delete the wrapper; narrow it to the errors the client does not retry.
 ## Members
 
 - Claude: subagent, model opus, effort high; focus correctness and contract.
-- Codex: `codex-member.sh`, model gpt-6-astra, effort high; focus simplicity and maintenance.
+- Codex: `codex_member.py`, model gpt-6-astra, effort high; focus simplicity and maintenance.
   Printed: `MEMBER timeout member=codex model=gpt-6-astra session=0199c3aa-1f02-7e55-b1d0-8a2c4e6f9d13 after 20m; log /tmp/council-c90e/round0-codex.log`
 
 ## Coordinator's note from the previous turn
