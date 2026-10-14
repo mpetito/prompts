@@ -16,7 +16,9 @@ Grading goes through skill_benchmark.assertion_result, so patterns are matched e
 a run (case-insensitively unless an assertion sets "ci": false). No model is called. Run it
 with the harness's Python and read the summary line; exit status 1 means a check failed:
 
-    "$(uv tool dir)/skill-eval-harness/bin/python" skills/pull-request/evals/check-assertions.py
+    "$(uv tool dir)/skill-eval-harness/bin/python" skills/pull-request/evals/check_assertions.py
+
+It takes no arguments; any argument is a usage error, exit 1.
 """
 import json
 import sys
@@ -34,7 +36,10 @@ def failed_names(assertions, text):
     return [a["name"] for a in assertions if not assertion_result(a, text, HERE)["passed"]]
 
 
-def main():
+def main(argv):
+    if argv:
+        print("usage: check_assertions.py (no arguments; run it with the harness's Python)", file=sys.stderr)
+        return 1
     manifest = json.loads((HERE / "shared-benchmark.json").read_text(encoding="utf-8"))
     problems, caught, wrong_total, right_ok, right_total = [], 0, 0, 0, 0
     for case in manifest["cases"]:
@@ -85,4 +90,6 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8")
+    sys.exit(main(sys.argv[1:]))

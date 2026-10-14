@@ -24,12 +24,12 @@ footer, no session links. `Co-Authored-By` is reserved for crediting human autho
 There is no package manager here. Run what CI runs, from the repository root:
 
 ```sh
-pwsh -NoProfile -File ./tests/Setup.Tests.ps1
-pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
+python3 -m unittest discover -s tests -t .
 python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration   # Python 3.12+
 python3 -m unittest discover -s skills/pull-request/tests -t skills/pull-request
 python3 -m unittest discover -s statusline/tests -t statusline
 python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
+python3 -m unittest discover -s scripts/tests -t scripts
 python3 -m unittest discover -s skills/model-council/tests -t skills/model-council
 ```
 
@@ -37,16 +37,13 @@ On Windows, the model-council suite makes native symlinks, which need Developer 
 elevated shell.
 
 All seven are offline: they use disposable directories and mocked CLIs, and touch neither your
-real home directory nor Docker. `.github/workflows/validate.yml` runs the same set plus a
-PowerShell parse check over every `.ps1` and `.psm1`, on Windows and Ubuntu.
+real home directory nor Docker. `.github/workflows/validate.yml` runs the same set on Windows and
+Ubuntu under Python 3.12.
 
-The orchestration scripts and hooks are **Python 3.12+**, standard library only. Skills and
-agents run each one as `python3` and its quoted path under `$HOME`, never `~`, so bash and both
-PowerShells can run the same command.
-
-Scripts target **PowerShell 7.4+** on Windows, Linux, and macOS. Windows PowerShell 5.1 is not
-supported, so `$IsWindows` and other PowerShell 7 built-ins are safe to rely on. `.gitattributes`
-normalizes scripts and docs to LF.
+Scripts are Python 3.12+, standard library only, run as `python3 "$HOME/..."` or by a
+repository-relative path. Skills and agents quote the path and spell it with `$HOME`, never `~`,
+so bash and both PowerShells can run the same command. `.gitattributes` normalizes scripts and
+docs to LF.
 
 ## Archived skills and readmission
 
@@ -56,7 +53,7 @@ invisible to every client. A skill (old or new) enters `skills/` only through th
 [docs/skill-audit/readmission.md](docs/skill-audit/readmission.md): a recorded gap in
 `docs/skill-audit/candidates.md`, three behaviour evals that fail without it, one named
 consumer role with its line budget, no overlap with the harness or a sibling, and loads within
-30 days of readmission (`python3 scripts/skill-usage.py`). Start a readmission from the
+30 days of readmission (`python3 scripts/skill_usage.py`). Start a readmission from the
 archived text and the audit's review of it, never from a blank file.
 
 ## After adding or renaming a skill
@@ -64,15 +61,15 @@ archived text and the audit's review of it, never from a blank file.
 Rerun setup so each client gets the new child link:
 
 ```sh
-pwsh -NoProfile -File ./setup-skills-link.ps1
-pwsh -NoProfile -File ./verify-setup.ps1
+python3 setup_skills_link.py
+python3 verify_setup.py
 ```
 
 Edits *inside* an already-linked skill need no rerun — they are visible immediately.
 
 ## After changing a skill
 
-If the skill has an `evals/` suite, run it with the previous revision as the `-Baseline` arm
+If the skill has an `evals/` suite, run it with the previous revision as the `--baseline` arm
 and compare pass rates, judge scores and trigger rates.
 [docs/evaluating-skills.md](docs/evaluating-skills.md) gives the commands and says which run
 fits which edit.

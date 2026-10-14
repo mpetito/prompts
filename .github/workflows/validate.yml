@@ -22,25 +22,16 @@ jobs:
       # The scripts' floor is Python 3.12, reached as python3 from PowerShell, as skills and hooks invoke it.
       - name: Check python3 is the minimum version
         run: python3 -c "import sys; print(sys.version); sys.exit(sys.version_info[:2] != (3, 12))"
-      - name: Check PowerShell syntax
-        run: |
-          $errorsFound = @()
-          Get-ChildItem -Recurse -File -Include *.ps1,*.psm1 | ForEach-Object {
-            $parseErrors = $null
-            $null = [Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$parseErrors)
-            $errorsFound += $parseErrors
-          }
-          if ($errorsFound) { $errorsFound | Format-List; throw 'PowerShell syntax errors found.' }
-      - name: Check skill installation and migration
-        run: ./tests/Setup.Tests.ps1
-      - name: Check MCP installation with mocked CLIs
-        run: ./tests/Mcp.Tests.ps1
+      - name: Check skill installation, migration and MCP installation with mocked CLIs
+        run: python3 -m unittest discover -v -s tests -t .
       - name: Check the pull-request scripts with a mocked gh
         run: python3 -m unittest discover -v -s skills/pull-request/tests -t skills/pull-request
       - name: Check orchestration scripts and hooks
         run: python3 -m unittest discover -v -s skills/agent-orchestration/tests -t skills/agent-orchestration
       - name: Check orchestration threads
         run: python3 -m unittest discover -v -s skills/orchestration-main/tests -t skills/orchestration-main
+      - name: Check the eval runner and its helpers
+        run: python3 -m unittest discover -v -s scripts/tests -t scripts
       - name: Check model-council scripts
         run: python3 -m unittest discover -v -s skills/model-council/tests -t skills/model-council
       - name: Check status line

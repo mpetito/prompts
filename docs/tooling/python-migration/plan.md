@@ -376,7 +376,7 @@ Fixture prose in `.md` files is updated with its skill.
 
 ## Phase 4: setup, MCP and eval tooling (branch `py/setup`)
 
-- [ ] 16. Before porting anything, save `pwsh -NoProfile -File ./setup-skills-link.ps1 -WhatIf`
+- [x] 16. Before porting anything, save `pwsh -NoProfile -File ./setup-skills-link.ps1 -WhatIf`
   output from this machine to the scratchpad.
 
   Port the setup scripts:
@@ -396,12 +396,28 @@ Fixture prose in `.md` files is updated with its skill.
   Check: the suite passes with the source count. `python3 setup_skills_link.py --what-if` prints
   the same link set as the saved PowerShell preview. Verification fails when `PATH` points
   `python3` at a placeholder that exits 9009.
-- [ ] 17. `mcp/bootstrap/mcp_common.py`, `install.py`, `verify.py`, `tests/test_mcp.py`,
+
+  Linux, 2026-10-13: `python3 -m unittest discover -s tests -t .` passes.
+  - All 24 assertions of `Setup.Tests.ps1` are ported, and its run of verification. The suite also covers
+    the python3 check, verification failures, and setup cases the PowerShell suite never asserted. Every
+    one fails against a planted mutant.
+  - The `--what-if` preview gives the same link set as PowerShell's, both against this machine's home and
+    against an empty isolated home. The isolated preview is byte-for-byte identical.
+  - Verification fails for a missing `python3`, the Store placeholder's 9009 and 3.11, all faked at
+    `run()`, and for a placeholder first on `PATH`. It passes on the real `python3`. On POSIX a
+    placeholder's 9009 reaches the caller as 49, so the 9009 message itself is checked on Windows CI.
+- [x] 17. `mcp/bootstrap/mcp_common.py`, `install.py`, `verify.py`, `tests/test_mcp.py`,
   `mcp/README.md`. Port prerequisites, previews, native failures, client selection, config backups,
   the JSONC merge and timeout updates. Delete the MCP `.ps1` and `.psm1` files,
   `scripts/Setup.Common.psm1` and `tests/Mcp.Tests.ps1`. Check: the suite passes with the source
   count.
-- [ ] 18. The eval tooling and its docs:
+
+  Linux, 2026-10-13: `python3 -m unittest discover -s tests -t .` passes.
+  - All 30 assertions of `Mcp.Tests.ps1` are ported. The suite adds cases for each prerequisite,
+    credential migration on stdin, the Codex and Claude config backups, the gateway build sequence, a
+    client that isn't installed, and `verify.py`, which the PowerShell suite never ran.
+  - Every case fails against a planted mutant.
+- [x] 18. The eval tooling and its docs:
   - `scripts/run_skill_eval.py`, plus `scripts/agent_eval_backend.py`, `skill_usage.py` and
     `trigger_matrix_shim.py` renamed from kebab-case
   - `skills/pull-request/evals/stage_plugin_baseline.py`, `check_assertions.py`
@@ -412,7 +428,25 @@ Fixture prose in `.md` files is updated with its skill.
 
   Check: `python3 scripts/run_skill_eval.py --skill pull-request --trigger-only` completes, and so
   does one `--regrade` of an existing run.
-- [ ] 19. `.github/workflows/validate.yml`, `CONTRIBUTING.md`, `README.md`:
+
+  2026-10-13, on Linux:
+  - `--skill pull-request --trigger-only` completed on Sonnet: should-fire 5/5, should-not-fire 4/5.
+  - A regrade input came from the PowerShell runner on main (skill-authoring, `-Runs 1 -SkipTrigger`). Both
+    runners' regrades of it print the same lines, and so do five earlier runs covering a baseline arm, a trigger
+    matrix and an agent definition.
+  - A sixth run differs in two judge means, and the Python values are the right ones. The PowerShell runner
+    dropped an arm's zero scores while they were its only scores, so playwright-e2e's without_skill and
+    old_skill judges each read 0.25 where the mean of their nine scores is 0.17.
+  - Live runs of the Python runner: skill-authoring `--runs 1 --skip-trigger` wrote the same run layout and
+    wrapper files as the PowerShell run; `--agent-definition verifier --runs 1` completed.
+  - `stage_plugin_baseline.py` writes the same folder as the `.ps1`, byte for byte.
+  - The PowerShell scripts had no test suite. `scripts/tests` adds 59 cases, run in CI. One case per kind of run
+    asserts every command it makes, argv in full, and each of 91 runner mutants and 32 helper mutants fails
+    the suite.
+  - The runner writes `claude-eval` and `claude-judge` wrappers into each run directory, `.sh` on POSIX and
+    `.cmd` on Windows, as the `.ps1` did. They are generated run files, not repository scripts, and the one
+    place a shebang and an executable bit are relied on.
+- [x] 19. `.github/workflows/validate.yml`, `CONTRIBUTING.md`, `README.md`:
   - CI runs every `unittest` suite on both operating systems under setup-python 3.12, and drops
     the pwsh steps, the node step and the PowerShell parse check.
   - CONTRIBUTING: "Scripts are Python 3.12+, standard library only, run as
@@ -422,8 +456,47 @@ Fixture prose in `.md` files is updated with its skill.
   `git ls-files ':!archive' ':!**/evals/fixtures/**' | grep -E '\.(sh|ps1|psm1|js)$'` prints
   nothing, and
   `git grep -nE '\b(pwsh|node) [^ ]*\.(ps1|js)\b' -- <reference excludes>` prints nothing.
-- [ ] 20. Evals for each skill whose text changed in this phase, as in step 10. Then the owner merges the phase's
+
+  That grep misses `pwsh -NoProfile -File ./x.ps1` and bare script names, so the step is checked with a wider
+  one, which prints nothing:
+  `git grep -nE '\b(pwsh|node)\b.*\.(ps1|psm1|js)\b|setup-skills-link\.ps1|verify-setup\.ps1|run-skill-eval|Setup\.Common|Mcp\.Common|check-assertions\.py|stage-plugin-baseline' -- <reference excludes> ':!docs/openclaw-skills-orientation.md'`.
+  `statusline.js` is checked apart from it: setup removes the old link by that name, so
+  `git grep -l 'statusline\.js' -- <reference excludes> ':!docs/openclaw-skills-orientation.md'` lists exactly `setup_skills_link.py` and
+  `tests/test_setup.py`.
+
+  Linux, 2026-10-14, before phase 2: both greps hold, and every suite passes 5 times with every core busy.
+  - CI runs the seven suites; the PowerShell parse check is gone.
+  - Setup links `~/.claude/statusline.py`. It removes `~/.claude/statusline.js` only when that is a link into
+    this checkout, and never under `--what-if` or in verification. All 6 assertions phase 3 added to
+    `Setup.Tests.ps1` are ported.
+  - `--what-if` prints the same lines as main's `-WhatIf`, empty home and populated.
+  - The file check still lists model-council's three `.sh` files, which phase 2 ports.
+
+  Linux, 2026-10-14, after phase 2 merged (3d572ca): the file check prints nothing, the wider grep with
+  `codex-member\.sh|tally\.sh` added prints nothing, and the `statusline.js` check lists the same two files.
+  CI and CONTRIBUTING run the model-council suite with `unittest`, as phase 2 left them, and CONTRIBUTING's
+  "All seven" counts the seven suites. Every suite passes 5 times with every core busy.
+- [x] 20. Evals for each skill whose text changed in this phase, as in step 10. Then the owner merges the phase's
   pull request.
+
+  2026-10-14, before phase 2, Opus at high effort, against main's revision (b6d94ce). Phase 4 changed one skill's
+  text so far: pull-request, only in `evals/` (the Python baseline and assertion scripts and their README). The
+  harness mounts a skill without `evals/`, so both arms ran byte-identical skill text. After phase 2 merged,
+  `git diff origin/main...HEAD -- skills/model-council` is empty: phase 4 changed no model-council text, so it
+  needs no evals here.
+
+  | Runs per arm | New: objective / judge | Baseline: objective / judge | No skill: objective / judge |
+  |---|---|---|---|
+  | 1 | 1.00 / 0.89 | 1.00 / 0.96 | 0.77 / 0.86 |
+
+  - The judge gap is one criterion: f1's `cc-not-settled-alone`, 0.3 against 0.9. The new arm left Cc open but
+    argued its case at length, and offered model-council as an option, where the rubric wants the decision handed
+    to model-council. Elsewhere the baseline lost more: r1's `finds-defects` scored 0.85 against the new arm's 1.0.
+    With the same text in both arms, the gap is one answer's variance.
+  - Triggers, 3 runs per query: should-fire 15/15, should-not-fire 11/15. None of the four is a `pull-request`
+    Skill call: three are reads of the mounted file on the CONTRIBUTING.md query, and one is a read after the model
+    called `code-review`. This matches phase 3's measurement.
+  - Cost: about USD 8.4, made up of answer runs 3.39, judge 0.45 and triggers 4.60.
 
 ## Follow-ups
 

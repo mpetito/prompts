@@ -143,8 +143,8 @@ instructions/                         # User-level global instructions
 fragments/                            # Reusable fragments such as snyk-upgrade-review
 ```
 
-The PowerShell 7.4+ setup script is `setup-skills-link.ps1`, shared across Windows, Ubuntu, and
-macOS. It detects clients on PATH by default; `-Tools codex,claude,opencode,copilot` selects them
+The setup script is `setup_skills_link.py` (Python 3.12+), shared across Windows, Ubuntu, and
+macOS. It detects clients on PATH by default; `--tools codex,claude,opencode,copilot` selects them
 explicitly and can prepare files before their CLIs are installed. It links each child of
 `skills/` into `~/.agents/skills/` for Codex/OpenCode, `~/.claude/skills/` for Claude, and
 `~/.copilot/skills/` for Copilot. Per-child links leave each destination as a real directory,
@@ -172,7 +172,7 @@ When adding or converting a workflow, create or rename a skill instead of adding
 3. **Preserve the slug** by matching the skill folder/name to the intended `/name` command
 4. **Extract templates or references** into supporting files in the skill folder
 5. **Reference supporting files** from the SKILL.md body
-6. **Rerun `setup-skills-link.ps1`** after creating or renaming a top-level skill directory so each tool receives its per-skill link. Editing an existing linked skill does not require rerunning setup.
+6. **Rerun `setup_skills_link.py`** after creating or renaming a top-level skill directory so each tool receives its per-skill link. Editing an existing linked skill does not require rerunning setup.
 
 ## Trade-offs
 

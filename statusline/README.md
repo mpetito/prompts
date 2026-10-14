@@ -20,7 +20,7 @@ entry without the font shows a row of boxes.
 
 ### 1. Link the script
 
-When Claude is selected, `setup-skills-link.ps1` in the repository root links this file to
+When Claude is selected, `setup_skills_link.py` in the repository root links this file to
 `~/.claude/statusline.py`, alongside the link for `instructions/CLAUDE.md`. It also removes the
 link to the Node script this replaced when that link points into this checkout; a file of that
 name, or a link elsewhere, is left alone.
