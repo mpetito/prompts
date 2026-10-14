@@ -52,9 +52,9 @@ def backup_config(path):
     where the OS has modes: client configs can hold secrets."""
     if os.path.exists(path):
         backup = f"{path}.prompts-backup-{uuid.uuid4().hex}"
+        # Made owner-only before the copy, which keeps the mode, so the secrets are never readable by others.
+        os.close(os.open(backup, os.O_WRONLY | os.O_CREAT, 0o600))
         shutil.copyfile(path, backup)
-        if os.name != "nt":
-            os.chmod(backup, 0o600)
         print(f"[BACKUP] {backup}")
 
 

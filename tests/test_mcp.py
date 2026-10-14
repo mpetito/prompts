@@ -204,10 +204,13 @@ class Install(McpTest):
         self.assertEqual(self.cli.calls, [])
 
     @unittest.skipIf(os.name == "nt", "Windows files have no owner-only mode")
-    def test_backups_are_readable_only_by_their_owner(self):
+    def test_backups_are_readable_only_by_their_owner_from_the_start(self):
         self.addCleanup(os.umask, os.umask(0o022))
-        self.install("--tools", "opencode", "--skip-gateway-setup", "--skip-credential-migration")
+        # A backup made readable and narrowed afterwards would be left readable here.
+        with unittest.mock.patch.object(os, "chmod"):
+            self.install("--tools", "opencode", "--skip-gateway-setup", "--skip-credential-migration")
         self.assertEqual([p.stat().st_mode & 0o777 for p in self.backups()], [0o600])
+        self.assertEqual([p.read_text() for p in self.backups()], [JSONC])
 
     def test_a_missing_opencode_config_is_created(self):
         os.remove(self.paths.opencode_config)
