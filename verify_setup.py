@@ -62,7 +62,7 @@ def main(argv):
             else:
                 sc.warn(f"Missing or conflicting link: {link.path}")
                 failed += 1
-    for command in [*selected, "gh", "node"]:
+    for command in [*selected, "gh"]:
         if shutil.which(command):
             print(f"[AVAILABLE] {command}")
         else:

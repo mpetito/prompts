@@ -70,7 +70,7 @@ machine-local setup steps.
 
 After installation, authorize hosted servers as needed:
 
-```powershell
+```sh
 docker mcp oauth authorize harvest-time --open-browser
 docker mcp oauth authorize estimator --open-browser
 docker mcp oauth authorize github --open-browser

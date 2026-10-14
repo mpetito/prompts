@@ -797,7 +797,7 @@ class SpawnTest(unittest.TestCase):
             self.assertEqual(sorted(log.read_text(encoding="utf-8").split()), ["e", "o"])
 
     def test_missing_command_is_127(self):
-        r = rse.run(["no-such-command-for-run-skill-eval"])
+        r = rse.run(["no-such-command-for-the-eval-runner"])
         self.assertEqual(r.returncode, 127)
 
 

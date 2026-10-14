@@ -276,5 +276,5 @@ Skills auto-load based on their `description` frontmatter. To make a skill trigg
 ## Requirements
 
 - VS Code 1.106+ with GitHub Copilot, Claude Code, and/or Codex
-- `gh` CLI (authenticated) and PowerShell for the PR workflows
+- `gh` CLI (authenticated) and Python 3.12+ for the PR workflows
 - Optional: MCP servers (Context7, Perplexity, GitHub) for richer research and PR workflows
