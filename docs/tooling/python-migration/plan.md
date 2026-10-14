@@ -274,7 +274,11 @@ Fixture prose in `.md` files is updated with its skill.
   Windows, 2026-10-14, second round at bf2bf01 (`windows/results/council-round-windows/`): every check
   passed. Both members quoted both pins. Codex ran 8 commands with none refused, and its sandbox log shows 8
   `START:` lines and no elevated setup helper. Codex there was 0.161.0, while the log rule was read from
-  rust-v0.162.1, so the facts say `unverified for this version`.
+  rust-v0.162.1, so the facts say `unverified for this version`. The rule holds for 0.161.0: between
+  rust-v0.161.0 and rust-v0.162.1, `codex-rs/windows-sandbox-rs/src` keeps `logging.rs` (which writes `START:`),
+  `spawn_prep.rs` and `windows_common.rs` byte-identical. The other three changed only in lines that write nothing
+  to the log: `setup.rs` (which writes `setup refresh: spawning`) in 3 hunks, `identity.rs` in one line, and
+  `legacy.rs` in its handle ownership.
 - [x] 12. Evals for `model-council` as in step 10. Then the owner merges the phase's pull request.
 
   2026-10-13, Opus at high effort, baseline main's revision (189be66). The description is unchanged, so the
