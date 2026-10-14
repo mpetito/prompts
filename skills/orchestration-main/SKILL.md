@@ -138,7 +138,8 @@ was lost.
 
 ## 7. Finish a build
 
-When a thread sends `STATUS: done`, tell the owner what to check and where the retrospective is.
+When a thread sends `STATUS: done`, tell the owner what to check and where the retrospective is,
+then load the tt skill to log the build's time and put the entry in that message.
 
 1. With `landing=local`, ask the owner, then run `thread.py integrate <build>`. It brings the
    build's branch into the base branch in the owner's checkout and prints `INTEGRATED` or

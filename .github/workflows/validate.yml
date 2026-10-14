@@ -32,6 +32,8 @@ jobs:
         run: python3 -m unittest discover -v -s skills/orchestration-main/tests -t skills/orchestration-main
       - name: Check the eval runner and its helpers
         run: python3 -m unittest discover -v -s scripts/tests -t scripts
+      - name: Check the tt session scanner
+        run: python3 -m unittest discover -v -s skills/tt/tests -t skills/tt
       - name: Check model-council scripts
         run: python3 -m unittest discover -v -s skills/model-council/tests -t skills/model-council
       - name: Check status line

@@ -14,6 +14,10 @@ commit convention. The two scripts in
 with `<skill dir>` written as a full path such as `$HOME/.claude/skills/pull-request`; on a host
 without `python3`, run the raw `gh api` calls shown with them.
 
+In the owner's main session only, never in an orchestrated lane or as a worker, load the tt skill
+after a PR is created, updated, reviewed or merged. tt logs only the day's time Harvest does not
+already hold, so a PR whose time a build or an earlier session already logged adds nothing.
+
 ## Answer review feedback on your own PR
 
 1. Fetch every unresolved thread (id, `isOutdated`, comments with their REST `fullDatabaseId`)
