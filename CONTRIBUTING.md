@@ -86,8 +86,8 @@ Do not write these from memory; the canonical guidance lives in the tree:
 | --- | --- |
 | `SKILL.md` files and skill folders | [skills/skill-authoring/SKILL.md](skills/skill-authoring/SKILL.md), plus the readmission bar above |
 | `AGENTS.md`, `CLAUDE.md`, `copilot-instructions.md` | [skills/project-setup/SKILL.md](skills/project-setup/SKILL.md) |
-| Cross-tool portability rules | [Cross-Tool Authoring Notes](README.md#cross-tool-authoring-notes) |
-| Claude-only frontmatter keys | [Host-Specific Frontmatter](README.md#host-specific-frontmatter) |
+| Cross-tool portability rules | [docs/authoring.md](docs/authoring.md#cross-tool-rules) |
+| Claude-only frontmatter keys | [docs/authoring.md](docs/authoring.md#host-specific-frontmatter) |
 | Worker model selection | [docs/agent-model-selection.md](docs/agent-model-selection.md) |
 
 Two rules bite often enough to repeat here: cross-references between skills must be

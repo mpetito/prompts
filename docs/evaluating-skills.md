@@ -4,6 +4,13 @@ How to run, read and extend a skill's eval suite with `scripts/run_skill_eval.py
 format is [skill-eval-harness](https://github.com/adewale/skill-eval-harness) (tested with
 0.6.0); `skills/skill-authoring/evals/` is a complete example with three behaviour cases.
 
+A suite lives at `skills/<name>/evals/shared-benchmark.json` (or under `archive/skills/` while
+the skill is being readmitted). It runs the same prompt with and without the skill mounted,
+grades the outputs with deterministic assertions plus an LLM judge, and measures whether the
+skill fires on its own for should-trigger and should-not-trigger queries. The paired delta is
+what justifies a skill's tokens; shortening, extending or removing a skill is judged by
+rerunning the same suite.
+
 ## Contents
 
 - Setup
@@ -90,9 +97,14 @@ The runner ends with one line per arm, then every failed assertion with its coun
 
 ## Write and fix assertions
 
-The suite rules (one fixture per case, assertions that trace to a rule with a trap in the
-fixture, near-miss trigger negatives) are in the README's Evaluating Skills section. These
-are the ways an assertion goes wrong once outputs arrive:
+The suite rules: each case produces text from a fixture under `evals/fixtures/`, because a
+headless run has no shell or network; every assertion traces to a rule in the skill that a model
+without the skill plausibly breaks, with a trap for it in the fixture; and trigger negatives are
+near-misses from adjacent tasks. `skills/pull-request/evals/` is the reference suite. A skill
+with `disable-model-invocation: true` (such as `agent-orchestration`) never fires on its own by
+design, so it carries no trigger suite.
+
+These are the ways an assertion goes wrong once outputs arrive:
 
 - **Tense and phrasing.** Outputs say "Deleted the section" as often as "delete it". Match stems:
   `\b(?:remov|delet|drop|cut)\w*`, not `\bdelete\b`.

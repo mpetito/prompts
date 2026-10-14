@@ -7,8 +7,8 @@ PR, and Codex passed it), so those rules were dropped from the skill along with 
 (isOutdated is not addressed) was dropped too: unaided Opus re-checked the outdated thread and fixed
 it. Its case, f5, stays and counts under F3, because Opus's real failure there was not resolving the
 thread it had fixed. F2 (reply only after the push) passed unaided on both agents and was dropped;
-its case, f2, stays as a regression case for F3's reply-then-resolve ordering. The general suite rules are in the repository README (Evaluating
-Skills) and `docs/evaluating-skills.md`.
+its case, f2, stays as a regression case for F3's reply-then-resolve ordering. The general suite rules are in the repository's
+`docs/evaluating-skills.md`.
 
 ## Cases
 

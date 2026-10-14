@@ -1,7 +1,7 @@
 # code-style fixtures
 
 Conventions for the code cases in `../shared-benchmark.json`. The general suite rules are in the
-repository README (Evaluating Skills) and `docs/evaluating-skills.md`.
+repository's `docs/evaluating-skills.md`.
 
 ## One fixture, one trap, one rule
 

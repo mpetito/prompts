@@ -151,7 +151,7 @@ explicitly and can prepare files before their CLIs are installed. It links each 
 so client-managed content stays local. Repo-owned legacy Codex links are migrated only once
 replacement shared links exist. Claude alone receives the agents, global instructions, and
 status-line script. Conflicts are preserved unless explicitly replaced with backups.
-See [setup and verification](../README.md#setup) for previews, environment overrides, and commands.
+See [setup and verification](../../docs/setup.md) for previews, environment overrides, and commands.
 
 Codex custom agents are standalone TOML files under `~/.codex/agents/` (or `.codex/agents/` at project scope). Claude Code's `agents/*.md` files cannot be reused there unchanged; Codex equivalents need a separate TOML source tree before they can be symlinked safely.
 
