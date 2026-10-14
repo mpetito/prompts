@@ -26,10 +26,9 @@ There is no package manager here. Run what CI runs, from the repository root:
 ```sh
 pwsh -NoProfile -File ./tests/Setup.Tests.ps1
 pwsh -NoProfile -File ./tests/Mcp.Tests.ps1
-pwsh -NoProfile -File ./skills/pull-request/tests/Get-PrFeedback.Tests.ps1
-pwsh -NoProfile -File ./skills/pull-request/tests/Resolve-PrThread.Tests.ps1
-node --check statusline/statusline.js && echo '{}' | node statusline/statusline.js
 python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration   # Python 3.12+
+python3 -m unittest discover -s skills/pull-request/tests -t skills/pull-request
+python3 -m unittest discover -s statusline/tests -t statusline
 python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
 python3 -m unittest discover -s skills/model-council/tests -t skills/model-council
 ```
@@ -37,7 +36,7 @@ python3 -m unittest discover -s skills/model-council/tests -t skills/model-counc
 On Windows, the model-council suite makes native symlinks, which need Developer Mode or an
 elevated shell.
 
-All eight are offline: they use disposable directories and mocked CLIs, and touch neither your
+All seven are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set plus a
 PowerShell parse check over every `.ps1` and `.psm1`, on Windows and Ubuntu.
 

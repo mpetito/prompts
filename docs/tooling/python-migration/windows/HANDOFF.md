@@ -222,3 +222,36 @@ own sandbox log which mode ran the member's commands. Don't edit `~/.codex/confi
      could not read the repository or the packet, even beside the checkout. Stop and report the `ROUND` lines and
      `(Get-Acl D:\).Access | Format-Table IdentityReference, FileSystemRights`.
    - **Any other failure:** stop and report the `ROUND` lines and the matching evidence file.
+
+## Step 13: status line timings (now)
+
+Phase 3 ports the status line from Node to Python, on branch `py/statusline-pr`. Spec decision 6 asks for Node and
+Python measured on both machines before the owner switches each machine's `statusLine` setting.
+`statusline_timing.py` gives each interpreter the same payload and times 20 runs of each:
+- through Git Bash, as Claude Code runs a `statusLine` command;
+- direct, with no shell.
+
+It measures `node`, `python3`, and also `python` when that is a different install. It checks that every
+interpreter printed the same line, and saves its evidence to `results/statusline-timing.md`. It passed on Linux on
+2026-10-13.
+
+Run it from PowerShell in a worktree of the branch, which leaves `D:\prompts` and every live session alone:
+
+```powershell
+git -C D:\prompts fetch mpetito py/statusline-pr
+git -C D:\prompts worktree add ..\prompts-statusline mpetito/py/statusline-pr
+cd D:\prompts-statusline
+python3 docs\tooling\python-migration\windows\statusline_timing.py
+```
+
+It takes under a minute and prints one `TIMING` line per measurement, then `OUTPUT same` or `OUTPUT differs`. It
+exits 1 if the outputs differ or a run failed. The saved file has both outputs, so a difference can be read there.
+The saved file is masked for this public repository: the home folder appears as `%USERPROFILE%`. If the home
+folder or the user name survives the masking, the script prints a `LEAK` line, saves nothing and exits 1; report
+that instead of committing anything.
+
+Commit `docs/tooling/python-migration/windows/results/statusline-timing.md`, and only that file. Then run
+`git pull --rebase mpetito py/statusline-pr` and `git push mpetito HEAD:py/statusline-pr`. Remove the worktree
+afterwards with `git -C D:\prompts worktree remove ..\prompts-statusline`.
+
+Do not change this machine's `statusLine` setting: that switch is the owner's, after the numbers are reported.
