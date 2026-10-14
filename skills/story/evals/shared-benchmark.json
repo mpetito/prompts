@@ -1,0 +1,465 @@
+{
+  "version": 2,
+  "skill_name": "story",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "s1-contact-cases-on-the-board",
+      "split": "tune",
+      "prompt": "Do what the request in contact-cases-request.md asks. Read the input files, but do not run commands. The Azure DevOps tools this session has are in ado-mcp-tools.md, and the read-only lookups in kestrel-ledger-snapshot.md are already done. You cannot call tools here, so write out instead every further tool call you would make, in order: for each, a line `Call: <full tool name>` and then a fenced json block with its exact arguments. Where a call needs an id that an earlier call returns, write `<id of new item N>`. End with a short note to the requester.",
+      "files": [
+        "fixtures/ado-mcp-tools.md",
+        "fixtures/kestrel-ledger-snapshot.md",
+        "fixtures/contact-cases-request.md"
+      ],
+      "expected_behavior": [
+        "Regression: unaided Opus and Sonnet passed every placement and format check in the overlap probe, so the skill carries no placement rule; the case guards against a skill edit that breaks them.",
+        "Area path follows the sibling stories (Kestrel Ledger\\CRM Modernization\\CRM\\Spring CRM Engineering), not the team default (the project root) or the Feature's own area",
+        "Iteration path is the team's current iteration, Kestrel Ledger\\2026-11-30",
+        "Parented under the in-flight Feature 4458 (CRM Spring Change Request), by add_child or a parent link",
+        "Description and Acceptance Criteria are sent with the Markdown format flag; Title carries no format flag",
+        "Title follows the project's convention of the client ticket key as a suffix: [OPS-5902]"
+      ],
+      "assertions": [
+        {
+          "name": "area-follows-siblings",
+          "type": "regex",
+          "pattern": "(?:\\{[^{}]*System\\.AreaPath[^{}]*|\\\"areaPath\\\"\\s*:\\s*\\\")Kestrel Ledger\\\\{1,2}CRM Modernization\\\\{1,2}CRM\\\\{1,2}Spring CRM Engineering"
+        },
+        {
+          "name": "no-root-or-feature-area",
+          "type": "not_regex",
+          "pattern": "(?:\\{[^{}]*System\\.AreaPath\\\"[^{}]*\\\"value\\\"\\s*:\\s*|\\\"areaPath\\\"\\s*:\\s*)\\\"Kestrel Ledger(?:\\\\{1,2}CRM Modernization)?\\\""
+        },
+        {
+          "name": "current-iteration",
+          "type": "regex",
+          "pattern": "(?:\\{[^{}]*System\\.IterationPath[^{}]*|\\\"iterationPath\\\"\\s*:\\s*\\\")Kestrel Ledger\\\\{1,2}2026-11-30"
+        },
+        {
+          "name": "parent-feature-4458",
+          "type": "regex",
+          "pattern": "\\\"parentId\\\"\\s*:\\s*4458\\b|\\{[^{}]*\\\"linkToId\\\"\\s*:\\s*4458\\b[^{}]*\\\"(?:type|linkType)\\\"\\s*:\\s*\\\"parent\\\"|\\{[^{}]*\\\"(?:type|linkType)\\\"\\s*:\\s*\\\"parent\\\"[^{}]*\\\"linkToId\\\"\\s*:\\s*4458\\b"
+        },
+        {
+          "name": "description-markdown",
+          "type": "regex",
+          "pattern": "\\{(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:/fields/)?System\\.Description\")(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}|\\{(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"title\"\\s*:)(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"description\"\\s*:)(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "ac-markdown",
+          "type": "regex",
+          "pattern": "\\{(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:/fields/)?Microsoft\\.VSTS\\.Common\\.AcceptanceCriteria\")(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "no-unflagged-rich-text",
+          "type": "not_regex",
+          "pattern": "\\{(?!(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:name|path)\"\\s*:\\s*\"(?:/fields/)?(?:System\\.Description|Microsoft\\.VSTS\\.Common\\.AcceptanceCriteria)\"(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "title-no-format",
+          "type": "not_regex",
+          "pattern": "\\{(?=[^{}]*\\\"(?:name|path)\\\"\\s*:\\s*\\\"(?:/fields/)?System\\.Title\\\")(?=[^{}]*\\\"format\\\"\\s*:\\s*\\\"(?:Markdown|Html)\\\")[^{}]*\\}"
+        },
+        {
+          "name": "title-ticket-key",
+          "type": "regex",
+          "pattern": "\\{(?=[^{}]*System\\.Title)[^{}]*\\[OPS-5902\\][^{}]*\\}|\\\"title\\\"\\s*:\\s*\\\"[^\\\"]*\\[OPS-5902\\]"
+        }
+      ],
+      "eval_intent": "regression"
+    },
+    {
+      "id": "s2-case-routing-ac-user-facing",
+      "split": "tune",
+      "prompt": "Do what the request in case-routing-request.md asks. Read the input files, but do not run commands. The Azure DevOps tools this session has are in ado-mcp-tools.md, and the read-only lookups in kestrel-ledger-snapshot.md are already done. You cannot call tools here, so write out instead every further tool call you would make, in order: for each, a line `Call: <full tool name>` and then a fenced json block with its exact arguments. Where a call needs an id that an earlier call returns, write `<id of new item N>`. End with a short note to the requester.",
+      "files": [
+        "fixtures/ado-mcp-tools.md",
+        "fixtures/kestrel-ledger-snapshot.md",
+        "fixtures/case-routing-request.md"
+      ],
+      "expected_behavior": [
+        "Acceptance criteria describe what a support rep, a service manager or the client's Customer Success lead can observe, with no field API names, flow, test class, coverage or deployment steps",
+        "Engineering notes (flow, field names, test class, deployment path) live in the description, for the engineer",
+        "Acceptance criteria cover the named service manager, the inactive or missing service manager fallback, and the Partner Portal exception",
+        "Description and Acceptance Criteria carry the Markdown format flag"
+      ],
+      "assertions": [
+        {
+          "name": "ac-present-markdown",
+          "type": "regex",
+          "pattern": "\\{(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:/fields/)?Microsoft\\.VSTS\\.Common\\.AcceptanceCriteria\")(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "ac-no-implementation-terms",
+          "type": "not_regex",
+          "pattern": "(?i)\\{(?=[^{}]*Microsoft\\.VSTS\\.Common\\.AcceptanceCriteria)[^{}]*(?:Service_Manager__c|OwnerId|record[- ]triggered|\\bflows?\\b|Apex|CaseRoutingFlowTest|test class|coverage|change set|deploy\\w*|after insert|(?:unit|automated|integration|apex) tests?|tests? (?:pass|run)|promot\\w* to prod\\w*)[^{}]*\\}"
+        },
+        {
+          "name": "description-markdown",
+          "type": "regex",
+          "pattern": "\\{(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:/fields/)?System\\.Description\")(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "ac-judgeable-by-everyone",
+          "type": "judge",
+          "rubric": [
+            "Every acceptance criterion names something a person sees or does in the CRM (for example 'A new case for an account whose service manager is active appears in that service manager's case list'), so the client's Customer Success lead could check it in UAT without reading code. Fail: any criterion about a field API name, the flow, a test class, code coverage or the deployment path.",
+            "The criteria cover all three behaviours: the named active service manager gets the case; an account with no service manager or an inactive one sends the case to the CS triage queue; Partner Portal cases keep landing in the partner team's queue.",
+            "The flow design, field API names, test class and deployment path are kept for the engineer in the description (or a technical notes section), not dropped."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s3-contact-hub-split",
+      "split": "tune",
+      "prompt": "Do what the request in contact-hub-request.md asks. Read the input files, but do not run commands. The Azure DevOps tools this session has are in ado-mcp-tools.md, and the read-only lookups in kestrel-ledger-snapshot.md are already done. You cannot call tools here, so write out instead every further tool call you would make, in order: for each, a line `Call: <full tool name>` and then a fenced json block with its exact arguments. Where a call needs an id that an earlier call returns, write `<id of new item N>`. End with a short note to the requester. Before any call, list every work item you propose as a line `Proposed: <work item type>: <title>`. If you would wait for the requester before writing anything, stop at that point and end with your note.",
+      "files": [
+        "fixtures/ado-mcp-tools.md",
+        "fixtures/kestrel-ledger-snapshot.md",
+        "fixtures/contact-hub-request.md"
+      ],
+      "expected_behavior": [
+        "Proposes the wish list as separate sibling stories that can each ship and be accepted alone (item 2 already shipped as 4936, so at least three), instead of the one 21-point story the PM asked for",
+        "Proposes no new Feature or Epic (none was asked for); the stories go under the existing parent, Feature 4458",
+        "Creates nothing yet: the split changes the shape the PM asked for, so it waits for the PM to confirm",
+        "Marks the duplicate-flagging story as waiting on the Integration Hub's nightly sync"
+      ],
+      "assertions": [
+        {
+          "name": "three-or-more-proposed-stories",
+          "type": "regex",
+          "pattern": "(?ms)(?:^\\W*Proposed:\\W*User Story\\b.*?){3}"
+        },
+        {
+          "name": "no-new-feature",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*Proposed:\\W*(?:Feature|Epic)\\b|\\\"workItemType\\\"\\s*:\\s*\\\"(?:Feature|Epic)\\\""
+        },
+        {
+          "name": "no-write-before-confirmation",
+          "type": "not_regex",
+          "pattern": "(?im)^[^\\n]*Call(?: \\d+)?:[^\\n]*_write\\b|\"action\"\\s*:\\s*\"(?:create|add_child|update|update_batch|link)\""
+        },
+        {
+          "name": "no-oversized-estimate",
+          "type": "not_regex",
+          "pattern": "(?i)\\{(?=[^{}]*StoryPoints)[^{}]*\\\"value\\\"\\s*:\\s*\\\"?(?:1[4-9]|[2-9]\\d)\\b"
+        },
+        {
+          "name": "split-judge",
+          "type": "judge",
+          "rubric": [
+            "The proposal is separate User Stories, each one outcome the client could accept on its own (cases on the contact page; last-contacted date; CSV export; duplicate flagging; item 2, hiding inactive contacts, already shipped as 4936 and may be linked instead of re-proposed). Fail: one story holding all the items as acceptance criteria, or stories split by technical layer.",
+            "The answer proposes the stories under the existing Feature 4458 without creating a new Feature, writes nothing yet, and asks the PM to confirm the split, saying why one story would not work.",
+            "The duplicate-flagging story says it waits on the Integration Hub's nightly sync (a predecessor link, a note, or a later iteration), rather than being scheduled as if it could ship now."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s4-refresh-story-markdown-update",
+      "split": "tune",
+      "prompt": "Do what the request in refresh-story-request.md asks. Read the input files, but do not run commands. The Azure DevOps tools this session has are in ado-mcp-tools-gateway-only.md, and the read-only lookups in kestrel-ledger-snapshot-gateway.md are already done. You cannot call tools here, so write out instead every further tool call you would make, in order: for each, a line `Call: <full tool name>` and then a fenced json block with its exact arguments. Where a call needs an id that an earlier call returns, write `<id of new item N>`. End with a short note to the requester.",
+      "files": [
+        "fixtures/ado-mcp-tools-gateway-only.md",
+        "fixtures/kestrel-ledger-snapshot-gateway.md",
+        "fixtures/refresh-story-request.md"
+      ],
+      "expected_behavior": [
+        "Only the gateway connection is attached: updates 4935 through its update_batch, whose entries carry a Markdown format flag per rich-text field, never through its single-item update, which has no format field",
+        "The new description stands alone: who, why, the field order, what stays unchanged for Sales, with the ticket link kept",
+        "Acceptance criteria are checkable by the client in UAT"
+      ],
+      "assertions": [
+        {
+          "name": "no-gateway-single-update",
+          "type": "not_regex",
+          "pattern": "(?:\\*\\*)?Call(?: \\d+)?:(?:\\*\\*)?\\s*`?(?:mcp__MCP_DOCKER__azure-devops__)?wit_work_item_write`?\\s*\\n+\\s*```(?:json)?\\s*\\n(?:(?!```)[\\s\\S])*?\"action\"\\s*:\\s*\"update\""
+        },
+        {
+          "name": "description-markdown",
+          "type": "regex",
+          "pattern": "\\{(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:/fields/)?System\\.Description\")(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "ac-markdown",
+          "type": "regex",
+          "pattern": "\\{(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:/fields/)?Microsoft\\.VSTS\\.Common\\.AcceptanceCriteria\")(?=(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "no-unflagged-rich-text",
+          "type": "not_regex",
+          "pattern": "\\{(?!(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"format\"\\s*:\\s*\"Markdown\")(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\"(?:name|path)\"\\s*:\\s*\"(?:/fields/)?(?:System\\.Description|Microsoft\\.VSTS\\.Common\\.AcceptanceCriteria)\"(?:[^{}\"]|\"(?:[^\"\\\\]|\\\\.)*\")*\\}"
+        },
+        {
+          "name": "standalone-description",
+          "type": "judge",
+          "rubric": [
+            "The new description stands on its own for an engineer or agent who has not seen the Jira ticket: it says who the layout is for and why, lists the eight fields in order, says the Sales layout is unchanged, names the two removed fields and the two read-only fields, and keeps the OPS-7208 link. Fail: 'see attached' or 'per the ticket' in place of the field list.",
+            "Each acceptance criterion is something the client's Customer Success lead can check by opening a contact as a CS rep or as a sales rep."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s5-cold-start-looks-first",
+      "split": "tune",
+      "prompt": "Do what the request in contact-cases-cold-request.md asks. Read the input files, but do not run commands. The Azure DevOps tools this session has are in ado-mcp-tools.md; nothing has been looked up yet. You cannot call tools here, so write out instead every tool call you would make, in order: for each, a line `Call: <full tool name>` and then a fenced json block with its exact arguments. Where a call needs something an earlier call returns, write `<result of call N>`. End with a short note to the requester.",
+      "files": [
+        "fixtures/ado-mcp-tools.md",
+        "fixtures/contact-cases-cold-request.md"
+      ],
+      "expected_behavior": [
+        "Regression: unaided Opus and Sonnet looked first in every scorable run (one unaided Opus run was an API safeguard error), so the case guards step 1 against a skill edit rather than counting toward the bar.",
+        "Before the first write call, reads the team's settings or current iteration (the work tool)",
+        "Before the first write call, queries or searches the work in flight (open Features, recent stories, an existing item for OPS-5902)"
+      ],
+      "assertions": [
+        {
+          "name": "iteration-lookup-before-write",
+          "type": "regex",
+          "pattern": "\\A(?:(?!Call(?: \\d+)?:[^\\n]*_write\\b)[\\s\\S])*?Call(?: \\d+)?:[^\\n]*__work\\b"
+        },
+        {
+          "name": "in-flight-lookup-before-write",
+          "type": "regex",
+          "pattern": "\\A(?:(?!Call(?: \\d+)?:[^\\n]*_write\\b)[\\s\\S])*?Call(?: \\d+)?:[^\\n]*__(?:wit_query|search_workitem|wit_backlog)\\b"
+        }
+      ],
+      "eval_intent": "regression"
+    },
+    {
+      "id": "pos-story-misfiled-as-bug",
+      "split": "tune",
+      "prompt": "Draft the Azure DevOps work item for the request in the input file. For each work item, put a line `Type: <work item type>` first, then give each field as a level-2 Markdown heading followed by its value. Read the input file, but do not run commands, and do not try to create anything in a tracker; everything you need is in the input file.",
+      "files": [
+        "fixtures/shipments-export-request.md"
+      ],
+      "expected_behavior": [
+        "Chooses User Story, not the Bug the requester asked for, because the export never existed",
+        "Description uses As a ..., I want ... so that ... with an Additional Context section",
+        "Story points are a Fibonacci value (5 or 8), not the dev lead's 6-7",
+        "Acceptance criteria are numbered sections with checkboxes and measurable values (50,000-row cap, 10 seconds)",
+        "Iteration path is the current sprint, Sprint 14"
+      ],
+      "assertions": [
+        {
+          "name": "type-user-story",
+          "type": "regex",
+          "pattern": "(?im)^\\W*(work item )?type\\W*:\\W*user story\\b"
+        },
+        {
+          "name": "fibonacci-points",
+          "type": "regex",
+          "pattern": "(?im)story points?\\W{0,12}(1|2|3|5|8|13)\\b(?!\\.\\d)"
+        },
+        {
+          "name": "no-non-fibonacci-points",
+          "type": "not_regex",
+          "pattern": "(?im)story points?\\W{0,12}(4|6|7|9|10|11|12)\\b"
+        },
+        {
+          "name": "iteration-current-sprint",
+          "type": "regex",
+          "pattern": "(?is)iteration(\\s+path)?\\b.{0,60}?sprint 14\\b"
+        },
+        {
+          "name": "numbered-ac-sections",
+          "type": "regex",
+          "pattern": "(?m)^#{2,5}\\s*1\\.\\s+\\S"
+        },
+        {
+          "name": "ac-checkboxes",
+          "type": "regex",
+          "pattern": "(?m)^\\s*[-*] \\[ \\] \\S"
+        },
+        {
+          "name": "additional-context-heading",
+          "type": "regex",
+          "pattern": "(?im)^#{2,5}\\s*Additional Context\\b"
+        },
+        {
+          "name": "no-vague-criteria",
+          "type": "not_regex",
+          "pattern": "(?im)^[ \\t]*(?:[-*][ \\t]+\\[[ xX]\\]|\\d+\\.)[ \\t]+(?:[^\\n\"“”]|\"[^\"\\n]*\"|“[^”\\n]*”)*?(?<!['‘])\\b((is|are)\\s+(fast|intuitive|user[- ]friendly|seamless)\\b|handles?\\s+(all\\s+)?errors\\s+gracefully|errors (are )?handled gracefully|performance is (good|acceptable)|works correctly|just works|looks? (nice|good))|^#{1,6}[^\\n]*acceptance criteria[^\\n]*\\n(?:(?!#{1,2}[ \\t])[^\\n]*\\n)*?(?!#)[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]+)?(?:[^\\n\"“”]|\"[^\"\\n]*\"|“[^”\\n]*”)*?(?<!['‘])\\b((is|are)\\s+(fast|intuitive|user[- ]friendly|seamless)\\b|handles?\\s+(all\\s+)?errors\\s+gracefully|errors (are )?handled gracefully|performance is (good|acceptable)|works correctly|just works|looks? (nice|good))"
+        },
+        {
+          "name": "no-bold-fragments",
+          "type": "not_regex",
+          "pattern": "(?m)[\\w,;)][ \\t]+\\*\\*[^*\\n]+\\*\\*|^\\s*[-*] \\[[ xX]\\]\\s+\\*\\*[^*\\n]+\\*\\*"
+        },
+        {
+          "name": "story-quality",
+          "type": "judge",
+          "rubric": [
+            "The description is one 'As a <persona>, I want ... so that ...' sentence naming the shipping coordinators (or warehouse operations) and the weekly carrier reconciliation benefit",
+            "The output says why this is a User Story rather than the Bug requested: the export never existed, so it is missing functionality, not a defect",
+            "Acceptance criteria state the 50,000-row cap with the exact blocking message, the 40,000-rows-under-10-seconds target, and that filters and sort order are respected",
+            "Nothing listed as out of scope in the input (scheduled or emailed exports, .xlsx, other grids) appears as an acceptance criterion"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-tech-debt-oversized-issue",
+      "split": "tune",
+      "prompt": "Turn the request in the input file into Azure DevOps backlog work. For each work item, put a line `Type: <work item type>` first, then give each field as a level-2 Markdown heading followed by its value. Read the input file, but do not run commands, and do not try to create anything in a tracker; everything you need is in the input file.",
+      "files": [
+        "fixtures/runtime-upgrade-request.md"
+      ],
+      "expected_behavior": [
+        "Chooses Issue (technical work), not the story the tech lead asked for",
+        "Description uses We need ... to ..., not As a developer",
+        "Splits the 20-point estimate into at least two estimated items along the independently deployed API and worker, each Fibonacci and at most 13",
+        "Acceptance criteria use the measurable facts: 412 unit and 38 integration tests, 0 high scan findings, p95 at or below 340 ms",
+        "Iteration path is next sprint, Sprint 23",
+        "Proposes no new Feature or Epic (none was asked for)",
+        "The Issue type has no Acceptance Criteria field, so its criteria sit under a `### Acceptance Criteria` heading inside the Description"
+      ],
+      "assertions": [
+        {
+          "name": "type-issue",
+          "type": "regex",
+          "pattern": "(?im)^\\W*(work item )?type\\W*:\\W*issue\\b"
+        },
+        {
+          "name": "we-need-format",
+          "type": "regex",
+          "pattern": "(?im)^\\W{0,3}We need\\b[^\\n]{3,}?\\bto\\b"
+        },
+        {
+          "name": "no-story-format-description",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W{0,4}as (an?|the) [^\\n,]{1,60},?\\s+(I|we) (want|need)\\b"
+        },
+        {
+          "name": "split-into-estimated-items",
+          "type": "regex",
+          "pattern": "(?ims)^#{2,6}\\s*story points?\\b.*?^#{2,6}\\s*story points?\\b"
+        },
+        {
+          "name": "no-oversized-or-non-fibonacci-estimate",
+          "type": "not_regex",
+          "pattern": "(?im)story points?\\W{0,12}(4|6|7|9|10|11|12|1[4-9]|[2-9]\\d|\\d{3,})\\b"
+        },
+        {
+          "name": "numbered-ac-sections",
+          "type": "regex",
+          "pattern": "(?m)^#{2,5}\\s*1\\.\\s+\\S"
+        },
+        {
+          "name": "iteration-next-sprint",
+          "type": "regex",
+          "pattern": "(?is)iteration(\\s+path)?\\b.{0,60}?sprint 23\\b"
+        },
+        {
+          "name": "no-vague-criteria",
+          "type": "not_regex",
+          "pattern": "(?im)^[ \\t]*(?:[-*][ \\t]+\\[[ xX]\\]|\\d+\\.)[ \\t]+(?:[^\\n\"“”]|\"[^\"\\n]*\"|“[^”\\n]*”)*?(?<!['‘])\\b((everything|all (existing )?(functionality|features)|existing (functionality|features))\\s+(should\\s+)?(still\\s+)?(works?|continues? to work)\\b|works correctly|(is|are|be|runs?) faster\\b(?! than \\d)|performance is (good|better|improved|the same|unchanged)|code is clean)|^#{1,6}[^\\n]*acceptance criteria[^\\n]*\\n(?:(?!#{1,2}[ \\t])[^\\n]*\\n)*?(?!#)[ \\t]*(?:[-*][ \\t]+)?(?:\\[[ xX]\\][ \\t]+)?(?:[^\\n\"“”]|\"[^\"\\n]*\"|“[^”\\n]*”)*?(?<!['‘])\\b((everything|all (existing )?(functionality|features)|existing (functionality|features))\\s+(should\\s+)?(still\\s+)?(works?|continues? to work)\\b|works correctly|(is|are|be|runs?) faster\\b(?! than \\d)|performance is (good|better|improved|the same|unchanged)|code is clean)"
+        },
+        {
+          "name": "no-new-feature",
+          "type": "not_regex",
+          "pattern": "(?im)^\\W*Type\\W*:\\W*(?:Feature|Epic)\\b"
+        },
+        {
+          "name": "ac-under-heading",
+          "type": "regex",
+          "pattern": "(?im)^#{3,4}\\s*Acceptance Criteria\\b"
+        },
+        {
+          "name": "issue-quality",
+          "type": "judge",
+          "rubric": [
+            "The work is split into at least two Issues along independently deliverable parts (for example the API with Dispatch.Core, and the route worker), each estimated at 13 points or fewer",
+            "Acceptance criteria cite concrete checks from the input: 412 unit tests and 38 integration tests passing, 0 high-severity scan findings, and GET /routes p95 at or below 340 ms",
+            "Each Issue description begins 'We need ... to ...' and records dependencies such as the shared Dispatch.Core library or the two EF Core query rewrites",
+            "No out-of-scope item from the input (.NET 9, queue replacement, rewriting other EF queries) appears as an acceptance criterion"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-write-user-story",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a user story with acceptance criteria for letting customers reset their password from the mobile app.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-file-bug",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "File a bug in Azure DevOps for the checkout page crashing when the cart is empty, with repro steps and a severity.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-estimate-card",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "How many story points should this backlog item be, and can you tighten its acceptance criteria? \"Customers can download any past invoice as a PDF from their account page. AC: works in all browsers; downloads are fast.\"",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-break-down-request",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Break this client email into stories on our board under the right feature, with acceptance criteria the client can sign off on: \"We'd like a reporting dashboard that shows weekly orders by region, lets managers export it to PDF, and emails us when returns go above 5% in a week.\"",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-pr-description",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write the pull request description for my branch that implements AB#5120.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a PR body for finished work is not a work item."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-spec-plan",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Write a spec and implementation plan for the new notifications feature before we start coding.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a spec and plan under specs/ is not an ADO work item."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-log-time",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Log two hours in Harvest against the Azure DevOps work item I just finished.",
+      "expected_behavior": [
+        "The skill should NOT trigger: logging time against a work item is not writing one."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}

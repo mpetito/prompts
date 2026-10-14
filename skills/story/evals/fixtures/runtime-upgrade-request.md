@@ -1,6 +1,8 @@
 # Backlog request: move the Dispatch services off the old runtime
 
 Project: Dispatchboard. Team: Dispatchboard Platform.
+Process: the team's Stories backlog holds User Story, Issue and Bug; Issue has Story Points but no
+Acceptance Criteria field.
 Current sprint: Dispatchboard\Sprint 22 (full). Next sprint: Dispatchboard\Sprint 23.
 
 ## Message from the tech lead
