@@ -419,9 +419,9 @@ Fixture prose in `.md` files is updated with its skill.
 
   That grep misses `pwsh -NoProfile -File ./x.ps1` and bare script names, so the step is checked with a wider
   one, which prints nothing:
-  `git grep -nE '\b(pwsh|node)\b.*\.(ps1|psm1|js)\b|setup-skills-link\.ps1|verify-setup\.ps1|run-skill-eval|Setup\.Common|Mcp\.Common|check-assertions\.py|stage-plugin-baseline' -- <reference excludes>`.
+  `git grep -nE '\b(pwsh|node)\b.*\.(ps1|psm1|js)\b|setup-skills-link\.ps1|verify-setup\.ps1|run-skill-eval|Setup\.Common|Mcp\.Common|check-assertions\.py|stage-plugin-baseline' -- <reference excludes> ':!docs/openclaw-skills-orientation.md'`.
   `statusline.js` is checked apart from it: setup removes the old link by that name, so
-  `git grep -l 'statusline\.js' -- <reference excludes>` lists exactly `setup_skills_link.py` and
+  `git grep -l 'statusline\.js' -- <reference excludes> ':!docs/openclaw-skills-orientation.md'` lists exactly `setup_skills_link.py` and
   `tests/test_setup.py`.
 
   Linux, 2026-10-14, before phase 2: both greps hold, and every suite passes 5 times with every core busy.
