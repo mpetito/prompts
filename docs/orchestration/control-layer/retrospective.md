@@ -1,7 +1,7 @@
 # Retrospective: the control layer build
 
-Built 2026-10-15 from [spec.md](spec.md) and [plan.md](plan.md): steps 1-6 and 8 landed, steps 7 and
-9 wait for the owner. One orchestration thread, five Claude lanes on Opus (probes, core, hooks,
+Built 2026-10-15 from [spec.md](spec.md) and [plan.md](plan.md): steps 1-6 and 8 landed first;
+steps 7 and 9-11 followed the owner's answers (see "The second pass" below). One orchestration thread, five Claude lanes on Opus (probes, core, hooks,
 controller, live), and five review subagents on Opus with the review or plan-review skill. The owner's
 instruction for the whole build was "keep it simple", with a reviewer asking of everything "Is this
 really necessary?".
@@ -59,9 +59,8 @@ The live acceptance ran about ten probe sessions, all on Opus. One check ran twi
 
 ## Weak spots to know about
 
-- **Weak evals.** Only one of the three cases fails without the skill on behaviour (the settings
-  refusal). The steer case fails for want of the `authority` subcommand, and the conflict case only
-  on the `STATUS:` line.
+- **Weak evals** (fixed in step 10). Only one of the three cases failed without the skill on
+  behaviour; now each fails 3 of 3 without it on the action taken and passes 3 of 3 with it.
 - **An undocumented variable.** The hook finds its folder through `CLAUDE_PLUGIN_ROOT`, which the docs
   don't promise for a non-plugin skill. It was shown on Claude Code 2.1.300, both in a project skill
   and live.
@@ -88,3 +87,34 @@ The live acceptance ran about ten probe sessions, all on Opus. One check ran twi
   depended on them.
 - Brief reviewers with the owner's question and with mutants to plant. Every blocking finding came
   with a probe or a surviving mutant as evidence.
+
+## The second pass
+
+After the owner accepted the readmission gap (D3), set the supervisor build aside (D4), reversed D1
+(the owner's newest words win, typed or relayed by `OWNER:`) and asked for one more "Is this really
+necessary?" pass on session identity, three lanes ran: `owner` (Opus: D1 in SKILL.md, the evals, the
+readmission entry), `simplify` (Opus: ctl.py and protocol.md) and `retire` (Sonnet: one record and a
+health check). Three review rounds and one verifier, all Opus subagents.
+
+- **The cut that went too far.** Dropping the Claude session id for a pane-only tie looked like a
+  simpler rule. Review round 1 showed a session resumed in another pane could then be rung past
+  `observe` and under a new name. The id came back, used only where a ring matches an unnamed agent.
+- **The protocol was wrong about `/clear` from the start.** The live check, not review, found it:
+  herdr drops an agent's name on `/clear`, so a cleared session is `gone` and its wait reports `GONE`,
+  not `UNREAD`. "Shown" had recorded the name surviving only for an agent herdr had never named.
+- **Review kept finding the same class one layer deeper**: a resumed session's ring (round 1), a
+  re-attach keeping a stale id and a ring under another record's pane (round 2), one session holding
+  two attached records (round 3). Two of the three were there before the pass. The class now has one
+  rule in protocol.md: one session holds one attached record, and a ring attaches an agent only under
+  its own record. Round 3 went to the owner as D5, per the three-round limit.
+- **Known gap, by design since step 3.** An agent with no attached record falls back to every record
+  in its pane, so a session in a recorded pane can be rung under that pane's record at its level. The
+  verifier reached it through a four-pane sequence of exits and continues. Closing it means deciding
+  what a pane's record is worth once its session has gone; that is the owner's call, not a fix.
+- **Two changes for the OpenClaw adapter**, by its request: `--` ends ctl.py's options (a `--owner`
+  answer text no longer marks a controller decision as the owner's), and `wait --timeout 0` is
+  documented as one look.
+
+What to reuse: a live check of every recovery path the protocol claims, before review; and when a
+reviewer's third round finds the same class, state the invariant in one sentence and test that, not
+the next example.
