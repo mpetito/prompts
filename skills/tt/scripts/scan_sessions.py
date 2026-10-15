@@ -23,9 +23,11 @@ A session is active between two of its records at most IDLE_GAP apart, counting 
 files' records as its own; a longer gap is not counted. Every timestamped record counts, typed by a person or
 not. Sessions whose working directory is under a temporary directory (eval and harness runs) are left out.
 Claude's transcript retention (`cleanupPeriodDays`, 30 days by default) bounds the range: days whose
-transcripts are gone print nothing. Lines that are not a JSON object, records whose id, working directory or
-remote is not a string without NUL, and timestamps that are not ISO 8601 with a time zone are skipped and counted
-on stderr. Reads only; sends nothing. --to defaults to --from; exit 1 on a usage error.
+transcripts are gone print nothing. These are skipped and counted on stderr: lines that are not a JSON object;
+records whose session id, working directory, pull-request link or recorded remote is not a string without NUL,
+or whose link or remote is not a parseable URL; a Codex session_meta whose payload or payload.git is not an
+object; timestamps that are not ISO 8601 with a time zone, or fall in year 1 or 9999. Reads only; sends
+nothing. --to defaults to --from; exit 1 on a usage error.
 """
 import argparse
 import json
@@ -36,7 +38,7 @@ import subprocess
 import sys
 import tempfile
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from datetime import MAXYEAR, MINYEAR, date, datetime, time, timedelta, timezone
 from functools import cache
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -152,7 +154,11 @@ def claude_events(path, bad, pr_links):
             continue
         sid = r.get("sessionId", path.stem)
         if r.get("type") == "pr-link" and r.get("prUrl"):
-            pr_links[sid] = repo_key(r["prUrl"])
+            try:
+                pr_links[sid] = repo_key(r["prUrl"])
+            except ValueError:  # urlsplit rejects it, e.g. an unclosed IPv6 host
+                bad[path] += 1
+                continue
         cwd = r.get("cwd") or cwd
         if "timestamp" in r and cwd:
             events.append((sid, cwd, r["timestamp"], None))
@@ -170,9 +176,12 @@ def codex_events(path, bad, pr_links):
             if not (isinstance(git, dict) and text(meta.get("id"), meta.get("cwd"), git.get("repository_url"))):
                 bad[path] += 1
                 continue
-            sid, cwd = meta.get("id", sid), meta.get("cwd", cwd)
-            if url := git.get("repository_url"):
-                remote = repo_key(url)
+            try:
+                key = repo_key(url) if (url := git.get("repository_url")) else remote
+            except ValueError:  # urlsplit rejects it, e.g. an unclosed IPv6 host
+                bad[path] += 1
+                continue
+            sid, cwd, remote = meta.get("id", sid), meta.get("cwd", cwd), key
         if "timestamp" in r and cwd:
             events.append((sid, cwd, r["timestamp"], remote))
     return events
@@ -230,14 +239,17 @@ def scan(claude_root, codex_root, first, last, tz=None, temp_roots=TEMP_ROOTS):
     for source, path, sid, cwd, ts, recorded in events:
         if is_temp(cwd, temp_roots):
             continue
-        # The remote a Codex rollout recorded comes first; a session's PR link is the last resort after git.
+        # A zoneless time cannot be ordered against the others. A local day lies within a day of UTC, so a
+        # year strictly inside MINYEAR..MAXYEAR keeps the local conversion and the next midnight in range.
         try:
             stamp = datetime.fromisoformat(ts)
-        except (TypeError, ValueError):
-            stamp = None
-        if stamp is None or stamp.tzinfo is None:  # a zoneless time cannot be ordered against the others
+            ok = stamp.tzinfo is not None and MINYEAR < stamp.astimezone(timezone.utc).year < MAXYEAR
+        except (TypeError, ValueError, OverflowError):
+            ok = False
+        if not ok:
             bad[path] += 1
             continue
+        # The remote a Codex rollout recorded comes first; a session's PR link is the last resort after git.
         repo = recorded or git_remote(cwd) or pr_links.get(sid) or f"unmapped:{cwd}"
         streams[source, sid, repo].append(stamp)
     days = defaultdict(lambda: ([], set(), set()))
