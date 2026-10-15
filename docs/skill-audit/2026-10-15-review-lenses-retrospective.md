@@ -148,3 +148,24 @@ The evals lane spent another USD 1.94 checking the judge conversion. Codex runs 
 
 On 2026-11-14, run `python3 scripts/skill_usage.py` to see whether review-lenses loads in real
 reviews, and re-check the Reuse and Reversibility gaps.
+
+## Orchestration
+
+Four lanes on Opus (skill, evals, wiring, eval-runner), landed locally one approved commit at a
+time; reviews by Opus subagents in the review and plan-review skills.
+
+- **The plan review caught the eval design before any run:** regexes on the lens names alone
+  could never fail the baseline, a sibling `SKILL.md` in both arms contradicted the harness's
+  "no skill files" note, the picking case's signals contradicted the spec's own table, and steps
+  8–10 had no owner.
+- **The skill review caught one spec change:** an Adopt exemption that would have excused
+  hand-rolling over a stock tool, the shape of two ledger entries the lens exists for.
+- **The wiring review caught a security-proof regression in wording:** review's gate row read as
+  dropping the proofs whenever the Trust boundary lens was skipped.
+- **The evals reviews cost the most and converged least:** three rounds on regex misgrades, ended
+  by the owner's steer to grade prose with a judge. Start there next time.
+- Owner decisions: D1 (finding prefix after the review's id), D2 (one line in the reviewer brief
+  template), D3 (keep Reuse as a known gap); D4 was superseded by the steer.
+- Not done in this build: review §2 prescribes `<file>:<line>` in a lens finding while review §7's
+  interactive mode cites file and function; make it `<location>`. The skill link (plan step 7)
+  waits for the owner.
