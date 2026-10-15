@@ -1,15 +1,20 @@
-"""Collects a pull request's feedback in one call: every unresolved review thread and every review body, verbatim, so
-findings in a body's collapsed "suppressed" section stay visible.
+"""Collects a pull request's feedback in one call: every unresolved review thread, every review body and every
+conversation comment, verbatim, so findings in a body's collapsed "suppressed" section stay visible, plus whether each
+automated reviewer (Copilot, Codex, Claude) has reviewed the current head.
   get_pr_feedback.py [--pr <number>] [--repo <owner/name>]
 --pr defaults to the pull request of the current branch, --repo to the current repository.
 
-Prints one JSON object: {repo, pr, threads, reviews}. Threads come from GraphQL and reviews from REST, both through
-`gh api --paginate --slurp`, so no page is dropped. Each thread carries its threadId (PRRT_..., for
-resolveReviewThread), isOutdated, path, line and up to 100 comments, each with its REST fullDatabaseId as a string id
-(for .../comments/<id>/replies). Exits 1 when either fetch fails, a missing pull request included: a failed fetch is
-never reported as "no feedback". Requires an authenticated gh CLI.
+Prints one JSON object: {repo, pr, head, threads, reviews, comments, automatedReviewers}. Threads come from GraphQL;
+reviews, conversation comments and the head's check runs from REST, all through `gh api --paginate --slurp`, so no
+page is dropped. Each thread carries its threadId (PRRT_..., for resolveReviewThread), isOutdated, path, line and up
+to 100 comments, each with its REST fullDatabaseId as a string id (for .../comments/<id>/replies).
+automatedReviewers has one entry per reviewer in REVIEWERS: {seen, reviewedHead}; seen means it has posted anything
+on this pull request, reviewedHead that it has reported on the head commit, findings or none. Exits 1 when any fetch
+fails, a missing pull request included: a failed fetch is never reported as "no feedback". Requires an authenticated
+gh CLI.
 """
 import json
+import re
 
 from run import Fail, Parser, entry, output, run
 
@@ -27,9 +32,36 @@ QUERY = """query($owner: String!, $name: String!, $pr: Int!, $endCursor: String)
   }
 }"""
 
+# Codex reports a review that found nothing as a conversation comment, not a review: "**Reviewed commit:** `ec42780f14`".
+CODEX_REVIEWED = re.compile(r"Reviewed commit:\**\s*`([0-9a-f]{7,40})`")
+
+
+def codex_clean_comment(feedback, check_runs, logins):
+    """Codex's no-findings comment names the head it reviewed."""
+    return any(bare(c["author"]) in logins and m and feedback["head"].startswith(m.group(1))
+               for c in feedback["comments"] for m in [CODEX_REVIEWED.search(c["body"] or "")])
+
+
+def claude_check_run(feedback, check_runs, logins):
+    """Claude's managed Code Review finishes a check run on the head, neutral whatever it found."""
+    return any(r["name"] == "Claude Code Review" and r["status"] == "completed" for r in check_runs)
+
+
+# Each automated reviewer: the logins it posts under (lowercase, without [bot]), and how it reports a head it reviewed
+# other than by a review on that commit, or None. A review whose commit is the head counts for every one of them.
+REVIEWERS = {
+    "copilot": ({"copilot-pull-request-reviewer", "copilot", "github-copilot"}, None),
+    "codex": ({"chatgpt-codex-connector"}, codex_clean_comment),
+    "claude": ({"claude"}, claude_check_run),
+}
+
 
 def login(actor):
     return (actor or {}).get("login")
+
+
+def bare(name):
+    return (name or "").lower().removesuffix("[bot]")
 
 
 def gh_value(args, missing):
@@ -38,6 +70,25 @@ def gh_value(args, missing):
     if r.returncode != 0 or not r.stdout.strip():
         raise Fail(missing)
     return r.stdout.strip()
+
+
+def rest_pages(path, what):
+    """Every item of a paginated REST list, or Fail naming what could not be collected."""
+    r = run(["gh", "api", path, "--paginate", "--slurp"])
+    if r.returncode != 0:
+        raise Fail(f"Could not collect {what}: {output(r)}")
+    return json.loads(r.stdout)
+
+
+def automated_reviewers(feedback, check_runs):
+    authors = {bare(a) for a in [r["author"] for r in feedback["reviews"]] + [c["author"] for c in feedback["comments"]]
+               + [c["author"] for t in feedback["threads"] for c in t["comments"]]}
+    status = {}
+    for name, (logins, reported) in REVIEWERS.items():
+        reviewed = any(bare(r["author"]) in logins and r["commitId"] == feedback["head"] for r in feedback["reviews"]) \
+            or bool(reported and reported(feedback, check_runs, logins))
+        status[name] = {"seen": reviewed or bool(authors & logins), "reviewedHead": reviewed}
+    return status
 
 
 def main(argv):
@@ -50,6 +101,8 @@ def main(argv):
     pr = args.pr or int(gh_value(["pr", "view", "--json", "number", "-q", ".number"],
                                  "Could not resolve the pull request; pass --pr <number>."))
     owner, _, name = repo.partition("/")
+    head = gh_value(["api", f"repos/{repo}/pulls/{pr}", "-q", ".head.sha"],
+                    f"Could not read the head of {repo}#{pr}.")
 
     r = run(["gh", "api", "graphql", "--paginate", "--slurp", "-f", f"query={QUERY}", "-f", f"owner={owner}",
              "-f", f"name={name}", "-F", f"pr={pr}"])
@@ -63,14 +116,21 @@ def main(argv):
         for t in page["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
         if not t["isResolved"]]
 
-    r = run(["gh", "api", f"repos/{repo}/pulls/{pr}/reviews", "--paginate", "--slurp"])
-    if r.returncode != 0:
-        raise Fail(f"Could not collect review bodies for {repo}#{pr}: {output(r)}")
     reviews = [{"id": v["id"], "author": login(v["user"]), "state": v["state"], "commitId": v["commit_id"],
                 "url": v["html_url"], "body": v["body"]}
-               for page in json.loads(r.stdout) for v in page]
+               for page in rest_pages(f"repos/{repo}/pulls/{pr}/reviews", f"review bodies for {repo}#{pr}")
+               for v in page]
+    comments = [{"id": c["id"], "author": login(c["user"]), "createdAt": c["created_at"], "url": c["html_url"],
+                 "body": c["body"]}
+                for page in rest_pages(f"repos/{repo}/issues/{pr}/comments", f"comments on {repo}#{pr}")
+                for c in page]
+    check_runs = [{"name": c["name"], "status": c["status"]}
+                  for page in rest_pages(f"repos/{repo}/commits/{head}/check-runs", f"check runs on {head}")
+                  for c in page["check_runs"]]
 
-    print(json.dumps({"repo": repo, "pr": pr, "threads": threads, "reviews": reviews}, indent=2, ensure_ascii=False))
+    feedback = {"repo": repo, "pr": pr, "head": head, "threads": threads, "reviews": reviews, "comments": comments}
+    feedback["automatedReviewers"] = automated_reviewers(feedback, check_runs)
+    print(json.dumps(feedback, indent=2, ensure_ascii=False))
     return 0
 
 

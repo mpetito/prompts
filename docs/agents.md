@@ -7,7 +7,7 @@ all intermediate output into the calling session.
 | Agent          | Model / effort      | Use for                                                                                                        |
 | -------------- | ------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `test-runner`  | `sonnet` / `low`    | Run tests, build, lint, or typecheck; report pass/fail with the failing output verbatim                        |
-| `pr-watch`     | `sonnet` / `low`    | Watch a PR settle — CI runs and check suites, plus Copilot review comments                                     |
+| `pr-watch`     | `sonnet` / `low`    | Watch a PR settle — CI runs and check suites, plus Copilot, Codex or Claude code reviews                       |
 | `analyst`      | `sonnet` / `medium` | Explain how a subsystem, flow, or symbol actually works, with `file:line` citations                            |
 | `researcher`   | `sonnet` / `high`   | Investigate libraries, APIs, and external docs; return a sourced synthesis, not pages                          |
 | `debugger`     | `sonnet` / `xhigh`  | Reproduce a failure, isolate its root cause, propose a minimal fix with evidence                               |

@@ -1,6 +1,6 @@
 ---
 name: pull-request
-description: "Work a GitHub pull request: answer review feedback on your own PR (check each Copilot or reviewer claim, fix what is right, reply to every thread, then resolve it or leave it open), open a PR or bring its description up to date, and post a review of someone else's PR once the owner approves the text. Use when asked to address, handle or go through review comments or Copilot feedback on my PR, reply to or resolve review threads, open or create a pull request, write or refresh a PR description, or review a PR and post the comments after an okay. Not for reviewing a local diff or uncommitted changes for bugs (review), waiting for CI or Copilot to finish (pr-watch agent), having Claude and Codex debate a decision (model-council), making a plain commit (commit-commands), or writing a CONTRIBUTING.md (project-setup)."
+description: "Work a GitHub pull request: answer review feedback on your own PR (check each claim from Copilot, Codex, Claude or a human reviewer, fix what is right, reply to every thread, then resolve it or leave it open), open a PR or bring its description up to date, and post a review of someone else's PR once the owner approves the text. Use when asked to address, handle or go through review comments or Copilot, Codex or Claude feedback on my PR, reply to or resolve review threads, open or create a pull request, write or refresh a PR description, or review a PR and post the comments after an okay. Not for reviewing a local diff or uncommitted changes for bugs (review), waiting for CI or automated reviews to finish (pr-watch agent), having Claude and Codex debate a decision (model-council), making a plain commit (commit-commands), or writing a CONTRIBUTING.md (project-setup)."
 ---
 
 # Pull request
@@ -20,19 +20,23 @@ already hold, so a PR whose time a build or an earlier session already logged ad
 
 ## Answer review feedback on your own PR
 
-1. Fetch every unresolved thread (id, `isOutdated`, comments with their REST `fullDatabaseId`)
-   and every review body: `python3 "<skill dir>/scripts/get_pr_feedback.py" --pr <n>`, or
+1. Fetch every unresolved thread (id, `isOutdated`, comments with their REST `fullDatabaseId`),
+   every review body and every conversation comment:
+   `python3 "<skill dir>/scripts/get_pr_feedback.py" --pr <n>`, whose `automatedReviewers` says
+   whether Copilot, Codex and Claude have each reported on the head; or
 
    ```sh
    gh api graphql --paginate --slurp -f owner=<owner> -f name=<repo> -F pr=<n> -f query='
      query($owner:String!,$name:String!,$pr:Int!,$endCursor:String){repository(owner:$owner,name:$name){
        pullRequest(number:$pr){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor}
          nodes{id isResolved isOutdated path line comments(first:100){nodes{fullDatabaseId author{login} body}}}}}}}' &&
-   gh api repos/<owner>/<repo>/pulls/<n>/reviews --paginate
+   gh api repos/<owner>/<repo>/pulls/<n>/reviews --paginate &&
+   gh api repos/<owner>/<repo>/issues/<n>/comments --paginate
    ```
 
    A failed fetch is an error to report, never "no feedback". Read the review bodies too,
-   including Copilot's collapsed "suppressed" section. An empty thread list is not "no feedback";
+   including Copilot's collapsed "suppressed" section, and the conversation comments, where Codex
+   reports a review that found nothing. An empty thread list is not "no feedback";
    a body-only finding gets no new public comment.
 2. Verify each claim against the code and docs before accepting it; reject with the evidence.
    Declining a blanket guard is [code-style](../code-style/SKILL.md)'s "trust your callers".
@@ -43,8 +47,10 @@ already hold, so a PR whose time a build or an earlier session already logged ad
    thread open until it is settled; its reply only says it is held for that decision, and your
    lean and reasons go to the owner, not the thread.
 4. Commit the fixes, run the project's checks, and `git push`.
-5. Reply to every thread. Resolve threads you fixed, and Copilot threads you declined with
-   evidence. A human reviewer's disagreement or deferral stays open for that reviewer.
+5. Reply to every thread. Resolve threads you fixed, and an automated reviewer's threads you
+   declined with evidence. A human reviewer's disagreement or deferral stays open for that
+   reviewer. A reply never mentions `@codex` or `@claude`: either starts a run of that reviewer,
+   and Codex's can push commits to the branch.
    - Reply, then resolve: `python3 "<skill dir>/scripts/resolve_pr_thread.py" --thread-id PRRT_... --body '<reply>'`
      (it never resolves when the reply fails), or
 

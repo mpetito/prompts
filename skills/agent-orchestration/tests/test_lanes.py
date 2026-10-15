@@ -170,6 +170,13 @@ class WatchGates(Remote):
         self.watch = load(SCRIPTS / "watch_gates.py")
         self.watch.sleep = self.slept.append
         self.sha = git(self.wt, "rev-parse", "HEAD")
+        self.reviewed, self.feedback_calls = {"copilot": True, "codex": True, "claude": False}, []
+
+        def feedback(repo, pr):
+            self.feedback_calls.append((repo, pr))
+            return {"threads": [{}, {}], "automatedReviewers": {
+                n: {"seen": True, "reviewedHead": done} for n, done in self.reviewed.items()}}
+        self.watch.feedback = feedback
 
     def test_refuses_bad_arguments(self):
         self.assertEqual(call(self.watch, "7", "abc1234")[0], 1)
@@ -178,11 +185,21 @@ class WatchGates(Remote):
         self.assertRegex(call(self.watch, "x", self.sha)[2], "^PR must be a number")
         self.assertRegex(call(self.watch, "7", self.sha, "extra")[2], "^unknown option extra; usage: ")
         self.assertEqual(self.gh.log, [])
+        self.assertRegex(call(self.watch, "7", self.sha, "--reviewers", "gemini")[2],
+                         "^unknown reviewer gemini; known: copilot,codex,claude")
 
     def test_reports_passing_gates(self):
-        code, out, _ = call(self.watch, "7", self.sha, "--check", "ci", "--bot", "copilot", "--minutes", "1")
-        self.assertEqual(out, f"GATES pr=7 head={self.sha[:7]} check=success bot=reviewed unresolved_threads=0\n")
+        code, out, _ = call(self.watch, "7", self.sha, "--check", "ci", "--reviewers", "copilot,codex",
+                            "--minutes", "1")
+        self.assertEqual(out, f"GATES pr=7 head={self.sha[:7]} check=success reviewers=copilot:reviewed,"
+                              "codex:reviewed unresolved_threads=2\n")
         self.assertEqual(self.slept, [])
+        self.assertEqual(self.feedback_calls[0], ("o/r", "7"))
+
+    def test_waits_for_each_named_reviewer(self):
+        out = call(self.watch, "7", self.sha, "--reviewers", "copilot,claude", "--minutes", "1")[1]
+        self.assertRegex(out, r" reviewers=copilot:reviewed,claude:timeout ")
+        self.assertEqual(self.slept, [15] * 4)
 
     def test_reports_a_moved_head(self):
         self.gh.pr_head = "0123456789012345678901234567890123456789"
@@ -190,12 +207,19 @@ class WatchGates(Remote):
         self.assertEqual(out, f"MOVED pr=7 head={self.sha[:7]} now=0123456\n")
 
     def test_times_out_after_four_polls_a_minute(self):
-        self.gh.check, self.gh.bot_reviews = "running", "0"
-        out = call(self.watch, "7", self.sha, "--check", "ci", "--bot", "copilot", "--minutes", "2")[1]
-        self.assertRegex(out, r"check=timeout bot=timeout ")
+        self.gh.check, self.reviewed["copilot"] = "running", False
+        out = call(self.watch, "7", self.sha, "--check", "ci", "--reviewers", "copilot", "--minutes", "2")[1]
+        self.assertRegex(out, r"check=timeout reviewers=copilot:timeout ")
         self.assertEqual(self.slept, [15] * 8)
         out = call(self.watch, "7", self.sha)[1]
-        self.assertRegex(out, r"check=n/a bot=n/a ")
+        self.assertRegex(out, r"check=n/a reviewers=n/a unresolved_threads=2")
+
+    def test_reads_feedback_from_the_sibling_pull_request_skill(self):
+        self.assertTrue(self.watch.FEEDBACK.is_file(), self.watch.FEEDBACK)
+
+    def test_an_unreadable_feedback_is_an_unknown_thread_count(self):
+        self.watch.feedback = lambda repo, pr: None
+        self.assertRegex(call(self.watch, "7", self.sha, "--minutes", "1")[1], r"unresolved_threads=\?\n$")
 
 
 class Lane(OrchTest):

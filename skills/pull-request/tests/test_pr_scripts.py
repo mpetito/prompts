@@ -28,6 +28,7 @@ def load(name):
 
 
 FEEDBACK = load("get_pr_feedback")
+HEAD = "abc1234567" + "0" * 30
 RESOLVE = load("resolve_pr_thread")
 
 SUPPRESSED_BODY = """## Review
@@ -51,8 +52,9 @@ def thread(id, resolved, outdated):
 class FakeGh:
     """Stands in for gh; records each call as its arguments joined by spaces. scenario picks the call that fails or the data returned."""
 
-    def __init__(self, scenario=""):
+    def __init__(self, scenario="", comments=(), check_runs=(), copilot_commit=HEAD):
         self.scenario, self.calls = scenario, []
+        self.comments, self.check_runs, self.copilot_commit = list(comments), list(check_runs), copilot_commit
 
     def __call__(self, args):
         if args[0] != "gh":
@@ -79,14 +81,20 @@ class FakeGh:
                 return ok(json.dumps([thread_page([], False)]))
             return ok(json.dumps([thread_page([thread("PRRT_open", False, True), thread("PRRT_done", True, False)], True),
                                   thread_page([thread("PRRT_page2", False, False)], False)]))
+        if call == "api repos/example/repo/pulls/123 -q .head.sha":
+            return ok(HEAD + "\n")
+        if call == "api repos/example/repo/issues/123/comments --paginate --slurp":
+            return failed if self.scenario == "comments-fail" else ok(json.dumps([self.comments]))
+        if call == f"api repos/example/repo/commits/{HEAD}/check-runs --paginate --slurp":
+            return ok(json.dumps([{"total_count": len(self.check_runs), "check_runs": self.check_runs}]))
         if call.startswith("api repos/example/repo/pulls/123/reviews "):
             if self.scenario == "reviews-fail":
                 return failed
             copilot = {"id": 100, "user": {"login": "copilot-pull-request-reviewer[bot]"}, "state": "COMMENTED",
-                       "commit_id": "abc123", "html_url": "https://example.test/r100", "body": SUPPRESSED_BODY}
+                       "commit_id": self.copilot_commit, "html_url": "https://example.test/r100", "body": SUPPRESSED_BODY}
             human = {"id": 101, "user": {"login": "human"}, "state": "COMMENTED", "commit_id": "def456",
                      "html_url": "https://example.test/r101", "body": "Looks fine."}
-            return ok(json.dumps([[copilot], [human]]))
+            return ok(json.dumps([[copilot] if self.copilot_commit else [], [human]]))
         raise AssertionError(f"Unexpected gh call (network refused): {call}")
 
 
@@ -146,7 +154,7 @@ class GetPrFeedback(unittest.TestCase):
 
     def test_keeps_review_provenance(self):
         r = self.result["reviews"][0]
-        self.assertEqual((r["commitId"], r["url"]), ("abc123", "https://example.test/r100"))
+        self.assertEqual((r["commitId"], r["url"]), (HEAD, "https://example.test/r100"))
 
     def test_the_thread_query_is_pageable(self):
         for pattern in (r"\$endCursor: String", r"after: \$endCursor", r"pageInfo \{ hasNextPage endCursor \}"):
@@ -184,6 +192,9 @@ class GetPrFeedback(unittest.TestCase):
     def test_a_failed_review_fetch_fails(self):
         self.expect_failure("reviews-fail", "Could not collect review bodies", "--pr", "123", "--repo", "example/repo")
 
+    def test_a_failed_comment_fetch_fails(self):
+        self.expect_failure("comments-fail", "Could not collect comments", "--pr", "123", "--repo", "example/repo")
+
     def test_an_unresolvable_repository_fails(self):
         self.expect_failure("no-repo", "Could not resolve the repository")
 
@@ -194,6 +205,51 @@ class GetPrFeedback(unittest.TestCase):
         self.assertIn("pr view --json number -q .number", gh.calls)
         result = json.loads(out)
         self.assertEqual((result["repo"], result["pr"], len(result["threads"])), ("example/repo", 123, 2))
+
+
+def comment(author, body):
+    return {"id": 7, "user": {"login": author}, "created_at": "2026-10-15T17:00:00Z",
+            "html_url": "https://example.test/c7", "body": body}
+
+
+class AutomatedReviewers(unittest.TestCase):
+    """Whether Copilot, Codex and Claude each reviewed the head, from a review on it or their own clean signal."""
+
+    def reviewers(self, **gh):
+        code, out, err = call(FEEDBACK, FakeGh("populated", **gh), "--pr", "123", "--repo", "example/repo")
+        self.assertEqual(code, 0, err)
+        return json.loads(out)["automatedReviewers"]
+
+    def test_a_review_on_the_head_is_a_reviewed_head(self):
+        self.assertEqual(self.reviewers()["copilot"], {"seen": True, "reviewedHead": True})
+
+    def test_a_review_on_an_earlier_commit_is_seen_but_not_the_head(self):
+        self.assertEqual(self.reviewers(copilot_commit="def456")["copilot"], {"seen": True, "reviewedHead": False})
+
+    def test_codex_reports_a_clean_head_in_a_comment_naming_it(self):
+        clean = comment("chatgpt-codex-connector[bot]",
+                        f"Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** `{HEAD[:10]}`")
+        self.assertEqual(self.reviewers(comments=[clean])["codex"], {"seen": True, "reviewedHead": True})
+
+    def test_a_codex_comment_naming_another_commit_is_not_the_head(self):
+        stale = comment("chatgpt-codex-connector[bot]", "**Reviewed commit:** `def4567890`")
+        self.assertEqual(self.reviewers(comments=[stale])["codex"], {"seen": True, "reviewedHead": False})
+
+    def test_only_codex_can_report_a_head_in_a_comment(self):
+        quoted = comment("human", f"**Reviewed commit:** `{HEAD[:10]}`")
+        self.assertEqual(self.reviewers(comments=[quoted])["codex"], {"seen": False, "reviewedHead": False})
+
+    def test_claude_reports_a_head_with_its_finished_check_run(self):
+        self.assertEqual(self.reviewers(check_runs=[{"name": "Claude Code Review", "status": "completed"}])["claude"],
+                         {"seen": True, "reviewedHead": True})
+        self.assertEqual(self.reviewers(check_runs=[{"name": "Claude Code Review", "status": "in_progress"}])["claude"],
+                         {"seen": False, "reviewedHead": False})
+        self.assertEqual(self.reviewers(check_runs=[{"name": "ci", "status": "completed"}])["claude"],
+                         {"seen": False, "reviewedHead": False})
+
+    def test_a_thread_comment_alone_makes_a_reviewer_seen(self):
+        self.assertEqual(self.reviewers(copilot_commit=None)["copilot"], {"seen": True, "reviewedHead": False})
+        self.assertEqual(self.reviewers()["claude"], {"seen": False, "reviewedHead": False})
 
 
 class ResolvePrThread(unittest.TestCase):
