@@ -140,9 +140,11 @@ class FakeHerdr:
         self.started[name] = agent_args
         if self.mode == "startfail":
             return self.err(args, "agent_start_failed", "the agent exited")
-        if self.mode in ("busy", "lost"):
-            if self.mode == "busy":
+        if self.mode in ("busy", "lost", "renamed"):
+            if self.mode != "lost":
                 self.agents.append({"name": None, "agent": "claude", "agent_status": "working", "pane_id": pane})
+            if self.mode == "renamed":
+                return self.err(args, "agent_name_not_found", f"named agent {name} no longer owns the target terminal")
             return self.err(args, "timeout", "timed out waiting for agent startup")
         state = "blocked" if self.mode == "notready" else "idle"
         self.agents.append({"name": name, "agent_status": state, "pane_id": pane})

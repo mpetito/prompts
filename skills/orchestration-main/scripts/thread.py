@@ -188,8 +188,9 @@ def start_thread(build, pane, brief):
         if str(e).startswith("agent_not_ready:"):
             return f"waiting on a startup prompt: answer it in workspace {build}"
         # herdr waits for the agent to go idle, but the orchestrator's initialPrompt starts its first turn at once,
-        # and a real brief outlasts the wait. herdr then drops the name while the agent keeps working in the pane.
-        if not (str(e).startswith("timeout:") and adopt(build, pane)):
+        # and a real brief outlasts the wait. herdr then drops the name while the agent keeps working in the pane:
+        # 0.9.3 reports the timeout, 0.9.5 the lost name as soon as it sees it.
+        if not (str(e).startswith(("timeout:", "agent_name_not_found:")) and adopt(build, pane)):
             raise
     return ""
 

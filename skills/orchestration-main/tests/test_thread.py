@@ -171,6 +171,10 @@ class Launch(ThreadCase):
         self.herdr.mode = ""
         self.assertEqual(thread.agent("t-b")["agent_status"], "working")
         self.assertFalse(any(line.startswith("workspace close") for line in self.herdr.log))
+        self.herdr.mode = "renamed"
+        self.assertRegex(self.out("launch", "t-r", self.app, self.brief), "^LAUNCHED t-r ")
+        self.herdr.mode = ""
+        self.assertEqual(thread.agent("t-r")["agent_status"], "working")
         self.herdr.mode = "lost"
         code, out, _ = self.t("launch", "t-l", self.app, self.brief)
         self.assertEqual((code, out), (1, "FAILED herdr agent start: timeout: timed out waiting for agent startup\n"))
