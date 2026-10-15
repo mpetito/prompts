@@ -70,6 +70,22 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     `sessions` row format the adapter parses; one controller reads `owner/in` at a time.
     `DECISION` says who made it (`--owner` or not); the session, which raised the decision and knows
     it is owner-before, refuses a controller-made answer to one, so no script tracks owner-before.
+  - Lens (protocol): the session's wait and read are mail.py's own `wait <name>/in` and `read
+    <name>/in` with `--home <home>/control`, so ctl.py has no subcommand for them; the controller keeps
+    `read`, since the adapter reaches only ctl.py. ctl.py takes no `--home`: `<home>` comes from the
+    environment, and only the printed wait command carries it, because mail.py would otherwise use
+    `<home>/mail`. The default authority is a constant, not a setting (the spec lets the owner change
+    one session's level, never the default), so `ring` and the Codex ring check only the target's own
+    level, refusing `observe`. One ring line per kind: the `UNREAD` answer is `/control-attach <name>`,
+    not the spec's "unread control mail" line, so `typed` ignores one form; `<attach-name>` rings only
+    a Claude agent and `--brief` only a Codex one. The Stop hook reads one function,
+    `ctl.wait_command()`, not a subcommand, and finds the wait by substring, so no session-name
+    subcommand exists for the hook alone. `send` takes its text as one argument (no `--file`, no
+    stdin). `start` sends the objective file unchanged; no new message kind. `sessions` has no pane
+    column (a gone name rings its recorded pane inside `ring`) and marks an unattached agent
+    `unattached`. The record holds no name (its file name) and no session id. `typed` prints nothing,
+    since a prompt-submit hook's output reaches the model. Wrong arguments are usage on stderr, not
+    `REFUSED` lines.
 - [ ] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
   `skills/control-attach/tests/support.py`: the session-side subcommands, importing
   `agent-orchestration/scripts/mail.py` and `lib.py` as thread.py imports lib.
@@ -90,6 +106,12 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     the session) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
     refuses `owner` and names outside herdr's pattern. The tests reuse agent-orchestration's
     `FakeHerdr` by path instead of a new support.py.
+  - Lens (protocol): `attach` prints one line, `WAIT <command>`; the level and hold show in
+    `sessions`. A name is held when a live herdr agent in another pane has it: `attach` renames the
+    agent, so herdr's names are the live holders and no record lookup is needed. `detach` leaves the
+    herdr name alone. The session's subcommands find their record by `HERDR_PANE_ID` among attached
+    records, file-only, and `attach` un-attaches any other record from the same pane so that lookup
+    stays unique.
 - [ ] 4. `skills/control-attach/SKILL.md` (frontmatter hooks), `skills/control-attach/hooks/control_hook.py`,
   `skills/control-attach/tests/test_hook.py`: the attached session.
   - Body, under 120 lines: the wait loop (read, re-arm, act), each down message and how to treat it,
