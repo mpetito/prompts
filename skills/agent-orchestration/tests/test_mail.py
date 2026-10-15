@@ -1,5 +1,4 @@
 """mail.py: send, read and wait, with herdr faked and wait's clock and sleep replaced."""
-import itertools
 import os
 import re
 import subprocess
@@ -18,10 +17,9 @@ class MailTest(OrchTest):
         super().setUp()
         self.mail = load(MAIL)
         self.box = self.tmp / "orch" / "mail"
-        # Separate senders differ by pid; in one process, a strictly rising clock keeps names apart and in order
-        # where time_ns is coarse (Windows before Python 3.13).
-        ticks = itertools.count(time.time_ns(), 1_000_000)
-        patcher = unittest.mock.patch.object(self.mail.time, "time_ns", lambda: next(ticks))
+        # Every send in a test reads one stamp, as sends inside one tick of a coarse clock do (time_ns on Windows
+        # before Python 3.13).
+        patcher = unittest.mock.patch.object(self.mail.time, "time_ns", return_value=time.time_ns())
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -100,6 +98,49 @@ class Send(MailTest):
         [(src, dst)] = renames
         self.assertEqual((src.parent, dst.parent), (self.box / "b9/main/tmp", self.box / "b9/main/new"))
         self.assertEqual(src.name, dst.name)
+
+    def test_sends_inside_one_tick_keep_every_message_in_send_order(self):
+        for n, quiet in enumerate(("", "--quiet", "", "--quiet", "")):
+            self.out("send", "b1/main", "--from", "b1/thread", *filter(None, [quiet]), f"STATUS: working - {n}")
+        self.assertEqual(len(list((self.box / "b1/main/new").iterdir())), 5)
+        self.assertEqual(self.wait("b1/main"), "MAIL 3", "the quiet suffix no longer decides waking")
+        out = self.out("read", "b1/main")
+        self.assertEqual([l for l in out.splitlines() if l.startswith("STATUS")],
+                         [f"STATUS: working - {n}" for n in range(5)])
+
+    def test_a_send_after_a_read_in_the_same_tick_files_beside_the_first(self):
+        self.out("send", "b1/main", "--from", "b1/thread", "STATUS: working - one")
+        self.out("read", "b1/main")
+        self.out("send", "b1/main", "--from", "b1/thread", "STATUS: working - two")
+        self.out("read", "b1/main")
+        self.assertEqual(len(list((self.box / "b1/main/cur").iterdir())), 2)
+
+    def test_mail_already_on_disk_reads_before_a_new_send(self):
+        # A name as mail.py wrote it before this stamp kept rising, left in a live mailbox: another pid, a second
+        # this process's frozen clock is past.
+        new = self.box / "b1/main/new"
+        new.mkdir(parents=True)
+        (new / "20260101T000000.999999999Z-4242.md").write_text("From: b1/old\n\nSTATUS: working - old\n",
+                                                                   encoding="utf-8")
+        self.out("send", "b1/main", "--from", "b1/thread", "STATUS: working - new")
+        out = self.out("read", "b1/main")
+        self.assertEqual([l for l in out.splitlines() if l.startswith("STATUS")],
+                         ["STATUS: working - old", "STATUS: working - new"])
+
+    def read_back(self, sends, **clock):
+        """The STATUS lines read back after sends sends, with time_ns patched by clock (patch.object's keywords)."""
+        with unittest.mock.patch.object(self.mail.time, "time_ns", **clock):
+            for n in range(sends):
+                self.out("send", "b1/main", "--from", "b1/thread", f"STATUS: working - {n}")
+        return [l for l in self.out("read", "b1/main").splitlines() if l.startswith("STATUS")]
+
+    def test_a_stamp_raised_past_the_last_nanosecond_of_a_second_names_the_next_second(self):
+        self.assertEqual(self.read_back(2, return_value=1_800_000_000_999_999_999),
+                         ["STATUS: working - 0", "STATUS: working - 1"])
+
+    def test_nanoseconds_of_different_lengths_in_one_second_read_in_send_order(self):
+        self.assertEqual(self.read_back(2, side_effect=[1_800_000_000_000_005_000, 1_800_000_000_050_000_000]),
+                         ["STATUS: working - 0", "STATUS: working - 1"])
 
     def test_home_option_overrides_the_environment(self):
         other = self.tmp / "other"
