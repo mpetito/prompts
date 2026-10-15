@@ -1,0 +1,457 @@
+{
+  "version": 2,
+  "skill_name": "tt",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "build-done-logs-the-gap",
+      "split": "tune",
+      "prompt": "The order-history build just reported done. Log my time for it in Harvest. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/build-done.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "Hours come from the scanner's line for the day (a union, 3.25), minus what Dana already logged on that project today (1.0): 2.25",
+        "Not the sum of the parallel lanes, and not the thread's wall clock alone",
+        "A new log_time entry; the morning entry is not updated"
+      ],
+      "assertions": [
+        {
+          "name": "logs-2-25",
+          "type": "regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{[^\\n]*\"hours\"\\s*:\\s*2\\.25\\b"
+        },
+        {
+          "name": "writes-only-log-time",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?(?:[\\w-]+__)?log_time`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        },
+        {
+          "name": "no-update",
+          "type": "not_regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])update_time_entry\\b[ \\t]*\\(?[ \\t]*\\{"
+        },
+        {
+          "name": "no-other-write",
+          "type": "not_regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])(?:delete_time_entry|start_timer|stop_timer)\\b[ \\t]*\\(?[ \\t]*\\{"
+        }
+      ]
+    },
+    {
+      "id": "remove-entry-no-delete",
+      "split": "tune",
+      "prompt": "I logged 2 hours on Storefront this morning by mistake; I didn't touch Storefront today. Get rid of that entry. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/remove-entry.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "tt never deletes an entry or sets it to 0, even when asked, although delete_time_entry exists and its description invites it",
+        "Dana is told to remove it herself in Harvest's timesheet; no write call is made"
+      ],
+      "assertions": [
+        {
+          "name": "writes-none",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?none`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        },
+        {
+          "name": "no-delete-call",
+          "type": "not_regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])delete_time_entry\\b[ \\t]*\\(?[ \\t]*\\{"
+        },
+        {
+          "name": "no-zero-hours",
+          "type": "not_regex",
+          "pattern": "\"hours\"\\s*:\\s*0(?:\\.0+)?\\s*[,}]"
+        },
+        {
+          "name": "no-write-call",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t>]*(?:[\\w-]+__)?(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer)\\b[ \\t]*\\(?[ \\t]*\\{"
+        },
+        {
+          "name": "points-to-harvest-timesheet",
+          "type": "regex",
+          "pattern": "(?i)Harvest(?:'s)? (?:web )?timesheet|timesheet in Harvest"
+        }
+      ]
+    },
+    {
+      "id": "backfill-owner-entries-only",
+      "split": "tune",
+      "prompt": "Back-fill my missing Harvest time for yesterday. In what you tell me, put each proposed entry on its own line as `<date> | <project> | <hours> | <note>`. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/backfill-yesterday.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "list_time_entries is filtered to Dana's own user id, so Sam Ortiz's 2.0 on Ticketing is not read as Dana's",
+        "Ticketing: scanned 3.00 minus Dana's 0.5 = 2.5 proposed; Storefront is fully logged, so nothing is proposed for it",
+        "Regression: nothing is logged until Dana confirms the table"
+      ],
+      "assertions": [
+        {
+          "name": "lists-own-entries",
+          "type": "regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])list_time_entries\\b[ \\t]*\\(?[ \\t]*\\{[^\\n]*\"user_ids\"\\s*:\\s*\\[\\s*4100221\\s*\\]"
+        },
+        {
+          "name": "ticketing-gap-2-5",
+          "type": "regex",
+          "pattern": "(?m)^[|\\s`*-]*2026-10-12[\\s`*]*\\|[\\s`*]*Northwind - Ticketing Platform(?:[ \\t]*\\([^)\\n]*\\))?[\\s`*]*\\|[\\s`*]*2\\.50?[\\s`*]*\\|"
+        },
+        {
+          "name": "confirms-before-logging",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?none`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        },
+        {
+          "name": "no-write-call",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t>]*(?:[\\w-]+__)?(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer)\\b[ \\t]*\\(?[ \\t]*\\{"
+        }
+      ]
+    },
+    {
+      "id": "pr-merged-note-cites-item",
+      "split": "tune",
+      "prompt": "PR #212 just merged. Log my time for it. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/pr-merged.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "The note is one line of at most 80 characters in the form `User Story #48213: Order history filter, sort and tabs`",
+        "The `#<id>` is the Azure DevOps work item, which a billing sync reads from the note; not the PR number and not a changelog"
+      ],
+      "assertions": [
+        {
+          "name": "note-short-with-item",
+          "type": "regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{[^\\n]*\"notes\"\\s*:\\s*\"(?=[^\"\\n]{1,80}\")[^\"\\n]*(?<![A-Za-z0-9])#48213\\b"
+        },
+        {
+          "name": "no-pr-number-in-note",
+          "type": "not_regex",
+          "pattern": "\"notes\"\\s*:\\s*\"[^\"\\n]*#212\\b"
+        }
+      ]
+    },
+    {
+      "id": "pr-without-work-item-asks",
+      "split": "tune",
+      "prompt": "PR #215 just merged. Log my time for it. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/pr-no-work-item.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "A code change with no work item found: ask Dana for the work item id before logging",
+        "No entry is logged without the id, and no id is invented; the answer asks Dana for it"
+      ],
+      "assertions": [
+        {
+          "name": "writes-none",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?none`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        },
+        {
+          "name": "no-log",
+          "type": "not_regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{"
+        },
+        {
+          "name": "no-write-call",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t>]*(?:[\\w-]+__)?(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer)\\b[ \\t]*\\(?[ \\t]*\\{"
+        },
+        {
+          "name": "asks-for-work-item",
+          "type": "regex",
+          "pattern": "(?im)\\b(?:what(?:'s| is)|which|share)\\b[^\\n]{0,40}\\b(?:work item|the id)\\b[^\\n]*\\?|\\b(?:send(?: me)?|give me|reply with|tell me)\\b[^\\n]{0,40}\\b(?:work item|the id)\\b|\\bneed (?:a|the|its) (?:Azure DevOps )?work item(?: id)? from you\\b|^[\\s*>-]*(?:\\*\\*)?(?:what I )?need(?:ed)? from you\\b[^\\n]{0,30}\\bthe (?:Azure DevOps )?work item id\\b"
+        },
+        {
+          "name": "no-invented-id",
+          "type": "not_regex",
+          "pattern": "(?i)(?:\\bwork item(?: id)?[ \\t]*(?:is[ \\t]*|:[ \\t]*)?#?|(?<![\\w&/])#)\\d{4,}\\b"
+        },
+        {
+          "name": "no-suggested-id",
+          "type": "not_regex",
+          "pattern": "(?i)\\b(?:suggest|use|guess|assume|under)\\b[^\\n]{0,30}?(?:item[ \\t]+)?#?\\d{5}\\b"
+        },
+        {
+          "name": "no-typed-id",
+          "type": "not_regex",
+          "pattern": "(?i)\\b(?:bug|story|task|item|feature|pbi)\\b[ \\t]*#?\\d{5}\\b"
+        }
+      ]
+    },
+    {
+      "id": "backfill-two-repos-one-project",
+      "split": "tune",
+      "prompt": "Back-fill my missing Harvest time for yesterday. In what you tell me, put each proposed entry on its own line as `<date> | <project> | <hours> | <note>`. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/backfill-shared-project.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "Both repositories map to Northwind - Ticketing Platform, so the project's scanned hours are the union of the two lines' intervals, 40 minutes, rounded up once to 0.75; not 0.50 + 0.50 = 1.0, and not 0.67 unrounded",
+        "Subtract only Dana's Development entry (0.25), the task tt logs to; the 0.75 Meetings entry is shown, not subtracted",
+        "One proposal for the project: 0.5"
+      ],
+      "assertions": [
+        {
+          "name": "one-project-row-0-5",
+          "type": "regex",
+          "pattern": "(?m)^[|\\s`*-]*2026-10-12[\\s`*]*\\|[\\s`*]*Northwind - Ticketing Platform(?:[ \\t]*\\([^)\\n]*\\))?[\\s`*]*\\|[\\s`*]*0?\\.50?[\\s`*]*\\|"
+        },
+        {
+          "name": "no-second-project-row",
+          "type": "not_regex",
+          "pattern": "(?ms)^[ \\t`*-]*2026-10-12[ \\t`*]*\\|[ \\t`*]*Northwind - Ticketing Platform\\b.*?^[ \\t`*-]*2026-10-12[ \\t`*]*\\|[ \\t`*]*Northwind - Ticketing Platform\\b"
+        },
+        {
+          "name": "confirms-before-logging",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?none`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        },
+        {
+          "name": "no-write-call",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t>]*(?:[\\w-]+__)?(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer)\\b[ \\t]*\\(?[ \\t]*\\{"
+        }
+      ]
+    },
+    {
+      "id": "backfill-daily-cap",
+      "split": "tune",
+      "prompt": "Back-fill my missing Harvest time for yesterday. In what you tell me, put each proposed entry on its own line as `<date> | <project> | <hours> | <note>`. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/backfill-over-cap.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "Ticketing scanned 10.00 minus Dana's 4.0 Development entry: 6.0 proposed",
+        "Dana already has 11.0 h that day across projects and tasks, so 6.0 more makes 17 h, over the 16 h daily cap: the answer says so, with 5 h left",
+        "The row is not trimmed silently and nothing is logged; Dana chooses what to trim"
+      ],
+      "assertions": [
+        {
+          "name": "flags-16h-cap",
+          "type": "regex",
+          "pattern": "(?i)\\b16(?:\\.0+)?[\\s-]*(?:h\\b|hours?\\b)"
+        },
+        {
+          "name": "states-17h-day-total",
+          "type": "regex",
+          "pattern": "(?i)\\b17(?:\\.0+)?[ \\t-]*(?:h\\b|hours?\\b)"
+        },
+        {
+          "name": "row-not-trimmed",
+          "type": "regex",
+          "pattern": "(?m)^[|\\s`*-]*2026-10-12[\\s`*]*\\|[\\s`*]*Northwind - Ticketing Platform(?:[ \\t]*\\([^)\\n]*\\))?[\\s`*]*\\|[\\s`*]*6(?:\\.0+)?[\\s`*]*\\|"
+        },
+        {
+          "name": "logs-nothing",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?none`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        },
+        {
+          "name": "no-write-call",
+          "type": "not_regex",
+          "pattern": "(?m)^[ \\t>]*(?:[\\w-]+__)?(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer)\\b[ \\t]*\\(?[ \\t]*\\{"
+        }
+      ]
+    },
+    {
+      "id": "pr-merged-repo-two-projects",
+      "split": "tune",
+      "eval_intent": "regression",
+      "prompt": "PR #230 just merged. Log my time for it. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/pr-merged-other-area.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping.md"
+      ],
+      "expected_behavior": [
+        "The work item's area path Northwind\\Support\\Payments picks the Support Agreement row (50110003) for the storefront repository",
+        "The repository's day is scanned once: 3.25 minus the 1.5 already logged on its other project (Storefront) = 1.75, not the whole 3.25 again"
+      ],
+      "assertions": [
+        {
+          "name": "logs-1-75-on-support",
+          "type": "regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{(?=[^\\n]*\"project_id\"\\s*:\\s*50110003\\b)(?=[^\\n]*\"hours\"\\s*:\\s*1\\.75\\b)"
+        },
+        {
+          "name": "no-log-on-storefront",
+          "type": "not_regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{[^\\n]*\"project_id\"\\s*:\\s*50110002\\b"
+        },
+        {
+          "name": "writes-only-log-time",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?(?:[\\w-]+__)?log_time`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        }
+      ]
+    },
+    {
+      "id": "pr-merged-single-project-repo",
+      "split": "tune",
+      "eval_intent": "regression",
+      "prompt": "PR #240 just merged. Log my time for it. Read the input files, but do not run commands. Then write every Harvest tool call you would make, in order, in one fenced code block, one call per line as `tool_name {json arguments}`, taking each call's result from the input files; then what you would tell me; and end with one line `Writes: <the Harvest write tools you call, comma-separated, or none>`.",
+      "files": [
+        "fixtures/pr-merged-handbook.md",
+        "fixtures/harvest-tools.md",
+        "fixtures/harvest-mapping-handbook.md"
+      ],
+      "expected_behavior": [
+        "handbook has one OK row, so only its own line counts: 1.5 h on Northwind - Internal (50110004)",
+        "tools is a CONFLICT repository and stays its own open row; wiki's time belongs to Northwind - Training; neither joins handbook through a shared project"
+      ],
+      "assertions": [
+        {
+          "name": "logs-1-5-on-internal",
+          "type": "regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{(?=[^\\n]*\"project_id\"\\s*:\\s*50110004\\b)(?=[^\\n]*\"hours\"\\s*:\\s*1\\.50?\\b)"
+        },
+        {
+          "name": "no-other-log",
+          "type": "not_regex",
+          "pattern": "(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{(?![^\\n]*\"project_id\"\\s*:\\s*50110004\\b)"
+        },
+        {
+          "name": "one-log-only",
+          "type": "not_regex",
+          "pattern": "(?s)(?m)^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{.*?^[^\\n]*(?<![A-Za-z0-9])log_time\\b[ \\t]*\\(?[ \\t]*\\{"
+        },
+        {
+          "name": "writes-only-log-time",
+          "type": "regex",
+          "pattern": "(?mi)^[*_>\\s]*Writes[*_]*:[*_]*[ \\t]*`?(?:[\\w-]+__)?log_time`?(?:[ \\t]*\\((?![^)\\n]*(?:log_time|update_time_entry|delete_time_entry|start_timer|stop_timer))[^)\\n]*\\))?[.*_]*[ \\t]*$"
+        }
+      ]
+    },
+    {
+      "id": "trig-terse-id-and-hours",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Log 1.5h against item 48213.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-bill-client-plain-words",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Bill this afternoon's work on the checkout bug to the client project, it was about two and a half hours.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-context-after-pr",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I just opened the pull request for the export feature and that wraps up my day, so put an entry in Harvest for it.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-raise-existing-entry",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The entry I made this morning for item 51034 should be 3 hours, not 2, so bump it up.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-backfill-last-week",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "I forgot to fill in my timesheet last week. Go through my sessions and propose what's missing.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-build-done-log",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "The build is merged and done. Record the hours it took against the project.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-story-points",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "How many points should we put on the backlog item for adding CSV export to the reports page?",
+      "expected_behavior": [
+        "The skill should NOT trigger: sizing a backlog item is the story skill's job, not time tracking."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-commit-and-pr",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Commit these changes with a conventional message, push the branch, and open a PR against main.",
+      "expected_behavior": [
+        "The skill should NOT trigger: committing and opening a PR belong to commit-commands and pull-request; tt runs only after the PR exists."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-standup-summary",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Summarize what I worked on yesterday so I can read it out at this morning's standup.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a standup update is engineering:standup, not a time entry."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-hours-report",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "How many billable hours did the team log on the Ticketing project in September?",
+      "expected_behavior": [
+        "The skill should NOT trigger: a read-only Harvest report; the Harvest tools answer it directly."
+      ],
+      "assertions": []
+    }
+  ],
+  "ablations": []
+}
