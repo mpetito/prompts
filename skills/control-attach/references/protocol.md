@@ -44,7 +44,7 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   | `authority` | `observe`, `relay` or `delegate` |
   | `hold` | The hold window in minutes, a whole number, 0 for none |
   | `typed` | When the owner last typed a prompt in the session, UTC `YYYY-MM-DDTHH:MMZ`, or `""` |
-  | `attached` | `true` from `attach` until `detach`, or until another name attaches from the same pane |
+  | `attached` | `true` from `attach` until `detach`, or until another name attaches from the same pane or session (A record's session, below) |
   | `started` | `true` when `start` started the session; it never changes after |
 
   A session's own subcommands find its record by `HERDR_PANE_ID`: the record that is `attached` with
@@ -58,7 +58,9 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   its pane's attached record, else every record in its pane: one pane can hold a record for each name
   it was detached or started under. `claude --resume` and `-c` keep the id, so a session continued in
   another pane keeps its name and its level for `ring`, even in a pane another attached record left,
-  though `sessions` shows its record gone and the controller rings it by its new pane.
+  though `sessions` shows its record gone and the controller rings it by its new pane. One session
+  holds one attached record: `attach` un-attaches every other record in its pane or with its
+  non-empty session id.
 - **The folders file**, `folders`, written by the owner and never by `ctl.py`: one absolute folder
   per line, blank lines ignored. `start` uses a folder only when it is a listed one or inside one.
   Without the file, `start` refuses.
@@ -177,12 +179,12 @@ A call with the wrong arguments prints usage on stderr and exits 1.
 ### `ctl.py attach <name> [--hold <minutes>]`
 
 Attaches the session in this pane under `<name>`: names its herdr agent `<name>`, writes the record
-(`attached` true), and marks any other record attached from this pane not attached. Repeatable: a
-record that exists keeps its authority, hold, `typed` and `started`, and the mail waiting at
-`<name>/in` stays unread. A `/clear` and a resume drop the session's hooks (a compaction keeps
-them), so attaching again is how a session comes back after either. A new record gets the
-defaults. `--hold` sets the hold window, a plain whole number of minutes in ASCII digits; anything
-else is a usage error.
+(`attached` true), and marks any other record of this session not attached (A record's session,
+above). Repeatable: a record that exists keeps its authority, hold, `typed` and `started`, and the
+mail waiting at `<name>/in` stays unread. A `/clear` and a resume drop the session's hooks (a
+compaction keeps them), so attaching again is how a session comes back after either. A new record
+gets the defaults. `--hold` sets the hold window, a plain whole number of minutes in ASCII digits;
+anything else is a usage error.
 
 | Line | Exit | When |
 | --- | --- | --- |

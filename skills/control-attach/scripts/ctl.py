@@ -197,11 +197,13 @@ def attach(args, opts):
         raise Refused(f"{name} is held by pane {holder}")
     if me.get("name") != name:
         herdr("agent", "rename", pane, name)
+    # One session, one attached record: this pane's, and one a resume carried here under this session id.
+    sid = session_id(me)
     for other, record in records():
-        if other != name and record["attached"] and record["pane"] == pane:
+        if other != name and record["attached"] and (record["pane"] == pane or (sid and record.get("session") == sid)):
             save(other, {**record, "attached": False})
     old = load(name) or {}
-    save(name, {"pane": pane, "session": session_id(me), "authority": old.get("authority", DEFAULT_AUTHORITY),
+    save(name, {"pane": pane, "session": sid, "authority": old.get("authority", DEFAULT_AUTHORITY),
                 "hold": int(hold) if hold is not None else old.get("hold", DEFAULT_HOLD),
                 "typed": old.get("typed", ""), "attached": True, "started": old.get("started", False)})
     print(f"WAIT {wait_line(name)}")

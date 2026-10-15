@@ -737,6 +737,32 @@ class Ring(ControllerCase):
                 self.assertEqual(self.c("ring", target, attach_name), (1, f"REFUSED {target} is at observe\n", ""))
         self.assertEqual(self.herdr.prompts(), [])
 
+    def continued_in(self, pane, session):
+        """The session exits (herdr drops its agent) and is continued in pane, unnamed, under session id session."""
+        self.herdr.agents[:] = [a for a in self.herdr.agents if a.get("agent_session", {}).get("value") != session]
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": pane,
+                                  "agent_session": {"value": session}})
+
+    def test_one_session_holds_one_attached_record(self):
+        # B3: attached as alpha in w2:p1, continued into w3:p1 and attached as beta at relay, continued into w4:p1.
+        self.attach_at("alpha", "w2:p1")
+        self.continued_in("w3:p1", "s-alpha")
+        self.as_pane("w3:p1")
+        self.c("attach", "beta")
+        self.c("authority", "relay")
+        self.continued_in("w4:p1", "s-alpha")
+        self.assertFalse(self.record("alpha")["attached"])
+        self.assertEqual(self.c("ring", "w4:p1", "alpha"), (1, "REFUSED w4:p1 is attached as beta\n", ""))
+        self.rung("w4:p1", "beta", prompt="w4:p1 /control-attach beta")
+
+    def test_an_empty_session_id_unattaches_nothing_outside_the_pane(self):
+        self.attach_at("alpha", "w2:p1")
+        ctl.save("alpha", {**self.record("alpha"), "session": ""})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w3:p1"})
+        self.as_pane("w3:p1")
+        self.c("attach", "beta")
+        self.assertTrue(self.record("alpha")["attached"])
+
     def test_a_detached_session_in_its_own_pane_is_rung_back(self):
         self.attach_at("alpha", "w2:p1")
         self.c("detach")
