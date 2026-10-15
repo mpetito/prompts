@@ -82,5 +82,7 @@ STATUS: <working|need-decision|blocked|done> - <one line>
 
 - `need-decision` follows it with the decision request in [the protocol's format](references/protocol.md#messages):
   Question, Options, Default (`Default: none, owner-before` when only the owner may decide) and Blocks.
+  The word after the dash is its ref. A MAIN passes a thread's decision up under `<build>/D<n>`
+  (`STATUS: need-decision - probe/D1 log format`) and relays the answer as `DECISION D<n>: …`.
 - `blocked` says what would unblock it; `done` lists what the owner should check.
 - `working`, and a final text without a status line, reach the controller quietly, at its next read.
