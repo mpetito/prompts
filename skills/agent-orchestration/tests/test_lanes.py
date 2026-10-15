@@ -7,12 +7,16 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
-from .support import SCRIPTS, OrchTest, call, lib, load, result
+from .support import SCRIPTS, OrchTest, call, check_run, lib, load, result
 
 
 def git(cwd, *args):
     """Run git in cwd for a fixture; stdout stripped."""
     return subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True, text=True).stdout.strip()
+
+
+# A matrix job's check name, as GitHub names it; a workflow on push and pull_request gives a head two runs of it.
+MATRIX = "scripts (ubuntu-latest)"
 
 
 def commit(cwd, files, message):
@@ -96,8 +100,31 @@ class Land(Remote):
         self.assertRegex(self.run_land()[1], r"^STOPPED pr=7 merge failed")
 
     def test_stops_on_a_failed_check(self):
-        self.gh.check = "failure"
+        self.gh.runs = [check_run("ci", "failure")]
         self.assertRegex(self.run_land()[1], r"^STOPPED pr=7 ci=failure")
+
+    def test_lands_when_every_run_of_the_check_succeeds(self):
+        self.gh.runs = [check_run(MATRIX, "success"), check_run(MATRIX, "success"),
+                        check_run("scripts (windows-latest)", "failure")]
+        self.assertRegex(self.run_land("--check", MATRIX)[1], r"^LANDED pr=7 ")
+
+    def test_stops_on_one_failed_run_beside_a_passing_one(self):
+        self.gh.runs = [check_run(MATRIX, "success"), check_run(MATRIX, "failure")]
+        self.assertRegex(self.run_land("--check", MATRIX)[1], r"^STOPPED pr=7 scripts \(ubuntu-latest\)=failure on ")
+
+    def test_stops_on_a_failed_run_listed_before_a_passing_one(self):
+        self.gh.runs = [check_run(MATRIX, "failure"), check_run(MATRIX, "success")]
+        self.assertRegex(self.run_land("--check", MATRIX)[1], r"^STOPPED pr=7 scripts \(ubuntu-latest\)=failure on ")
+
+    def test_waits_while_the_check_has_no_run(self):
+        self.gh.runs = [check_run("other", "success")]
+        self.assertRegex(self.run_land("--check-minutes", "1")[1], r"^STOPPED pr=7 ci=none .* after up to 1 min")
+        self.assertEqual(self.slept, [20] * 3)
+
+    def test_waits_while_gh_cannot_read_the_check(self):
+        self.gh.runs = None
+        self.assertRegex(self.run_land("--check-minutes", "1")[1], r"^STOPPED pr=7 ci=none .* after up to 1 min")
+        self.assertEqual(self.slept, [20] * 3)
 
     def test_merges_a_moved_base_and_records_the_proof(self):
         self.move_main({"g.txt": "base\nmore\n"}, "base2")
@@ -112,9 +139,20 @@ class Land(Remote):
         self.assertEqual(git(self.wt, "status", "--porcelain"), "")
 
     def test_waits_for_a_running_check_up_to_its_minutes(self):
-        self.gh.check = "running"
+        self.gh.runs = [check_run("ci", None, "in_progress")]
         self.assertRegex(self.run_land("--check-minutes", "2")[1], r"^STOPPED pr=7 ci=running .* after up to 2 min")
         self.assertEqual(self.slept, [20] * 6)
+
+    def test_waits_while_one_run_of_the_check_is_still_running(self):
+        self.gh.runs = [check_run(MATRIX, "success"), check_run(MATRIX, None, "in_progress")]
+        out = self.run_land("--check", MATRIX, "--check-minutes", "2")[1]
+        self.assertRegex(out, r"^STOPPED pr=7 scripts \(ubuntu-latest\)=running .* after up to 2 min")
+        self.assertEqual(self.slept, [20] * 6)
+
+    def test_waits_while_a_run_listed_before_a_passing_one_is_running(self):
+        self.gh.runs = [check_run(MATRIX, None, "in_progress"), check_run(MATRIX, "success")]
+        out = self.run_land("--check", MATRIX, "--check-minutes", "1")[1]
+        self.assertRegex(out, r"^STOPPED pr=7 scripts \(ubuntu-latest\)=running .* after up to 1 min")
 
     def test_waits_for_github_to_compute_the_merge_state(self):
         self.gh.merge_state = "UNKNOWN"
@@ -198,6 +236,26 @@ class WatchGates(Remote):
         self.assertEqual(self.slept, [])
         self.assertEqual(self.feedback_calls[0], ("o/r", "7"))
 
+    def test_reports_success_when_every_run_of_the_check_succeeds(self):
+        self.gh.runs = [check_run(MATRIX, "success"), check_run(MATRIX, "success")]
+        self.assertRegex(call(self.watch, "7", self.sha, "--check", MATRIX, "--minutes", "1")[1], r" check=success ")
+        self.assertEqual(self.slept, [])
+
+    def test_reports_one_failed_run_beside_a_passing_one(self):
+        self.gh.runs = [check_run(MATRIX, "failure"), check_run(MATRIX, "success"), check_run(MATRIX, "failure")]
+        self.assertRegex(call(self.watch, "7", self.sha, "--check", MATRIX, "--minutes", "1")[1], r" check=failure ")
+
+    def test_names_each_other_conclusion_once_in_order(self):
+        self.gh.runs = [check_run(MATRIX, "skipped"), check_run(MATRIX, "success"), check_run(MATRIX, "failure"),
+                        check_run(MATRIX, "skipped")]
+        self.assertRegex(call(self.watch, "7", self.sha, "--check", MATRIX, "--minutes", "1")[1],
+                         r" check=failure,skipped ")
+
+    def test_does_not_settle_while_one_run_of_the_check_is_still_running(self):
+        self.gh.runs = [check_run(MATRIX, "success"), check_run(MATRIX, None, "queued")]
+        self.assertRegex(call(self.watch, "7", self.sha, "--check", MATRIX, "--minutes", "1")[1], r" check=timeout ")
+        self.assertEqual(self.slept, [15] * 4)
+
     def test_waits_for_each_named_reviewer(self):
         out = call(self.watch, "7", self.sha, "--reviewers", "copilot,claude", "--minutes", "1")[1]
         self.assertRegex(out, r" reviewers=copilot:reviewed,claude:timeout ")
@@ -210,7 +268,7 @@ class WatchGates(Remote):
         self.assertEqual(out, f"MOVED pr=7 head={self.sha[:7]} now=0123456\n")
 
     def test_times_out_after_four_polls_a_minute(self):
-        self.gh.check, self.reviewed["copilot"] = "running", False
+        self.gh.runs, self.reviewed["copilot"] = [check_run("ci", None, "in_progress")], False
         out = call(self.watch, "7", self.sha, "--check", "ci", "--reviewers", "copilot", "--minutes", "2")[1]
         self.assertRegex(out, r"check=timeout reviewers=copilot:timeout ")
         self.assertEqual(self.slept, [15] * 8)
