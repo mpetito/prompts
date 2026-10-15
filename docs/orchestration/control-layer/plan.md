@@ -143,12 +143,12 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   without (an `OWNER:` steer acted on; a `CONTROL:` settings change refused and taken to the owner;
   a `CONTROL:` that conflicts with the owner's typed words yielding to them).
   - Probe: a skill's hook command gets no `${CLAUDE_SKILL_DIR}` (Claude Code 2.1.300; the docs
-    list it for the skill's text only, and anthropics/claude-code#36135 was closed not planned).
-    The hook's environment has `CLAUDE_PLUGIN_ROOT` set to the skill's own folder, which the docs
-    don't say for a non-plugin skill, so the declared hooks take it, else
-    `~/.claude/skills/control-attach`: the project-skill copy the live steps use and the linked
-    skill both work. A live `-p` run of the real frontmatter, with a fake herdr on `PATH`, attached,
-    blocked the first stop naming the wait, started it, and reported on the next stop.
+    list it for the skill's text only, and anthropics/claude-code#36135, which asked for it in hook
+    commands, is closed). The hook's environment has `CLAUDE_PLUGIN_ROOT` set to the skill's own
+    folder, which the docs don't say for a non-plugin skill, so the declared hooks take it; with it
+    unset, or no script there, each hook does nothing. Step 6 confirms it live. A live `-p` run of the
+    real frontmatter, with a fake herdr on `PATH`, attached, blocked the first stop naming the wait,
+    started it, and reported on the next stop.
   - Lens: one hook script picks its handler by `hook_event_name`, not one script per event; it runs
     `report` and `typed` through `ctl.main` in its own process rather than as subprocesses, so
     each event starts Python once and the test has nothing to replace. The prompt-submit hook
@@ -156,12 +156,20 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   - Lens: the recorded hook inputs live in test_hook.py, not a fixtures file. `evals/` has no
     README, planted answers or assertion checker: each case's `expected_behavior` names its rule
     and trap, and each assertion was tried on real outputs of both arms. No `allowed-tools` in the
-    frontmatter; `disable-model-invocation` stays, since only the owner or a ring attaches.
+    frontmatter (a permissions question, the owner's D2); `disable-model-invocation` stays, since
+    only the owner or a ring attaches.
   - Lens (evals): on Opus without the skill, a session acted on a plain `OWNER:` code steer, push
-    included, and kept to the owner's typed words when `CONTROL:` conflicted. Neither is a gap, so
-    the first case's trap is an `OWNER:` relay that names an authority level, and the third case
-    fails without the skill only by not telling the controller (no `STATUS:` line, so the report
-    is quiet and the controller never learns the session yielded).
+    included, and kept to the owner's typed words when `CONTROL:` conflicted. Neither is a gap. The
+    first case's trap is an `OWNER:` relay naming an authority level, which fails without the skill
+    for want of the `authority` subcommand; the third fails without it only on the `STATUS:` line.
+    Only the settings case fails without the skill on behaviour.
+  - Review (round 1): the Stop hook reports on every stop, the blocked one included, reversing step
+    2's "no report on a stop the hook blocks": that rule lost a `need-decision` or `done` whenever a
+    turn forgot the wait. The hook exits 0 and prints nothing but a block, whatever fails, since it
+    runs on every prompt and turn end of the owner's session; a broken install is then silent, and
+    the controller's `UNREAD` and `sessions` are the only sign. The `~/.claude/skills` fallback is
+    cut. A wait that prints anything but `MAIL` or `TIMEOUT` isn't restarted: the session reports
+    `STATUS: blocked`.
 - [ ] 5. `skills/control-attach/scripts/ctl.py`, `tests/test_ctl.py`: the controller subcommands,
   with the spec's rules in the script rather than in prose.
   - `sessions`: herdr's agent list joined with the records: name or pane, kind, state, authority,

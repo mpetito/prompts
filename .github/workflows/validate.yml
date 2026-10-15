@@ -28,6 +28,8 @@ jobs:
         run: python3 -m unittest discover -v -s skills/pull-request/tests -t skills/pull-request
       - name: Check orchestration scripts and hooks
         run: python3 -m unittest discover -v -s skills/agent-orchestration/tests -t skills/agent-orchestration
+      - name: Check the control layer's script and hooks
+        run: python3 -m unittest discover -v -s skills/control-attach/tests -t skills/control-attach
       - name: Check orchestration threads
         run: python3 -m unittest discover -v -s skills/orchestration-main/tests -t skills/orchestration-main
       - name: Check the eval runner and its helpers
