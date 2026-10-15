@@ -152,7 +152,7 @@ These override the steps below where they differ.
   `trust` to Trust boundary). `README.md`: a row for review-lenses in the skills table, and the
   "how the pieces fit" paragraph routes plan-review and review to it. Check:
   `python3 -m unittest discover -s tests -t .` passes.
-- [ ] 7. After all lanes land: the link check below passes on `skills/review-lenses/`,
+- [x] 7. After all lanes land: the link check below passes on `skills/review-lenses/`,
   `skills/plan-review/`, `skills/review/` and `skills/agent-orchestration/SKILL.md`. Then MAIN,
   with the owner's approval of the link change, runs `python3 setup_skills_link.py` and
   `python3 verify_setup.py`. Check: both pass and `verify_setup.py` reports review-lenses linked.
