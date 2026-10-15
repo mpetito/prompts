@@ -59,7 +59,8 @@ applied to what the plan or change builds.
   project already has beats both.
 - Trust boundary decides whether a gate belongs at all. [Review §4](../review/SKILL.md)'s proofs
   for a gate, validator or parser (a threat model, one mutant per bypass class) apply only to the
-  gates that stay; a gate the lens cuts gets no mutants.
+  gates that stay. A gate the lens cuts gets no row at all in the mutants or proofs list (not
+  "removed", "not run" or "n/a"): the cut is reported as the finding, never as a proof.
 
 ## 4. Write lens findings
 
