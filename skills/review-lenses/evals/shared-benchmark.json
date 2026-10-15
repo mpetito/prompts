@@ -253,6 +253,59 @@
       ]
     },
     {
+      "id": "pos-reuse-diff",
+      "split": "tune",
+      "prompt": "Review the change in invoice-email-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/invoice-email-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The new formatCents in src/billing duplicates moneyLabel in src/shared/text/labels.ts, outside the changed files; the review cites that location and says what it takes for the invoice email and the web pages to share it (the signatures already match, so the email calls moneyLabel and formatCents and its test go)",
+        "src/billing/legacyPrice.ts and its test, which the change leaves without a caller, are deleted in the same change",
+        "The report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-reuses-existing-helper",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:moneyLabel|src/shared/text/labels(?:\\.ts)?|\\btext/labels(?:\\.ts)?))|(?:moneyLabel|src/shared/text/labels(?:\\.ts)?|\\btext/labels(?:\\.ts)?)(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them)\\b)"
+        },
+        {
+          "name": "trap-deletes-obsolete-in-same-change",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*legacyPrice(?:\\.ts|\\.test\\.ts)?)|legacyPrice(?:\\.ts|\\.test\\.ts)?(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them|the (?:file|module|helper|function|test)|both)\\b)"
+        },
+        {
+          "name": "lens-lenses-line-picks-reuse",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bReuse\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-reuse-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bReuse[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "formatCents is found to duplicate moneyLabel in src/shared/text/labels.ts by behaviour (both format an amount in the currency's minor unit with Intl.NumberFormat), and the finding cites that location",
+            "The finding says what it takes for both callers to share moneyLabel (the signatures already match, so formatCents and its test are deleted), rather than reviewing formatCents only on its own terms",
+            "legacyPrice.ts and its test, left without a caller by this change (the import table shows invoiceEmail.ts as its only other importer), are deleted in the same change rather than kept",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
       "id": "pos-pick-lenses",
       "split": "tune",
       "prompt": "You coordinate the review of the change in shipment-delayed-diff.md, following the team's review procedure in review-procedure.md. Size the review, state its depth on a Depth: line, decide which reviewers to start, and write each reviewer's brief in full as text. Starting reviewers is not possible in this session, so do not try; the briefs you write are the deliverable. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
@@ -283,7 +336,7 @@
           "ci": false
         },
         {
-          "name": "brief-explicit-model",
+          "name": "trap-brief-explicit-model",
           "type": "regex",
           "pattern": "\\b(?:opus|claude-opus[\\w.-]*|gpt-[\\w.-]+|codex)\\b"
         },
