@@ -83,7 +83,8 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     subcommand exists for the hook alone. `send` takes its text as one argument (no `--file`, no
     stdin). `start` sends the objective file unchanged; no new message kind. `sessions` has no pane
     column (a gone name rings its recorded pane inside `ring`) and marks an unattached agent
-    `unattached`. The record holds no name (its file name) and no session id. `typed` prints nothing,
+    `unattached`. The record holds no name (its file name) and no session id (superseded: the Probe
+    note below adds `session`). `typed` prints nothing,
     since a prompt-submit hook's output reaches the model. Wrong arguments are usage on stderr, not
     `REFUSED` lines.
 - [x] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
@@ -103,7 +104,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   - Lens: `attach` takes no `--authority`: every session starts at the default and `authority`
     is the one way to change it, so there are not two.
   - Review: the record keeps no session id (herdr's list gives it live and the pane identifies
-    the session) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
+    the session; superseded by the Probe note below, which adds `session`) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
     refuses `owner` and names outside herdr's pattern. The tests reuse agent-orchestration's
     `FakeHerdr` by path instead of a new support.py.
   - Lens (protocol): `attach` prints one line, `WAIT <command>`; the level and hold show in
@@ -127,7 +128,8 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     `background_tasks` and `stop_hook_active` is false, block the stop with a reason naming the
     command.
   - UserPromptSubmit hook: `typed`, unless the prompt is a task notification (starts
-    `<task-notification>`) or a non-owner form step 1 found.
+    `<task-notification>`) or a non-owner form step 1 found (superseded: the hook passes every
+    prompt, and `typed` ignores those forms; protocol.md "What the hooks call").
   - Probe: the non-owner forms are a prompt starting `<task-notification>`, `<agent-message ` or
     `<cross-session-message ` (spec "Shown 2026-10-15"); a typed `/control-attach` also reaches the
     hook on a re-attach, and `typed` ignores it with the ring lines. Invoking the skill again doesn't

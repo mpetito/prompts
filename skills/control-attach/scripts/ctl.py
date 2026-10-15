@@ -31,10 +31,21 @@ DEFAULT_HOLD = 10
 WAKING = re.compile(r"STATUS: (need-decision|blocked|done)( |$)")
 # The one ring line typed into a Claude session; typed ignores it, so a ring never holds the controller.
 RING = re.compile(rf"/control-attach {NAME.pattern}")
+# How the prompts that aren't the owner typing begin (spec "Shown 2026-10-15"): a background task's wake, a
+# subagent's report, another session's message.
+NOT_TYPED = ("<task-notification>", "<agent-message ", "<cross-session-message ")
 
 
 class Refused(Exception):
     """A refusal main prints on stdout as "REFUSED <reason>", exiting 1."""
+
+
+class HerdrError(Refused):
+    """herdr failed, printed as "REFUSED herdr: <reason>"; code is herdr's error code, or "" when it gave none."""
+
+    def __init__(self, reason, code=""):
+        super().__init__(f"herdr: {reason}")
+        self.code = code
 
 
 def usage():
@@ -110,26 +121,36 @@ def wait_command():
 # --- herdr -------------------------------------------------------------------------------------------------------
 
 def herdr(*args):
-    """herdr's JSON reply to args, parsed; Refused naming herdr's reason when it fails or the reply isn't JSON."""
+    """The "result" object of herdr's JSON reply to args. HerdrError when herdr fails, or replies with anything but
+    JSON holding a result object, so no caller reads a reply herdr didn't give."""
     r = lib.run(["herdr", *args])
-    out = r.stdout if r.returncode == 0 else r.stdout + r.stderr
+    out = (r.stdout if r.returncode == 0 else r.stdout + r.stderr).strip()
     try:
-        reply = json.loads(out or "{}")
+        reply = json.loads(out)
     except ValueError:
-        raise Refused(f"herdr: {out.rstrip(chr(10))}") from None
-    if r.returncode:
-        err = reply.get("error") if isinstance(reply, dict) else None
-        raise Refused(f"herdr: {err['code']}: {err['message']}" if isinstance(err, dict) else
-                      f"herdr: {out.rstrip(chr(10))}")
-    return reply
+        reply = None
+    if not isinstance(reply, dict):
+        raise HerdrError(f"unexpected reply: {out}")
+    if r.returncode == 0 and isinstance(reply.get("result"), dict):
+        return reply["result"]
+    err = reply.get("error")
+    if r.returncode and isinstance(err, dict):
+        raise HerdrError(f"{err.get('code')}: {err.get('message')}", err.get("code"))
+    raise HerdrError(f"unexpected reply: {out}")
 
 
 def live_agent(target):
-    """herdr's record of the live agent at target, a name or a pane, or {} when there is none."""
+    """herdr's record of the live agent at target, a name or a pane, or None when herdr says there is none
+    (agent_not_found). HerdrError for any other failure, so a herdr that can't answer never reads as no agent."""
     try:
-        return herdr("agent", "get", target)["result"]["agent"] or {}
-    except (Refused, KeyError, TypeError):
-        return {}
+        agent = herdr("agent", "get", target).get("agent")
+    except HerdrError as e:
+        if e.code == "agent_not_found":
+            return None
+        raise
+    if not isinstance(agent, dict):
+        raise HerdrError(f"unexpected reply for {target}: no agent record")
+    return agent
 
 
 # --- session subcommands -----------------------------------------------------------------------------------------
@@ -147,14 +168,17 @@ def attach(args, opts):
     name = args[0]
     check_name(name)
     hold = opts.get("--hold")
-    if hold is not None and not hold.isdigit():
+    # str.isdigit accepts digits int() can't read, such as "³".
+    if hold is not None and not re.fullmatch(r"[0-9]+", hold):
         usage()
     pane = os.environ.get("HERDR_PANE_ID")
     if not pane:
         raise Refused("not in a herdr pane")
-    me = herdr("agent", "get", pane)["result"]["agent"]
+    me = live_agent(pane)
+    if me is None:
+        raise HerdrError(f"no agent in pane {pane}")
     # attach names the agent, so herdr's names are the live holders of the addresses.
-    holder = live_agent(name).get("pane_id")
+    holder = (live_agent(name) or {}).get("pane_id")
     if holder and holder != pane:
         raise Refused(f"{name} is held by pane {holder}")
     if me.get("name") != name:
@@ -211,7 +235,7 @@ def typed(args, opts):
         usage()
     prompt = sys.stdin.read().strip()
     found = attached()
-    if found and not RING.fullmatch(prompt):
+    if found and not RING.fullmatch(prompt) and not prompt.startswith(NOT_TYPED):
         save(found[0], {**found[1], "typed": lib.utc_now()})
     return 0
 

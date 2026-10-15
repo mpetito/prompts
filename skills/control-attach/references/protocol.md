@@ -135,11 +135,15 @@ relays the answer to the thread as `DECISION D<n>: …`.
 - **The hold window.** `typed` records each prompt the owner types in an attached session. Until
   `hold` minutes after it, `send` refuses everything but `QUESTION:` with `HELD <until>`, and the
   controller sends it again after `<until>`. A task notification, a subagent's report, another
-  session's message and a ring line are not the owner typing.
+  session's message and a ring line are not the owner typing; `typed` alone decides that.
 - **Rings.** The controller types into a pane only a fixed line, only when herdr reports the agent
   `idle` or `done` and its visible input line is empty: `/control-attach <name>` into a Claude
   agent, `Read <file> and follow it.` into a Codex agent. Nothing else is ever typed, never into a
   session at `observe`, and no key is sent to a dialog.
+- **Never into orchestration's agents.** A ring refuses an agent with a herdr name that no control
+  record has. Orchestration names its threads `<build>` and its lanes `<build>-<lane>`, the controller
+  never talks to them, and attaching one would rename it out of its build's reach. Plain sessions and
+  MAIN have no herdr name until they attach.
 - **One controller** reads `owner/in` at a time. Two would each file what the other has not seen.
 
 ## Session subcommands
@@ -154,7 +158,8 @@ Attaches the session in this pane under `<name>`: names its herdr agent `<name>`
 record that exists keeps its authority, hold, `typed` and `started`, and takes the agent's current
 `session`; the mail waiting at `<name>/in` stays unread. A `/clear` and a resume drop the session's
 hooks (a compaction keeps them), so attaching again is how a session comes back after either. A new
-record gets the defaults. `--hold` sets the hold window.
+record gets the defaults. `--hold` sets the hold window, a plain whole number of minutes in ASCII
+digits; anything else is a usage error.
 
 | Line | Exit | When |
 | --- | --- | --- |
@@ -163,7 +168,7 @@ record gets the defaults. `--hold` sets the hold window.
 | `REFUSED owner is the controller's address` | 1 | `<name>` is `owner` |
 | `REFUSED not in a herdr pane` | 1 | `HERDR_PANE_ID` is unset |
 | `REFUSED <name> is held by pane <pane>` | 1 | A live herdr agent in another pane is named `<name>` |
-| `REFUSED herdr: <reason>` | 1 | herdr can't find an agent in this pane, or refuses the rename |
+| `REFUSED herdr: <reason>` | 1 | herdr finds no agent in this pane, can't say whether another agent holds `<name>`, refuses the rename, or replies with anything but JSON holding a result |
 
 `<command>` is exactly
 
@@ -171,9 +176,10 @@ record gets the defaults. `--hold` sets the hold window.
 python3 "<mail.py>" wait <name>/in --home "<home>/control"
 ```
 
-with `<mail.py>` and `<home>` absolute. The session's read is
-`python3 "<mail.py>" read <name>/in --home "<home>/control"`, the same paths: on `MAIL`, read, start
-the wait again, then act. `ctl.py` has no subcommand for either.
+with `<mail.py>` and `<home>` absolute real paths, not the `$HOME` form above. The session runs the
+`WAIT` line's command exactly as printed, because the Stop hook matches it verbatim. The session's
+read is `python3 "<mail.py>" read <name>/in --home "<home>/control"`, the same paths: on `MAIL`,
+read, start the wait again, then act. `ctl.py` has no subcommand for either.
 
 ### `ctl.py detach`
 
@@ -206,20 +212,26 @@ Sends stdin, unchanged, from `<name>` to `owner/in`: waking when its first line 
 
 ### `ctl.py typed`
 
-Records now as `typed`, unless stdin, trimmed, is a ring line (`/control-attach <name>` for any name),
-so a ring never holds the controller. Prints nothing, ever, and exits 0, attached or not: what a
-prompt-submit hook prints reaches the model.
+Records now as `typed`, unless stdin, trimmed, isn't the owner typing:
+
+- a ring line, the whole prompt `/control-attach <name>` for any name, so a ring never holds the
+  controller (the same text with more after it is typing);
+- a prompt starting `<task-notification>` (a background task's wake), `<agent-message ` (a subagent's
+  report) or `<cross-session-message ` (another session's message).
+
+This is the one place the owner-activity rule lives. Prints nothing, ever, and exits 0, attached or
+not: what a prompt-submit hook prints reaches the model.
 
 ## Controller subcommands
 
 Run by the controller. A call with the wrong arguments prints usage on stderr and exits 1. Every
 other line is on stdout. `REFUSED herdr: <reason>` (exit 1) is herdr failing or giving a reply that
-isn't its JSON.
+isn't JSON holding a result.
 
 ### `ctl.py sessions`
 
-One row per herdr agent, then one per attached record whose agent herdr no longer lists, six fields
-separated by single spaces:
+One row per herdr agent, orchestration's named agents too, then one per gone record: an attached
+record whose name no agent in herdr's list has. Six fields, separated by single spaces:
 
 ```text
 <target> <kind> <state> <authority> <held> <unread>
@@ -228,8 +240,8 @@ separated by single spaces:
 | Field | Value |
 | --- | --- |
 | `target` | The attached name, else herdr's agent name, else the pane id |
-| `kind` | herdr's agent kind (`claude`, `codex`, …), or `-` for a gone record |
-| `state` | herdr's `agent_status` (`idle`, `working`, `blocked`, `done`, `unknown`), or `gone` |
+| `kind` | herdr's agent kind (`claude`, `codex`, …), `null` when herdr gives none, or `-` for a gone record |
+| `state` | herdr's `agent_status` (`idle`, `working`, `blocked`, `done`, `unknown`), `null` when herdr gives none (as mail.py prints it), or `gone` |
 | `authority` | The record's level when attached, else `unattached` |
 | `held` | The hold's end, `YYYY-MM-DDTHH:MMZ`, while it lasts, else `-` |
 | `unread` | Messages unread at `<name>/in`, or `-` when not attached |
@@ -244,6 +256,10 @@ Claude session. With no rows it prints `NONE`. Exit 0.
 Sends one down message to `<name>/in` from `owner`: `<KIND>: <text>`, or for a decision
 `DECISION <ref>: <answer>` and `By: owner` with `--owner`, else `By: controller`. `<text>` is one
 argument and may hold several lines.
+
+`send` checks the record alone, not herdr. Mail to a cleared session, whose record is attached under
+an old session id, is sent and waits in its box until the session attaches again: the controller
+sees it `unattached` in `sessions` and rings it.
 
 | Line | Exit | When |
 | --- | --- | --- |
@@ -287,6 +303,7 @@ into a Claude agent; `--brief` types `Read <file> and follow it.` into a Codex a
 | `REFUSED <target>'s input line is not empty` | 1 | Its visible input line holds text: the owner may be typing |
 | `REFUSED <target> is at observe` | 1 | The target's record (by name, or attached from its pane) is at `observe` |
 | `REFUSED <target> is <kind>` | 1 | `<attach-name>` into an agent that isn't Claude, or `--brief` into one that isn't Codex |
+| `REFUSED <target> is named <herdr name>` | 1 | The agent has a herdr name that no control record has: an orchestration thread or lane (Rings, above) |
 | `REFUSED not a name: <attach-name>` | 1 | Outside the name pattern |
 | `REFUSED owner is the controller's address` | 1 | `<attach-name>` is `owner` |
 
@@ -318,9 +335,10 @@ The control-attach skill's hooks run in the attached session and call only this:
   `scripts/`): the `<command>` of this pane's `WAIT` line, or `None` when no record is attached from
   `HERDR_PANE_ID`. It reads the record only, never herdr.
 - **The Stop hook.** When `wait_command()` is `None`, it does nothing. The wait is up when the
-  command of any of the Stop input's `background_tasks` contains `wait_command()` as a substring.
+  command of any of the Stop input's `background_tasks` contains `wait_command()` verbatim (an
+  entry with no command, such as a subagent, never matches).
   When the wait is up, or `stop_hook_active` is true, it runs `ctl.py report` with
   `last_assistant_message` on stdin. Otherwise it blocks the stop with a reason naming the command,
   and sends no report: the turn that follows ends in the stop that reports.
-- **The prompt-submit hook** runs `ctl.py typed` with the prompt on stdin, unless the prompt is a task
-  notification (it starts `<task-notification>`) or another form that isn't the owner typing.
+- **The prompt-submit hook** runs `ctl.py typed` with every prompt on stdin. It filters nothing:
+  `typed` decides what is the owner typing.
