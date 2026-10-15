@@ -51,10 +51,7 @@ def main(argv):
         if cur and cur != head:
             return moved(pr, head, cur)
         if check and not check_result:
-            r = gh("api", f"repos/{repo}/commits/{head}/check-runs", "--jq",
-                   f'[.check_runs[] | select(.name=="{check}")] | if length==0 then "none" elif '
-                   'all(.status=="completed") then (map(.conclusion)|join(",")) else "running" end')
-            st = r.stdout.strip() if r.returncode == 0 else "none"
+            st = lib.check_state(repo, head, check)
             if st not in ("none", "running"):
                 check_result = st
         if pending and poll % REVIEWER_EVERY == 0:

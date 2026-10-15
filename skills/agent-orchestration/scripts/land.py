@@ -72,10 +72,7 @@ class Lander:
             head = self.git("rev-parse", "HEAD")
             st = "none"
             for _ in range(minutes * 60 // CHECK_POLL_SECONDS):
-                r = gh("api", f"repos/{self.repo}/commits/{head}/check-runs", "--jq",
-                       f'[.check_runs[]|select(.name=="{self.check}")]|if length==0 then "none" elif '
-                       'all(.status=="completed") then (map(.conclusion)|join(",")) else "running" end')
-                st = r.stdout.strip() if r.returncode == 0 else "none"
+                st = lib.check_state(self.repo, head, self.check)
                 if st not in ("none", "running"):
                     break
                 sleep(CHECK_POLL_SECONDS)
