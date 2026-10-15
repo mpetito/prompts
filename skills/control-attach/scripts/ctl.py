@@ -1,0 +1,229 @@
+"""The control layer's script: a session attaches under a name and reports to the controller, and the controller
+steers attached sessions through their mailboxes. references/protocol.md is the contract (Protocol version 1): every
+subcommand's arguments, every line it prints, and the files under $ORCHESTRATION_HOME/control (default
+~/.orchestration/control), which only this script writes.
+  ctl.py attach <name> [--hold <minutes>]
+  ctl.py detach
+  ctl.py authority observe|relay|delegate
+  ctl.py report      the report is stdin
+  ctl.py typed       the prompt is stdin
+A session's subcommands find its record by HERDR_PANE_ID. A refusal prints REFUSED <reason> and exits 1.
+"""
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+SCRIPTS = Path(__file__).resolve().parents[2] / "agent-orchestration" / "scripts"
+sys.path.insert(0, str(SCRIPTS))
+import lib  # noqa: E402
+import mail  # noqa: E402
+
+# herdr's agent-name pattern, which mail.py's boxes share.
+NAME = re.compile(r"[a-z][a-z0-9_-]{0,31}")
+OWNER = "owner"
+LEVELS = ("observe", "relay", "delegate")
+# Spec questions 1 and 3. The default authority is fixed: the owner changes one session's level, never the default.
+DEFAULT_AUTHORITY = "delegate"
+DEFAULT_HOLD = 10
+# A report wakes the controller only when it needs the controller or the owner.
+WAKING = re.compile(r"STATUS: (need-decision|blocked|done)( |$)")
+# The one ring line typed into a Claude session; typed ignores it, so a ring never holds the controller.
+RING = re.compile(rf"/control-attach {NAME.pattern}")
+
+
+class Refused(Exception):
+    """A refusal main prints on stdout as "REFUSED <reason>", exiting 1."""
+
+
+def usage():
+    raise lib.Fail(__doc__.rstrip())
+
+
+def control():
+    return Path(os.environ.get("ORCHESTRATION_HOME") or Path.home() / ".orchestration") / "control"
+
+
+def mail_root():
+    return control() / "mail"
+
+
+def wait_line(name):
+    """The wait command attach prints for name: mail.py's wait on <name>/in, with absolute paths."""
+    return f'python3 "{lib.native(SCRIPTS / "mail.py")}" wait {name}/in --home "{lib.native(lib.canon(control()))}"'
+
+
+# --- records -----------------------------------------------------------------------------------------------------
+
+def record_path(name):
+    return control() / "sessions" / f"{name}.json"
+
+
+def load(name):
+    """name's record, or None when it has none."""
+    try:
+        return json.loads(record_path(name).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+
+
+def save(name, record):
+    path = record_path(name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lib.replace_lines(path, [json.dumps(record)])
+
+
+def records():
+    """Every record, as (name, record) in name order."""
+    folder = control() / "sessions"
+    return [(p.stem, load(p.stem)) for p in sorted(folder.glob("*.json"))] if folder.is_dir() else []
+
+
+def attached():
+    """(name, record) of the record attached from this process's herdr pane, or None outside herdr or unattached.
+    attach keeps at most one record attached per pane."""
+    pane = os.environ.get("HERDR_PANE_ID")
+    return next(((n, r) for n, r in records() if r["attached"] and r["pane"] == pane), None) if pane else None
+
+
+def wait_command():
+    """For the session's hooks: the command of this pane's WAIT line, or None when the pane isn't attached. Reads
+    the records only, never herdr."""
+    found = attached()
+    return wait_line(found[0]) if found else None
+
+
+# --- herdr -------------------------------------------------------------------------------------------------------
+
+def herdr(*args):
+    """herdr's JSON reply to args, parsed; Refused naming herdr's reason when it fails or the reply isn't JSON."""
+    r = lib.run(["herdr", *args])
+    out = r.stdout if r.returncode == 0 else r.stdout + r.stderr
+    try:
+        reply = json.loads(out or "{}")
+    except ValueError:
+        raise Refused(f"herdr: {out.rstrip(chr(10))}") from None
+    if r.returncode:
+        err = reply.get("error") if isinstance(reply, dict) else None
+        raise Refused(f"herdr: {err['code']}: {err['message']}" if isinstance(err, dict) else
+                      f"herdr: {out.rstrip(chr(10))}")
+    return reply
+
+
+def live_agent(target):
+    """herdr's record of the live agent at target, a name or a pane, or {} when there is none."""
+    try:
+        return herdr("agent", "get", target)["result"]["agent"] or {}
+    except (Refused, KeyError, TypeError):
+        return {}
+
+
+# --- session subcommands -----------------------------------------------------------------------------------------
+
+def check_name(name):
+    if not NAME.fullmatch(name):
+        raise Refused(f"not a name: {name}")
+    if name == OWNER:
+        raise Refused("owner is the controller's address")
+
+
+def attach(args, opts):
+    if len(args) != 1:
+        usage()
+    name = args[0]
+    check_name(name)
+    hold = opts.get("--hold")
+    if hold is not None and not hold.isdigit():
+        usage()
+    pane = os.environ.get("HERDR_PANE_ID")
+    if not pane:
+        raise Refused("not in a herdr pane")
+    me = herdr("agent", "get", pane)["result"]["agent"]
+    # attach names the agent, so herdr's names are the live holders of the addresses.
+    holder = live_agent(name).get("pane_id")
+    if holder and holder != pane:
+        raise Refused(f"{name} is held by pane {holder}")
+    if me.get("name") != name:
+        herdr("agent", "rename", pane, name)
+    for other, record in records():
+        if other != name and record["attached"] and record["pane"] == pane:
+            save(other, {**record, "attached": False})
+    old = load(name) or {}
+    save(name, {"pane": pane, "authority": old.get("authority", DEFAULT_AUTHORITY),
+                "hold": int(hold) if hold is not None else old.get("hold", DEFAULT_HOLD),
+                "typed": old.get("typed", ""), "attached": True, "started": old.get("started", False)})
+    print(f"WAIT {wait_line(name)}")
+    return 0
+
+
+def own_record():
+    found = attached()
+    if not found:
+        raise Refused("not attached")
+    return found
+
+
+def detach(args, opts):
+    if args:
+        usage()
+    name, record = own_record()
+    save(name, {**record, "attached": False})
+    print(f"DETACHED {name}")
+    return 0
+
+
+def authority(args, opts):
+    if len(args) != 1 or args[0] not in LEVELS:
+        usage()
+    name, record = own_record()
+    save(name, {**record, "authority": args[0]})
+    print(f"AUTHORITY {name} {args[0]}")
+    return 0
+
+
+def report(args, opts):
+    if args:
+        usage()
+    text = sys.stdin.read().rstrip("\n")
+    found = attached()
+    if not found or not text.strip():
+        return 0
+    quiet = {} if WAKING.match(text.split("\n", 1)[0]) else {"--quiet": True}
+    return mail.send(mail_root(), [f"{OWNER}/in", text], {"--from": found[0], **quiet})
+
+
+def typed(args, opts):
+    if args:
+        usage()
+    prompt = sys.stdin.read().strip()
+    found = attached()
+    if found and not RING.fullmatch(prompt):
+        save(found[0], {**found[1], "typed": lib.utc_now()})
+    return 0
+
+
+# subcommand: (handler, its options; True when the option takes a value)
+COMMANDS = {
+    "attach": (attach, {"--hold": True}),
+    "detach": (detach, {}),
+    "authority": (authority, {}),
+    "report": (report, {}),
+    "typed": (typed, {}),
+}
+
+
+def main(argv):
+    if not argv or argv[0] not in COMMANDS:
+        usage()
+    handler, spec = COMMANDS[argv[0]]
+    args, opts = lib.take_options(argv[1:], spec)
+    try:
+        return handler(args, opts)
+    except Refused as e:
+        print(f"REFUSED {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    lib.entry(main)

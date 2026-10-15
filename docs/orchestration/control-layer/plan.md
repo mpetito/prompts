@@ -86,7 +86,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     `unattached`. The record holds no name (its file name) and no session id. `typed` prints nothing,
     since a prompt-submit hook's output reaches the model. Wrong arguments are usage on stderr, not
     `REFUSED` lines.
-- [ ] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
+- [x] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
   `skills/control-attach/tests/support.py`: the session-side subcommands, importing
   `agent-orchestration/scripts/mail.py` and `lib.py` as thread.py imports lib.
   - `attach <name> [--authority observe|relay|delegate] [--hold <minutes>]`: resolve this session's
