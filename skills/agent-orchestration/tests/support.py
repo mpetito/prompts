@@ -164,7 +164,9 @@ def check_run(name, conclusion, status="completed"):
 
 class FakeGh:
     """A gh answering the queries land.py and watch_gates.py make, from the head of the worktree wt. runs are the
-    head's check runs; a check-runs call with check_name=<name> gets those of that name, as GitHub filters them."""
+    head's check runs, or None for a gh that fails to read them. A check-runs call with check_name=<name> gets those of
+    that name, as GitHub filters them, only as a GET with per_page=100; any other shape fails as GitHub would answer
+    the POST that gh sends without -X GET."""
 
     def __init__(self):
         self.log, self.wt, self.merge_state, self.merge_fail = [], None, "CLEAN", False
@@ -190,6 +192,9 @@ class FakeGh:
         if verb == "api graphql":
             return result(args, out="unresolved_threads=0\n" if "unresolved_threads=" in joined else "0\n")
         if "/check-runs" in joined and (names := [a[11:] for a in args if a.startswith("check_name=")]):
+            get = any(args[i:i + 2] in (["-X", "GET"], ["--method", "GET"]) for i in range(len(args)))
+            if self.runs is None or not get or "per_page=100" not in args:
+                return result(args, 1, err="gh: Not Found (HTTP 404)\n")
             return result(args, out=json.dumps({"check_runs": [c for c in self.runs if c["name"] == names[0]]}))
         return result(args)
 

@@ -188,7 +188,8 @@ def git(cwd, *args):
 def check_state(repo, sha, name):
     """The state of the check named name on commit sha of repo (owner/name), from every run of it GitHub lists:
     "none" with no run or when gh fails, "running" while any run is not completed, "success" when every run completed
-    with success, else the other conclusions, distinct, sorted and comma-joined ("cancelled,failure").
+    with success, else the other conclusions, distinct, sorted and comma-joined ("cancelled,failure"). Strict: a
+    skipped or neutral run beside a success still holds the head.
 
     A workflow on both push and pull_request gives one head two runs of the same name, so every run must pass; one
     failed or unfinished run of either event holds the head. Reads one page of up to 100 runs."""
