@@ -108,8 +108,8 @@ At every level:
 - A session records when the owner last typed in it. Only typed prompts count: a background task's
   result, a subagent's report and another session's message each arrive as a prompt too, and none of
   them is the owner. While the owner has typed within the hold
-  window (question 3), the controller sends that session nothing but `QUESTION:`, and holds its
-  other mail until the window passes.
+  window (question 3), the controller sends that session no `CONTROL:` or `DECISION`, and holds
+  them until the window passes; the owner's `OWNER:` relays and `QUESTION:` still go.
 - Control mail never touches the owner's half-typed input (shown 2026-10-14, below).
 - The owner can switch any session to `observe` at once, and that holds until the owner changes it.
 
@@ -163,6 +163,9 @@ end-of-turn and a prompt-submit hook that log their input:
   listed again once the hooks were back. The clear gave the session a new id; herdr kept its pane
   and name. Exiting offers to stop the session's background tasks, move the session to the
   background, or stay; stopping them ended the task, so the resumed session had none.
+  (2026-10-15, later: the name survived the clear only because herdr had never named that agent.
+  A session renamed by `attach` lost its herdr name on `/clear`, as on an exit, while keeping its
+  pane and its running wait, so the controller sees it gone.)
 - **Invoking the skill again doesn't double the hooks.** After a second invocation in one session,
   typed or through the Skill tool, each hook still fired once per event.
 - **A typed slash command reaches the prompt-submit hook only once the hooks are registered.** The

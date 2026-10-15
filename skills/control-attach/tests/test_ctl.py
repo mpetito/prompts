@@ -169,8 +169,7 @@ class Attach(CtlCase):
     def test_reattaching_from_another_pane_moves_the_record(self):
         self.c("attach", "alpha")
         # The session exited (herdr dropped its name) and was started again in another pane.
-        self.herdr.agents[:] = [{"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w2:p1",
-                                 "agent_session": {"value": "s9"}}]
+        self.herdr.agents[:] = [{"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w2:p1"}]
         os.environ["HERDR_PANE_ID"] = "w2:p1"
         self.assertEqual(self.c("attach", "alpha")[0], 0)
         self.assertEqual(self.record("alpha")["pane"], "w2:p1")
@@ -178,13 +177,13 @@ class Attach(CtlCase):
         os.environ["HERDR_PANE_ID"] = "w1:p1"
         self.assertIsNone(ctl.wait_command())
 
-    def test_reattaching_after_a_clear_takes_the_new_session_id(self):
+    def test_reattaching_takes_the_sessions_current_id_and_keeps_its_level(self):
         self.c("attach", "alpha")
-        self.c("authority", "relay")
-        # A /clear keeps the pane and the herdr name and changes the session id.
-        self.agent("w1:p1")["agent_session"]["value"] = "s2"
+        self.c("authority", "observe")
+        # A /clear gives the session a new id and herdr clears its name.
+        self.agent("w1:p1").update(name=None, agent_session={"value": "s2"})
         self.c("attach", "alpha")
-        self.assertEqual((self.record("alpha")["session"], self.record("alpha")["authority"]), ("s2", "relay"))
+        self.assertEqual((self.record("alpha")["session"], self.record("alpha")["authority"]), ("s2", "observe"))
 
     def test_attaching_another_name_from_the_pane_unattaches_the_first(self):
         self.c("attach", "alpha")
@@ -304,12 +303,11 @@ class AttachedAs(CtlCase):
         self.c("attach", "alpha")
         self.me = self.agent("w1:p1")
 
-    def test_the_attached_agent_with_its_session_id(self):
+    def test_the_attached_agent_in_its_pane(self):
         self.assertEqual(ctl.attached_as(self.me), "alpha")
 
-    def test_a_cleared_session_is_unattached(self):
-        self.me["agent_session"]["value"] = "s2"
-        self.assertIsNone(ctl.attached_as(self.me))
+    def test_an_agent_under_the_name_in_another_pane_is_unattached(self):
+        self.assertIsNone(ctl.attached_as({**self.me, "pane_id": "w9:p1"}))
 
     def test_a_detached_or_unnamed_agent_is_unattached(self):
         self.assertIsNone(ctl.attached_as({**self.me, "name": None}))
@@ -322,8 +320,7 @@ class TwoSessions(CtlCase):
 
     def setUp(self):
         super().setUp()
-        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p0",
-                                  "agent_session": {"value": "s0"}})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p0"})
         self.as_pane("w1:p0")
         self.c("attach", "aaa")
         self.as_pane("w1:p1")
@@ -412,10 +409,11 @@ class ControllerCase(CtlCase):
     def as_pane(self, pane):
         os.environ["HERDR_PANE_ID"] = pane
 
-    def attach_at(self, name, pane, kind="claude", session=None, **fields):
-        """name attached from pane, which a new idle agent of kind holds; fields then overwrite the record."""
+    def attach_at(self, name, pane, kind="claude", **fields):
+        """name attached from pane, which a new idle agent of kind holds under session id s-<name>; fields then
+        overwrite the record."""
         self.herdr.agents.append({"name": None, "agent": kind, "agent_status": "idle", "pane_id": pane,
-                                  "agent_session": {"value": session or f"s-{name}"}})
+                                  "agent_session": {"value": f"s-{name}"}})
         self.as_pane(pane)
         self.assertEqual(self.c("attach", name)[0], 0)
         ctl.save(name, {**self.record(name), **fields})
@@ -450,20 +448,20 @@ class Sessions(ControllerCase):
                                        "shop-web claude working unattached - -", "w3:p2 codex done unattached - -",
                                        "w3:p3 null null unattached - -", "beta - gone relay - 0"])
 
+    def test_a_session_whose_pane_moved_shows_its_record_gone(self):
+        # herdr gives a moved pane a new id; the session keeps its name and its session id.
+        self.attach_at("alpha", "w2:p1")
+        self.agent("w2:p1").update(name="alpha", pane_id="w5:p3")
+        self.assertEqual(self.rows()[-2:], ["alpha claude idle unattached - -", "alpha - gone delegate - 0"])
+
     def test_a_gone_session_stays_gone_when_another_agent_takes_its_name(self):
         self.attach_at("alpha", "w2:p1")
-        self.herdr.agents[:] = [{"name": "alpha", "agent": "claude", "agent_status": "idle", "pane_id": "w9:p1",
-                                 "agent_session": {"value": "thread"}}]
+        self.herdr.agents[:] = [{"name": "alpha", "agent": "claude", "agent_status": "idle", "pane_id": "w9:p1"}]
         self.assertEqual(self.rows(), ["alpha claude idle unattached - -", "alpha - gone delegate - 0"])
 
     def test_the_hold_shows_only_while_it_lasts(self):
         self.attach_at("alpha", "w2:p1", typed=self.typed_ago(11), hold=10)
         self.assertIn("alpha claude idle delegate - 0", self.rows())
-
-    def test_a_cleared_session_shows_unattached_under_its_name(self):
-        self.attach_at("alpha", "w2:p1")
-        self.agent("w2:p1")["agent_session"]["value"] = "s-new"
-        self.assertIn("alpha claude idle unattached - -", self.rows())
 
     def test_a_codex_session_shows_unattached_even_with_a_matching_record(self):
         self.attach_at("cx", "w2:p1", kind="codex")
@@ -514,18 +512,18 @@ class Send(ControllerCase):
                         self.refused((code, out, ""))
                         self.assertEqual(len(self.inbox("alpha")), before)
 
-    def test_inside_the_hold_window_only_a_question_goes(self):
+    def test_inside_the_hold_window_the_owners_relay_and_a_question_go(self):
         typed = self.typed_ago(1)
         ctl.save("alpha", {**self.record("alpha"), "typed": typed, "hold": 10})
         until = lib.fmt_utc(lib.to_epoch(typed) + 600)
         for label, args in self.MESSAGES.items():
             with self.subTest(label):
                 code, out, _ = self.c("send", "alpha", *args)
-                if label == "QUESTION":
+                if label in ("OWNER", "QUESTION"):
                     self.assertEqual(code, 0, out)
                 else:
                     self.assertEqual((code, out), (1, f"HELD {until}\n"))
-        self.assertEqual([body(m) for m in self.inbox("alpha")], ["QUESTION: status?"])
+        self.assertEqual([body(m) for m in self.inbox("alpha")], ["OWNER: go", "QUESTION: status?"])
 
     def test_the_hold_lasts_to_its_last_minute(self):
         # typed keeps the minute: typed at 00:00 with hold 10 holds until 00:10, here 30 s away.
@@ -533,13 +531,13 @@ class Send(ControllerCase):
         typed = lib.fmt_utc(now - 570)
         ctl.save("alpha", {**self.record("alpha"), "typed": typed, "hold": 10})
         with unittest.mock.patch.object(ctl.time, "time", return_value=now):
-            self.assertEqual(self.c("send", "alpha", "OWNER", "go"), (1, f"HELD {lib.fmt_utc(now + 30)}\n", ""))
+            self.assertEqual(self.c("send", "alpha", "CONTROL", "go"), (1, f"HELD {lib.fmt_utc(now + 30)}\n", ""))
 
     def test_after_the_hold_window_everything_goes(self):
         for typed, hold in ((self.typed_ago(11), 10), (self.typed_ago(0), 0)):
             with self.subTest(typed=typed, hold=hold):
                 ctl.save("alpha", {**self.record("alpha"), "typed": typed, "hold": hold})
-                self.assertEqual(self.c("send", "alpha", "OWNER", "go")[0], 0)
+                self.assertEqual(self.c("send", "alpha", "CONTROL", "go")[0], 0)
 
     def test_only_an_attached_record_receives(self):
         self.c("detach")
@@ -547,6 +545,15 @@ class Send(ControllerCase):
             with self.subTest(name=name):
                 self.refused(self.c("send", name, "OWNER", "go"))
         self.assertEqual(self.inbox("alpha"), [])
+
+    def test_text_after_a_double_dash_is_never_an_option(self):
+        cases = {("DECISION", "D1", "--", "--owner"): "DECISION D1: --owner\nBy: controller",
+                 ("OWNER", "--", "--owner"): "OWNER: --owner",
+                 ("DECISION", "D1", "yes", "--owner"): "DECISION D1: yes\nBy: owner"}
+        for args, expected in cases.items():
+            with self.subTest(args=args):
+                self.assertEqual(self.c("send", "alpha", *args)[0], 0)
+                self.assertEqual(body(self.inbox("alpha")[-1]), expected)
 
     def test_wrong_arguments_are_usage_errors(self):
         for args in (("alpha", "STEER", "go"), ("alpha", "OWNER", "go", "--owner"), ("alpha", "OWNER"),
@@ -574,6 +581,13 @@ class ReadAndWait(ControllerCase):
         self.attach_at("alpha", "w2:p1")
         self.c("report", stdin="STATUS: need-decision - D1\n")
         self.assertEqual(self.c("wait", "--timeout", "0"), (0, "MAIL 1\n", ""))
+
+    def test_a_zero_timeout_takes_one_look(self):
+        self.attach_at("alpha", "w2:p1")
+        with unittest.mock.patch.object(mail, "sleep", side_effect=AssertionError("a second look")):
+            self.assertEqual(self.c("wait", "--timeout", "0"), (0, "TIMEOUT\n", ""))
+            self.c("report", stdin="STATUS: done - shipped\n")
+            self.assertEqual(self.c("wait", "--timeout", "0"), (0, "MAIL 1\n", ""))
 
     def age(self, name):
         """Make name's unread mail six minutes old, past mail.py's UNREAD threshold."""
@@ -664,33 +678,95 @@ class Ring(ControllerCase):
     def test_a_gone_sessions_name_taken_by_a_thread_is_refused(self):
         # P1: the session exited (still attached, herdr dropped its name), and a build's thread took the name.
         self.attach_at("alpha", "w2:p1")
-        self.herdr.agents[:] = [{"name": "alpha", "agent": "claude", "agent_status": "idle", "pane_id": "w9:p1",
-                                 "agent_session": {"value": "thread"}}]
+        self.herdr.agents[:] = [{"name": "alpha", "agent": "claude", "agent_status": "idle", "pane_id": "w9:p1"}]
         self.not_rung("alpha", "alpha")
 
     def test_a_started_records_name_taken_by_a_lane_is_refused(self):
         # P2: started never changes, so it can't vouch for a later agent with the name.
-        ctl.save("alpha", {"pane": "w7:p1", "session": "", "authority": "delegate", "hold": 10, "typed": "",
-                           "attached": False, "started": True})
+        ctl.save("alpha", {"pane": "w7:p1", "authority": "delegate", "hold": 10, "typed": "", "attached": False,
+                           "started": True})
         self.herdr.agents.append({"name": "alpha", "agent": "claude", "agent_status": "idle", "pane_id": "w9:p1"})
         self.not_rung("alpha", "alpha")
 
-    def test_an_agent_without_a_session_id_isnt_an_attached_record_without_one(self):
+    def test_a_session_whose_pane_moved_is_no_longer_its_records(self):
+        # herdr gives a pane moved to another workspace a new id.
         self.attach_at("alpha", "w2:p1")
-        ctl.save("alpha", {**self.record("alpha"), "session": ""})
-        self.herdr.agents[:] = [{"name": "alpha", "agent": "claude", "agent_status": "idle", "pane_id": "w9:p1"}]
-        self.not_rung("alpha", "alpha")
-
-    def test_only_an_attached_record_follows_its_session_to_another_pane(self):
-        self.attach_at("alpha", "w2:p1")
-        self.c("detach")
         self.agent("w2:p1")["pane_id"] = "w5:p3"
         self.not_rung("alpha", "alpha")
+        self.c("detach")
+        self.not_rung("alpha", "alpha")
+
+    def test_a_record_in_another_pane_isnt_an_unnamed_agents(self):
+        self.attach_at("alpha", "w2:p1", authority="observe")
+        self.rung("w1:p1", "beta", prompt="w1:p1 /control-attach beta")
+
+    def resumed_elsewhere(self, session):
+        """An unnamed agent in w3:p1 under session id session, as a session resumed there."""
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w3:p1",
+                                  "agent_session": {"value": session}})
+
+    def test_a_session_resumed_in_another_pane_keeps_its_records_level_and_name(self):
+        # B1: claude --resume and -c keep the session id; the record stays attached across the exit.
+        self.attach_at("alpha", "w2:p1", authority="observe")
+        self.herdr.agents[:] = [a for a in self.herdr.agents if a["pane_id"] != "w2:p1"]
+        self.resumed_elsewhere("s-alpha")
+        self.assertEqual(self.c("ring", "w3:p1", "beta"), (1, "REFUSED w3:p1 is at observe\n", ""))
+        ctl.save("alpha", {**self.record("alpha"), "authority": "relay"})
+        self.assertEqual(self.c("ring", "w3:p1", "beta"), (1, "REFUSED w3:p1 is attached as alpha\n", ""))
+        self.rung("w3:p1", "alpha", prompt="w3:p1 /control-attach alpha")
+
+    def test_only_an_attached_records_session_id_ties_an_agent_in_another_pane(self):
+        # A detached record, or a session id herdr didn't give, ties nothing outside the record's pane.
+        for attached, session in ((False, "s-alpha"), (True, "")):
+            with self.subTest(attached=attached, session=session):
+                ctl.save("alpha", {"pane": "w2:p1", "session": session, "authority": "observe", "hold": 10,
+                                   "typed": "", "attached": attached, "started": False})
+                self.herdr.agents[:] = []
+                self.resumed_elsewhere(session)
+                self.herdr.log.clear()
+                self.rung("w3:p1", "beta", prompt="w3:p1 /control-attach beta")
+
+    def test_a_session_resumed_into_another_records_pane_is_rung_only_as_itself(self):
+        # alpha exited from w3:p1 still attached; zeta, at observe, was resumed into w3:p1 under its own id.
+        self.attach_at("alpha", "w3:p1")
+        self.attach_at("zeta", "w2:p1", authority="observe")
+        self.herdr.agents[:] = []
+        self.resumed_elsewhere("s-zeta")
+        for target, attach_name in (("w3:p1", "alpha"), ("alpha", "alpha"), ("w3:p1", "zeta")):
+            with self.subTest(target=target, attach_name=attach_name):
+                self.assertEqual(self.c("ring", target, attach_name), (1, f"REFUSED {target} is at observe\n", ""))
+        self.assertEqual(self.herdr.prompts(), [])
+
+    def continued_in(self, pane, session):
+        """The session exits (herdr drops its agent) and is continued in pane, unnamed, under session id session."""
+        self.herdr.agents[:] = [a for a in self.herdr.agents if a.get("agent_session", {}).get("value") != session]
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": pane,
+                                  "agent_session": {"value": session}})
+
+    def test_one_session_holds_one_attached_record(self):
+        # B3: attached as alpha in w2:p1, continued into w3:p1 and attached as beta at relay, continued into w4:p1.
+        self.attach_at("alpha", "w2:p1")
+        self.continued_in("w3:p1", "s-alpha")
+        self.as_pane("w3:p1")
+        self.c("attach", "beta")
+        self.c("authority", "relay")
+        self.continued_in("w4:p1", "s-alpha")
+        self.assertFalse(self.record("alpha")["attached"])
+        self.assertEqual(self.c("ring", "w4:p1", "alpha"), (1, "REFUSED w4:p1 is attached as beta\n", ""))
+        self.rung("w4:p1", "beta", prompt="w4:p1 /control-attach beta")
+
+    def test_an_empty_session_id_unattaches_nothing_outside_the_pane(self):
+        self.attach_at("alpha", "w2:p1")
+        ctl.save("alpha", {**self.record("alpha"), "session": ""})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w3:p1"})
+        self.as_pane("w3:p1")
+        self.c("attach", "beta")
+        self.assertTrue(self.record("alpha")["attached"])
 
     def test_a_detached_session_in_its_own_pane_is_rung_back(self):
         self.attach_at("alpha", "w2:p1")
         self.c("detach")
-        self.rung("alpha", "alpha", prompt="alpha /control-attach alpha")
+        self.rung("alpha", "alpha", prompt="w2:p1 /control-attach alpha")
 
     def test_a_ring_never_attaches_a_session_under_another_name(self):
         # P5: alpha at relay, attached as beta, would take beta's level.
@@ -701,17 +777,15 @@ class Ring(ControllerCase):
         self.not_rung("alpha", "beta")
         self.rung("w2:p1", "alpha", prompt="w2:p1 /control-attach alpha")
 
-    def test_observe_holds_by_pane_once_herdr_clears_the_name_and_by_name_after_a_pane_move(self):
+    def test_observe_holds_by_pane_once_herdr_clears_the_name(self):
         self.attach_at("alpha", "w2:p1", authority="observe")
         self.agent("w2:p1")["name"] = None
         self.not_rung("w2:p1", "alpha")
         self.not_rung("alpha", "alpha")
-        self.agent("w2:p1").update(name="alpha", pane_id="w5:p3")
-        self.not_rung("alpha", "alpha")
 
     def test_a_started_record_reached_by_its_pane_keeps_its_level_and_name(self):
-        ctl.save("alpha", {"pane": "w1:p1", "session": "", "authority": "observe", "hold": 10, "typed": "",
-                           "attached": False, "started": True})
+        ctl.save("alpha", {"pane": "w1:p1", "authority": "observe", "hold": 10, "typed": "", "attached": False,
+                           "started": True})
         self.not_rung("alpha", "alpha")
         ctl.save("alpha", {**self.record("alpha"), "authority": "delegate"})
         self.not_rung("alpha", "beta")
@@ -728,25 +802,21 @@ class Ring(ControllerCase):
                     with self.subTest(name=herdr_name, state=state, level=level):
                         for n, _ in ctl.records():
                             ctl.record_path(n).unlink()
-                        ctl.save("alpha", {"pane": "w2:p1", "session": "s-alpha", "authority": level, "hold": 10,
-                                           "typed": "", "attached": is_attached, "started": started})
+                        ctl.save("alpha", {"pane": "w2:p1", "authority": level, "hold": 10, "typed": "",
+                                           "attached": is_attached, "started": started})
                         self.herdr.agents[:] = [{"name": herdr_name, "agent": "claude", "agent_status": "idle",
-                                                 "pane_id": "w2:p1", "agent_session": {"value": "s-alpha"}}]
-                        # By its record's name, an unnamed agent is reached only for an attached or started record.
-                        reachable = herdr_name or state != "detached"
+                                                 "pane_id": "w2:p1"}]
                         for target, attach_name, rings in (
                                 ("w2:p1", "beta", False), ("alpha", "beta", False),
-                                ("w2:p1", "alpha", level != "observe"),
-                                ("alpha", "alpha", level != "observe" and reachable)):
+                                ("w2:p1", "alpha", level != "observe"), ("alpha", "alpha", level != "observe")):
                             self.herdr.log.clear()
                             if rings:
-                                who = herdr_name or "w2:p1"
-                                self.rung(target, attach_name, prompt=f"{who} /control-attach {attach_name}")
+                                self.rung(target, attach_name, prompt=f"w2:p1 /control-attach {attach_name}")
                             else:
                                 self.not_rung(target, attach_name)
 
     def test_unattached_records_sharing_a_pane_each_give_their_name_and_any_observe_refuses(self):
-        base = {"pane": "w2:p1", "session": "", "hold": 10, "typed": ""}
+        base = {"pane": "w2:p1", "hold": 10, "typed": ""}
         ctl.save("alpha", {**base, "authority": "delegate", "attached": False, "started": False})
         ctl.save("gamma", {**base, "authority": "delegate", "attached": False, "started": True})
         self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w2:p1"})
@@ -760,32 +830,21 @@ class Ring(ControllerCase):
 
     def test_an_attached_record_in_the_pane_comes_before_the_others(self):
         base = {"pane": "w2:p1", "hold": 10, "typed": "", "started": False}
-        ctl.save("alpha", {**base, "session": "s1", "authority": "delegate", "attached": True})
-        ctl.save("gamma", {**base, "session": "", "authority": "observe", "attached": False})
-        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w2:p1",
-                                  "agent_session": {"value": "s1"}})
+        ctl.save("alpha", {**base, "authority": "delegate", "attached": True})
+        ctl.save("gamma", {**base, "authority": "observe", "attached": False})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w2:p1"})
         self.not_rung("w2:p1", "gamma")
         self.rung("w2:p1", "alpha", prompt="w2:p1 /control-attach alpha")
 
-    def test_a_records_name_rings_its_pane_only_when_attached_or_started(self):
+    def test_a_records_name_rings_its_pane_once_herdr_clears_the_name(self):
         self.attach_at("alpha", "w2:p1")
         # The session was resumed in its pane: herdr cleared its name.
         self.agent("w2:p1")["name"] = None
-        for fields, rings in (({"attached": True, "started": False}, True),
-                              ({"attached": False, "started": True}, True),
-                              ({"attached": False, "started": False}, False)):
-            with self.subTest(**fields):
+        for attached in (True, False):
+            with self.subTest(attached=attached):
                 self.herdr.log.clear()
-                ctl.save("alpha", {**self.record("alpha"), **fields})
-                if rings:
-                    self.rung("alpha", "alpha", prompt="w2:p1 /control-attach alpha")
-                else:
-                    self.not_rung("alpha", "alpha")
-
-    def test_an_agent_herdr_still_names_is_rung_by_its_name_after_a_pane_move(self):
-        self.attach_at("alpha", "w2:p1")
-        self.agent("w2:p1")["pane_id"] = "w5:p3"
-        self.rung("alpha", "alpha", prompt="alpha /control-attach alpha")
+                ctl.save("alpha", {**self.record("alpha"), "attached": attached})
+                self.rung("alpha", "alpha", prompt="w2:p1 /control-attach alpha")
 
     def test_nothing_herdr_or_a_record_knows_is_refused(self):
         self.not_rung("ghost", "alpha")
@@ -830,8 +889,8 @@ class Start(ControllerCase):
         code, out, err = self.start()
         pane = self.record("alpha")["pane"]
         self.assertEqual((code, out, err), (0, f"STARTED alpha {pane}\n", ""))
-        self.assertEqual(self.record("alpha"), {"pane": pane, "session": "", "authority": "delegate", "hold": 10,
-                                                "typed": "", "attached": False, "started": True})
+        self.assertEqual(self.record("alpha"), {"pane": pane, "authority": "delegate", "hold": 10, "typed": "",
+                                                "attached": False, "started": True})
         [objective] = self.inbox("alpha")
         self.assertEqual((lib.record_value(objective, "From"), body(objective)),
                          ("owner", self.objective.read_text(encoding="utf-8").rstrip("\n")))
@@ -864,12 +923,12 @@ class Start(ControllerCase):
 
     def test_starting_under_a_name_keeps_its_level_and_hold(self):
         # P3: the owner set alpha to relay; the address outlives the session that exited.
-        ctl.save("alpha", {"pane": "w7:p1", "session": "s0", "authority": "relay", "hold": 3,
-                           "typed": "2026-10-01T10:00Z", "attached": True, "started": False})
+        ctl.save("alpha", {"pane": "w7:p1", "authority": "relay", "hold": 3, "typed": "2026-10-01T10:00Z",
+                           "attached": True, "started": False})
         self.assertEqual(self.start()[0], 0)
         record = self.record("alpha")
-        self.assertEqual((record["authority"], record["hold"], record["session"], record["attached"],
-                          record["started"]), ("relay", 3, "", False, True))
+        self.assertEqual((record["authority"], record["hold"], record["attached"], record["started"]),
+                         ("relay", 3, False, True))
 
     def test_the_objective_must_be_a_message_the_kept_level_permits(self):
         # Q3 (CONTROL at relay) and Q4 (anything at observe): refused before anything is made or mailed.
@@ -882,7 +941,7 @@ class Start(ControllerCase):
                 with self.subTest(level=level, objective=text):
                     for n, _ in ctl.records():
                         ctl.record_path(n).unlink()
-                    ctl.save("alpha", {"pane": "w7:p1", "session": "", "authority": level, "hold": 10, "typed": "",
+                    ctl.save("alpha", {"pane": "w7:p1", "authority": level, "hold": 10, "typed": "",
                                        "attached": False, "started": False})
                     self.herdr.log.clear()
                     self.herdr.agents[:] = [a for a in self.herdr.agents if a["name"] != "alpha"]
@@ -940,10 +999,10 @@ class Start(ControllerCase):
 
     def test_a_fourth_running_started_session_is_refused(self):
         for i, name in enumerate(("aa", "bb", "cc")):
-            ctl.save(name, {"pane": f"w7:p{i}", "session": "", "authority": "delegate", "hold": 10, "typed": "",
-                            "attached": False, "started": True})
-        # aa runs under its name in a moved pane, bb in its pane after herdr cleared its name, cc no longer runs.
-        self.herdr.agents += [{"name": "aa", "agent": "claude", "agent_status": "idle", "pane_id": "w8:p1"},
+            ctl.save(name, {"pane": f"w7:p{i}", "authority": "delegate", "hold": 10, "typed": "", "attached": False,
+                            "started": True})
+        # aa runs under its name, bb in its pane after herdr cleared its name, cc no longer runs.
+        self.herdr.agents += [{"name": "aa", "agent": "claude", "agent_status": "idle", "pane_id": "w7:p0"},
                               {"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w7:p1"}]
         self.assertEqual(self.start()[0], 0)
         self.herdr.log.clear()

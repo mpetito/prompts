@@ -15,7 +15,8 @@ subcommand's arguments, every line it prints, and the files under $ORCHESTRATION
   ctl.py ring <name|pane> <attach-name>
   ctl.py ring <name|pane> --brief <file>
   ctl.py start <name> <folder> <objective-file>
-A session's subcommands find its record by HERDR_PANE_ID. A refusal prints REFUSED <reason> and exits 1.
+After a "--" argument, every later argument is text, never an option. A session's subcommands find its record by
+HERDR_PANE_ID. A refusal prints REFUSED <reason> and exits 1.
 """
 import contextlib
 import io
@@ -115,12 +116,10 @@ def session_id(agent):
 
 
 def attached_as(agent):
-    """The name an agent from herdr's list is attached under, or None. Only a Claude agent attaches: a Codex session
-    has no wait to wake it, so it is observed and rung. An attached record must have the agent's herdr name and the
-    session id herdr gives it now: a /clear keeps the pane and the name but changes the id and drops the session's
-    hooks, so a cleared session is unattached until it attaches again."""
+    """The name an agent from herdr's list is attached under, or None: an attached record with the agent's herdr name
+    and pane. Only a Claude agent attaches: a Codex session has no wait to wake it, so it is observed and rung."""
     record = load(agent["name"]) if agent.get("name") and agent.get("agent") == "claude" else None
-    return agent["name"] if record and record["attached"] and record["session"] == session_id(agent) else None
+    return agent["name"] if record and record["attached"] and record["pane"] == agent.get("pane_id") else None
 
 
 def wait_command():
@@ -198,11 +197,13 @@ def attach(args, opts):
         raise Refused(f"{name} is held by pane {holder}")
     if me.get("name") != name:
         herdr("agent", "rename", pane, name)
+    # One session, one attached record: this pane's, and one a resume carried here under this session id.
+    sid = session_id(me)
     for other, record in records():
-        if other != name and record["attached"] and record["pane"] == pane:
+        if other != name and record["attached"] and (record["pane"] == pane or (sid and record.get("session") == sid)):
             save(other, {**record, "attached": False})
     old = load(name) or {}
-    save(name, {"pane": pane, "session": session_id(me), "authority": old.get("authority", DEFAULT_AUTHORITY),
+    save(name, {"pane": pane, "session": sid, "authority": old.get("authority", DEFAULT_AUTHORITY),
                 "hold": int(hold) if hold is not None else old.get("hold", DEFAULT_HOLD),
                 "typed": old.get("typed", ""), "attached": True, "started": old.get("started", False)})
     print(f"WAIT {wait_line(name)}")
@@ -288,24 +289,21 @@ def named(name):
     return load(name) if NAME.fullmatch(name) else None
 
 
-def belongs(agent, record):
-    """Whether agent from herdr is record's session: in the record's pane, or, while the record is attached, under
-    its session id, which a moved pane keeps. herdr names whatever agent asks next, so after a session exits its
-    name alone, even on an attached or started record, says nothing about who holds it."""
-    return agent.get("pane_id") == record["pane"] or bool(
-        record["attached"] and record["session"] and session_id(agent) == record["session"])
-
-
 def records_of(agent):
     """The records agent is the session of, as [(name, record)]; or None for a named agent that isn't its name's
-    record's session, such as orchestration's. A named agent has only its name's record. An unnamed one, whose name
-    herdr cleared or never gave, has the attached record that belongs to it, else every record that does: one pane
-    can hold a record for each name it was detached or started under."""
+    record's session, such as orchestration's. A record's session is the agent in its pane: herdr names whatever
+    agent asks next, so after a session exits its name alone says nothing about who holds it. A named agent has only
+    its name's record. An unnamed one, whose name herdr cleared or never gave, has the attached record with its
+    session id, which a resume keeps, so a session continued in another pane keeps its name's level; else its pane's
+    attached record; else every record in its pane: one pane can hold a record for each name it was detached or
+    started under. The session id comes first because a pane's attached record may be an exited session's."""
     if agent.get("name"):
         record = named(agent["name"])
-        return [(agent["name"], record)] if record and belongs(agent, record) else None
-    mine = [(n, r) for n, r in records() if belongs(agent, r)]
-    return [m for m in mine if m[1]["attached"]][:1] or mine
+        return [(agent["name"], record)] if record and record["pane"] == agent.get("pane_id") else None
+    sid, every = session_id(agent), records()
+    tied = [(n, r) for n, r in every if r["attached"] and sid and r.get("session") == sid]
+    mine = [(n, r) for n, r in every if r["pane"] == agent.get("pane_id")]
+    return tied[:1] or [m for m in mine if m[1]["attached"]][:1] or mine
 
 
 def agents():
@@ -334,7 +332,7 @@ def sessions(args, opts):
         rows.append((name or agent.get("name") or agent.get("pane_id"), agent.get("agent") or "null",
                      agent.get("agent_status") or "null", name))
     rows += [(n, "-", "gone", n) for n, r in records()
-             if r["attached"] and not any(a.get("name") == n and belongs(a, r) for a in listed)]
+             if r["attached"] and not any(a.get("name") == n and a.get("pane_id") == r["pane"] for a in listed)]
     for target, kind, state, name in rows:
         record = load(name) if name else None
         until = held_until(record) if record else None
@@ -363,8 +361,9 @@ def send(args, opts):
         raise Refused(f"{name} is not attached")
     if kind not in PERMITS[record["authority"]]:
         raise Refused(f"{name} is at {record['authority']}")
+    # The owner's newest words win, typed or relayed, so only the controller's own direction waits for the owner.
     until = held_until(record)
-    if until and kind != "QUESTION":
+    if until and kind not in ("OWNER", "QUESTION"):
         print(f"HELD {lib.fmt_utc(until)}")
         return 1
     return mail.send(mail_root(), [f"{name}/in", body], {"--from": OWNER})
@@ -442,16 +441,17 @@ def ring(args, opts):
         usage()
     agent = live_agent(target)
     if agent is None:
-        # A moved pane takes a new id, so a record's pane is the way in only when herdr no longer has its name.
+        # herdr cleared the name when the session exited or a /clear replaced it; the session is back in the
+        # record's pane at once after a /clear, or once resumed there.
         record = named(target)
-        if record and (record["attached"] or record["started"]):
+        if record:
             agent = live_agent(record["pane"])
     if agent is None:
         raise Refused(f"no agent at {target}")
-    herdr_name, pane = agent.get("name"), agent.get("pane_id")
+    pane = agent.get("pane_id")
     mine = records_of(agent)
     if mine is None:
-        raise Refused(f"{target} is named {herdr_name}")
+        raise Refused(f"{target} is named {agent.get('name')}")
     if any(r["authority"] == "observe" for _, r in mine):
         raise Refused(f"{target} is at observe")
     # Attaching under another name would give the session that name's level, which only the owner sets.
@@ -462,10 +462,9 @@ def ring(args, opts):
     state = agent.get("agent_status") or "null"
     if state not in ("idle", "done"):
         raise Refused(f"{target} is {state}")
-    who = herdr_name or pane
-    if not input_line_empty(herdr("agent", "read", who, "--source", "visible", "--format", "ansi", text=True)):
+    if not input_line_empty(herdr("agent", "read", pane, "--source", "visible", "--format", "ansi", text=True)):
         raise Refused(f"{target}'s input line is not empty")
-    herdr("agent", "prompt", who, line)
+    herdr("agent", "prompt", pane, line)
     print(f"RUNG {target}")
     return 0
 
@@ -498,9 +497,9 @@ def start(args, opts):
     if message_kind(text) not in PERMITS[level]:
         raise Refused(f"{name} is at {level}")
     listed = agents()
-    live = {a.get("name") for a in listed} | {a.get("pane_id") for a in listed}
-    # Spec question 4. A started session counts while herdr lists its name or its pane.
-    if sum(1 for n, r in records() if r["started"] and (n in live or r["pane"] in live)) >= 3:
+    panes = {a.get("pane_id") for a in listed}
+    # Spec question 4. A started session counts while herdr lists its pane.
+    if sum(1 for _, r in records() if r["started"] and r["pane"] in panes) >= 3:
         raise Refused("3 started sessions are running")
     holder = next((a.get("pane_id") for a in listed if a.get("name") == name), None)
     if holder:
@@ -519,7 +518,7 @@ def start(args, opts):
         if e.code != "agent_not_ready":
             raise
         ready = False
-    save(name, {"pane": pane, "session": "", "authority": level,
+    save(name, {"pane": pane, "authority": level,
                 "hold": old.get("hold", DEFAULT_HOLD), "typed": "", "attached": False, "started": True})
     with contextlib.redirect_stdout(io.StringIO()):
         mail.send(mail_root(), [f"{name}/in", text.rstrip("\n")], {"--from": OWNER})
@@ -556,7 +555,11 @@ def main(argv):
     if not argv or argv[0] not in COMMANDS:
         usage()
     handler, spec = COMMANDS[argv[0]]
-    args, opts = lib.take_options(argv[1:], spec)
+    # Text after "--" is never an option, so an answer of "--owner" can't make a decision the owner's.
+    rest = argv[1:]
+    cut = rest.index("--") if "--" in rest else len(rest)
+    args, opts = lib.take_options(rest[:cut], spec)
+    args += rest[cut + 1:]
     try:
         return handler(args, opts)
     except Refused as e:

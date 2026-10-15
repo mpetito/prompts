@@ -268,9 +268,15 @@ pass over session identity and unlikely guards before OpenClaw depends on the pr
 - [x] 10. D1 reversed in `SKILL.md`; the owner-steer and typed-words-conflict evals each fail
   without the skill on behaviour (not on a command name or the `STATUS:` line). Check: an eval run
   of all three cases, both arms, with each case failing without the skill and passing with it.
-- [ ] 11. The simplification pass: session identity in `ctl.py` and protocol.md (records, pane vs
+- [x] 11. The simplification pass: session identity in `ctl.py` and protocol.md (records, pane vs
   session id vs herdr name, cleared, resumed and moved sessions) and every guard whose case is
   unlikely, cut where a simpler rule covers it; guards review found as real holes stay. D1 in
   protocol.md; an `OWNER:` relay is not held. Check: the suites green, every cut guard's earlier
   test either deleted with its reason or still passing, and every printed-line change listed for
   the OpenClaw adapter.
+  - Simplify: the pane is the one tie between an agent and its record, so the record keeps no
+    session id. A cleared session shows attached in `sessions`, and `wait`'s `UNREAD` brings the
+    ring, as for a stopped wait. A pane moved to another workspace loses its record (`ring` refuses
+    it, fail closed). `ring` types into herdr's pane for the agent, and any record's name reaches
+    its pane; `start` counts a started session by its pane. `send` holds only `CONTROL:` and
+    `DECISION`: an `OWNER:` relay is the owner's newest words.
