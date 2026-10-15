@@ -1,0 +1,427 @@
+{
+  "version": 2,
+  "skill_name": "review-lenses",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-reuse-plan",
+      "split": "tune",
+      "prompt": "Review the plan in deploy-notify-plan.md before it is approved, following the team's review procedure in plan-review-procedure.md. deploy-notify-repo.md is an excerpt of the repository it changes. Write your review exactly as you would deliver it. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/deploy-notify-plan.md",
+        "fixtures/deploy-notify-repo.md",
+        "fixtures/plan-review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The plan's new post_to_channel does what broadcast_note in lib/teamfeed.py already does; the review names that file and says what it would take for the existing callers and the deploy notice to share it",
+        "scripts/legacy_notify.sh, which the change makes obsolete (the owner replaces the #ops-alerts notice), is deleted in the same change, not deprecated or left for later",
+        "The review opens with a VERDICT line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:[*_#>`]+\\s*)?VERDICT[*_`]*:[*_`]*\\s*[*_`]*(?:approve|changes-required)\\b"
+        },
+        {
+          "name": "trap-deletes-obsolete-in-same-change",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*legacy_notify(?:\\.sh)?)|legacy_notify(?:\\.sh)?(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|the (?:script|file)|this script|that script)\\b)"
+        },
+        {
+          "name": "trap-extends-helper-for-both-callers",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:broadcast_note|lib/teamfeed(?:\\.py)?|\\bteamfeed\\b))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:param(?:eter)?s?|arg(?:ument)?s?|kwargs?|keyword|webhook[_ ]?url|url|channel|signature)\\b)|(?:broadcast_note|lib/teamfeed(?:\\.py)?|\\bteamfeed\\b)(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:param(?:eter)?s?|arg(?:ument)?s?|kwargs?|keyword|webhook[_ ]?url|url|channel|signature)\\b)|broadcast_note\\(\\s*text\\s*,\\s*\\w*(?:url|channel)"
+        },
+        {
+          "name": "lens-lenses-line-picks-reuse",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bReuse\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-reuse-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bReuse[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The duplicate is found by behaviour, not by name: post_to_channel and broadcast_note both POST {text} to a webhook with retries, and the finding cites lib/teamfeed.py",
+            "The finding says what it would take to make the existing helper fit both the new deploy notice and its current callers, rather than only saying 'reuse it'",
+            "scripts/legacy_notify.sh, which the plan never mentions but leaves without a caller, is deleted in the same change rather than kept or deprecated",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-adopt-diff",
+      "split": "tune",
+      "prompt": "Review the change in invoice-ingest-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/invoice-ingest-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The hand-rolled envelope check is replaced by a zod schema, zod being already a dependency",
+        "The hand-rolled month arithmetic (which overflows at month end) is replaced by date-fns, already a dependency, rather than patched",
+        "Any library proposed for the retry has its version, maintenance and cost marked unverified, since nothing could be checked; keeping the small loop is also acceptable",
+        "The report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-validation-uses-zod",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\b(?:fine|overkill|unnecessary|not worth|heavier|overhead|picked|skipped)\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bzod\\b|\\bz\\.(?:object|string|number|infer)\\b))"
+        },
+        {
+          "name": "trap-dates-use-date-fns",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\b(?:fine|overkill|unnecessary|not worth|heavier|overhead|picked|skipped)\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\bdate-fns\\b)"
+        },
+        {
+          "name": "trap-retry-library-facts-unverified",
+          "type": "not_regex",
+          "pattern": "(?m)^(?![^\\n]*(?:unverified|not verified|could not (?:verify|check)|couldn't (?:verify|check)|unchecked|from memory|no network|not checked))[^\\n]*\\b(?:p-retry|async-retry|promise-retry|exponential-backoff|cockatiel|retry-axios|axios-retry|ts-retry-promise)\\b[^\\n]*(?:\\bv?\\d+\\.\\d+\\.\\d+\\b|\\^\\d|\\bv\\d+(?:\\.\\d+)?\\b|\\bversion \\d|weekly downloads|well[- ]maintained|actively maintained|widely used|popular|\\bstars\\b|\\bMIT\\b|\\bApache\\b|zero dependencies|no dependencies|\\d+(?:\\.\\d+)? ?kB\\b)"
+        },
+        {
+          "name": "lens-lenses-line-picks-adopt",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bAdopt\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-adopt-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bAdopt[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "Both existing dependencies are named for the pieces they already cover: zod for the envelope check and date-fns for the month arithmetic, rather than patching the hand-rolled code",
+            "The month-end overflow in shiftMonths (Jan 31 plus one month) is reported, with date-fns as the fix",
+            "For the retry, the review either keeps the small loop or proposes a library with its docs, version, maintenance signal and cost, each marked unverified because nothing could be checked",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-reversibility-plan",
+      "split": "tune",
+      "prompt": "Review the plan in shipment-events-plan.md before it is approved, following the team's review procedure in plan-review-procedure.md. Write your review exactly as you would deliver it. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/shipment-events-plan.md",
+        "fixtures/plan-review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The shipment.status_changed payload is decided now, before the workstreams build on it, naming the mobile apps, the analytics loader and the carriers as dependents and what a later change would cost",
+        "The delivery_attempts counter is deferred (not added), naming the signal that would bring it back",
+        "No guard, cap, dead-letter, option or abstraction is proposed for the reversible items: the counter, the poison events that retry forever, the timeout constant and the log line; the counter and the poison events, which the plan raises, are deferred with a signal"
+      ],
+      "assertions": [
+        {
+          "name": "control-verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:[*_#>`]+\\s*)?VERDICT[*_`]*:[*_`]*\\s*[*_`]*(?:approve|changes-required)\\b"
+        },
+        {
+          "name": "trap-defers-counter-with-signal",
+          "type": "regex",
+          "pattern": "(?m)^(?=(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))*?(?:delivery_attempts|attempts? (?:column|counter)|\\bthe counter\\b))(?=(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))*?(?:\\bdefer\\w*|\\bcut\\b|\\bdrop\\w*|\\bremov\\w*|\\bdelet\\w*|\\bskip\\w*|\\bomit\\w*|\\bleave (?:it |the \\w+ )?out\\b|\\bnot add\\w*|n't add\\w*|\\bno (?:need|column|counter)\\b|\\bwait\\w*|\\bpostpone\\w*|\\blater\\b))(?=(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))*?(?:(?:\\bsignal\\w*|\\btrigger\\w*|\\bcomes? back\\b|\\bbring\\w* (?:it |them |the \\w+ )?back\\b|\\bbrought back\\b|\\brevisit\\w*|\\breconsider\\w*|\\bre-?add\\w*|\\breintroduc\\w*|\\b(?:add|introduce)\\w* (?:it|one|them|the (?:column|counter))(?: back)?\\b)(?!\\W{0,3}(?:\\w+\\W+){0,2}?(?:needed|necessary|required|requirements?|something|anything|we need it)\\b)[^\\n.]{8,}|\\b(?:when|once|if|after)\\b(?!\\W{0,3}(?:\\w+\\W+){0,2}?(?:needed|necessary|required|requirements?|something|anything|we need it)\\b)[^.\\n]{8,}?,\\s*(?:add|bring|reintroduc|re-?add|revisit|reconsider)\\w*))"
+        },
+        {
+          "name": "trap-no-guard-for-reversible",
+          "type": "not_regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,25}(?:\\bcap(?:ped|ping|s)?\\b|\\bmax(?:imum)?[ _-]?(?:attempts|retries|retry(?: count)?|tries)\\b|\\bdead[- ]?letter\\w*|\\bDLQ\\b|\\bpoison[- ](?:queue|table)\\b|\\bconfigurable\\b|\\bfeature[- ]flag\\w*|\\benv(?:ironment)?[ _-]?var\\w*|\\bcircuit[- ]breaker\\w*|\\bgive up after\\b|\\bstop retrying after\\b|\\blimit (?:it|them|the (?:retries|attempts|retry count)|retries|attempts) to\\b|\\b(?:retry|attempt) (?:limit|budget|cap)\\b|\\bquarantin\\w*|\\bbackoff\\b))(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bdefer\\w*|\\bwait\\w*|\\bleave (?:\\w+ ){0,4}?out\\b|\\bleft out\\b|\\bskip\\w*|\\brevisit\\w*|\\bsignal\\w*|\\bbring\\w* (?:\\w+ )?back\\b|\\blater\\b|\\buntil\\b|\\bonly (?:if|when|once)\\b|\\([a-e]\\)\\s))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bcap(?:ped|ping|s)?\\b|\\bmax(?:imum)?[ _-]?(?:attempts|retries|retry(?: count)?|tries)\\b|\\bdead[- ]?letter\\w*|\\bDLQ\\b|\\bpoison[- ](?:queue|table)\\b|\\bconfigurable\\b|\\bfeature[- ]flag\\w*|\\benv(?:ironment)?[ _-]?var\\w*|\\bcircuit[- ]breaker\\w*|\\bgive up after\\b|\\bstop retrying after\\b|\\blimit (?:it|them|the (?:retries|attempts|retry count)|retries|attempts) to\\b|\\b(?:retry|attempt) (?:limit|budget|cap)\\b|\\bquarantin\\w*|\\bbackoff\\b))(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bcap(?:ped|ping|s)?\\b|\\bmax(?:imum)?[ _-]?(?:attempts|retries|retry(?: count)?|tries)\\b|\\bdead[- ]?letter\\w*|\\bDLQ\\b|\\bpoison[- ](?:queue|table)\\b|\\bconfigurable\\b|\\bfeature[- ]flag\\w*|\\benv(?:ironment)?[ _-]?var\\w*|\\bcircuit[- ]breaker\\w*|\\bgive up after\\b|\\bstop retrying after\\b|\\blimit (?:it|them|the (?:retries|attempts|retry count)|retries|attempts) to\\b|\\b(?:retry|attempt) (?:limit|budget|cap)\\b|\\bquarantin\\w*|\\bbackoff\\b)(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bnobody\\b|\\bno one\\b|\\bunneeded\\b|\\bunnecessary\\b|\\bnot needed\\b|\\badds? an? (?:option|mechanism)|\\bwould add\\b))"
+        },
+        {
+          "name": "decide-now-payload-dependents",
+          "type": "regex",
+          "pattern": "(?is)(?:payload|shipment\\.status_changed|event (?:schema|shape|format|fields|contract))[\\s\\S]{0,500}?\\b(?:mobile|apps?|analytics|warehouse|carriers?)\\b[\\s\\S]{0,400}?(?:cost|expensive|break\\w*|re-?release|store review|backfill\\w*|migrat\\w*|old (?:app )?versions?|seven years|7 years|reprocess\\w*|one-way|irreversib\\w*|hard to (?:change|reverse))"
+        },
+        {
+          "name": "lens-lenses-line-picks-reversibility",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bReversibility\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-reversibility-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bReversibility[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The payload left 'to implementation' is decided now, as a contract reviewed by its main consumer, naming the mobile apps (old versions installed for months), the analytics loader (stored seven years) and the carriers as dependents",
+            "delivery_attempts is deferred, not added, with a concrete signal that would bring it back (an observable event or a stated threshold, such as someone asking to alert on events that keep failing), not 'when needed'",
+            "The poison events that retry forever are deferred with a signal (for example a count of events failing for more than a day), not given a max-attempts cap, dead-letter table or backoff now",
+            "No guard, cap, option or abstraction is proposed for anything reversible, including the timeout constant and the log line",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-trust-boundary-diff",
+      "split": "tune",
+      "prompt": "Review the change in internal-requeue-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/internal-requeue-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The X-Caller allowlist on /internal/requeue gates the team's own orchestration script, a trusted caller on the private network; it is cut (removed, or turned into a warning), not given bypass-class mutants or extended with 'orchestrator'",
+        "The /hooks/refunds body, outside input from the public load balancer, is validated where it enters: the Provider-Signature HMAC checked and the body's fields validated before apply_refund",
+        "Each finding names the caller and whether it is trusted; the report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-cuts-allowlist",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\bkeep\\w*\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|caller (?:check|gate)|X-Caller (?:check|gate)))|(?:allow ?list|ALLOWED_CALLERS|require_known_caller|caller (?:check|gate)|X-Caller (?:check|gate))(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\bkeep\\w*\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them|the (?:gate|check|list|decorator|allowlist))\\b)"
+        },
+        {
+          "name": "trap-no-bypass-mutants-for-allowlist",
+          "type": "not_regex",
+          "pattern": "(?m)^(?![^\\n]*(?:\\bmutants?\\W{1,3}none\\b|\\bnone (?:for|needed|planned|written)\\b|\\bno (?:\\w+ )?mutants?\\b|\\bskip\\w*|\\bnot (?:needed|applicable|apply|required|warranted)\\b|\\bn/a\\b|(?:instead of|rather than) (?:\\w+ ){0,3}(?:bypass )?mutants?|(?:gate|allow ?list|ALLOWED_CALLERS|require_known_caller|\\bit) (?:is |was |gets |being )?(?:cut|removed|deleted|dropped|gone)\\b|\\bcuts? (?:the )?(?:gate|allow ?list|check)\\b))[^\\n]*(?:\\bbypass\\w*|\\bmutants?\\b)[^\\n]*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|X-Caller)|^(?![^\\n]*(?:\\bmutants?\\W{1,3}none\\b|\\bnone (?:for|needed|planned|written)\\b|\\bno (?:\\w+ )?mutants?\\b|\\bskip\\w*|\\bnot (?:needed|applicable|apply|required|warranted)\\b|\\bn/a\\b|(?:instead of|rather than) (?:\\w+ ){0,3}(?:bypass )?mutants?|(?:gate|allow ?list|ALLOWED_CALLERS|require_known_caller|\\bit) (?:is |was |gets |being )?(?:cut|removed|deleted|dropped|gone)\\b|\\bcuts? (?:the )?(?:gate|allow ?list|check)\\b))[^\\n]*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|X-Caller)[^\\n]*(?:\\bbypass\\w*|\\bmutants?\\b)"
+        },
+        {
+          "name": "trap-no-allowlist-extension",
+          "type": "not_regex",
+          "pattern": "(?m)^(?![^\\n]*\\bmutants?\\b)[^\\n]*?(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:add|adding|include|including|put|putting)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:add|adding|include|including|put|putting)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*orchestrator(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\b(?:to|into|in|on)\\b(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,20}(?:allow ?list|ALLOWED_CALLERS))|ALLOWED_CALLERS\\s*=\\s*\\{[^}\\n]*orchestrator"
+        },
+        {
+          "name": "trap-names-caller-trust",
+          "type": "regex",
+          "pattern": "orchestrat\\w*(?![^\\n]{0,200}?(?:\\bnot?\\b|n't\\b|\\bnever\\b|\\bless\\b)[^\\n]{0,12}?\\btrusted\\b)[^\\n]{0,200}?\\btrusted\\b|(?<!not )(?<!n't )(?<!never )\\btrusted\\b[^\\n]{0,200}?orchestrat|orchestrat\\w*[^\\n]{0,200}?(?<!n't )(?<!not )\\btrust (?:it|them|the (?:caller|script|orchestrator))\\b|orchestrat\\w*[^\\n]{0,200}?\\btrust\\w*\\s*[:=]\\s*[*_`]*(?:own|internal|trusted|yes|high)\\b|\\btrust\\w*\\s*[:=]\\s*[*_`]*(?:own|internal|trusted|yes|high)\\b[^\\n]{0,200}?orchestrat"
+        },
+        {
+          "name": "webhook-validated-at-entry",
+          "type": "regex",
+          "pattern": "(?s)(?:/hooks/refunds|refunds?\\b[^\\n]{0,40}(?:webhook|route|hook)|webhook)[\\s\\S]{0,400}?(?:Provider-Signature|HMAC|signature|validat\\w*|schema)"
+        },
+        {
+          "name": "lens-lenses-line-picks-trust-boundary",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bTrust boundary\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-trust-boundary-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bTrust boundary[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The allowlist is cut (removed, or turned into a warning): its only effect is refusing the team's own orchestration script, a trusted caller on the private network; the review does not ask for bypass mutants or a threat model for it",
+            "The orchestrator's requeue loop, if raised, is handled as a defect in the orchestrator, not with a gate on the endpoint",
+            "The refunds webhook verifies Provider-Signature over the raw body and validates order_id and amount_cents before apply_refund, and the review's gate proofs are asked for that gate",
+            "Each trust finding names the caller and says whether it is trusted"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-reuse-diff",
+      "split": "tune",
+      "prompt": "Review the change in invoice-email-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/invoice-email-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The new formatCents in src/billing duplicates moneyLabel in src/shared/text/labels.ts, outside the changed files; the review cites that location and says what it takes for the invoice email and the web pages to share it (the signatures already match, so the email calls moneyLabel and formatCents and its test go)",
+        "src/billing/legacyPrice.ts and its test, which the change leaves without a caller, are deleted in the same change",
+        "The report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-reuses-existing-helper",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:moneyLabel|src/shared/text/labels(?:\\.ts)?|\\btext/labels(?:\\.ts)?))|(?:moneyLabel|src/shared/text/labels(?:\\.ts)?|\\btext/labels(?:\\.ts)?)(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them)\\b)"
+        },
+        {
+          "name": "trap-deletes-obsolete-in-same-change",
+          "type": "regex",
+          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*legacyPrice(?:\\.ts|\\.test\\.ts)?)|legacyPrice(?:\\.ts|\\.test\\.ts)?(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them|the (?:file|module|helper|function|test)|both)\\b)"
+        },
+        {
+          "name": "lens-lenses-line-picks-reuse",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bReuse\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-reuse-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bReuse[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "formatCents is found to duplicate moneyLabel in src/shared/text/labels.ts by behaviour (both format an amount in the currency's minor unit with Intl.NumberFormat), and the finding cites that location",
+            "The finding says what it takes for both callers to share moneyLabel (the signatures already match, so formatCents and its test are deleted), rather than reviewing formatCents only on its own terms",
+            "legacyPrice.ts and its test, left without a caller by this change (the import table shows invoiceEmail.ts as its only other importer), are deleted in the same change rather than kept",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-pick-lenses",
+      "split": "tune",
+      "prompt": "You coordinate the review of the change in shipment-delayed-diff.md, following the team's review procedure in review-procedure.md. Size the review, state its depth on a Depth: line, decide which reviewers to start, and write each reviewer's brief in full as text. Starting reviewers is not possible in this session, so do not try; the briefs you write are the deliverable. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/shipment-delayed-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The Lenses line picks Reversibility (a new public event schema) and Adopt (a hand-rolled retry loop beside tenacity, already a dependency), and skips Reuse (no new module, function or helper) and Trust boundary (nothing reads outside input), each with a reason",
+        "Depth is high because of the public schema, so there is one reviewer brief per picked lens, each on an explicit model",
+        "The Adopt brief points its reviewer at the retry loop and tenacity, the dependency the project already has"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-adopt-brief-names-tenacity",
+          "type": "regex",
+          "pattern": "\\btenacity\\b[\\s\\S]{0,300}?\\bretr(?:y|ies|ying)\\b|\\bretr(?:y|ies|ying)\\b[\\s\\S]{0,300}?\\btenacity\\b"
+        },
+        {
+          "name": "trap-lenses-line-picks-exactly-reversibility-and-adopt",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?=(?:(?!;\\s*skipped\\b)[^\\n])*\\bReversibility\\b)(?=(?:(?!;\\s*skipped\\b)[^\\n])*\\bAdopt\\b)(?!(?:(?!;\\s*skipped\\b)[^\\n])*\\b(?:Reuse|Trust boundary)\\b)(?:(?!;\\s*skipped\\b)[^\\n])*;\\s*skipped\\b(?=[^\\n]*\\bReuse\\b)(?=[^\\n]*\\bTrust boundary\\b)",
+          "ci": false
+        },
+        {
+          "name": "trap-brief-explicit-model",
+          "type": "regex",
+          "pattern": "\\b(?:opus|claude-opus[\\w.-]*|gpt-[\\w.-]+|codex)\\b"
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "One brief per picked lens (Reversibility and Adopt) and none for Reuse or Trust boundary; any other brief is the sibling procedure's own review",
+            "Each skip reason cites the fixture's facts: no new module, function or helper; nothing reads outside input",
+            "The Reversibility brief names the partner integrations as dependents and the schema's day/month date string and internal carrier_code as things to settle before publishing",
+            "The Adopt brief points at the retry loop and tenacity, already in pyproject.toml",
+            "Each lens brief names an explicit model (Opus or a cross-family model)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-repo-or-library",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review this plan for anything we already have in the repo or could get from a library.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-adopt-lens",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run the adopt lens on this diff.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-decide-now-or-wait",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "In this plan, what should we decide now and what can wait?",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-staged-changes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my staged changes.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a general code review goes to review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-plan-before-start",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review this plan before we start.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a general plan review goes to plan-review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-research-csv",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Research which CSV library to use.",
+      "expected_behavior": [
+        "The skill should NOT trigger: researching a library on its own is not a review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-date-helper",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a date helper to utils.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing code goes to code-style"
+      ],
+      "assertions": []
+    }
+  ]
+}
