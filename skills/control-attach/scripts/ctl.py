@@ -109,6 +109,11 @@ def attached():
     return next(((n, r) for n, r in records() if r["attached"] and r["pane"] == pane), None) if pane else None
 
 
+def session_id(agent):
+    """herdr's session id for an agent record, or "" when herdr gives none."""
+    return (agent.get("agent_session") or {}).get("value", "")
+
+
 def attached_as(agent):
     """The name an agent from herdr's list is attached under, or None: an attached record with the agent's herdr name
     and pane. Only a Claude agent attaches: a Codex session has no wait to wake it, so it is observed and rung."""
@@ -195,7 +200,7 @@ def attach(args, opts):
         if other != name and record["attached"] and record["pane"] == pane:
             save(other, {**record, "attached": False})
     old = load(name) or {}
-    save(name, {"pane": pane, "authority": old.get("authority", DEFAULT_AUTHORITY),
+    save(name, {"pane": pane, "session": session_id(me), "authority": old.get("authority", DEFAULT_AUTHORITY),
                 "hold": int(hold) if hold is not None else old.get("hold", DEFAULT_HOLD),
                 "typed": old.get("typed", ""), "attached": True, "started": old.get("started", False)})
     print(f"WAIT {wait_line(name)}")
@@ -285,12 +290,16 @@ def records_of(agent):
     """The records agent is the session of, as [(name, record)]; or None for a named agent that isn't its name's
     record's session, such as orchestration's. A record's session is the agent in its pane: herdr names whatever
     agent asks next, so after a session exits its name alone says nothing about who holds it. A named agent has only
-    its name's record. An unnamed one, whose name herdr cleared or never gave, has its pane's attached record, else
-    every record in its pane: one pane can hold a record for each name it was detached or started under."""
+    its name's record. An unnamed one, whose name herdr cleared or never gave, has its attached record, else every
+    record in its pane: one pane can hold a record for each name it was detached or started under. Its attached
+    record is the one in its pane or, since a resume keeps the session id, the one with its session id: a session
+    continued in another pane keeps its name's level."""
     if agent.get("name"):
         record = named(agent["name"])
         return [(agent["name"], record)] if record and record["pane"] == agent.get("pane_id") else None
-    mine = [(n, r) for n, r in records() if r["pane"] == agent.get("pane_id")]
+    sid = session_id(agent)
+    mine = [(n, r) for n, r in records()
+            if r["pane"] == agent.get("pane_id") or (r["attached"] and sid and r.get("session") == sid)]
     return [m for m in mine if m[1]["attached"]][:1] or mine
 
 
@@ -430,7 +439,7 @@ def ring(args, opts):
     agent = live_agent(target)
     if agent is None:
         # herdr cleared the name when the session exited or a /clear replaced it; the session is back in the
-        # record's pane once resumed, or at once after a /clear.
+        # record's pane at once after a /clear, or once resumed there.
         record = named(target)
         if record:
             agent = live_agent(record["pane"])

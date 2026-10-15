@@ -70,7 +70,8 @@ class CtlCase(support.OrchTest):
             0] == "herdr" else support.REAL_RUN(args, **kw))
         run_patch.start()
         self.addCleanup(run_patch.stop)
-        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p1"})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p1",
+                                  "agent_session": {"agent": "claude", "kind": "id", "value": "s1"}})
         os.environ["HERDR_PANE_ID"] = "w1:p1"
         self.owner_box = mail.box_dir(ctl.mail_root(), "owner/in")
 
@@ -115,7 +116,7 @@ class Attach(CtlCase):
 
     def test_a_new_record_takes_the_default_authority_and_hold(self):
         self.c("attach", "alpha")
-        self.assertEqual(self.record("alpha"), {"pane": "w1:p1", "authority": "delegate", "hold": 10,
+        self.assertEqual(self.record("alpha"), {"pane": "w1:p1", "session": "s1", "authority": "delegate", "hold": 10,
                                                 "typed": "", "attached": True, "started": False})
         os.environ["HERDR_PANE_ID"] = "w1:p2"
         self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p2"})
@@ -401,8 +402,10 @@ class ControllerCase(CtlCase):
         os.environ["HERDR_PANE_ID"] = pane
 
     def attach_at(self, name, pane, kind="claude", **fields):
-        """name attached from pane, which a new idle agent of kind holds; fields then overwrite the record."""
-        self.herdr.agents.append({"name": None, "agent": kind, "agent_status": "idle", "pane_id": pane})
+        """name attached from pane, which a new idle agent of kind holds under session id s-<name>; fields then
+        overwrite the record."""
+        self.herdr.agents.append({"name": None, "agent": kind, "agent_status": "idle", "pane_id": pane,
+                                  "agent_session": {"value": f"s-{name}"}})
         self.as_pane(pane)
         self.assertEqual(self.c("attach", name)[0], 0)
         ctl.save(name, {**self.record(name), **fields})
@@ -666,6 +669,32 @@ class Ring(ControllerCase):
     def test_a_record_in_another_pane_isnt_an_unnamed_agents(self):
         self.attach_at("alpha", "w2:p1", authority="observe")
         self.rung("w1:p1", "beta", prompt="w1:p1 /control-attach beta")
+
+    def resumed_elsewhere(self, session):
+        """An unnamed agent in w3:p1 under session id session: alpha's session continued there, if it is alpha's."""
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w3:p1",
+                                  "agent_session": {"value": session}})
+
+    def test_a_session_resumed_in_another_pane_keeps_its_records_level_and_name(self):
+        # B1: claude --resume and -c keep the session id; the record stays attached across the exit.
+        self.attach_at("alpha", "w2:p1", authority="observe")
+        self.herdr.agents[:] = [a for a in self.herdr.agents if a["pane_id"] != "w2:p1"]
+        self.resumed_elsewhere("s-alpha")
+        self.assertEqual(self.c("ring", "w3:p1", "beta"), (1, "REFUSED w3:p1 is at observe\n", ""))
+        ctl.save("alpha", {**self.record("alpha"), "authority": "relay"})
+        self.assertEqual(self.c("ring", "w3:p1", "beta"), (1, "REFUSED w3:p1 is attached as alpha\n", ""))
+        self.rung("w3:p1", "alpha", prompt="w3:p1 /control-attach alpha")
+
+    def test_only_an_attached_records_session_id_ties_an_agent_in_another_pane(self):
+        # A detached record, or a session id herdr didn't give, ties nothing outside the record's pane.
+        for attached, session in ((False, "s-alpha"), (True, "")):
+            with self.subTest(attached=attached, session=session):
+                ctl.save("alpha", {"pane": "w2:p1", "session": session, "authority": "observe", "hold": 10,
+                                   "typed": "", "attached": attached, "started": False})
+                self.herdr.agents[:] = []
+                self.resumed_elsewhere(session)
+                self.herdr.log.clear()
+                self.rung("w3:p1", "beta", prompt="w3:p1 /control-attach beta")
 
     def test_a_detached_session_in_its_own_pane_is_rung_back(self):
         self.attach_at("alpha", "w2:p1")

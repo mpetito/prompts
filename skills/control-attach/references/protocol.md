@@ -35,11 +35,12 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   - `owner/in`: the controller's inbox. A session sends there `--from <name>`.
   Mail outlives the session and the attachment: nothing in this protocol deletes it.
 - **A record**, `sessions/<name>.json`, one per name ever attached or started, written only by
-  `ctl.py`. It holds exactly:
+  `ctl.py`. It holds these fields; a reader ignores any other, such as one an older `ctl.py` wrote:
 
   | Field | Value |
   | --- | --- |
   | `pane` | The herdr pane id the session attached from, or `start` started it in |
+  | `session` | herdr's session id for the agent (`agent_session.value`) when `attach` last ran, `""` when herdr gave none; absent before the first `attach` |
   | `authority` | `observe`, `relay` or `delegate` |
   | `hold` | The hold window in minutes, a whole number, 0 for none |
   | `typed` | When the owner last typed a prompt in the session, UTC `YYYY-MM-DDTHH:MMZ`, or `""` |
@@ -53,8 +54,11 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   to another workspace takes a new id, so its session is no longer its record's: `ring` refuses it
   and `sessions` shows its record gone, while its mail still reaches it. An agent's records: a
   named agent's is its name's record, when it is that record's session. An unnamed agent's (herdr
-  cleared the name, or never gave one) is its pane's attached record, else every record in its
-  pane: one pane can hold a record for each name it was detached or started under.
+  cleared the name, or never gave one) is its attached record, else every record in its pane: one
+  pane can hold a record for each name it was detached or started under. Its attached record is the
+  attached one in its pane or the attached one with its non-empty session id: `claude --resume` and
+  `-c` keep the id, so a session continued in another pane keeps its name and its level for `ring`,
+  though `sessions` shows its record gone and the controller rings it by its new pane.
 - **The folders file**, `folders`, written by the owner and never by `ctl.py`: one absolute folder
   per line, blank lines ignored. `start` uses a folder only when it is a listed one or inside one.
   Without the file, `start` refuses.
@@ -145,7 +149,9 @@ relays the answer to the thread as `DECISION D<n>: …`.
   words behind older typed ones would make the older words win. `typed` keeps the minute, so the
   window ends to the minute, up to 59 seconds before a full `hold` from the keystroke. A task
   notification, a subagent's report, another session's message and a ring line are not the owner
-  typing; `typed` alone decides that.
+  typing; `typed` alone decides that. A gone session (`GONE`, under `wait`) has no hooks, so it
+  records no `typed` and the hold doesn't cover it until a ring brings it back; the ring types only
+  into an empty input line.
 - **Rings.** The controller types into a pane only a fixed line, only when herdr reports the agent
   `idle` or `done` and its visible input line is empty: `/control-attach <name>` into a Claude
   agent, `Read <file> and follow it.` into a Codex agent. Nothing else is ever typed, never into a
@@ -326,7 +332,7 @@ types `Read <file> and follow it.` into a Codex agent. The target's records are 
 | `REFUSED <target> is at observe` | 1 | Any of the target's records is at `observe` |
 | `REFUSED <target> is attached as <name>` | 1 | `<attach-name>` isn't the name of one of the target's records, the first of which is `<name>` (A ring never changes a level, above) |
 | `REFUSED <target> is <kind>` | 1 | `<attach-name>` into an agent that isn't Claude, or `--brief` into one that isn't Codex |
-| `REFUSED <target> is named <herdr name>` | 1 | The agent has a herdr name and isn't that name's record's session: an orchestration thread or lane (Never into orchestration's agents, above) |
+| `REFUSED <target> is named <herdr name>` | 1 | The agent has a herdr name and isn't that name's record's session: an orchestration thread or lane (Never into orchestration's agents, above), or a session whose pane moved |
 | `REFUSED not a name: <attach-name>` | 1 | Outside the name pattern |
 | `REFUSED owner is the controller's address` | 1 | `<attach-name>` is `owner` |
 

@@ -108,8 +108,8 @@ At every level:
 - A session records when the owner last typed in it. Only typed prompts count: a background task's
   result, a subagent's report and another session's message each arrive as a prompt too, and none of
   them is the owner. While the owner has typed within the hold
-  window (question 3), the controller sends that session nothing but `QUESTION:`, and holds its
-  other mail until the window passes.
+  window (question 3), the controller sends that session no `CONTROL:` or `DECISION`, and holds
+  them until the window passes; the owner's `OWNER:` relays and `QUESTION:` still go.
 - Control mail never touches the owner's half-typed input (shown 2026-10-14, below).
 - The owner can switch any session to `observe` at once, and that holds until the owner changes it.
 
