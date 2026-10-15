@@ -15,10 +15,52 @@ approved commit there.
 | `skill` | `skills/review-lenses/SKILL.md`, `skills/review-lenses/references/` | `skills/review-lenses/evals/` |
 | `evals` | `skills/review-lenses/evals/` | the skill text (it writes its traps from spec.md alone, so the fixtures do not mirror the wording) |
 | `wiring` | `skills/plan-review/SKILL.md`, `skills/review/SKILL.md`, `skills/agent-orchestration/SKILL.md`, `docs/skill-audit/candidates.md`, `README.md` | everything under `skills/review-lenses/` |
+| `eval-runner` | steps 8–10: the paid runs, their reading, and `docs/skill-audit/2026-10-15-review-lenses-retrospective.md` | the skill text (fixes go back to `skill`) and the evals (fixes go back to `evals`, only when they trace to spec.md) |
 
 All three lanes start together. The spec fixes the skill's name, the lens names, the `Lenses:`
 line and the finding prefix, so `wiring` and `evals` need nothing from `skill` to start. Links
-across lanes are checked in step 7, after all three land.
+across lanes are checked in step 7, after all three land. `eval-runner` starts once `skill`,
+`evals` and `wiring` have landed.
+
+## Amendments from the plan review (2026-10-15)
+
+These override the steps below where they differ.
+
+- A1 (step 3, step 8). Every behaviour case names its discriminating assertions `trap-*`; the
+  lens names, `Lenses:` line and prefix alone never discriminate, since the baseline has never
+  seen them. Each case also has a `control-*` assertion both arms must pass (plan-review's
+  `VERDICT` first line, or review's `Depth:` line). Step 8 passes when a `trap-*` assertion fails
+  in every `without_skill` run and every assertion passes in every `with_skill` run. Lens-prefix
+  regexes are unanchored (`Reuse · ` anywhere on the line), so they match after a review's own
+  finding id. Each pattern is tested on planted replies, one in the trap and one doing the work.
+- A2 (step 3). The sibling goes in both arms as its body without frontmatter,
+  `fixtures/plan-review-procedure.md` or `fixtures/review-procedure.md`, called "the team's review
+  procedure" in the prompt: the harness tells the `without_skill` arm that no skill files are
+  present, and any read of a path containing `SKILL.md` counts as a skill invocation.
+- A3 (step 3, `pos-pick-lenses`). The change has hand-rolled date or retry logic inside an
+  existing function (no new helper), an outbound public event schema (blast radius high), and a
+  fixture that states nothing reads outside input. The prompt casts the model as a coordinator
+  and asks for the reviewer briefs as text (eval runs deny the Agent tool). The explicit-model
+  assertion is not a discriminator.
+- A4 (step 3). Before step 8, the `evals` lane runs one `without_skill`-only smoke of its cases
+  (at most USD 3) and tightens any trap the sibling alone already avoids.
+- A5 (step 2). Reuse deletes obsolete internal code in the same change, per
+  [code-style rule 6](../../../skills/code-style/SKILL.md); a published API keeps its deprecation
+  path. Reversibility's decide-now list is the blast-radius list in plan-review step 2 and review
+  §2, by link; the lens adds the defer half and each deferral's signal. Reuse and Adopt link
+  code-style rules 2 and 6. Links from `references/` use `../../<skill>/SKILL.md`.
+- A6 (step 1). The check also asserts the first body line is `Role: worker.`
+- A7 (step 4). The numstat check runs against the base: `git diff --numstat e646294 --`.
+- A8 (steps 5, 6). The unittest suites never read these files; the checks are greps for the new
+  lines and the link check on `README.md`. Step 6 drops the lens-mapping ledger entry; the
+  Reversibility gap entry stays.
+- A9 (step 7). The skill link waits until steps 8 and 9 pass and MAIN has merged the build;
+  MAIN runs `setup_skills_link.py` from the owner's checkout, which it links from.
+- A10 (steps 8, 9). Pin `--effort high` in every arm. Before step 8, refresh the sibling copies in
+  the fixtures from the wired siblings. The Codex run passes `--skip-judge` or a Codex
+  `--judge-model`. Step 9 covers plan-review and review only (the spec asks for no
+  agent-orchestration regression), on `--model opus --skip-trigger`, baseline `e646294`, the
+  pre-wiring revision. Spend for steps 8 and 9: cap USD 60, check in with the thread at USD 40.
 
 ## Steps
 
