@@ -229,7 +229,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   recorded in spec.md "Shown"; the sessions and mail cleaned up.
   - Review: runs once `hooks` lands, with `mail.py send/read` against `<home>/control` if `ctl.py`'s
     controller side hasn't landed yet; the `HELD` check moves to step 8.
-- [ ] 7. `docs/skill-audit/candidates.md`, `~/dev/prompts-evidence`: the readmission entry for
+- [x] 7. `docs/skill-audit/candidates.md`, `~/dev/prompts-evidence`: the readmission entry for
   `control-attach` (the gap: the owner is the only path into MAIN and plain sessions), project names
   kept to the evidence store. Waits on the owner accepting the gap, per the readmission bar. Check:
   the names greps over the changed files print nothing.
@@ -263,7 +263,7 @@ pass over session identity and unlikely guards before OpenClaw depends on the pr
 | `simplify` | 11 | `scripts/ctl.py`, `references/protocol.md`, `hooks/`, `tests/` |
 | `retire` | 9 | the setup records of the earlier supervisor build (outside this repository) |
 
-- [ ] 10. D1 reversed in `SKILL.md`; the owner-steer and typed-words-conflict evals each fail
+- [x] 10. D1 reversed in `SKILL.md`; the owner-steer and typed-words-conflict evals each fail
   without the skill on behaviour (not on a command name or the `STATUS:` line). Check: an eval run
   of all three cases, both arms, with each case failing without the skill and passing with it.
 - [ ] 11. The simplification pass: session identity in `ctl.py` and protocol.md (records, pane vs
