@@ -100,8 +100,11 @@ At every level:
 
 ## The owner and the controller together
 
-- The owner's words typed in a session win over control mail. When they conflict, the session
-  follows the owner and tells the controller what changed.
+- The owner's newest words win, typed in the session or relayed in an `OWNER:` message; a `CONTROL:`
+  message never overrides the owner's typed words. When they conflict, the session follows the owner
+  and tells the controller what changed. This reverses D1's default (typed words win over any control
+  mail, `OWNER:` included) on the owner's steer of 2026-10-15: "reverse D1: the owner's newest words
+  win, typed or relayed by OWNER:; CONTROL: still never overrides the owner's typed words."
 - A session records when the owner last typed in it. Only typed prompts count: a background task's
   result, a subagent's report and another session's message each arrive as a prompt too, and none of
   them is the owner. While the owner has typed within the hold
