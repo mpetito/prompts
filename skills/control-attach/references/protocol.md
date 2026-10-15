@@ -268,8 +268,7 @@ parser keys rows on target and state together.
 
 An agent is attached when it is a Claude agent and an attached record has its herdr name and its
 pane. A Codex session never is: it has no wait to wake it, so the controller only observes it and
-rings it. A `/clear` keeps the pane and the name, so a cleared session still shows attached though
-its hooks are gone; its mail waits unread until `wait` prints `UNREAD`.
+rings it.
 
 With no rows it prints `NONE`. Exit 0.
 
@@ -279,9 +278,8 @@ Sends one down message to `<name>/in` from `owner`: `<KIND>: <text>`, or for a d
 `DECISION <ref>: <answer>` and `By: owner` with `--owner`, else `By: controller`. `<text>` is one
 argument and may hold several lines.
 
-`send` checks the record alone, not herdr. Mail to a cleared or exited session is sent and waits in
-its box until the session attaches again: `wait` prints `UNREAD` or `GONE`, and the controller
-rings it.
+`send` checks the record alone, not herdr. Mail to a session that is gone (`wait`, below) is sent
+and waits in its box until the session attaches again.
 
 | Line | Exit | When |
 | --- | --- | --- |
@@ -304,8 +302,8 @@ mail.py's `wait` on `owner/in`, watching each attached session's herdr agent and
 | --- | --- |
 | `MAIL <n>` | n waking messages are unread at `owner/in` |
 | `BLOCKED <name>` | The session hit a permission or question dialog: tell the owner, never answer it |
-| `GONE <name>` | herdr no longer lists the agent: it exited, and herdr cleared its name. A resumed session shows this way, then `unattached` in `sessions`; ring `<name> <name>` once its recorded pane holds an idle agent |
-| `UNREAD <name> <n>` | The session sits idle with n messages unread for 5 minutes: its wait stopped, or a `/clear` dropped its hooks. Either way, ring `<name> <name>` |
+| `GONE <name>` | herdr no longer lists the agent: it exited, or a `/clear` replaced it, and herdr cleared its name. A resumed or cleared session shows this way, its record `gone` in `sessions` and its pane `unattached`; ring `<name> <name>` once its recorded pane holds an idle agent |
+| `UNREAD <name> <n>` | The session sits idle with n messages unread for 5 minutes: its wait stopped. Ring `<name> <name>` |
 | `TIMEOUT` | Nothing happened within the timeout (default 3600) |
 
 Run it as a background task, and start it again after each wake: a session attached since is

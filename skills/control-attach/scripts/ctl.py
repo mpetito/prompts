@@ -429,7 +429,8 @@ def ring(args, opts):
         usage()
     agent = live_agent(target)
     if agent is None:
-        # herdr cleared the name when the session exited; a resumed session is back in the record's pane.
+        # herdr cleared the name when the session exited or a /clear replaced it; the session is back in the
+        # record's pane once resumed, or at once after a /clear.
         record = named(target)
         if record:
             agent = live_agent(record["pane"])
