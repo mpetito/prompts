@@ -176,14 +176,20 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     doesn't check the objective's first line (the controller's duty; protocol.md names no refusal for
     it), doesn't read the fresh agent's input line, and leaves the workspace of a failed agent start
     for the owner to see rather than closing it. `ring` doesn't check that `--brief`'s file exists
-    (no line for it). The input line is the last line opening with the prompt mark; a multi-line
-    draft whose first line is empty isn't seen. The tests add only `agent read` to agent-orchestration's
-    `FakeHerdr`, and read the typed prompts from its log.
-  - Review (core round 2, N10, F3 P): a herdr name counts as a control record's only when that
-    record is attached or `started`, and a record's name reaches its pane only then. So a detached
-    session that kept its herdr name is not rung; the owner attaches it again. A Codex agent is
-    never attached, even under a matching record. A ring goes to the agent by its herdr name when it
-    has one, since a moved pane takes a new id.
+    (no line for it). The tests add only `agent read` (and a refused prompt) to
+    agent-orchestration's `FakeHerdr`, and read the typed prompts from its log.
+  - Review (core round 2, N10, F3 P): a record's name reaches its pane only when the record is
+    attached or `started`. A Codex agent is never attached, even under a matching record. A ring
+    goes to the agent by its herdr name when it has one, since a moved pane takes a new id.
+  - Review (controller round 1): herdr names whichever agent asks next, so an agent is a record's
+    session only in the record's pane, or under its session id while it is attached; attached or
+    `started` alone let a thread that took a gone session's name be rung. A detached session in
+    its own pane is rung back. A ring into a record's session attaches only that record's name
+    (`is attached as`), and `start` keeps an existing record's level and hold, so neither raises a
+    level. The input line runs to the rule under Claude's box, so a draft's later lines count;
+    `start` refuses a folder that isn't a directory and prints `BLOCKED` when its first prompt is
+    refused. Left to step 6: whether Claude draws a placeholder or a suggestion that the
+    input-line reading counts as typing (it fails closed).
 - [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
   `ctl.py read`, type in the session and see the next send `HELD`. Check: each step's printed line

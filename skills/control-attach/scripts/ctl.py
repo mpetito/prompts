@@ -266,11 +266,30 @@ PERMITS = {
 # The input line's prompt mark: Claude Code's, then Codex's.
 PROMPT_MARK = re.compile(r"\s*[❯›]")
 CSI = re.compile(r"\x1b\[([0-9;?]*)([A-Za-z])")
+# The rule under Claude's input box; Codex draws none.
+RULE = re.compile(r"\s*\u2500")
 
 
 def named(name):
     """The record of a would-be name, or None for a name outside the pattern (a pane id, say) or one never used."""
     return load(name) if NAME.fullmatch(name) else None
+
+
+def belongs(agent, record):
+    """Whether agent from herdr is record's session: in the record's pane, or, while the record is attached, under
+    its session id, which a moved pane keeps. herdr names whatever agent asks next, so after a session exits its
+    name alone, even on an attached or started record, says nothing about who holds it."""
+    return agent.get("pane_id") == record["pane"] or bool(
+        record["attached"] and record["session"] and session_id(agent) == record["session"])
+
+
+def record_of(agent):
+    """(name, record) of the record agent is the session of, or None: for a named agent the record of its name when
+    the agent belongs to it, for an unnamed one the record attached from its pane."""
+    if agent.get("name"):
+        record = named(agent["name"])
+        return (agent["name"], record) if record and belongs(agent, record) else None
+    return next(((n, r) for n, r in records() if r["attached"] and r["pane"] == agent.get("pane_id")), None)
 
 
 def agents():
@@ -298,8 +317,8 @@ def sessions(args, opts):
         name = attached_as(agent)
         rows.append((name or agent.get("name") or agent.get("pane_id"), agent.get("agent") or "null",
                      agent.get("agent_status") or "null", name))
-    names = {a.get("name") for a in listed}
-    rows += [(n, "-", "gone", n) for n, r in records() if r["attached"] and n not in names]
+    rows += [(n, "-", "gone", n) for n, r in records()
+             if r["attached"] and not any(a.get("name") == n and belongs(a, r) for a in listed)]
     for target, kind, state, name in rows:
         record = load(name) if name else None
         until = held_until(record) if record else None
@@ -381,39 +400,48 @@ def sgr_dim(params, dim):
 
 
 def input_line_empty(screen):
-    """True when the last input line on the screen (the last line opening with a prompt mark) holds no typing. A
-    screen with no input line isn't known to be empty, so it is not."""
-    for line in reversed(screen.splitlines()):
-        if PROMPT_MARK.match(CSI.sub("", line)):
-            return not PROMPT_MARK.sub("", visible(line), count=1).strip()
-    return False
+    """True when the last input line on the screen (the last line opening with a prompt mark) holds no typing, nor
+    does any line between it and the rule closing Claude's input box, where a draft's later lines go. A screen with
+    no input line isn't known to be empty, so it is not."""
+    lines = screen.splitlines()
+    marks = [i for i, line in enumerate(lines) if PROMPT_MARK.match(CSI.sub("", line))]
+    if not marks:
+        return False
+    draft = [PROMPT_MARK.sub("", visible(lines[marks[-1]]), count=1)]
+    rule = next((i for i in range(marks[-1] + 1, len(lines)) if RULE.match(CSI.sub("", lines[i]))), None)
+    if rule is not None:
+        draft += [visible(line) for line in lines[marks[-1] + 1:rule]]
+    return not "".join(draft).strip()
 
 
 def ring(args, opts):
     if len(args) == 2 and "--brief" not in opts:
-        target, line, kind = args[0], f"/control-attach {args[1]}", "claude"
-        check_name(args[1])
+        target, attach_name, kind = args[0], args[1], "claude"
+        check_name(attach_name)
+        line = f"/control-attach {attach_name}"
     elif len(args) == 1 and "--brief" in opts:
-        target, kind = args[0], "codex"
+        target, attach_name, kind = args[0], None, "codex"
         line = f"Read {lib.native(lib.canon(opts['--brief']))} and follow it."
     else:
         usage()
-    agent = live_agent(target)
+    agent, via = live_agent(target), None
     if agent is None:
         # A moved pane takes a new id, so a record's pane is the way in only when herdr no longer has its name.
         record = named(target)
         if record and (record["attached"] or record["started"]):
-            agent = live_agent(record["pane"])
+            agent, via = live_agent(record["pane"]), (target, record)
     if agent is None:
         raise Refused(f"no agent at {target}")
     herdr_name, pane = agent.get("name"), agent.get("pane_id")
-    # A stale record (detached, never started) whose name a lane later took doesn't make that lane a session.
-    its_record = named(herdr_name) if herdr_name else None
-    if herdr_name and not (its_record and (its_record["attached"] or its_record["started"])):
+    mine = record_of(agent)
+    if herdr_name and not mine:
         raise Refused(f"{target} is named {herdr_name}")
-    if any(r["authority"] == "observe" for n, r in records()
-           if n in (herdr_name, target) or (r["attached"] and r["pane"] == pane)):
+    mine = mine or via
+    if mine and mine[1]["authority"] == "observe":
         raise Refused(f"{target} is at observe")
+    # Attaching under another name would give the session that name's level, which only the owner sets.
+    if mine and attach_name and attach_name != mine[0]:
+        raise Refused(f"{target} is attached as {mine[0]}")
     if agent.get("agent") != kind:
         raise Refused(f"{target} is {agent.get('agent') or 'null'}")
     state = agent.get("agent_status") or "null"
@@ -437,6 +465,8 @@ def start(args, opts):
         allowed = [f.strip() for f in lib.read_lines(listing) if f.strip()]
     except FileNotFoundError:
         raise Refused(f"no folders file at {lib.native(listing)}") from None
+    if not os.path.isdir(folder):
+        raise Refused(f"{folder} is not a folder")
     if not any(lib.inside(folder, f) for f in allowed):
         raise Refused(f"{folder} is not a listed folder")
     try:
@@ -467,14 +497,21 @@ def start(args, opts):
         if e.code != "agent_not_ready":
             raise
         ready = False
-    save(name, {"pane": pane, "session": "", "authority": DEFAULT_AUTHORITY, "hold": DEFAULT_HOLD, "typed": "",
-                "attached": False, "started": True})
+    # A name's level and hold outlive its sessions, as on attach: only the owner changes a level.
+    old = load(name) or {}
+    save(name, {"pane": pane, "session": "", "authority": old.get("authority", DEFAULT_AUTHORITY),
+                "hold": old.get("hold", DEFAULT_HOLD), "typed": "", "attached": False, "started": True})
     with contextlib.redirect_stdout(io.StringIO()):
         mail.send(mail_root(), [f"{name}/in", text.rstrip("\n")], {"--from": OWNER})
+    if ready:
+        try:
+            herdr("agent", "prompt", name, f"/control-attach {name}")
+        except HerdrError:
+            # The session runs either way, and the remedy is the same: ring it once it is idle.
+            ready = False
     if not ready:
         print(f"BLOCKED {name} waiting on a startup prompt")
         return 0
-    herdr("agent", "prompt", name, f"/control-attach {name}")
     print(f"STARTED {name} {pane}")
     return 0
 

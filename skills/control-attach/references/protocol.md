@@ -26,9 +26,9 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
 `<home>` is `$ORCHESTRATION_HOME`, else `~/.orchestration`. Everything below lives under
 `<home>/control/`.
 
-- **A name** is an attached session's address. It matches `[a-z][a-z0-9_-]{0,31}`, herdr's agent-name
-  pattern and mail.py's box pattern, and `attach` names the session's herdr agent after it. `owner`
-  is reserved: it is the controller's address.
+- **A name** is an attached session's address. It matches `[a-z][a-z0-9_-]{0,31}`, herdr's
+  agent-name pattern and mail.py's box pattern, and `attach` names the session's herdr agent after
+  it. `owner` is reserved: it is the controller's address.
 - **Mail** is mail.py's maildir with `--home <home>/control`, so the boxes are under
   `<home>/control/mail/`:
   - `<name>/in`: the session's inbox. The controller sends there `--from owner`.
@@ -50,6 +50,9 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   A `/clear` keeps the pane and the herdr name but changes the session id and drops the session's
   hooks, so `session` is the only sign that a cleared session needs attaching again. A session's own
   subcommands find its record by `HERDR_PANE_ID`: the record that is `attached` with that `pane`.
+- **A record's session** is an agent in the record's `pane`, or, while the record is attached, an
+  agent with its `session` id, which a moved pane keeps. herdr gives an exited session's name to
+  whichever agent asks for it next, so a name alone never ties an agent to a record.
 - **The folders file**, `folders`, written by the owner and never by `ctl.py`: one absolute folder
   per line, blank lines ignored. `start` uses a folder only when it is a listed one or inside one.
   Without the file, `start` refuses.
@@ -134,18 +137,24 @@ relays the answer to the thread as `DECISION D<n>: …`.
 
 - **The hold window.** `typed` records each prompt the owner types in an attached session. Until
   `hold` minutes after it, `send` refuses everything but `QUESTION:` with `HELD <until>`, and the
-  controller sends it again after `<until>`. A task notification, a subagent's report, another
-  session's message and a ring line are not the owner typing; `typed` alone decides that.
+  controller sends it again after `<until>`. `typed` keeps the minute, so the window ends to the
+  minute, up to 59 seconds before a full `hold` from the keystroke. A task notification, a
+  subagent's report, another session's message and a ring line are not the owner typing; `typed`
+  alone decides that.
 - **Rings.** The controller types into a pane only a fixed line, only when herdr reports the agent
   `idle` or `done` and its visible input line is empty: `/control-attach <name>` into a Claude
   agent, `Read <file> and follow it.` into a Codex agent. Nothing else is ever typed, never into a
   session at `observe`, and no key is sent to a dialog. The input line is the screen's last line
-  opening with Claude's `❯` or Codex's `›`. Dim text on it, a placeholder or a suggested prompt, is
-  not typing, and a screen that shows no input line is not known to be empty.
-- **Never into orchestration's agents.** A ring refuses an agent with a herdr name that no attached
-  or started control record has, so a stale record whose name a lane later took doesn't count. Orchestration names its threads `<build>` and its lanes `<build>-<lane>`, the controller
-  never talks to them, and attaching one would rename it out of its build's reach. Plain sessions and
-  MAIN have no herdr name until they attach.
+  opening with Claude's `❯` or Codex's `›`, with the lines between it and the rule that closes
+  Claude's input box, where a draft goes on. Dim text there, a placeholder or a suggested prompt,
+  is not typing, and a screen that shows no input line is not known to be empty.
+- **A ring never changes a level.** Into a record's session, a ring attaches only that record's
+  name: under another name the session would take that name's level, and only the owner sets one.
+- **Never into orchestration's agents.** A ring refuses an agent with a herdr name unless it is
+  that name's record's session, so a record whose name a lane later took doesn't count.
+  Orchestration names its threads `<build>` and its lanes `<build>-<lane>`, the controller
+  never talks to them, and attaching one would rename it out of its build's reach. Plain sessions
+  and MAIN have no herdr name until they attach.
 - **One controller** reads `owner/in` at a time. Two would each file what the other has not seen.
 
 ## Session subcommands
@@ -218,8 +227,8 @@ Records now as `typed`, unless stdin, trimmed, isn't the owner typing:
 
 - a ring line, the whole prompt `/control-attach <name>` for any name, so a ring never holds the
   controller (the same text with more after it is typing);
-- a prompt starting `<task-notification>` (a background task's wake), `<agent-message ` (a subagent's
-  report) or `<cross-session-message ` (another session's message).
+- a prompt starting `<task-notification>` (a background task's wake), `<agent-message ` (a
+  subagent's report) or `<cross-session-message ` (another session's message).
 
 This is the one place the owner-activity rule lives. Prints nothing, ever, and exits 0, attached or
 not: what a prompt-submit hook prints reaches the model.
@@ -233,7 +242,8 @@ isn't JSON holding a result.
 ### `ctl.py sessions`
 
 One row per herdr agent, orchestration's named agents too, then one per gone record: an attached
-record whose name no agent in herdr's list has. Six fields, separated by single spaces:
+record that no agent with its name in herdr's list is the session of. Six fields, separated by
+single spaces:
 
 ```text
 <target> <kind> <state> <authority> <held> <unread>
@@ -250,9 +260,9 @@ record whose name no agent in herdr's list has. Six fields, separated by single 
 
 An agent is attached when it is a Claude agent and an attached record has its herdr name and its
 session id (`agent_session.value`). A Codex session never is: it has no wait to wake it, so the
-controller only observes it and rings it. A cleared session keeps its pane and name under a new id, so it shows
-`unattached`, and the controller rings `/control-attach <name>` into it as into any unattached
-Claude session. With no rows it prints `NONE`. Exit 0.
+controller only observes it and rings it. A cleared session keeps its pane and name under a new
+id, so it shows `unattached`, and the controller rings `/control-attach <name>` into it as into any
+unattached Claude session. With no rows it prints `NONE`. Exit 0.
 
 ### `ctl.py send <name> OWNER|CONTROL|QUESTION <text>` and `ctl.py send <name> DECISION <ref> <answer> [--owner]`
 
@@ -296,9 +306,11 @@ watched from the next wait.
 
 Types one ring line into the target and Enter. The target is a live herdr agent's name or pane, or,
 when herdr has no agent by that name, an attached or started record's name, which rings the agent in
-the record's pane. herdr gives a moved pane a new id, so the line goes to the agent by its herdr name
-whenever it has one, and by pane only when it has none. `<attach-name>` types `/control-attach <attach-name>`
-into a Claude agent; `--brief` types `Read <file> and follow it.` into a Codex agent.
+the record's pane. herdr gives a moved pane a new id, so the line goes to the agent by its herdr
+name whenever it has one, and by pane only when it has none. `<attach-name>` types
+`/control-attach <attach-name>` into a Claude agent; `--brief` types `Read <file> and follow it.`
+into a Codex agent. The target's record is the one it is the session of: its name's, else the one
+attached from its pane, else the record named as the target.
 
 | Line | Exit | When |
 | --- | --- | --- |
@@ -306,25 +318,28 @@ into a Claude agent; `--brief` types `Read <file> and follow it.` into a Codex a
 | `REFUSED no agent at <target>` | 1 | Neither herdr nor an attached or started record knows the target, or the record's pane holds no agent |
 | `REFUSED <target> is <state>` | 1 | herdr's state is neither `idle` nor `done` |
 | `REFUSED <target>'s input line is not empty` | 1 | Its visible input line holds text: the owner may be typing |
-| `REFUSED <target> is at observe` | 1 | The target's record (by name, or attached from its pane) is at `observe` |
+| `REFUSED <target> is at observe` | 1 | The target's record is at `observe` |
+| `REFUSED <target> is attached as <name>` | 1 | `<attach-name>` isn't the name of the target's record (A ring never changes a level, above) |
 | `REFUSED <target> is <kind>` | 1 | `<attach-name>` into an agent that isn't Claude, or `--brief` into one that isn't Codex |
-| `REFUSED <target> is named <herdr name>` | 1 | The agent has a herdr name that no attached or started control record has: an orchestration thread or lane (Rings, above) |
+| `REFUSED <target> is named <herdr name>` | 1 | The agent has a herdr name and isn't that name's record's session: an orchestration thread or lane (Never into orchestration's agents, above) |
 | `REFUSED not a name: <attach-name>` | 1 | Outside the name pattern |
 | `REFUSED owner is the controller's address` | 1 | `<attach-name>` is `owner` |
 
 ### `ctl.py start <name> <folder> <objective-file>`
 
 Opens a new herdr workspace in `<folder>` without focus, starts a Claude agent named `<name>` in it,
-writes `<name>`'s record (`started` true, the defaults, not yet attached), sends the objective file's
-text unchanged to `<name>/in` from `owner` (its first line is an `OWNER:` or `CONTROL:` line), and
-types `/control-attach <name>` as the agent's first prompt. The session attaches and its first wait
-finds the objective.
+writes `<name>`'s record (`started` true, not yet attached; a record that exists keeps its authority
+and hold, as on `attach`, and a new one gets the defaults), sends the objective file's text
+unchanged to `<name>/in` from `owner` (its first line is an `OWNER:` or `CONTROL:` line), and types
+`/control-attach <name>` as the agent's first prompt. The session attaches and its first wait finds
+the objective.
 
 | Line | Exit | When |
 | --- | --- | --- |
 | `STARTED <name> <pane>` | 0 | Started |
-| `BLOCKED <name> waiting on a startup prompt` | 0 | Started, but a startup dialog (folder trust) waits for the owner; once it is answered, ring `<name> <name>` |
+| `BLOCKED <name> waiting on a startup prompt` | 0 | Started, but a startup dialog (folder trust) waits for the owner, or herdr refused the first prompt; once it is idle, ring `<name> <name>` |
 | `REFUSED no folders file at <path>` | 1 | `<home>/control/folders` doesn't exist |
+| `REFUSED <folder> is not a folder` | 1 | `<folder>` isn't an existing directory |
 | `REFUSED <folder> is not a listed folder` | 1 | Neither a listed folder nor inside one |
 | `REFUSED 3 started sessions are running` | 1 | Three records with `started` are running: herdr lists the record's name or its pane |
 | `REFUSED cannot read <objective-file>` | 1 | Missing, not UTF-8 text, or empty |
