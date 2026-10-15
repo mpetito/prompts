@@ -172,9 +172,11 @@ class WatchGates(Remote):
         self.sha = git(self.wt, "rev-parse", "HEAD")
         self.reviewed, self.feedback_calls = {"copilot": True, "codex": True, "claude": False}, []
 
+        self.feedback_head = self.sha
+
         def feedback(repo, pr):
             self.feedback_calls.append((repo, pr))
-            return {"threads": [{}, {}], "automatedReviewers": {
+            return {"head": self.feedback_head, "threads": [{}, {}], "automatedReviewers": {
                 n: {"seen": True, "reviewedHead": done} for n, done in self.reviewed.items()}}
         self.watch.feedback = feedback
 
@@ -214,6 +216,36 @@ class WatchGates(Remote):
         self.assertEqual(self.slept, [15] * 8)
         out = call(self.watch, "7", self.sha)[1]
         self.assertRegex(out, r"check=n/a reviewers=n/a unresolved_threads=2")
+
+    def test_a_reviewer_finishing_in_the_last_minute_is_reviewed(self):
+        real = self.watch.feedback
+        reads = []
+
+        def late(repo, pr):
+            reads.append(pr)
+            self.reviewed["claude"] = len(reads) > 1
+            return real(repo, pr)
+        self.watch.feedback = late
+        out = call(self.watch, "7", self.sha, "--reviewers", "claude", "--minutes", "1")[1]
+        self.assertRegex(out, r" reviewers=claude:reviewed ")
+
+    def test_feedback_for_another_head_is_a_moved_head(self):
+        self.feedback_head = "0123456789012345678901234567890123456789"
+        out = call(self.watch, "7", self.sha, "--reviewers", "copilot", "--minutes", "1")[1]
+        self.assertEqual(out, f"MOVED pr=7 head={self.sha[:7]} now=0123456\n")
+        out = call(self.watch, "7", self.sha, "--minutes", "1")[1]
+        self.assertEqual(out, f"MOVED pr=7 head={self.sha[:7]} now=0123456\n")
+
+    def test_a_moved_head_in_the_loop_is_moved_even_when_the_last_read_fails(self):
+        real, reads = self.watch.feedback, []
+        self.feedback_head = "0123456789012345678901234567890123456789"
+
+        def then_fail(repo, pr):
+            reads.append(pr)
+            return real(repo, pr) if len(reads) == 1 else None
+        self.watch.feedback = then_fail
+        out = call(self.watch, "7", self.sha, "--reviewers", "copilot", "--minutes", "1")[1]
+        self.assertEqual(out, f"MOVED pr=7 head={self.sha[:7]} now=0123456\n")
 
     def test_reads_feedback_from_the_sibling_pull_request_skill(self):
         self.assertTrue(self.watch.FEEDBACK.is_file(), self.watch.FEEDBACK)

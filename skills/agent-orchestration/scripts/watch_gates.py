@@ -49,8 +49,7 @@ def main(argv):
         r = gh("pr", "view", pr, "--json", "headRefOid", "--jq", ".headRefOid")
         cur = r.stdout.strip() if r.returncode == 0 else ""
         if cur and cur != head:
-            print(f"MOVED pr={pr} head={head[:7]} now={cur[:7]}")
-            return 0
+            return moved(pr, head, cur)
         if check and not check_result:
             r = gh("api", f"repos/{repo}/commits/{head}/check-runs", "--jq",
                    f'[.check_runs[] | select(.name=="{check}")] | if length==0 then "none" elif '
@@ -60,22 +59,39 @@ def main(argv):
                 check_result = st
         if pending and poll % REVIEWER_EVERY == 0:
             status = feedback(repo, pr)
-            if status:
-                unknown = [n for n in pending if n not in status["automatedReviewers"]]
-                if unknown:
-                    raise lib.Fail(f"unknown reviewer {','.join(unknown)}; known: "
-                                   f"{','.join(status['automatedReviewers'])}")
-                reviewed += [n for n in pending if status["automatedReviewers"][n]["reviewedHead"]]
-                pending = [n for n in pending if n not in reviewed]
+            if status and status["head"] != head:
+                return moved(pr, head, status["head"])
+            pending = settle(status, pending, reviewed)
         if (not check or check_result) and not pending:
             break
         sleep(POLL_SECONDS)
+    # The last read also settles reviewers, so one finishing in the final minute is not reported as timeout.
     status = feedback(repo, pr)
+    if status and status["head"] != head:
+        return moved(pr, head, status["head"])
+    pending = settle(status, pending, reviewed)
     threads = len(status["threads"]) if status else "?"
     check_out = (check_result or "timeout") if check else "n/a"
     reviewers_out = ",".join([f"{n}:reviewed" for n in reviewed] + [f"{n}:timeout" for n in pending]) or "n/a"
     print(f"GATES pr={pr} head={head[:7]} check={check_out} reviewers={reviewers_out} unresolved_threads={threads}")
     return 0
+
+
+def moved(pr, head, now):
+    print(f"MOVED pr={pr} head={head[:7]} now={now[:7]}")
+    return 0
+
+
+def settle(status, pending, reviewed):
+    """The reviewers still pending once status, feedback for the watched head or None, is read; each one it shows
+    finished is appended to reviewed."""
+    if not status:
+        return pending
+    unknown = [n for n in pending if n not in status["automatedReviewers"]]
+    if unknown:
+        raise lib.Fail(f"unknown reviewer {','.join(unknown)}; known: {','.join(status['automatedReviewers'])}")
+    reviewed += [n for n in pending if status["automatedReviewers"][n]["reviewedHead"]]
+    return [n for n in pending if n not in reviewed]
 
 
 def feedback(repo, pr):
