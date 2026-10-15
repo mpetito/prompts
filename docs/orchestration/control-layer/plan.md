@@ -248,7 +248,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
 - [x] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
   recorded as evidence where the setup records keep it. Waits on the owner's answer. Check: the
   installed bridge still reports healthy, and the worktree is listed as set aside.
-  Recorded in `~/dev/.setup/docs/build/herdr-supervisor/state.md` (`## Set aside (2026-10-15)`);
+  Recorded in the setup records of that build, under "Set aside (2026-10-15)";
   `systemctl status openclaw-herdr-bridge.service` active (running) at 2026-10-15 13:33 UTC.
 
 ## After the owner's answers (2026-10-15T13:29Z)
