@@ -23,8 +23,9 @@ A session is active between two of its records at most IDLE_GAP apart, counting 
 files' records as its own; a longer gap is not counted. Every timestamped record counts, typed by a person or
 not. Sessions whose working directory is under a temporary directory (eval and harness runs) are left out.
 Claude's transcript retention (`cleanupPeriodDays`, 30 days by default) bounds the range: days whose
-transcripts are gone print nothing. Lines that are not JSON, and timestamps that are not ISO 8601, are skipped
-and counted on stderr. Reads only; sends nothing. --to defaults to --from; exit 1 on a usage error.
+transcripts are gone print nothing. Lines that are not a JSON object, records whose id, working directory or
+remote is not a string without NUL, and timestamps that are not ISO 8601 with a time zone are skipped and counted
+on stderr. Reads only; sends nothing. --to defaults to --from; exit 1 on a usage error.
 """
 import argparse
 import json
@@ -81,14 +82,24 @@ def recent_files(root, patterns, first):
 
 
 def records(path, bad):
-    """The file's JSON records in file order; a line that does not parse adds one to bad[path]."""
+    """The file's JSON objects in file order; a line that is not one adds one to bad[path]."""
     with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             if line.strip():
                 try:
-                    yield json.loads(line)
+                    r = json.loads(line)
                 except json.JSONDecodeError:
+                    r = None
+                if isinstance(r, dict):
+                    yield r
+                else:
                     bad[path] += 1
+
+
+def text(*values):
+    """True when every value is absent (None) or a string without NUL, so a reader can pass it on as a
+    session id, path or remote: os.path and subprocess raise on a NUL, the rest on another type."""
+    return all(v is None or isinstance(v, str) and "\0" not in v for v in values)
 
 
 def repo_key(url):
@@ -136,6 +147,9 @@ def claude_events(path, bad, pr_links):
     lack one. A pr-link record's repo key goes into pr_links under its session id."""
     events, cwd = [], None
     for r in records(path, bad):
+        if not text(r.get("sessionId"), r.get("cwd"), r.get("prUrl")):
+            bad[path] += 1
+            continue
         sid = r.get("sessionId", path.stem)
         if r.get("type") == "pr-link" and r.get("prUrl"):
             pr_links[sid] = repo_key(r["prUrl"])
@@ -149,10 +163,15 @@ def codex_events(path, bad, pr_links):
     """(session id, cwd, timestamp, remote key) per timestamped record of a rollout; pr_links is unused."""
     events, sid, cwd, remote = [], path.stem, None, None
     for r in records(path, bad):
-        payload = r.get("payload") or {}
         if r.get("type") == "session_meta":
-            sid, cwd = payload.get("id", sid), payload.get("cwd", cwd)
-            if url := (payload.get("git") or {}).get("repository_url"):
+            # A session_meta with any bad field is dropped whole: its id, cwd and remote describe one session.
+            meta = r.get("payload") or {}
+            git = (meta.get("git") or {}) if isinstance(meta, dict) else None
+            if not (isinstance(git, dict) and text(meta.get("id"), meta.get("cwd"), git.get("repository_url"))):
+                bad[path] += 1
+                continue
+            sid, cwd = meta.get("id", sid), meta.get("cwd", cwd)
+            if url := git.get("repository_url"):
                 remote = repo_key(url)
         if "timestamp" in r and cwd:
             events.append((sid, cwd, r["timestamp"], remote))
@@ -215,6 +234,8 @@ def scan(claude_root, codex_root, first, last, tz=None, temp_roots=TEMP_ROOTS):
         try:
             stamp = datetime.fromisoformat(ts)
         except (TypeError, ValueError):
+            stamp = None
+        if stamp is None or stamp.tzinfo is None:  # a zoneless time cannot be ordered against the others
             bad[path] += 1
             continue
         repo = recorded or git_remote(cwd) or pr_links.get(sid) or f"unmapped:{cwd}"

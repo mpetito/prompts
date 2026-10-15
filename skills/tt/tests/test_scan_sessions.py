@@ -182,6 +182,58 @@ class ScanTest(unittest.TestCase):
         self.assertEqual(rows, [f"2026-10-13 {SHOP} 0.50 1 claude 09:00-09:30"])
         self.assertIn("skipped 1 malformed", err.getvalue())
 
+    def scan_reporting(self):
+        """scan() rows and what it wrote to stderr."""
+        err = io.StringIO()
+        with unittest.mock.patch("sys.stderr", err):
+            rows = self.scan()
+        return rows, err.getvalue()
+
+    def test_json_line_that_is_not_an_object_is_skipped_and_reported(self):
+        for line in ("[1, 2]", '"text"', "5", "null"):
+            with self.subTest(line=line):
+                self.claude_session("s1", self.shop, minutes("09:00", 7), extra=[line])
+                rows, err = self.scan_reporting()
+                self.assertEqual(rows, [f"2026-10-13 {SHOP} 0.50 1 claude 09:00-09:30"])
+                self.assertIn("skipped 1 malformed", err)
+
+    def test_claude_record_with_a_bad_field_is_skipped_and_the_earlier_cwd_carries_on(self):
+        self.claude_session("s2", self.shop, minutes("11:00", 7))
+        for field, value in (("cwd", 5), ("cwd", ["/a"]), ("cwd", {"a": 1}), ("cwd", str(self.shop) + "\0x"),
+                             ("sessionId", ["s1"]), ("prUrl", 5)):
+            with self.subTest(field=field, value=value):
+                bad = {"type": "pr-link" if field == "prUrl" else "user", "sessionId": "s1", "cwd": str(self.shop),
+                       "timestamp": utc("2026-10-13 09:35"), field: value}
+                later = {"type": "assistant", "sessionId": "s1", "timestamp": utc("2026-10-13 09:40")}
+                self.claude_session("s1", self.shop, minutes("09:00", 7), extra=[bad, later])
+                rows, err = self.scan_reporting()
+                self.assertEqual(rows, [f"2026-10-13 {SHOP} 1.25 2 claude 09:00-09:40,11:00-11:30"])
+                self.assertIn("skipped 1 malformed", err)
+
+    def test_codex_session_meta_with_a_bad_field_is_dropped_whole(self):
+        site = self.repo("site", "https://github.com/acme/site.git")
+        good = {"id": "c2", "cwd": str(site), "git": {"repository_url": "https://github.com/acme/site.git"}}
+        self.claude_session("s1", self.shop, minutes("11:00", 7))
+        for meta in ("not an object", {**good, "git": "main"}, {**good, "cwd": 5}, {**good, "cwd": str(site) + "\0x"},
+                     {**good, "id": ["c2"]}, {**good, "git": {"repository_url": 5}}):
+            with self.subTest(meta=meta):
+                path = self.codex_session("c1", self.shop, minutes("09:00", 7), "2026-10-13",
+                                          remote="https://github.com/acme/shop.git")
+                later = [{"timestamp": utc("2026-10-13 09:35"), "type": "session_meta", "payload": meta}]
+                later += [{"timestamp": utc(s), "type": "response_item", "payload": {}} for s in minutes("09:40", 5)]
+                with open(path, "a", encoding="utf-8") as f:
+                    f.writelines(json.dumps(r) + "\n" for r in later)
+                rows, err = self.scan_reporting()
+                self.assertEqual(rows, [f"2026-10-13 {SHOP} 1.50 2 claude,codex 09:00-10:00,11:00-11:30"])
+                self.assertIn("skipped 1 malformed", err)
+
+    def test_timestamp_without_a_time_zone_is_skipped_and_reported(self):
+        naive = {"type": "user", "sessionId": "s1", "cwd": str(self.shop), "timestamp": "2026-10-13T13:10:00"}
+        self.claude_session("s1", self.shop, minutes("09:00", 7), extra=[naive])
+        rows, err = self.scan_reporting()
+        self.assertEqual(rows, [f"2026-10-13 {SHOP} 0.50 1 claude 09:00-09:30"])
+        self.assertIn("skipped 1 malformed", err)
+
     def test_temp_dir_session_is_excluded(self):
         work = self.temp_root / "claude-ws-1"
         work.mkdir(parents=True)
