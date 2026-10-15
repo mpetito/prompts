@@ -78,7 +78,7 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
    | --- | --- |
    | Lane, Claude or Codex | Its report by mail, and your mail wait's `--watch <build>-<lane>`; plus `wake_at.py` for its time box |
    | Subagent | Its completion notice |
-   | Pull request checks | `watch_gates.py <PR> <head SHA> --check <name>` |
+   | Pull request checks and automated reviews | `watch_gates.py <PR> <head SHA> --check <name> --reviewers <names>`, naming the reviewers (copilot, codex, claude) this repository runs |
    | Decision deadline or budget reset | `wake_at.py <UTC> <label>` |
 
    Never wait in the foreground with `sleep` or a polling loop: while you wait, you miss MAIN

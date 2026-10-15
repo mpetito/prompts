@@ -162,7 +162,7 @@ class FakeGh:
 
     def __init__(self):
         self.log, self.wt, self.merge_state, self.merge_fail = [], None, "CLEAN", False
-        self.check, self.bot_reviews, self.pr_head = "success", "1", None
+        self.check, self.pr_head = "success", None
 
     def __call__(self, args):
         joined = " ".join(args)
@@ -185,8 +185,6 @@ class FakeGh:
             return result(args, out="unresolved_threads=0\n" if "unresolved_threads=" in joined else "0\n")
         if len(args) > 1 and args[1].endswith("/check-runs") and "length==0" in joined:
             return result(args, out=f"{self.check}\n")
-        if len(args) > 1 and args[1].endswith("/reviews"):
-            return result(args, out=f"{self.bot_reviews}\n")
         return result(args)
 
 

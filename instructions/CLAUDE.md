@@ -55,7 +55,7 @@ explicitly before launch; a separate context does not imply a cheaper model.
 | Work                                              | Send it to    |
 | ------------------------------------------------- | ------------- |
 | Tests, build, lint, typecheck                     | `test-runner` |
-| CI runs, PR check suites, Copilot review comments | `pr-watch`    |
+| CI runs, PR check suites, automated code reviews  | `pr-watch`    |
 | Reading across many files to answer one question  | `analyst`     |
 | A question whose answer lives in external docs    | `researcher`  |
 | An error, stack trace, or failing test            | `debugger`    |
@@ -81,9 +81,9 @@ including generated agents that do not use the named definitions above.
 Preserve existing named-agent model pins as deliberate role-specific choices; apply the
 default when selecting an otherwise unspecified worker model.
 
-When Copilot feedback remains materially ambiguous after checking the code and docs, get
-independent evidence-based perspectives from real model calls, preferably one Claude and one
-Codex, before deciding (the model-council skill runs them as a debate to consensus or no consensus).
+When automated review feedback (Copilot, Codex, Claude) remains materially ambiguous after
+checking the code and docs, get independent evidence-based perspectives from real model calls,
+preferably one Claude and one Codex, before deciding (the model-council skill runs them as a debate to consensus or no consensus).
 
 ## Do Not
 

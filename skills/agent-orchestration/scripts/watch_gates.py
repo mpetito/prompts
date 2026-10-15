@@ -1,17 +1,26 @@
 """Wait for a PR's gates on one exact head, then print one line. Exits early if the head moves.
-  watch_gates.py <pr> <full head sha> [--check <name>] [--bot <login regex>] [--minutes <n>]
-Prints: GATES pr=<n> head=<sha7> check=<result|n/a|timeout> bot=<reviewed|n/a|timeout> unresolved_threads=<n>
+  watch_gates.py <pr> <full head sha> [--check <name>] [--reviewers <name,...>] [--minutes <n>]
+--reviewers names automated reviewers (copilot, codex, claude) that must each report on the head, findings or none;
+the pull-request skill's get_pr_feedback.py decides whether one has.
+Prints: GATES pr=<n> head=<sha7> check=<result|n/a|timeout> reviewers=<name:reviewed|timeout,...|n/a>
+          unresolved_threads=<n|?>  (one line)
     or: MOVED pr=<n> head=<sha7> now=<sha7>
 """
+import json
 import re
+import sys
 import time
+from pathlib import Path
 
 import lib
 
-USAGE = "usage: watch_gates.py <pr> <full head sha> [--check <name>] [--bot <login regex>] [--minutes <n>]"
-OPTIONS = {"--check": True, "--bot": True, "--minutes": True}
-# Four polls a minute notices a finished gate within 15 s at a cost of three API calls per poll.
+USAGE = "usage: watch_gates.py <pr> <full head sha> [--check <name>] [--reviewers <name,...>] [--minutes <n>]"
+OPTIONS = {"--check": True, "--reviewers": True, "--minutes": True}
+FEEDBACK = Path(__file__).resolve().parents[2] / "pull-request" / "scripts" / "get_pr_feedback.py"
+# Four polls a minute notices a finished check within 15 s at two API calls a poll. Reviewers take minutes and a
+# feedback read costs about six calls, so reviewer state is read once a minute.
 POLL_SECONDS = 15
+REVIEWER_EVERY = 4
 # Every wait goes through here, so tests replace it.
 sleep = time.sleep
 
@@ -27,20 +36,20 @@ def main(argv):
     opts = lib.only_options(argv[2:], OPTIONS, USAGE)
     # 25 minutes: past it the watcher reports timeout, so the thread decides instead of waiting on a stuck gate;
     # pass --minutes for slower gates.
-    check, bot, minutes = opts.get("--check", ""), opts.get("--bot", ""), opts.get("--minutes", "25")
+    check, minutes = opts.get("--check", ""), opts.get("--minutes", "25")
+    pending = [n for n in opts.get("--reviewers", "").split(",") if n]
     if not re.fullmatch(r"[1-9][0-9]*", minutes):
         raise lib.Fail("--minutes takes a positive whole number")
     r = gh("repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
     if r.returncode:
         raise lib.Fail("gh cannot read the repository")
     repo = r.stdout.strip()
-    check_result = bot_result = ""
-    for _ in range(int(minutes) * 4):
+    check_result, reviewed = "", []
+    for poll in range(int(minutes) * 4):
         r = gh("pr", "view", pr, "--json", "headRefOid", "--jq", ".headRefOid")
         cur = r.stdout.strip() if r.returncode == 0 else ""
         if cur and cur != head:
-            print(f"MOVED pr={pr} head={head[:7]} now={cur[:7]}")
-            return 0
+            return moved(pr, head, cur)
         if check and not check_result:
             r = gh("api", f"repos/{repo}/commits/{head}/check-runs", "--jq",
                    f'[.check_runs[] | select(.name=="{check}")] | if length==0 then "none" elif '
@@ -48,24 +57,47 @@ def main(argv):
             st = r.stdout.strip() if r.returncode == 0 else "none"
             if st not in ("none", "running"):
                 check_result = st
-        if bot and not bot_result:
-            r = gh("api", f"repos/{repo}/pulls/{pr}/reviews", "--jq",
-                   f'[.[] | select(.user.login|test("{bot}")) | select(.commit_id=="{head}")] | length')
-            if r.returncode == 0 and r.stdout.strip().isdigit() and int(r.stdout) > 0:
-                bot_result = "reviewed"
-        if (not check or check_result) and (not bot or bot_result):
+        if pending and poll % REVIEWER_EVERY == 0:
+            status = feedback(repo, pr)
+            if status and status["head"] != head:
+                return moved(pr, head, status["head"])
+            pending = settle(status, pending, reviewed)
+        if (not check or check_result) and not pending:
             break
         sleep(POLL_SECONDS)
-    owner, name = repo.split("/", 1)
-    r = gh("api", "graphql", "-f",
-           f'query=query{{repository(owner:"{owner}",name:"{name}"){{pullRequest(number:{pr})'
-           '{reviewThreads(first:100){nodes{isResolved}}}}}',
-           "--jq", "[.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved|not)]|length")
-    unresolved = r.stdout.strip() if r.returncode == 0 else "?"
+    # The last read also settles reviewers, so one finishing in the final minute is not reported as timeout.
+    status = feedback(repo, pr)
+    if status and status["head"] != head:
+        return moved(pr, head, status["head"])
+    pending = settle(status, pending, reviewed)
+    threads = len(status["threads"]) if status else "?"
     check_out = (check_result or "timeout") if check else "n/a"
-    bot_out = (bot_result or "timeout") if bot else "n/a"
-    print(f"GATES pr={pr} head={head[:7]} check={check_out} bot={bot_out} unresolved_threads={unresolved}")
+    reviewers_out = ",".join([f"{n}:reviewed" for n in reviewed] + [f"{n}:timeout" for n in pending]) or "n/a"
+    print(f"GATES pr={pr} head={head[:7]} check={check_out} reviewers={reviewers_out} unresolved_threads={threads}")
     return 0
+
+
+def moved(pr, head, now):
+    print(f"MOVED pr={pr} head={head[:7]} now={now[:7]}")
+    return 0
+
+
+def settle(status, pending, reviewed):
+    """The reviewers still pending once status, feedback for the watched head or None, is read; each one it shows
+    finished is appended to reviewed."""
+    if not status:
+        return pending
+    unknown = [n for n in pending if n not in status["automatedReviewers"]]
+    if unknown:
+        raise lib.Fail(f"unknown reviewer {','.join(unknown)}; known: {','.join(status['automatedReviewers'])}")
+    reviewed += [n for n in pending if status["automatedReviewers"][n]["reviewedHead"]]
+    return [n for n in pending if n not in reviewed]
+
+
+def feedback(repo, pr):
+    """The pull request's feedback from get_pr_feedback.py, or None when it fails; tests replace it."""
+    r = lib.run([sys.executable, str(FEEDBACK), "--pr", pr, "--repo", repo])
+    return json.loads(r.stdout) if r.returncode == 0 else None
 
 
 def gh(*args):
