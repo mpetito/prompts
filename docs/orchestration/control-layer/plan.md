@@ -233,7 +233,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   `control-attach` (the gap: the owner is the only path into MAIN and plain sessions), project names
   kept to the evidence store. Waits on the owner accepting the gap, per the readmission bar. Check:
   the names greps over the changed files print nothing.
-- [ ] 8. Live acceptance, recorded in spec.md: a controller driving `ctl.py` by hand, two attached
+- [x] 8. Live acceptance, recorded in spec.md: a controller driving `ctl.py` by hand, two attached
   sessions (a MAIN with a running probe build, and a plain one), one unattached Claude session and
   one Codex session. A steer relayed; a MAIN decision settled at `delegate` and escalated at
   `relay`; an owner-before decision escalated at both; the controller held while the owner types; a

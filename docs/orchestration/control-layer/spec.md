@@ -219,7 +219,11 @@ one Codex session, which started without a trust or approval prompt.
    - D1 (probe build): …` with the request unchanged, not under the ref `probe/D1`.
    `ctl.py send main DECISION probe/D1 "JSON lines"` printed `SENT main/in <file>`, and MAIN sent
    `DECISION D1: JSON lines` to `probe/thread`, reporting it applied a controller answer to a
-   decision with a default.
+   decision with a default. Re-run once the skill named the ref, with a fresh MAIN attached as
+   `main2` and a new request D3 (`Default: three retries with backoff, applies at …`): MAIN passed
+   it up as `STATUS: need-decision - probe/D3 retry policy for the probe fetcher`,
+   `ctl.py send main2 DECISION probe/D3 "three retries with backoff"` printed `SENT main2/in <file>`,
+   and `DECISION D3: three retries with backoff` reached `probe/thread`.
 3. **An owner-before decision.** MAIN passed up D2 (`Default: none, owner-before`) the same way.
    `ctl.py send main DECISION probe/D2 "keep it"` was sent (`SENT`), and MAIN refused it: nothing
    reached `probe/thread`, and it raised D2 again, saying the controller's answer was refused. The
@@ -274,8 +278,6 @@ hand.
   prompt-submit hook. The documentation says the hook fires for it.
 - Whether a session that exits by moving to the background, rather than stopping its tasks, keeps
   its background tasks and its hooks when it is resumed.
-- A MAIN passing a thread's decision up under the ref `<build>/D<n>`: in the live acceptance it
-  passed `D1 (probe build)`, though it took a `DECISION probe/D1` answer as meant for D1.
 - The exit dialog that offers to stop a session's background tasks: in the live acceptance `/exit`
   ended the session without one showing.
 
