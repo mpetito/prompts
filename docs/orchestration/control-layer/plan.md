@@ -2,7 +2,8 @@
 
 Spec: [spec.md](spec.md). Written on the spec's defaults (open questions 1-6); steps 7 and 9 wait
 for the owner where they depend on an answer. Paths are from the repository root. Skills are linked
-into `~/.claude`, so an edit is live at once. Tests replace `lib.run`, as the orchestration suites
+into `~/.claude` one by one, and linking `control-attach` is the owner's change, so until then
+every live step loads it as a project skill from a scratch folder's `.claude/skills/`. Tests replace `lib.run`, as the orchestration suites
 do, so nothing reaches the owner's herdr. Every new assertion is shown to fail against a planted
 mutant before its step is ticked.
 
@@ -35,16 +36,22 @@ locally after review.
 | 1 | `core` | 2, then 3 | the plan review; step 3 after the protocol review |
 | 2 | `hooks` | 4 | `probes` and `core` landed |
 | 2 | `controller` | 5 | `core` landed |
-| 3 | `live` | 6, then 8 | `hooks` and `controller` landed |
+| 3 | `live` | 6, then 8 | 6 after `hooks` landed; 8 after `controller` landed |
 
 `hooks` and `controller` own different files: `controller` owns `ctl.py`'s controller handlers and
-their tests, `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
+their tests, and protocol.md once step 2 lands; `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
+Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
 
 - [ ] 1. `docs/orchestration/control-layer/spec.md` "Shown": the probes the hook design depends on,
   run before any hook is written. A skill's frontmatter hooks after `/compact`, after
   `claude --resume` and after `/clear`; a wake while the owner is mid-keystroke; the prompt-submit
   hook's input for another session's message and for a subagent's report. Check: each result
   recorded with versions; a probe that fails changes steps 3-4 here before they start.
+  - Review: needed first are hooks after `/compact` and after a resume, the prompt-submit input
+    for a subagent's report, whether invoking the skill twice runs its hooks twice (re-attach
+    depends on it), and whether the prompt-submit hook fires for a typed `/control-attach`. `/clear`
+    is cheap beside them. The wake mid-keystroke and another session's message come last, as time
+    allows.
 - [ ] 2. `skills/control-attach/references/protocol.md`,
   `skills/control-attach/tests/test_protocol.py`: the control protocol: layers, addresses, the four
   down messages and the `STATUS:` up message, authority levels and what each permits, the consent
@@ -55,6 +62,14 @@ their tests, `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
   - Lens: the doc-and-code lint lives in `test_ctl.py`, beside the tests of the lines it
     checks, not in its own `test_protocol.py`. The link from the orchestration protocol is cut: a
     thread never meets control mail, and MAIN reads the control protocol from the skill it loaded.
+  - Review: the lint moves to step 5, when every line it checks exists. The protocol also fixes
+    what the hook calls: the exact wait command and how the Stop hook finds it among the background
+    tasks; `report` and `typed` finding their session by `HERDR_PANE_ID` (a `/clear` changes the
+    session id) and exiting 0 silently when the pane isn't attached; no report on a stop the hook
+    blocks; `typed` ignoring the fixed ring lines, so a ring never holds the controller; the
+    `sessions` row format the adapter parses; one controller reads `owner/in` at a time.
+    `DECISION` says who made it (`--owner` or not); the session, which raised the decision and knows
+    it is owner-before, refuses a controller-made answer to one, so no script tracks owner-before.
 - [ ] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
   `skills/control-attach/tests/support.py`: the session-side subcommands, importing
   `agent-orchestration/scripts/mail.py` and `lib.py` as thread.py imports lib.
@@ -71,6 +86,10 @@ their tests, `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
   name.
   - Lens: `attach` takes no `--authority`: every session starts at the default and `authority`
     is the one way to change it, so there are not two.
+  - Review: the record keeps no session id (herdr's list gives it live and the pane identifies
+    the session) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
+    refuses `owner` and names outside herdr's pattern. The tests reuse agent-orchestration's
+    `FakeHerdr` by path instead of a new support.py.
 - [ ] 4. `skills/control-attach/SKILL.md` (frontmatter hooks), `skills/control-attach/hooks/control_hook.py`,
   `skills/control-attach/tests/test_hook.py`: the attached session.
   - Body, under 120 lines: the wait loop (read, re-arm, act), each down message and how to treat it,
@@ -109,10 +128,18 @@ their tests, `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
     fixed line it can act on; the owner's "observe-and-ring" needs nothing more. The folders `start`
     may use are one owner-written file, `<home>/control/folders`, a path per line; without it,
     `start` refuses.
+  - Review: herdr clears a name when its agent exits, so a resumed session shows as `GONE`, not
+    `UNREAD`; the controller rings the pane in its record, once that pane holds an idle agent again.
+    `sessions` shows unread down only. A Codex ring is `ring <target> --brief <file>`, allowed while
+    the default authority is `delegate`. `start` counts records flagged `started` whose agent is
+    live, matches a folder that is a listed path or inside one, mails the objective to `<name>/in`
+    and types only `/control-attach <name>`.
 - [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
   `ctl.py read`, type in the session and see the next send `HELD`. Check: each step's printed line
   recorded in spec.md "Shown"; the sessions and mail cleaned up.
+  - Review: runs once `hooks` lands, with `mail.py send/read` against `<home>/control` if `ctl.py`'s
+    controller side hasn't landed yet; the `HELD` check moves to step 8.
 - [ ] 7. `docs/skill-audit/candidates.md`, `~/dev/prompts-evidence`: the readmission entry for
   `control-attach` (the gap: the owner is the only path into MAIN and plain sessions), project names
   kept to the evidence store. Waits on the owner accepting the gap, per the readmission bar. Check:
@@ -126,6 +153,9 @@ their tests, `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
   every wake. Check: each line passes, and the probe's sessions, workspaces and mail are cleaned up.
   - Lens: the MAIN runs orchestration-main on a probe build whose thread is played by mail sent
     by hand to `<probe build>/main`: the decisions are what is under test, not a thread's work.
+  - Review: escalation at `relay` stays a step 5 test, not a live case. A detached session plays
+    the unattached one. The Codex session checks that `sessions` lists it observed and that a
+    `--brief` ring reaches it, if Codex starts in the scratch folder without a prompt.
 - [ ] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
   recorded as evidence where the setup records keep it. Waits on the owner's answer. Check: the
   installed bridge still reports healthy, and the worktree is listed as set aside.
