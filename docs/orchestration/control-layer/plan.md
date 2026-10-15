@@ -245,9 +245,11 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   - Review: escalation at `relay` stays a step 5 test, not a live case. A detached session plays
     the unattached one. The Codex session checks that `sessions` lists it observed and that a
     `--brief` ring reaches it, if Codex starts in the scratch folder without a prompt.
-- [ ] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
+- [x] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
   recorded as evidence where the setup records keep it. Waits on the owner's answer. Check: the
   installed bridge still reports healthy, and the worktree is listed as set aside.
+  Recorded in `~/dev/.setup/docs/build/herdr-supervisor/state.md` (`## Set aside (2026-10-15)`);
+  `systemctl status openclaw-herdr-bridge.service` active (running) at 2026-10-15 13:33 UTC.
 
 ## After the owner's answers (2026-10-15T13:29Z)
 
