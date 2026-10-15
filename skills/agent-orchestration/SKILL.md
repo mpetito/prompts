@@ -132,6 +132,7 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
 
 - Reviewers use the [review](../review/SKILL.md) skill. An interface others will build on (an
   API, a contract, a schema) is reviewed when it is designed, before code depends on it.
+- A reviewer's brief names its lenses from [review-lenses](../review-lenses/SKILL.md).
 - At most three review rounds, and the third is for blocking problems only. After round two,
   collect missing tests into one commit that merges on CI; nits wait.
 - Send a follow-up review to the same reviewer, with the exact commit range.
