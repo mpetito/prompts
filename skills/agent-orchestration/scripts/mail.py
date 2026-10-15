@@ -35,6 +35,8 @@ POLL = 2
 # wait's clock and pause; tests replace them to pass time without waiting.
 clock = time.time
 sleep = time.sleep
+# The nanosecond stamp of this process's last send.
+last_sent = 0
 
 
 def usage():
@@ -85,8 +87,11 @@ def send(root, args, opts):
     if not body.strip():
         raise lib.Fail(f"refusing an empty message to {to}")
     box = box_dir(root, to)
-    # Nanoseconds keep same-second messages in the order they were sent.
-    ns = time.time_ns()
+    # Nanoseconds keep same-second messages in the order they were sent. A coarse clock repeats a stamp (time_ns
+    # ticks every 15.6 ms on Windows before Python 3.13), and the rename below would replace a message of the same
+    # name, so a stamp is always past this process's last one; other processes differ by pid.
+    global last_sent
+    ns = last_sent = max(time.time_ns(), last_sent + 1)
     sent = datetime.fromtimestamp(ns // 10**9, timezone.utc)
     name = f"{sent:%Y%m%dT%H%M%S}.{ns % 10**9:09d}Z-{os.getpid()}{'.quiet' if '--quiet' in opts else ''}.md"
     tmp = box / "tmp" / name

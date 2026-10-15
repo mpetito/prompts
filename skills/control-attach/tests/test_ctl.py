@@ -70,6 +70,11 @@ class CtlCase(support.OrchTest):
             0] == "herdr" else support.REAL_RUN(args, **kw))
         run_patch.start()
         self.addCleanup(run_patch.stop)
+        # Every send in a test reads one nanosecond stamp, as sends inside one tick of a coarse clock do (15.6 ms for
+        # time.time_ns on Windows before Python 3.13).
+        clock_patch = unittest.mock.patch.object(mail.time, "time_ns", return_value=time.time_ns())
+        clock_patch.start()
+        self.addCleanup(clock_patch.stop)
         self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p1",
                                   "agent_session": {"agent": "claude", "kind": "id", "value": "s1"}})
         os.environ["HERDR_PANE_ID"] = "w1:p1"
