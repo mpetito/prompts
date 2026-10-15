@@ -42,7 +42,7 @@ locally after review.
 their tests, and protocol.md once step 2 lands; `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
 Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
 
-- [ ] 1. `docs/orchestration/control-layer/spec.md` "Shown": the probes the hook design depends on,
+- [x] 1. `docs/orchestration/control-layer/spec.md` "Shown": the probes the hook design depends on,
   run before any hook is written. A skill's frontmatter hooks after `/compact`, after
   `claude --resume` and after `/clear`; a wake while the owner is mid-keystroke; the prompt-submit
   hook's input for another session's message and for a subagent's report. Check: each result
@@ -90,6 +90,12 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     the session) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
     refuses `owner` and names outside herdr's pattern. The tests reuse agent-orchestration's
     `FakeHerdr` by path instead of a new support.py.
+  - Probe: a `/clear` and a resume drop the skill's hooks, and a compaction keeps them (spec "Shown
+    2026-10-15"), so re-running `attach` is the only way back, after either. A `/clear` keeps
+    herdr's pane and name and changes the session id, so the id is the only sign a cleared session
+    lost its hooks: the record keeps the session id `attach` saw after all, and re-attaching
+    replaces it. A live id that differs from the record's means the session needs attaching again,
+    which the controller's `sessions` (step 5) can show and ring as it does for `GONE`.
 - [ ] 4. `skills/control-attach/SKILL.md` (frontmatter hooks), `skills/control-attach/hooks/control_hook.py`,
   `skills/control-attach/tests/test_hook.py`: the attached session.
   - Body, under 120 lines: the wait loop (read, re-arm, act), each down message and how to treat it,
@@ -100,6 +106,13 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     command.
   - UserPromptSubmit hook: `typed`, unless the prompt is a task notification (starts
     `<task-notification>`) or a non-owner form step 1 found.
+  - Probe: the non-owner forms are a prompt starting `<task-notification>`, `<agent-message ` or
+    `<cross-session-message ` (spec "Shown 2026-10-15"); a typed `/control-attach` also reaches the
+    hook on a re-attach, and `typed` ignores it with the ring lines. Invoking the skill again doesn't
+    double the hooks. A wait started before a `/clear` keeps running and is in `background_tasks`
+    after the re-attach, so attaching must not start a second one: the session starts the wait only
+    when the Stop hook finds it missing. test_hook.py also feeds the recorded subagent report and
+    cross-session message.
   Check: test_hook.py feeds the 2026-10-14 probe's recorded inputs and passes, and fails against
   mutants: blocks while the wait runs, blocks on `stop_hook_active`, counts a task notification as
   typing. Three behaviour evals in `skills/control-attach/evals/` pass with the skill and fail

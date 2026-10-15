@@ -146,6 +146,42 @@ logging hooks, and showed:
   Claude Code documentation says the hook also fires for subagent reports, scheduled tasks and other
   sessions' messages.
 
+## Shown 2026-10-15
+
+On Claude Code 2.1.300 and herdr 0.9.5, with a project skill whose frontmatter declares an
+end-of-turn and a prompt-submit hook that log their input:
+
+- **A compaction keeps the hooks.** After `/compact`, both fired on the next turn, once each, and
+  Claude Code reported the skill restored. A background task started before the compaction was
+  still in the end-of-turn hook's running tasks.
+- **A clear and a resume drop them.** After `/clear`, and after the session exited and was started
+  again with `claude --resume` in the same pane, a turn ran with neither hook firing. Invoking the
+  skill again brought both back. A background task started before the clear kept running and was
+  listed again once the hooks were back. The clear gave the session a new id; herdr kept its pane
+  and name. Exiting offers to stop the session's background tasks, move the session to the
+  background, or stay; stopping them ended the task, so the resumed session had none.
+- **Invoking the skill again doesn't double the hooks.** After a second invocation in one session,
+  typed or through the Skill tool, each hook still fired once per event.
+- **A typed slash command reaches the prompt-submit hook only once the hooks are registered.** The
+  first invocation registers them after its own prompt, so the hook never sees it. A later one
+  arrives as typed (`/probe-hooks`), unexpanded.
+- **No field says where a prompt came from; its first line does.** Every prompt-submit input had the
+  same fields: `session_id`, `transcript_path`, `cwd`, `scratchpad_dir`, `prompt_id`,
+  `permission_mode`, `hook_event_name`, `prompt`, and `session_title` when the session has a name.
+  A typed prompt arrives as typed. The others open with a fixed tag:
+  - a background task's wake: `<task-notification>`, then the task id, tool-use id, output file,
+    status and a one-line summary, each in its own tag;
+  - a background subagent's report: `<agent-message from="<agent id>">`, then a line starting
+    `[Subagent hand-back]` that says the report is model output and not the user's, then the report,
+    indented;
+  - another session's message, delivered at once in auto mode:
+    `<cross-session-message from="<socket>" from-name="<sender>" from-mode="prompting">`, then the
+    text.
+- **Typing across a wake loses nothing.** Characters typed into an idle session one at a time, every
+  0.44 s, from 10 s before a background task finished until 3 s after its wake's turn ended, were
+  all in the input box afterwards, in order. The wake's turn ran in between, and its prompt held the
+  task notification and none of the typed characters.
+
 ## Considered and not used
 
 - **Claude Code's cross-session inbox.** Native, and a script can post to a session, but only as the
@@ -157,13 +193,10 @@ logging hooks, and showed:
 
 ## Not yet shown
 
-- A session woken while the owner is typing at that moment, rather than with a draft sitting in the
-  input box.
-- Whether an attached session keeps its end-of-turn and prompt-submit checks after a compaction, a
-  resume or a clear. The Claude Code documentation says such checks last "for the rest of the
-  session" without saying whether those events end it.
-- What another session's message or a subagent's report looks like to the prompt-submit hook, so
-  the owner-activity filter can skip it.
+- What a scheduled task's firing (a `/loop` iteration, a scheduled wakeup) looks like to the
+  prompt-submit hook. The documentation says the hook fires for it.
+- Whether a session that exits by moving to the background, rather than stopping its tasks, keeps
+  its background tasks and its hooks when it is resumed.
 
 ## Open questions
 
