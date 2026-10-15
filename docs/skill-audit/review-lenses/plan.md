@@ -92,7 +92,7 @@ These override the steps below where they differ.
   plan-review's blast radius step; Reuse and Adopt to plan-review's mechanisms step and review's
   over-engineering rule; Trust to code-style's trust rule. Check: the link check below passes on
   `skills/review-lenses/`, and each file is under 100 lines or opens with a table of contents.
-- [ ] 3. `skills/review-lenses/evals/fixtures/`, `skills/review-lenses/evals/shared-benchmark.json`
+- [x] 3. `skills/review-lenses/evals/fixtures/`, `skills/review-lenses/evals/shared-benchmark.json`
   (format: `skills/plan-review/evals/shared-benchmark.json`). **The sibling is in both arms:** each
   plan case's fixtures include a verbatim copy of `skills/plan-review/SKILL.md`, and each diff
   case's a copy of `skills/review/SKILL.md`, and the prompt says to follow it. `without_skill`

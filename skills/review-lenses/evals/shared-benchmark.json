@@ -1,0 +1,364 @@
+{
+  "version": 2,
+  "skill_name": "review-lenses",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-reuse-plan",
+      "split": "tune",
+      "prompt": "Review the plan in deploy-notify-plan.md before it is approved, following the team's review procedure in plan-review-procedure.md. deploy-notify-repo.md is an excerpt of the repository it changes. Write your review exactly as you would deliver it. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/deploy-notify-plan.md",
+        "fixtures/deploy-notify-repo.md",
+        "fixtures/plan-review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The plan's new post_to_channel duplicates send_chat_message in lib/messaging.py; the review names that file and says what it takes for both callers to share it (a webhook URL parameter defaulting to CHAT_WEBHOOK_URL)",
+        "scripts/legacy_notify.sh, which nothing calls after the change, is deleted in the same change rather than marked deprecated until a later cleanup",
+        "The review opens with a VERDICT line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:\\*\\*)?VERDICT: (?:approve|changes-required)\\b"
+        },
+        {
+          "name": "trap-deletes-obsolete-in-same-change",
+          "type": "regex",
+          "pattern": "(?is)legacy_notify(?:\\.sh)?[^\\n]{0,300}?\\b(?:remov|delet|drop|cut)\\w*[^\\n]{0,200}?(?:\\bsame (?:change|PR|pull request|commit|step)|\\bthis (?:change|PR|pull request|commit|step)\\b|\\bin step [23]\\b|\\bnow\\b|rather than (?:deprecat|keep|leav|wait)|instead of (?:deprecat|keep|leav|wait)|not (?:in )?(?:the )?(?:Q1|later|a later|cleanup)|as part of (?:this|the) (?:plan|change)|(?:with|alongside) step 2)|\\b(?:remov|delet|drop|cut)\\w*[^\\n]{0,80}legacy_notify(?:\\.sh)?[^\\n]{0,200}?(?:\\bsame (?:change|PR|pull request|commit|step)|\\bthis (?:change|PR|pull request|commit|step)\\b|\\bin step [23]\\b|\\bnow\\b|rather than|instead of|as part of (?:this|the) (?:plan|change)|(?:with|alongside) step 2)"
+        },
+        {
+          "name": "trap-extends-helper-for-both-callers",
+          "type": "regex",
+          "pattern": "(?is)(?:send_chat_message|lib/messaging\\.py)[^\\n]{0,300}?(?:\\b(?:add|take|accept|extend|generali[sz]e|parameteri[sz]e)\\w*\\b[^\\n]{0,80}\\b(?:param\\w*|arg\\w*|kwarg\\w*|webhook[_ ]?url|url)\\b|\\bboth callers\\b)|\\b(?:add|extend|generali[sz]|parameteri[sz])\\w*\\b[^\\n]{0,80}(?:send_chat_message|lib/messaging\\.py)[^\\n]{0,200}?\\b(?:param\\w*|arg\\w*|kwarg\\w*|webhook[_ ]?url|url|both callers)\\b|send_chat_message\\(\\s*text\\s*,\\s*\\w*url"
+        },
+        {
+          "name": "lens-lenses-line-picks-reuse",
+          "type": "regex",
+          "pattern": "(?m)Lenses:[*_]*\\s+picked\\b[^;\\n]*\\bReuse \\("
+        },
+        {
+          "name": "lens-reuse-prefix",
+          "type": "regex",
+          "pattern": "Reuse · [*_`]*(?:blocking|follow-up|nit)[*_`]* · "
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The duplicate is found by behaviour, not by name: post_to_channel and send_chat_message both POST {text} to a webhook with retries, and the finding cites lib/messaging.py",
+            "The finding says what it takes to make the existing helper fit both the new deploy notice and its current callers, rather than only saying 'reuse it'",
+            "legacy_notify.sh is deleted in the same change, citing the grep that shows deploy.sh is its only caller; keeping a deprecated copy until the Q1 cleanup is rejected",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-adopt-diff",
+      "split": "tune",
+      "prompt": "Review the change in invoice-ingest-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/invoice-ingest-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The hand-rolled envelope check is replaced by a zod schema, zod being already a dependency",
+        "The hand-rolled month arithmetic (which overflows at month end) is replaced by date-fns, already a dependency, rather than patched",
+        "Any library proposed for the retry has its version, maintenance and cost marked unverified, since nothing could be checked; keeping the small loop is also acceptable",
+        "The report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?im)^[\\s*_>-]*Depth[\\s*_]*:"
+        },
+        {
+          "name": "trap-validation-uses-zod",
+          "type": "regex",
+          "pattern": "(?is)\\b(?:use|replac|swap|switch|defin|writ|mov)\\w*\\b[^\\n]{0,120}\\bzod\\b|\\bzod\\b[^\\n]{0,120}\\b(?:schema|safeParse|parse|instead|replac\\w*|already)\\b"
+        },
+        {
+          "name": "trap-dates-use-date-fns",
+          "type": "regex",
+          "pattern": "(?is)\\b(?:use|replac|swap|switch|delegat|call)\\w*\\b[^\\n]{0,120}\\bdate-fns\\b|\\bdate-fns(?:'s?)?\\b[^\\n]{0,120}\\b(?:add\\w*|differenceIn\\w*|instead|replac\\w*|already)\\b"
+        },
+        {
+          "name": "trap-retry-library-facts-unverified",
+          "type": "not_regex",
+          "pattern": "(?im)^(?![^\\n]*(?:unverified|not verified|could not (?:verify|check)|couldn't (?:verify|check)|unchecked|from memory|no network|not checked))[^\\n]*\\b(?:p-retry|async-retry|promise-retry|exponential-backoff|cockatiel|retry-axios|axios-retry|ts-retry-promise)\\b[^\\n]*(?:\\bv?\\d+\\.\\d+|\\^\\d|weekly downloads|well[- ]maintained|actively maintained|widely used|popular|\\bstars\\b|\\bMIT\\b|zero dependencies|no dependencies|tiny|\\bkB\\b)"
+        },
+        {
+          "name": "lens-lenses-line-picks-adopt",
+          "type": "regex",
+          "pattern": "(?m)Lenses:[*_]*\\s+picked\\b[^;\\n]*\\bAdopt \\("
+        },
+        {
+          "name": "lens-adopt-prefix",
+          "type": "regex",
+          "pattern": "Adopt · [*_`]*(?:blocking|follow-up|nit)[*_`]* · "
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "Both existing dependencies are named for the pieces they already cover: zod for the envelope check and date-fns for the month arithmetic, rather than patching the hand-rolled code",
+            "The month-end overflow in shiftMonths (Jan 31 plus one month) is reported, with date-fns as the fix",
+            "For the retry, the review either keeps the small loop or proposes a library with its docs, version, maintenance signal and cost, each marked unverified because nothing could be checked",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-reversibility-plan",
+      "split": "tune",
+      "prompt": "Review the plan in shipment-events-plan.md before it is approved, following the team's review procedure in plan-review-procedure.md. Write your review exactly as you would deliver it. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/shipment-events-plan.md",
+        "fixtures/plan-review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The shipment.status_changed payload is decided now, before the workstreams build on it, naming the mobile apps, the analytics loader and the carriers as dependents and what a later change would cost",
+        "The delivery_attempts counter is deferred (not added), naming the signal that would bring it back",
+        "No guard, cap, option or abstraction is proposed for the counter or the other reversible details (the timeout constant, the log line)"
+      ],
+      "assertions": [
+        {
+          "name": "control-verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:\\*\\*)?VERDICT: (?:approve|changes-required)\\b"
+        },
+        {
+          "name": "trap-defers-counter-with-signal",
+          "type": "regex",
+          "pattern": "(?is)(?:delivery_attempts|counter|attempts? column)[\\s\\S]{0,600}?(?:(?:bring (?:it |them )?back|revisit|reintroduc\\w*|re-?add|add (?:it|one|the (?:column|counter))(?: back)?|reconsider)[^.\\n]{0,40}\\b(?:when|once|if|after)\\b[^.\\n]{0,120}\\b(?:alert\\w*|ask\\w*|request\\w*|incident\\w*|support|on-?call|pag(?:e|es|ed|ing)|dashboard\\w*|metric\\w*|report\\w*|repeated\\w*|stuck|backlog\\w*|fail\\w*)|\\b(?:when|once|if|after)\\b[^.\\n]{0,120}\\b(?:alert\\w*|asks?|request\\w*|incident\\w*|on-?call|dashboard\\w*|metric\\w*|stuck|backlog\\w*|fail\\w*)\\b[^.\\n]{0,80}\\b(?:bring (?:it |them )?back|revisit|reintroduc\\w*|re-?add|add (?:it|one|the (?:column|counter)))|\\b(?:signal|trigger)\\w*[^.\\n]{0,60}\\b(?:back|revisit\\w*|reintroduc\\w*|re-?add\\w*)\\b[^\\n]{0,20}:\\s*\\S|\\bsignal\\b[^.\\n]{0,60}?:\\s*[^\\n]{0,120}\\b(?:alert\\w*|asks?|request\\w*|incident\\w*|on-?call|dashboard\\w*|metric\\w*|stuck|backlog\\w*|fail\\w*))"
+        },
+        {
+          "name": "trap-no-guard-for-reversible",
+          "type": "not_regex",
+          "pattern": "(?im)^(?![^\\n]*(?:\\bnot?\\b|n't\\b|\\bnever\\b|\\bnobody\\b|\\bnothing\\b|\\bwithout\\b|\\bleave\\b|\\bkeep\\b|instead of|rather than))[^\\n]*(?:\\b(?:cap|max(?:imum)?|limit|upper bound|overflow|guard|feature flag|configurable|config(?:uration)? option|env(?:ironment)? var\\w*)\\b[^.\\n]{0,60}(?:delivery_attempts|attempts? (?:column|counter)|retry count|PUBLISH_TIMEOUT_S|publish timeout)|(?:delivery_attempts|attempts? (?:column|counter)|retry count|PUBLISH_TIMEOUT_S|publish timeout)[^.\\n]{0,60}\\b(?:cap(?:ped)?|max(?:imum)?|limit|upper bound|overflow|guard|feature flag|configurable|config(?:uration)? option|env(?:ironment)? var\\w*)\\b)"
+        },
+        {
+          "name": "decide-now-payload-dependents",
+          "type": "regex",
+          "pattern": "(?is)(?:payload|shipment\\.status_changed|event (?:schema|shape|format|fields|contract))[\\s\\S]{0,500}?\\b(?:mobile|apps?|analytics|warehouse|carriers?)\\b[\\s\\S]{0,400}?(?:cost|expensive|break\\w*|re-?release|store review|backfill\\w*|migrat\\w*|old (?:app )?versions?|seven years|7 years|reprocess\\w*|one-way|irreversib\\w*|hard to (?:change|reverse))"
+        },
+        {
+          "name": "lens-lenses-line-picks-reversibility",
+          "type": "regex",
+          "pattern": "(?m)Lenses:[*_]*\\s+picked\\b[^;\\n]*\\bReversibility \\("
+        },
+        {
+          "name": "lens-reversibility-prefix",
+          "type": "regex",
+          "pattern": "Reversibility · [*_`]*(?:blocking|follow-up|nit)[*_`]* · "
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The payload left 'to implementation' is decided now, as a contract reviewed by its main consumer, naming the mobile apps (old versions installed for months), the analytics loader (stored seven years) and the carriers as dependents",
+            "delivery_attempts is deferred, not added, with a concrete signal that would bring it back (for example someone asking to alert on events that keep failing), not 'when needed'",
+            "No guard, cap, counter, option or abstraction is proposed for anything reversible, including the timeout constant and the log line",
+            "Findings are tagged blocking, follow-up or nit"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-trust-boundary-diff",
+      "split": "tune",
+      "prompt": "Review the change in internal-requeue-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/internal-requeue-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The X-Caller allowlist on /internal/requeue gates the team's own orchestration script, a trusted caller on the private network; it is cut, not given bypass-class mutants or extended with 'orchestrator'",
+        "The /hooks/refunds body, outside input from the public load balancer, is validated where it enters: the Provider-Signature HMAC checked and the body's fields validated before apply_refund",
+        "Each finding names the caller and whether it is trusted; the report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?im)^[\\s*_>-]*Depth[\\s*_]*:"
+        },
+        {
+          "name": "trap-cuts-allowlist",
+          "type": "regex",
+          "pattern": "(?is)(?:allow ?list|ALLOWED_CALLERS|require_known_caller|caller (?:check|gate))[^\\n]{0,200}?(?:\\b(?:remov\\w*|delet\\w*|revert\\w*|drop(?:ping)? (?:the|it|this)\\b|cut(?:ting)?\\b)|\\b(?:should|must|can) go\\b)|\\b(?:remov\\w*|delet\\w*|revert\\w*|drop(?:ping)? (?:the|it|this)\\b|cut(?:ting)?\\b)[^\\n]{0,120}(?:allow ?list|ALLOWED_CALLERS|require_known_caller|caller (?:check|gate))"
+        },
+        {
+          "name": "trap-no-bypass-mutants-for-allowlist",
+          "type": "not_regex",
+          "pattern": "(?im)^(?![^\\n]*(?:\\bno\\b|\\bnever\\b|n't\\b|\\bwithout\\b|instead of|rather than|not (?:needed|apply|applicable|required|worth|warranted)))[^\\n]*(?:\\bbypass\\w*|\\bmutants?\\b|\\bspoof\\w*)[^\\n]*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|X-Caller)|^(?![^\\n]*(?:\\bno\\b|\\bnever\\b|n't\\b|\\bwithout\\b|instead of|rather than|not (?:needed|apply|applicable|required|worth|warranted)))[^\\n]*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|X-Caller)[^\\n]*(?:\\bbypass\\w*|\\bmutants?\\b|\\bspoof\\w*)"
+        },
+        {
+          "name": "trap-no-allowlist-extension",
+          "type": "not_regex",
+          "pattern": "(?im)^(?![^\\n]*(?:\\bno\\b|\\bnever\\b|n't\\b|\\bwithout\\b|instead of|rather than|not (?:needed|apply|applicable|required|worth|warranted)))[^\\n]*\\badd\\w*\\b[^\\n]{0,60}[\\\"'`]?orchestrator[\\\"'`]?[^\\n]{0,60}\\b(?:to|into)\\b[^\\n]{0,20}(?:allow ?list|ALLOWED_CALLERS)"
+        },
+        {
+          "name": "trap-names-caller-trust",
+          "type": "regex",
+          "pattern": "(?is)orchestrat\\w*[^\\n]{0,200}\\btrusted\\b|\\btrusted\\b[^\\n]{0,200}orchestrat"
+        },
+        {
+          "name": "webhook-validated-at-entry",
+          "type": "regex",
+          "pattern": "(?is)(?:/hooks/refunds|refunds?\\b[^\\n]{0,40}(?:webhook|route|hook)|webhook)[\\s\\S]{0,400}?(?:Provider-Signature|HMAC|signature|validat\\w*|schema)"
+        },
+        {
+          "name": "lens-lenses-line-picks-trust-boundary",
+          "type": "regex",
+          "pattern": "(?m)Lenses:[*_]*\\s+picked\\b[^;\\n]*\\bTrust boundary \\("
+        },
+        {
+          "name": "lens-trust-boundary-prefix",
+          "type": "regex",
+          "pattern": "Trust boundary · [*_`]*(?:blocking|follow-up|nit)[*_`]* · "
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The allowlist is cut: its only effect is refusing the team's own orchestration script, a trusted caller on the private network; the review does not ask for bypass mutants or a threat model for it",
+            "The orchestrator's requeue loop, if raised, is handled as a defect in the orchestrator, not with a gate on the endpoint",
+            "The refunds webhook verifies Provider-Signature over the raw body and validates order_id and amount_cents before apply_refund, and the review's gate proofs are asked for that gate",
+            "Each trust finding names the caller and says whether it is trusted"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-pick-lenses",
+      "split": "tune",
+      "prompt": "You coordinate the review of the change in shipment-delayed-diff.md, following the team's review procedure in review-procedure.md. Size the review, state its depth on a Depth: line, decide which reviewers to start, and write each reviewer's brief in full as text. Starting reviewers is not possible in this session, so do not try; the briefs you write are the deliverable. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/shipment-delayed-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The Lenses line picks Reversibility (a new public event schema) and Adopt (a hand-rolled retry loop beside tenacity, already a dependency), and skips Reuse (no new module, function or helper) and Trust boundary (nothing reads outside input), each with a reason",
+        "Depth is high because of the public schema, so there is one reviewer brief per picked lens, each on an explicit model",
+        "The Adopt brief points its reviewer at the retry loop and the dependencies the project already has"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?im)^[\\s*_>-]*Depth[\\s*_]*:"
+        },
+        {
+          "name": "trap-adopt-brief-points-at-existing-dependency",
+          "type": "regex",
+          "pattern": "(?is)(?:tenacity|pyproject(?:\\.toml)?|existing dependenc\\w*|dependenc\\w* (?:the project|we) already|already (?:has|have|depends|lists|declares|in))[\\s\\S]{0,300}?\\bretr(?:y|ies|ying)\\b|\\bretr(?:y|ies|ying)\\b[\\s\\S]{0,300}?(?:tenacity|pyproject(?:\\.toml)?|existing dependenc\\w*|dependenc\\w* (?:the project|we) already|already (?:has|have|depends|lists|declares))"
+        },
+        {
+          "name": "lens-lenses-line-picks-exactly-reversibility-and-adopt",
+          "type": "regex",
+          "pattern": "(?m)Lenses:[*_]*\\s+picked (?=[^;\\n]*\\bReversibility \\()(?=[^;\\n]*\\bAdopt \\()(?![^;\\n]*\\b(?:Reuse|Trust boundary) \\()[^;\\n]*; skipped (?=[^\\n]*\\bReuse \\()(?=[^\\n]*\\bTrust boundary \\()"
+        },
+        {
+          "name": "brief-explicit-model",
+          "type": "regex",
+          "pattern": "(?i)\\b(?:opus|claude-opus[\\w.-]*|gpt-[\\w.-]+|codex)\\b"
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "Exactly two reviewers are briefed, one per picked lens (Reversibility and Adopt); none for Reuse or Trust boundary",
+            "Each skip reason cites the fixture's facts: no new module, function or helper; nothing reads outside input",
+            "The Reversibility brief names the partner integrations as dependents and the schema's day/month date string and internal carrier_code as things to settle before publishing",
+            "The Adopt brief points at the retry loop and tenacity, already in pyproject.toml",
+            "Each brief names an explicit model (Opus or a cross-family model)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-repo-or-library",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review this plan for anything we already have in the repo or could get from a library.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-adopt-lens",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run the adopt lens on this diff.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-decide-now-or-wait",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "In this plan, what should we decide now and what can wait?",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-staged-changes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my staged changes.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a general code review goes to review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-plan-before-start",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review this plan before we start.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a general plan review goes to plan-review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-research-csv",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Research which CSV library to use.",
+      "expected_behavior": [
+        "The skill should NOT trigger: researching a library on its own is not a review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-date-helper",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a date helper to utils.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing code goes to code-style"
+      ],
+      "assertions": []
+    }
+  ]
+}
