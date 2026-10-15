@@ -24,6 +24,22 @@ the controller (mail.py's maildir and address form; `owner` is a reserved name),
 `sessions/<name>.json` for each attachment (session id, pane, authority, hold minutes, the owner's
 last typed time). These files are private to `ctl.py`.
 
+## Lanes
+
+Each lane is one agent in its own worktree, branched from `orchestration/control`, and lands
+locally after review.
+
+| Order | Lane | Steps | Starts after |
+| --- | --- | --- | --- |
+| 1 | `probes` | 1 | the plan review |
+| 1 | `core` | 2, then 3 | the plan review; step 3 after the protocol review |
+| 2 | `hooks` | 4 | `probes` and `core` landed |
+| 2 | `controller` | 5 | `core` landed |
+| 3 | `live` | 6, then 8 | `hooks` and `controller` landed |
+
+`hooks` and `controller` own different files: `controller` owns `ctl.py`'s controller handlers and
+their tests, `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
+
 - [ ] 1. `docs/orchestration/control-layer/spec.md` "Shown": the probes the hook design depends on,
   run before any hook is written. A skill's frontmatter hooks after `/compact`, after
   `claude --resume` and after `/clear`; a wake while the owner is mid-keystroke; the prompt-submit
@@ -36,6 +52,9 @@ last typed time). These files are private to `ctl.py`.
   `Protocol version: 1`. One line in `skills/agent-orchestration/references/protocol.md` "Limits"
   links it. Check: test_protocol.py fails when the doc names a printed line `ctl.py` never prints,
   or omits one it does (the test_mail.py lint, for this pair).
+  - Lens: the doc-and-code lint lives in `test_ctl.py`, beside the tests of the lines it
+    checks, not in its own `test_protocol.py`. The link from the orchestration protocol is cut: a
+    thread never meets control mail, and MAIN reads the control protocol from the skill it loaded.
 - [ ] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
   `skills/control-attach/tests/support.py`: the session-side subcommands, importing
   `agent-orchestration/scripts/mail.py` and `lib.py` as thread.py imports lib.
@@ -50,6 +69,8 @@ last typed time). These files are private to `ctl.py`.
   Check: test_ctl.py passes, and fails against mutants: name collision allowed, rename skipped,
   mail lost on re-attach, default authority changed, quiet `need-decision`, report from the wrong
   name.
+  - Lens: `attach` takes no `--authority`: every session starts at the default and `authority`
+    is the one way to change it, so there are not two.
 - [ ] 4. `skills/control-attach/SKILL.md` (frontmatter hooks), `skills/control-attach/hooks/control_hook.py`,
   `skills/control-attach/tests/test_hook.py`: the attached session.
   - Body, under 120 lines: the wait loop (read, re-arm, act), each down message and how to treat it,
@@ -84,6 +105,10 @@ last typed time). These files are private to `ctl.py`.
   Check: test_ctl.py passes, and fails against mutants: `CONTROL` at `relay`, sending inside the
   hold window, ringing a non-empty input line, ringing a working agent, starting outside the list,
   a fourth started session.
+  - Lens: a Codex session is rung the way lanes are, with `Read <file> and follow it.`, the only
+    fixed line it can act on; the owner's "observe-and-ring" needs nothing more. The folders `start`
+    may use are one owner-written file, `<home>/control/folders`, a path per line; without it,
+    `start` refuses.
 - [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
   `ctl.py read`, type in the session and see the next send `HELD`. Check: each step's printed line
@@ -99,6 +124,8 @@ last typed time). These files are private to `ctl.py`.
   ring attaching the unattached session; `start` opening a new attached session; a `/compact` and a
   resume followed by `UNREAD` and a ring that brings the wait back; the owner's draft surviving
   every wake. Check: each line passes, and the probe's sessions, workspaces and mail are cleaned up.
+  - Lens: the MAIN runs orchestration-main on a probe build whose thread is played by mail sent
+    by hand to `<probe build>/main`: the decisions are what is under test, not a thread's work.
 - [ ] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
   recorded as evidence where the setup records keep it. Waits on the owner's answer. Check: the
   installed bridge still reports healthy, and the worktree is listed as set aside.
