@@ -34,13 +34,19 @@
         },
         {
           "name": "trap-deletes-obsolete-in-same-change",
-          "type": "regex",
-          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*legacy_notify(?:\\.sh)?)|legacy_notify(?:\\.sh)?(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|the (?:script|file)|this script|that script)\\b)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review say to delete scripts/legacy_notify.sh (the old #ops-alerts notice, whose only caller is the deploy.sh line this plan replaces) as part of this same plan or change? Yes: an instruction to delete or remove the script in this plan, even if conditioned on confirming it has no other callers. No: keeping it, deprecating it, removing it later, in a follow-up or as out of scope; only removing the call in deploy.sh; mentioning it without proposing its deletion; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-extends-helper-for-both-callers",
-          "type": "regex",
-          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:broadcast_note|lib/teamfeed(?:\\.py)?|\\bteamfeed\\b))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:param(?:eter)?s?|arg(?:ument)?s?|kwargs?|keyword|webhook[_ ]?url|url|channel|signature)\\b)|(?:broadcast_note|lib/teamfeed(?:\\.py)?|\\bteamfeed\\b)(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:add|adding|take|taking|accept|accepting|extend|extending|generali[sz]e|generali[sz]ing|parameteri[sz]e|parameteri[sz]ing|give|giving|make|making|pass|passing|let|letting|widen|widening|move|moving|needs?(?: only)?)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:param(?:eter)?s?|arg(?:ument)?s?|kwargs?|keyword|webhook[_ ]?url|url|channel|signature)\\b)|broadcast_note\\(\\s*text\\s*,\\s*\\w*(?:url|channel)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose that broadcast_note in lib/teamfeed.py (it already posts {text} to CHAT_WEBHOOK_URL with retries) serve both its existing callers and the new deploy notice, and say what that takes, such as a webhook URL parameter? Yes: a proposal naming broadcast_note or lib/teamfeed.py together with the change that makes it fit both. No: only noting the duplication; 'use it' without saying how it reaches the deploy notice's different webhook; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "lens-lenses-line-picks-reuse",
@@ -58,10 +64,7 @@
           "name": "lens-quality",
           "type": "judge",
           "rubric": [
-            "The duplicate is found by behaviour, not by name: post_to_channel and broadcast_note both POST {text} to a webhook with retries, and the finding cites lib/teamfeed.py",
-            "The finding says what it would take to make the existing helper fit both the new deploy notice and its current callers, rather than only saying 'reuse it'",
-            "scripts/legacy_notify.sh, which the plan never mentions but leaves without a caller, is deleted in the same change rather than kept or deprecated",
-            "Findings are tagged blocking, follow-up or nit"
+            "The duplicate is found by behaviour, not by name: post_to_channel and broadcast_note both POST {text} to a webhook with retries, and the finding cites lib/teamfeed.py"
           ]
         }
       ]
@@ -88,18 +91,27 @@
         },
         {
           "name": "trap-validation-uses-zod",
-          "type": "regex",
-          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\b(?:fine|overkill|unnecessary|not worth|heavier|overhead|picked|skipped)\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bzod\\b|\\bz\\.(?:object|string|number|infer)\\b))"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose replacing the hand-rolled envelope check isEnvelope with zod, which package.json already lists? Yes: a proposal to validate the envelope with a zod schema. No: patching isEnvelope with more typeof checks; naming zod only in passing, as a caveat, or in the Lenses line's reasons; a negated or waved-off mention. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-dates-use-date-fns",
-          "type": "regex",
-          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\b(?:fine|overkill|unnecessary|not worth|heavier|overhead|picked|skipped)\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|replace|replacing|swap|swapping|switch|switching|define|defining|write|writing|move|moving|adopt|adopting|express|expressing|import|importing|pull in|pulling in|delegate|delegating|call|calling|already|in package\\.json)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\bdate-fns\\b)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose replacing the hand-rolled month arithmetic in shiftMonths with date-fns (for example addMonths), which package.json already lists? Yes: the review names date-fns as what does the fix, even with a caveat such as a time-zone condition. No: the review writes or prescribes its own clamp code and mentions date-fns only as a caveat or a rejected alternative, or names it only in the Lenses line's reasons. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-retry-library-facts-unverified",
-          "type": "not_regex",
-          "pattern": "(?m)^(?![^\\n]*(?:unverified|not verified|could not (?:verify|check)|couldn't (?:verify|check)|unchecked|from memory|no network|not checked))[^\\n]*\\b(?:p-retry|async-retry|promise-retry|exponential-backoff|cockatiel|retry-axios|axios-retry|ts-retry-promise)\\b[^\\n]*(?:\\bv?\\d+\\.\\d+\\.\\d+\\b|\\^\\d|\\bv\\d+(?:\\.\\d+)?\\b|\\bversion \\d|weekly downloads|well[- ]maintained|actively maintained|widely used|popular|\\bstars\\b|\\bMIT\\b|\\bApache\\b|zero dependencies|no dependencies|\\d+(?:\\.\\d+)? ?kB\\b)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "If the review proposes a third-party retry library (p-retry, async-retry and the like), does it mark that library's version, licence, size, popularity or maintenance as unverified rather than stating them as fact? Yes: no retry library is proposed (keeping the loop or using the platform counts), or every stated fact about the library is marked unverified or not checked. No: a library is proposed with any such fact stated as true. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "lens-lenses-line-picks-adopt",
@@ -117,10 +129,7 @@
           "name": "lens-quality",
           "type": "judge",
           "rubric": [
-            "Both existing dependencies are named for the pieces they already cover: zod for the envelope check and date-fns for the month arithmetic, rather than patching the hand-rolled code",
-            "The month-end overflow in shiftMonths (Jan 31 plus one month) is reported, with date-fns as the fix",
-            "For the retry, the review either keeps the small loop or proposes a library with its docs, version, maintenance signal and cost, each marked unverified because nothing could be checked",
-            "Findings are tagged blocking, follow-up or nit"
+            "Both existing dependencies are named for the pieces they already cover: zod for the envelope check and date-fns for the month arithmetic, rather than patching the hand-rolled code"
           ]
         }
       ]
@@ -146,18 +155,27 @@
         },
         {
           "name": "trap-defers-counter-with-signal",
-          "type": "regex",
-          "pattern": "(?m)^(?=(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))*?(?:delivery_attempts|attempts? (?:column|counter)|\\bthe counter\\b))(?=(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))*?(?:\\bdefer\\w*|\\bcut\\b|\\bdrop\\w*|\\bremov\\w*|\\bdelet\\w*|\\bskip\\w*|\\bomit\\w*|\\bleave (?:it |the \\w+ )?out\\b|\\bnot add\\w*|n't add\\w*|\\bno (?:need|column|counter)\\b|\\bwait\\w*|\\bpostpone\\w*|\\blater\\b))(?=(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))*?(?:(?:\\bsignal\\w*|\\btrigger\\w*|\\bcomes? back\\b|\\bbring\\w* (?:it |them |the \\w+ )?back\\b|\\bbrought back\\b|\\brevisit\\w*|\\breconsider\\w*|\\bre-?add\\w*|\\breintroduc\\w*|\\b(?:add|introduce)\\w* (?:it|one|them|the (?:column|counter))(?: back)?\\b)(?!\\W{0,3}(?:\\w+\\W+){0,2}?(?:needed|necessary|required|requirements?|something|anything|we need it)\\b)[^\\n.]{8,}|\\b(?:when|once|if|after)\\b(?!\\W{0,3}(?:\\w+\\W+){0,2}?(?:needed|necessary|required|requirements?|something|anything|we need it)\\b)[^.\\n]{8,}?,\\s*(?:add|bring|reintroduc|re-?add|revisit|reconsider)\\w*))"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review defer the delivery_attempts column (not add it now) and, in that same finding, name a concrete signal that would bring it back, such as someone asking to alert on events that keep failing, a second reader of the column, a stated failure rate, or the owner choosing a retry cap? Yes: a deferral plus a concrete return signal in the counter's own finding. No: cutting it with no signal; a vague signal ('when needed', 'if requirements change', 'when something reads it'); a signal that belongs to a different finding. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-no-guard-for-reversible",
-          "type": "not_regex",
-          "pattern": "(?m)^(?![ \\t]*\\||[^\\n]*\\b(?:mutants?|probes?)\\b|[^\\n]*\\|\\s*not run\\b)[^\\n]*?(?:^|[.;:!?](?=[ \\t]))[ \\t*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,25}(?:\\bcap(?:ped|ping|s)?\\b|\\bmax(?:imum)?[ _-]?(?:attempts|retries|retry(?: count)?|tries)\\b|\\bdead[- ]?letter\\w*|\\bDLQ\\b|\\bpoison[- ](?:queue|table)\\b|\\bconfigurable\\b|\\bfeature[- ]flag\\w*|\\benv(?:ironment)?[ _-]?var\\w*|\\bcircuit[- ]breaker\\w*|\\bgive up after\\b|\\bstop retrying after\\b|\\blimit (?:it|them|the (?:retries|attempts|retry count)|retries|attempts) to\\b|\\b(?:retry|attempt) (?:limit|budget|cap)\\b|\\bquarantin\\w*|\\bbackoff\\b))(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bdefer\\w*|\\bwait\\w*|\\bleave (?:\\w+ ){0,4}?out\\b|\\bleft out\\b|\\bskip\\w*|\\brevisit\\w*|\\bsignal\\w*|\\bbring\\w* (?:\\w+ )?back\\b|\\blater\\b|\\buntil\\b|\\bonly (?:if|when|once)\\b|\\([a-e]\\)\\s))(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\b(?:may|might|already|offers?|provides?|supports?|whether|unverified)\\b|\\bcheck (?:the |its )?(?:[\\w-]+ )?docs?\\b))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:add|adding|introduce|introducing|cap|capping|move|moving|make|making|set|setting|use|using|put|putting|route|routing|send|sending|give up|stop|stopping|should|must|needs? to|limit|limiting|implement|implementing|build|building|create|creating|wire|include|including)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bcap(?:ped|ping|s)?\\b|\\bmax(?:imum)?[ _-]?(?:attempts|retries|retry(?: count)?|tries)\\b|\\bdead[- ]?letter\\w*|\\bDLQ\\b|\\bpoison[- ](?:queue|table)\\b|\\bconfigurable\\b|\\bfeature[- ]flag\\w*|\\benv(?:ironment)?[ _-]?var\\w*|\\bcircuit[- ]breaker\\w*|\\bgive up after\\b|\\bstop retrying after\\b|\\blimit (?:it|them|the (?:retries|attempts|retry count)|retries|attempts) to\\b|\\b(?:retry|attempt) (?:limit|budget|cap)\\b|\\bquarantin\\w*|\\bbackoff\\b))(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bcap(?:ped|ping|s)?\\b|\\bmax(?:imum)?[ _-]?(?:attempts|retries|retry(?: count)?|tries)\\b|\\bdead[- ]?letter\\w*|\\bDLQ\\b|\\bpoison[- ](?:queue|table)\\b|\\bconfigurable\\b|\\bfeature[- ]flag\\w*|\\benv(?:ironment)?[ _-]?var\\w*|\\bcircuit[- ]breaker\\w*|\\bgive up after\\b|\\bstop retrying after\\b|\\blimit (?:it|them|the (?:retries|attempts|retry count)|retries|attempts) to\\b|\\b(?:retry|attempt) (?:limit|budget|cap)\\b|\\bquarantin\\w*|\\bbackoff\\b)(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\bnobody\\b|\\bno one\\b|\\bunneeded\\b|\\bunnecessary\\b|\\bnot needed\\b|\\badds? an? (?:option|mechanism)|\\bwould add\\b))"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review avoid proposing a new guard or mechanism for the plan's reversible items (the delivery_attempts counter, poison events that retry forever, PUBLISH_TIMEOUT_S, the batch log line): a cap, max-attempts limit, dead-letter queue or table, backoff, feature flag, or configuration option? Yes: none is proposed now. Changing a constant's value, adding a field to the event payload, tightening acceptance, or changing how the worker is triggered is not one. Deferring one with a signal, listing it as an owner option the review does not recommend, observing that a platform may already provide one, or logging or alerting on a failure does not count. No: the review proposes adding one now, in prose, a Fix line or as its recommendation. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "decide-now-payload-dependents",
-          "type": "regex",
-          "pattern": "(?is)(?:payload|shipment\\.status_changed|event (?:schema|shape|format|fields|contract))[\\s\\S]{0,500}?\\b(?:mobile|apps?|analytics|warehouse|carriers?)\\b[\\s\\S]{0,400}?(?:cost|expensive|break\\w*|re-?release|store review|backfill\\w*|migrat\\w*|old (?:app )?versions?|seven years|7 years|reprocess\\w*|one-way|irreversib\\w*|hard to (?:change|reverse))"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review treat the shipment.status_changed payload, which the plan leaves to implementation, as a decision to make now (a contract before the workstreams build on it), naming who depends on it (the mobile apps, the analytics warehouse loader, partner carriers) and what changing it later would cost? Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "lens-lenses-line-picks-reversibility",
@@ -175,11 +193,7 @@
           "name": "lens-quality",
           "type": "judge",
           "rubric": [
-            "The payload left 'to implementation' is decided now, as a contract reviewed by its main consumer, naming the mobile apps (old versions installed for months), the analytics loader (stored seven years) and the carriers as dependents",
-            "delivery_attempts is deferred, not added, with a concrete signal that would bring it back (an observable event or a stated threshold, such as someone asking to alert on events that keep failing), not 'when needed'",
-            "The poison events that retry forever are deferred with a signal (for example a count of events failing for more than a day), not given a max-attempts cap, dead-letter table or backoff now",
-            "No guard, cap, option or abstraction is proposed for anything reversible, including the timeout constant and the log line",
-            "Findings are tagged blocking, follow-up or nit"
+            "The payload left 'to implementation' is decided now, as a contract reviewed by its main consumer, naming the mobile apps (old versions installed for months), the analytics loader (stored seven years) and the carriers as dependents"
           ]
         }
       ]
@@ -205,28 +219,43 @@
         },
         {
           "name": "trap-cuts-allowlist",
-          "type": "regex",
-          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\bkeep\\w*\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|caller (?:check|gate)|X-Caller (?:check|gate)))|(?:allow ?list|ALLOWED_CALLERS|require_known_caller|caller (?:check|gate)|X-Caller (?:check|gate))(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*\\bkeep\\w*\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:\\b(?:remov(?:e|ed|ing|al)|delet(?:e|ed|ing|ion)|revert(?:ed|ing)?|drop(?:ped|ping)?|rip(?:ped)? (?:it )?out|back (?:it )?out)\\b|\\bcut(?:ting)?\\b(?! off)|\\b(?:should|must|can) go\\b|\\bturn\\w* (?:it |this |the \\w+ )?into a (?:warn\\w*|log\\w*)|\\bdowngrad\\w* (?:it |this )?to a (?:warn\\w*|log\\w*)|\\bwarn\\w* (?:instead of|rather than)|\\blog\\w*(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,40}(?:instead of|rather than) (?:abort\\w*|403|refus\\w*|reject\\w*|block\\w*)|\\breplac\\w* (?:the |its )?(?:abort\\(403\\)|abort|403|refusal|rejection)(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\bwith (?:an? )?(?:log|warn)\\w*))(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them|the (?:gate|check|list|decorator|allowlist))\\b)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose removing the X-Caller allowlist on /internal/requeue (require_known_caller and ALLOWED_CALLERS), or turning it into a warning or log line instead of a 403? Yes: an instruction to drop, remove, revert or downgrade it to a warning. No: keeping, extending or hardening it; only describing what it does; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-no-bypass-mutants-for-allowlist",
-          "type": "not_regex",
-          "pattern": "(?m)^(?![^\\n]*(?:\\bmutants?\\W{1,3}none\\b|\\bmutants?\\b[^\\n|]{0,60}?:\\s*none\\b|\\bnone (?:for|needed|required|necessary|planned|written|apply|applies|applicable|warranted|here|at all)\\b|\\bno (?:\\w+ )?mutants?\\b|\\bskip\\w*|\\bnot (?:needed|applicable|apply|required|warranted)\\b|\\bn/a\\b|(?:instead of|rather than) (?:\\w+ ){0,3}(?:bypass )?mutants?|(?:gate|allow ?list|ALLOWED_CALLERS|require_known_caller|\\bit) (?:is |was |gets |being )?(?:cut|removed|deleted|dropped|gone)\\b|\\bcuts? (?:the |that |this |its )?(?:gate|allow ?list|check|decorator)\\b))[^\\n]*(?:\\bbypass\\w*|\\bmutants?\\b)[^\\n]*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|X-Caller)|^(?![^\\n]*(?:\\bmutants?\\W{1,3}none\\b|\\bmutants?\\b[^\\n|]{0,60}?:\\s*none\\b|\\bnone (?:for|needed|required|necessary|planned|written|apply|applies|applicable|warranted|here|at all)\\b|\\bno (?:\\w+ )?mutants?\\b|\\bskip\\w*|\\bnot (?:needed|applicable|apply|required|warranted)\\b|\\bn/a\\b|(?:instead of|rather than) (?:\\w+ ){0,3}(?:bypass )?mutants?|(?:gate|allow ?list|ALLOWED_CALLERS|require_known_caller|\\bit) (?:is |was |gets |being )?(?:cut|removed|deleted|dropped|gone)\\b|\\bcuts? (?:the |that |this |its )?(?:gate|allow ?list|check|decorator)\\b))[^\\n]*(?:allow ?list|ALLOWED_CALLERS|require_known_caller|X-Caller)[^\\n]*(?:\\bbypass\\w*|\\bmutants?\\b)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review avoid asking for mutants, bypass-class probes or a threat model for the allowlist gate on /internal/requeue? Yes: it plans none for that gate, or says none apply because the gate is cut. Mutants or probes for the refunds webhook's signature check are fine, and so is citing the spoofable X-Caller header as a reason to cut the gate. No: a mutant row, planted mutant or bypass probe that targets require_known_caller, ALLOWED_CALLERS or the X-Caller check, whatever its run status ('not run' still counts). Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-no-allowlist-extension",
-          "type": "not_regex",
-          "pattern": "(?m)^(?![ \\t]*\\||[^\\n]*\\b(?:mutants?|probes?)\\b|[^\\n]*\\|\\s*not run\\b)[^\\n]*?(?:^|[.;:!?](?=[ \\t]))[ \\t*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?:\\b(?:may|might|already|offers?|provides?|supports?|whether|unverified)\\b|\\bcheck (?:the |its )?(?:[\\w-]+ )?docs?\\b))(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:add|adding|include|including|put|putting)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:add|adding|include|including|put|putting)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*orchestrator(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,60}\\b(?:to|into|in|on)\\b(?:[^.;:!?\\n]|[.;:!?](?!\\s)){0,20}(?:allow ?list|ALLOWED_CALLERS))|ALLOWED_CALLERS\\s*=\\s*\\{[^}\\n]*orchestrator"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review avoid proposing to add 'orchestrator' to ALLOWED_CALLERS, or otherwise widening the allowlist so the gate stays? Yes: no such proposal. A mutant or probe row that adds it, a negated mention, or a rejected alternative does not count. No: a proposal, in prose or a Fix line, to add the orchestrator to the list. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-names-caller-trust",
-          "type": "regex",
-          "pattern": "orchestrat\\w*(?![^\\n]{0,200}?(?:\\bnot?\\b|n't\\b|\\bnever\\b|\\bless\\b)[^\\n]{0,12}?\\btrusted\\b)[^\\n]{0,200}?\\btrusted\\b|(?<!not )(?<!n't )(?<!never )\\btrusted\\b[^\\n]{0,200}?orchestrat|orchestrat\\w*[^\\n]{0,200}?(?<!n't )(?<!not )\\btrust (?:it|them|the (?:caller|script|orchestrator))\\b|orchestrat\\w*[^\\n]{0,200}?\\btrust\\w*\\s*[:=]\\s*[*_`]*(?:own|internal|trusted|yes|high)\\b|\\btrust\\w*\\s*[:=]\\s*[*_`]*(?:own|internal|trusted|yes|high)\\b[^\\n]{0,200}?orchestrat"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review say that scripts/orchestrate.py (the orchestrator, the team's own script on the private network) is a trusted caller? Yes: it calls the orchestrator trusted, or labels its trust as the team's own or internal. No: it names the caller without saying whether it is trusted, or calls it untrusted. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "webhook-validated-at-entry",
-          "type": "regex",
-          "pattern": "(?s)(?:/hooks/refunds|refunds?\\b[^\\n]{0,40}(?:webhook|route|hook)|webhook)[\\s\\S]{0,400}?(?:Provider-Signature|HMAC|signature|validat\\w*|schema)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review require the /hooks/refunds request to be validated where it enters, before apply_refund: the Provider-Signature HMAC verified over the raw body, the body's fields validated, or both? Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "lens-lenses-line-picks-trust-boundary",
@@ -244,10 +273,7 @@
           "name": "lens-quality",
           "type": "judge",
           "rubric": [
-            "The allowlist is cut (removed, or turned into a warning): its only effect is refusing the team's own orchestration script, a trusted caller on the private network; the review does not ask for bypass mutants or a threat model for it",
-            "The orchestrator's requeue loop, if raised, is handled as a defect in the orchestrator, not with a gate on the endpoint",
-            "The refunds webhook verifies Provider-Signature over the raw body and validates order_id and amount_cents before apply_refund, and the review's gate proofs are asked for that gate",
-            "Each trust finding names the caller and says whether it is trusted"
+            "The allowlist is cut (removed, or turned into a warning): its only effect is refusing the team's own orchestration script, a trusted caller on the private network; the review does not ask for bypass mutants or a threat model for it"
           ]
         }
       ]
@@ -273,13 +299,19 @@
         },
         {
           "name": "trap-reuses-existing-helper",
-          "type": "regex",
-          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*(?:moneyLabel|src/shared/text/labels(?:\\.ts)?|\\btext/labels(?:\\.ts)?))|(?:moneyLabel|src/shared/text/labels(?:\\.ts)?|\\btext/labels(?:\\.ts)?)(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:use|using|reuse|reusing|call|calling|replace|replacing|delegate|delegating|switch|switching|swap|swapping|route|routing|import|importing|extend|extending|generali[sz]e|generali[sz]ing|move|moving)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them)\\b)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose that invoiceEmail use the existing moneyLabel in src/shared/text/labels.ts (it formats a minor-unit amount with Intl.NumberFormat for a currency and locale; the receipt and statement pages call it) instead of the new formatCents, citing where moneyLabel lives? Yes: a proposal to call or reuse moneyLabel. No: reviewing formatCents only on its own terms; mentioning moneyLabel without proposing to use it; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "trap-deletes-obsolete-in-same-change",
-          "type": "regex",
-          "pattern": "(?m)(?:^|[.;:!?](?=\\s)|\\n)[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*legacyPrice(?:\\.ts|\\.test\\.ts)?)|legacyPrice(?:\\.ts|\\.test\\.ts)?(?:[^\\n]|\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S)){0,600}?(?:[.;:!?](?=[ \\t])|[.;:!?]?\\n(?:[ \\t]*\\n(?=[ \\t]+\\S|[ \\t]*(?:[-*+]|\\d+\\.)\\s))?(?![ \\t]*(?:[-*+]|\\d+\\.)?[ \\t]*[*_`]*(?:[A-Z]\\d+\\b|(?:Reuse|Adopt|Reversibility|Trust boundary)[*_`]* · |(?:blocking|follow-up|nit)\\b)|[ \\t]*#{1,6}\\s)(?=[ \\t]*\\S))[\\s*_>`-]*(?!(?:(?!(?:\\binstead of\\b|\\brather than\\b))(?:[^.;:!?\\n]|[.;:!?](?!\\s)))*(?<!\\bno )(?<!\\bnot )(?<!n't )(?<!\\bof )(?<!\\bthan )(?<!\\bfor )\\b(?:keep\\w*|later|Q1|next (?:quarter|sprint|release)|eventually|risky|agree\\w*|until|separate (?:plan|ticket|PR|change)|deprecate|mark\\w* (?:it |the script )?(?:as )?deprecated|out of scope|beyond (?:the |this )?scope|another (?:plan|PR|change)|follow-?up (?:plan|ticket|PR|change))\\b)(?!(?:[^.;:!?\\n]|[.;:!?](?!\\s))*?(?:\\bnot?\\b|\\bnever\\b|n't\\b|\\bnone\\b|\\bnobody\\b|\\bwithout\\b|\\bno need\\b|\\binstead of\\b|\\brather than\\b)(?:[^.;:!?\\n,]|[.;:!?](?!\\s)){0,20}\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:delet(?:e|es|ed|ing|ion)|remov(?:e|es|ed|ing|al)|drop(?:s|ped|ping)?|git rm)\\b)(?=(?:[^.;:!?\\n]|[.;:!?](?!\\s))*\\b(?:it|them|the (?:file|module|helper|function|test)|both)\\b)"
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review say to delete src/billing/legacyPrice.ts, which this change leaves without a non-test caller, together with its test, in this same change? Yes: delete or remove them in this change or PR (saying the reviewer won't apply it because the review is read-only is fine). No: keeping or deprecating them, a later cleanup or follow-up PR, out of scope, or not mentioned. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
         },
         {
           "name": "lens-lenses-line-picks-reuse",
@@ -297,10 +329,7 @@
           "name": "lens-quality",
           "type": "judge",
           "rubric": [
-            "formatCents is found to duplicate moneyLabel in src/shared/text/labels.ts by behaviour (both format an amount in the currency's minor unit with Intl.NumberFormat), and the finding cites that location",
-            "The finding says what it takes for both callers to share moneyLabel (the signatures already match, so formatCents and its test are deleted), rather than reviewing formatCents only on its own terms",
-            "legacyPrice.ts and its test, left without a caller by this change (the import table shows invoiceEmail.ts as its only other importer), are deleted in the same change rather than kept",
-            "Findings are tagged blocking, follow-up or nit"
+            "formatCents is found to duplicate moneyLabel in src/shared/text/labels.ts by behaviour (both format an amount in the currency's minor unit with Intl.NumberFormat), and the finding cites that location"
           ]
         }
       ]
@@ -325,9 +354,17 @@
           "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
         },
         {
-          "name": "trap-adopt-brief-names-tenacity",
+          "name": "trap-adopt-brief-proposes-tenacity",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the brief for the reviewer who covers the hand-rolled retry loop in check_delays point that reviewer at tenacity (already pinned in pyproject.toml) as the existing dependency to use or check before keeping the loop? Yes: a brief names tenacity as the candidate replacement or the thing to check against. No: no brief names tenacity, or one names it only to dismiss it. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "tenacity-named",
           "type": "regex",
-          "pattern": "\\btenacity\\b[\\s\\S]{0,300}?\\bretr(?:y|ies|ying)\\b|\\bretr(?:y|ies|ying)\\b[\\s\\S]{0,300}?\\btenacity\\b"
+          "pattern": "\\btenacity\\b"
         },
         {
           "name": "trap-lenses-line-picks-exactly-reversibility-and-adopt",
@@ -344,11 +381,7 @@
           "name": "lens-quality",
           "type": "judge",
           "rubric": [
-            "One brief per picked lens (Reversibility and Adopt) and none for Reuse or Trust boundary; any other brief is the sibling procedure's own review",
-            "Each skip reason cites the fixture's facts: no new module, function or helper; nothing reads outside input",
-            "The Reversibility brief names the partner integrations as dependents and the schema's day/month date string and internal carrier_code as things to settle before publishing",
-            "The Adopt brief points at the retry loop and tenacity, already in pyproject.toml",
-            "Each lens brief names an explicit model (Opus or a cross-family model)"
+            "One brief per picked lens (Reversibility and Adopt) and none for Reuse or Trust boundary; any other brief is the sibling procedure's own review"
           ]
         }
       ]
