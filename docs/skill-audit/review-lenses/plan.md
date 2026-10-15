@@ -130,18 +130,18 @@ These override the steps below where they differ.
     utils".
   Check: `python3 -c "import json,re,os; d=json.load(open('skills/review-lenses/evals/shared-benchmark.json')); [os.stat('skills/review-lenses/evals/'+f) for c in d['cases'] for f in c.get('files',[])]; [re.compile(a['pattern']) for c in d['cases'] for a in c.get('assertions',[]) if a['type']=='regex']"`
   passes.
-- [ ] 4. `skills/plan-review/SKILL.md`, `skills/review/SKILL.md`: one short pointer each, in the
+- [x] 4. `skills/plan-review/SKILL.md`, `skills/review/SKILL.md`: one short pointer each, in the
   sizing step (review §2) and before the checks (plan-review step 2): pick lenses from
   `../review-lenses/SKILL.md` and put the spec's `Lenses:` line in the report; each report
   template gains that line. In review §4, the gate row's proofs apply to gates the Trust boundary
   lens keeps (one clause). No existing guidance moves or is removed. Check: `git diff --numstat`
   on both files shows 0 deleted lines except the one §4 row it amends; plan-review stays under
   120 lines; review grows by at most 4 lines.
-- [ ] 5. `skills/agent-orchestration/SKILL.md`: one line in "5. Reviews, merges and releases":
+- [x] 5. `skills/agent-orchestration/SKILL.md`: one line in "5. Reviews, merges and releases":
   a reviewer's brief names its lenses from review-lenses. Check: the line is present, and
   `python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration`
   passes.
-- [ ] 6. `docs/skill-audit/candidates.md`: an entry dated 2026-10-15 recording the owner's
+- [x] 6. `docs/skill-audit/candidates.md`: an entry dated 2026-10-15 recording the owner's
   acceptance of the Reversibility gap as known, and mapping the existing entries to the lenses as
   the spec does (`reuse` to Adopt; `dead code` and `dispatch` to Reuse; `least mechanism` to both;
   `trust` to Trust boundary). `README.md`: a row for review-lenses in the skills table, and the

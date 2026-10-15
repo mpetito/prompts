@@ -68,6 +68,7 @@ report the head commit.
 Load the review skill and work in its delegated, report-only mode.
 Purpose: <what the PR does and why>. Sources of truth, in order: <spec>, <contract>, <decisions>.
 Depth: defect risk <low|high: why>; blast radius <low|high: who depends on what>.
+Lenses: <the lenses this reviewer runs, named from review-lenses; or: pick from review-lenses>
 Verify the author's claims: <each count, cause or coverage statement in the PR body>
 Check hardest: <ranked suspicions, including defect classes from earlier lanes>
 Mutants (planted bugs) for: <the "must hold" items in the author's brief>

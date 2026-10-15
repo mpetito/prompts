@@ -57,6 +57,7 @@ description matches.
 | [agent-orchestration](skills/agent-orchestration/SKILL.md) | loaded by the `orchestrator` agent | Run one build as an orchestration thread that reports to the main session; not invoked directly |
 | [pull-request](skills/pull-request/SKILL.md) | `/pull-request` | Work a pull request: answer review feedback on your own PR (check each claim, fix what is right, reply to every thread, resolve or leave it open), open a PR or update its description, and post a review of someone else's PR once you approve the text |
 | [playwright-e2e](skills/playwright-e2e/SKILL.md) | loaded by workers that write or run browser tests | Structure and run Playwright E2E tests that stay independent: the project's conventions for test data and layout (raised with the owner when unsettled), page objects through fixtures, no serial chains, anchored absence checks, and a port and capped workers per checkout on a shared machine |
+| [review-lenses](skills/review-lenses/SKILL.md) | `/review-lenses`, or loaded by plan-review and review | Four review lenses (Reuse, Adopt, Reversibility, Trust boundary), a signals table for picking them, a rule for settling conflicts between them, and the lens finding prefix |
 
 ## How the pieces fit
 
@@ -66,6 +67,8 @@ holds the personal style rules (project conventions win); `review` judges the di
 `pull-request` takes it through review feedback. When a review claim stays ambiguous after
 checking the code and docs, `model-council` gets a blind Claude and Codex answer and reports
 consensus or the crux for the human.
+`plan-review` and `review` pick lenses from `review-lenses` before their checks and name
+the picked and skipped lenses in the report.
 
 These routes are stated in the skill bodies themselves, because Codex and other hosts do not
 load `instructions/CLAUDE.md`; worker briefs name the skill for the same reason. Claude sessions
