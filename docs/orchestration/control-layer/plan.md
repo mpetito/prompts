@@ -229,7 +229,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   recorded in spec.md "Shown"; the sessions and mail cleaned up.
   - Review: runs once `hooks` lands, with `mail.py send/read` against `<home>/control` if `ctl.py`'s
     controller side hasn't landed yet; the `HELD` check moves to step 8.
-- [ ] 7. `docs/skill-audit/candidates.md`, `~/dev/prompts-evidence`: the readmission entry for
+- [x] 7. `docs/skill-audit/candidates.md`, `~/dev/prompts-evidence`: the readmission entry for
   `control-attach` (the gap: the owner is the only path into MAIN and plain sessions), project names
   kept to the evidence store. Waits on the owner accepting the gap, per the readmission bar. Check:
   the names greps over the changed files print nothing.
@@ -245,9 +245,11 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   - Review: escalation at `relay` stays a step 5 test, not a live case. A detached session plays
     the unattached one. The Codex session checks that `sessions` lists it observed and that a
     `--brief` ring reaches it, if Codex starts in the scratch folder without a prompt.
-- [ ] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
+- [x] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
   recorded as evidence where the setup records keep it. Waits on the owner's answer. Check: the
   installed bridge still reports healthy, and the worktree is listed as set aside.
+  Recorded in the setup records of that build, under "Set aside (2026-10-15)";
+  `systemctl status openclaw-herdr-bridge.service` active (running) at 2026-10-15 13:33 UTC.
 
 ## After the owner's answers (2026-10-15T13:29Z)
 
@@ -263,7 +265,7 @@ pass over session identity and unlikely guards before OpenClaw depends on the pr
 | `simplify` | 11 | `scripts/ctl.py`, `references/protocol.md`, `hooks/`, `tests/` |
 | `retire` | 9 | the setup records of the earlier supervisor build (outside this repository) |
 
-- [ ] 10. D1 reversed in `SKILL.md`; the owner-steer and typed-words-conflict evals each fail
+- [x] 10. D1 reversed in `SKILL.md`; the owner-steer and typed-words-conflict evals each fail
   without the skill on behaviour (not on a command name or the `STATUS:` line). Check: an eval run
   of all three cases, both arms, with each case failing without the skill and passing with it.
 - [x] 11. The simplification pass: session identity in `ctl.py` and protocol.md (records, pane vs
