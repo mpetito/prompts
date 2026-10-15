@@ -100,13 +100,16 @@ At every level:
 
 ## The owner and the controller together
 
-- The owner's words typed in a session win over control mail. When they conflict, the session
-  follows the owner and tells the controller what changed.
+- The owner's newest words win, typed in the session or relayed in an `OWNER:` message; a `CONTROL:`
+  message never overrides the owner's typed words. When they conflict, the session follows the owner
+  and tells the controller what changed. This reverses D1's default (typed words win over any control
+  mail, `OWNER:` included) on the owner's steer of 2026-10-15: "reverse D1: the owner's newest words
+  win, typed or relayed by OWNER:; CONTROL: still never overrides the owner's typed words."
 - A session records when the owner last typed in it. Only typed prompts count: a background task's
   result, a subagent's report and another session's message each arrive as a prompt too, and none of
   them is the owner. While the owner has typed within the hold
-  window (question 3), the controller sends that session nothing but `QUESTION:`, and holds its
-  other mail until the window passes.
+  window (question 3), the controller sends that session no `CONTROL:` or `DECISION`, and holds
+  them until the window passes; the owner's `OWNER:` relays and `QUESTION:` still go.
 - Control mail never touches the owner's half-typed input (shown 2026-10-14, below).
 - The owner can switch any session to `observe` at once, and that holds until the owner changes it.
 
@@ -146,6 +149,126 @@ logging hooks, and showed:
   Claude Code documentation says the hook also fires for subagent reports, scheduled tasks and other
   sessions' messages.
 
+## Shown 2026-10-15
+
+On Claude Code 2.1.300 and herdr 0.9.5, with a project skill whose frontmatter declares an
+end-of-turn and a prompt-submit hook that log their input:
+
+- **A compaction keeps the hooks.** After `/compact`, both fired on the next turn, once each, and
+  Claude Code reported the skill restored. A background task started before the compaction was
+  still in the end-of-turn hook's running tasks.
+- **A clear and a resume drop them.** After `/clear`, and after the session exited and was started
+  again with `claude --resume` in the same pane, a turn ran with neither hook firing. Invoking the
+  skill again brought both back. A background task started before the clear kept running and was
+  listed again once the hooks were back. The clear gave the session a new id; herdr kept its pane
+  and name. Exiting offers to stop the session's background tasks, move the session to the
+  background, or stay; stopping them ended the task, so the resumed session had none.
+  (2026-10-15, later: the name survived the clear only because herdr had never named that agent.
+  A session renamed by `attach` lost its herdr name on `/clear`, as on an exit, while keeping its
+  pane and its running wait, so the controller sees it gone.)
+- **Invoking the skill again doesn't double the hooks.** After a second invocation in one session,
+  typed or through the Skill tool, each hook still fired once per event.
+- **A typed slash command reaches the prompt-submit hook only once the hooks are registered.** The
+  first invocation registers them after its own prompt, so the hook never sees it. A later one
+  arrives as typed (`/probe-hooks`), unexpanded.
+- **No field says where a prompt came from; its first line does.** Every prompt-submit input had the
+  same fields: `session_id`, `transcript_path`, `cwd`, `scratchpad_dir`, `prompt_id`,
+  `permission_mode`, `hook_event_name`, `prompt`, and `session_title` when the session has a name.
+  A typed prompt arrives as typed. The others open with a fixed tag:
+  - a background task's wake: `<task-notification>`, then the task id, tool-use id, output file,
+    status and a one-line summary, each in its own tag;
+  - a background subagent's report: `<agent-message from="<agent id>">`, then a line starting
+    `[Subagent hand-back]` that says the report is model output and not the user's, then the report,
+    indented;
+  - another session's message, delivered at once in auto mode:
+    `<cross-session-message from="<socket>" from-name="<sender>" from-mode="prompting">`, then the
+    text.
+- **Typing across a wake loses nothing.** Characters typed into an idle session one at a time, every
+  0.44 s, from 10 s before a background task finished until 3 s after its wake's turn ended, were
+  all in the input box afterwards, in order. The wake's turn ran in between, and its prompt held the
+  task notification and none of the typed characters.
+
+## Shown 2026-10-15: the live check
+
+On Claude Code 2.1.300 and herdr 0.9.5, with the control-attach skill loaded as a project skill
+from a scratch folder (no folder-trust prompt) and a scratch control home:
+
+- **Attach.** The owner typed `/control-attach plain` in a plain session. `ctl.py attach plain`
+  printed `WAIT python3 "<mail.py>" wait plain/in --home "<home>/control"`, and the session ended
+  its turn without starting the wait. The Stop hook blocked that stop naming the command (Claude
+  Code shows the block as `Stop hook error: The control wait isn't running. …`); the session
+  started the wait in the background and ended its turn. Both stops' reports reached `owner/in`,
+  quiet. The Stop hook running at all from a project skill shows `CLAUDE_PLUGIN_ROOT` set there.
+- **A steer, acted on.** From another pane, `ctl.py sessions` listed `plain claude done delegate
+  - 0`, and `ctl.py send plain OWNER "Create a file named steer-ok.txt …"` printed
+  `SENT plain/in <file>`. The wait woke the session, which read the mail, started the wait again,
+  made the file, and ended with `STATUS: done - created steer-ok.txt`.
+- **The report.** `ctl.py wait` printed `MAIL 1`, and `ctl.py read` showed the two quiet attach
+  reports and the waking `STATUS: done` one, each after its `=== <file>` line, `From: plain`.
+- **The input line ring reads.** Read with `herdr agent read --format ansi`, an empty input line
+  right after a turn, and again 8 s later, and after a wake's turn, was the prompt mark and a
+  no-break space with nothing after it: Claude Code drew no placeholder or suggested prompt there.
+  ctl.py's input-line check found each empty, and found a typed draft not empty.
+
+## Shown 2026-10-15: the live acceptance
+
+On Claude Code 2.1.300, herdr 0.9.5 and Codex CLI 0.162.1, a controller driving `ctl.py` by hand
+from its own pane, with a scratch control home, and these sessions in the scratch folder: `main`,
+a Claude session running orchestration-main as MAIN of a probe build `probe` whose thread was mail
+sent by hand, then attached; `plain`, attached with `--hold 1`; one Claude session never attached;
+one Codex session, which started without a trust or approval prompt.
+
+1. **A steer relayed.** `ctl.py send plain OWNER "Append a second line …"` printed
+   `SENT plain/in <file>`; the session did it and `ctl.py read` showed its `STATUS: done` report.
+2. **A decision with a default, settled at `delegate`.** The thread's `STATUS: need-decision - D1 …`
+   (`Default: JSON lines, applies at …`) reached MAIN, which passed it up as `STATUS: need-decision
+   - D1 (probe build): …` with the request unchanged, not under the ref `probe/D1`.
+   `ctl.py send main DECISION probe/D1 "JSON lines"` printed `SENT main/in <file>`, and MAIN sent
+   `DECISION D1: JSON lines` to `probe/thread`, reporting it applied a controller answer to a
+   decision with a default. Re-run once the skill named the ref, with a fresh MAIN attached as
+   `main2` and a new request D3 (`Default: three retries with backoff, applies at …`): MAIN passed
+   it up as `STATUS: need-decision - probe/D3 retry policy for the probe fetcher`,
+   `ctl.py send main2 DECISION probe/D3 "three retries with backoff"` printed `SENT main2/in <file>`,
+   and `DECISION D3: three retries with backoff` reached `probe/thread`.
+3. **An owner-before decision.** MAIN passed up D2 (`Default: none, owner-before`) the same way.
+   `ctl.py send main DECISION probe/D2 "keep it"` was sent (`SENT`), and MAIN refused it: nothing
+   reached `probe/thread`, and it raised D2 again, saying the controller's answer was refused. The
+   same answer with `--owner` reached the thread as `DECISION D2: keep it`.
+4. **The hold.** The owner typed a prompt into `plain` and pressed Enter. `ctl.py send plain OWNER
+   …` printed `HELD 2026-10-15T03:30Z` (exit 1), `sessions` showed the hold's end in the `held`
+   column, `ctl.py send plain QUESTION …` printed `SENT`, and the session answered at once with a
+   waking `STATUS: working - …`. After the hold the same `OWNER` send printed `SENT` and was acted
+   on. A `sessions` run in the instant between the Enter and the prompt-submit hook still showed
+   `-`.
+5. **A ring attaching the unattached session.** `ctl.py ring <pane> spare` printed `RUNG <pane>`;
+   the session attached, started its wait when the Stop hook named it, and `sessions` listed
+   `spare claude done delegate - 0`.
+6. **`start`.** With the folders file listing the scratch folder, `ctl.py start fresh <folder>
+   <objective file>` (an `OWNER:` objective) printed `STARTED fresh <pane>`; the new session in its
+   own workspace attached, its first wait found the objective, and it reported `STATUS: done`. Once
+   its workspace was closed, `sessions` listed `fresh - gone delegate - 0`.
+7. **Recovery.** After `/compact` in `plain` (Claude Code showed `Skills restored
+   (control-attach)` and the wait still running) an `OWNER` send was acted on and its report
+   arrived, so the hooks kept working. A typed `/compact` didn't record `typed`: no hold followed
+   it. `/exit` ended the session with no exit dialog on screen, and its wait process was gone.
+   `ctl.py wait` printed `GONE plain`; mail sent then printed `SENT` and `sessions` showed
+   `plain - gone delegate - 1`. After `claude --resume` in the same pane, `sessions` showed the pane
+   `unattached`, `ctl.py ring plain plain` printed `RUNG plain`, the session attached, its wait ran,
+   and it read and acted on the mail sent while it was gone.
+8. **A draft survives.** With text typed into `plain` without Enter, an `OWNER` send woke it, the
+   turn ran and reported, and afterwards the draft was still in the input box, unchanged.
+   `ctl.py ring plain plain` printed `REFUSED plain's input line is not empty`.
+9. **Codex.** `sessions` listed it `codex done unattached - -`. Its empty input line shows a
+   placeholder in dim text (SGR 2), which the input-line check skips: `ctl.py ring <pane> --brief
+   <file>` printed `RUNG <pane>`, and Codex read the file and did what it asked.
+10. **`CLAUDE_PLUGIN_ROOT`.** In every attached session, project skill included, the Stop hook ran:
+    after the attach turn, which started no wait, the stop was blocked with a reason naming the
+    wait, and that turn's report reached `owner/in`. The hook finds its script only through
+    `CLAUDE_PLUGIN_ROOT`, so the variable was set to the skill's folder.
+
+Closing a probe's herdr tab or workspace left its background waits running; they were stopped by
+hand.
+
 ## Considered and not used
 
 - **Claude Code's cross-session inbox.** Native, and a script can post to a session, but only as the
@@ -157,13 +280,12 @@ logging hooks, and showed:
 
 ## Not yet shown
 
-- A session woken while the owner is typing at that moment, rather than with a draft sitting in the
-  input box.
-- Whether an attached session keeps its end-of-turn and prompt-submit checks after a compaction, a
-  resume or a clear. The Claude Code documentation says such checks last "for the rest of the
-  session" without saying whether those events end it.
-- What another session's message or a subagent's report looks like to the prompt-submit hook, so
-  the owner-activity filter can skip it.
+- What a scheduled task's firing (a `/loop` iteration, a scheduled wakeup) looks like to the
+  prompt-submit hook. The documentation says the hook fires for it.
+- Whether a session that exits by moving to the background, rather than stopping its tasks, keeps
+  its background tasks and its hooks when it is resumed.
+- The exit dialog that offers to stop a session's background tasks: in the live acceptance `/exit`
+  ended the session without one showing.
 
 ## Open questions
 

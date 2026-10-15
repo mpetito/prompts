@@ -2,7 +2,8 @@
 
 Spec: [spec.md](spec.md). Written on the spec's defaults (open questions 1-6); steps 7 and 9 wait
 for the owner where they depend on an answer. Paths are from the repository root. Skills are linked
-into `~/.claude`, so an edit is live at once. Tests replace `lib.run`, as the orchestration suites
+into `~/.claude` one by one, and linking `control-attach` is the owner's change, so until then
+every live step loads it as a project skill from a scratch folder's `.claude/skills/`. Tests replace `lib.run`, as the orchestration suites
 do, so nothing reaches the owner's herdr. Every new assertion is shown to fail against a planted
 mutant before its step is ticked.
 
@@ -24,19 +25,69 @@ the controller (mail.py's maildir and address form; `owner` is a reserved name),
 `sessions/<name>.json` for each attachment (session id, pane, authority, hold minutes, the owner's
 last typed time). These files are private to `ctl.py`.
 
-- [ ] 1. `docs/orchestration/control-layer/spec.md` "Shown": the probes the hook design depends on,
+## Lanes
+
+Each lane is one agent in its own worktree, branched from `orchestration/control`, and lands
+locally after review.
+
+| Order | Lane | Steps | Starts after |
+| --- | --- | --- | --- |
+| 1 | `probes` | 1 | the plan review |
+| 1 | `core` | 2, then 3 | the plan review; step 3 after the protocol review |
+| 2 | `hooks` | 4 | `probes` and `core` landed |
+| 2 | `controller` | 5 | `core` landed |
+| 3 | `live` | 6, then 8 | 6 after `hooks` landed; 8 after `controller` landed |
+
+`hooks` and `controller` own different files: `controller` owns `ctl.py`'s controller handlers and
+their tests, and protocol.md once step 2 lands; `hooks` owns `SKILL.md`, `hooks/` and `evals/`.
+Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
+
+- [x] 1. `docs/orchestration/control-layer/spec.md` "Shown": the probes the hook design depends on,
   run before any hook is written. A skill's frontmatter hooks after `/compact`, after
   `claude --resume` and after `/clear`; a wake while the owner is mid-keystroke; the prompt-submit
   hook's input for another session's message and for a subagent's report. Check: each result
   recorded with versions; a probe that fails changes steps 3-4 here before they start.
-- [ ] 2. `skills/control-attach/references/protocol.md`,
+  - Review: needed first are hooks after `/compact` and after a resume, the prompt-submit input
+    for a subagent's report, whether invoking the skill twice runs its hooks twice (re-attach
+    depends on it), and whether the prompt-submit hook fires for a typed `/control-attach`. `/clear`
+    is cheap beside them. The wake mid-keystroke and another session's message come last, as time
+    allows.
+- [x] 2. `skills/control-attach/references/protocol.md`,
   `skills/control-attach/tests/test_protocol.py`: the control protocol: layers, addresses, the four
   down messages and the `STATUS:` up message, authority levels and what each permits, the consent
   limits, the hold window, rings, and the controller subcommands with every line they print, under
   `Protocol version: 1`. One line in `skills/agent-orchestration/references/protocol.md` "Limits"
   links it. Check: test_protocol.py fails when the doc names a printed line `ctl.py` never prints,
   or omits one it does (the test_mail.py lint, for this pair).
-- [ ] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
+  - Lens: the doc-and-code lint lives in `test_ctl.py`, beside the tests of the lines it
+    checks, not in its own `test_protocol.py`. The link from the orchestration protocol is cut: a
+    thread never meets control mail, and MAIN reads the control protocol from the skill it loaded.
+  - Review: the lint moves to step 5, when every line it checks exists. The protocol also fixes
+    what the hook calls: the exact wait command and how the Stop hook finds it among the background
+    tasks; `report` and `typed` finding their session by `HERDR_PANE_ID` (a `/clear` changes the
+    session id) and exiting 0 silently when the pane isn't attached; no report on a stop the hook
+    blocks; `typed` ignoring the fixed ring lines, so a ring never holds the controller; the
+    `sessions` row format the adapter parses; one controller reads `owner/in` at a time.
+    `DECISION` says who made it (`--owner` or not); the session, which raised the decision and knows
+    it is owner-before, refuses a controller-made answer to one, so no script tracks owner-before.
+  - Lens (protocol): the session's wait and read are mail.py's own `wait <name>/in` and `read
+    <name>/in` with `--home <home>/control`, so ctl.py has no subcommand for them; the controller keeps
+    `read`, since the adapter reaches only ctl.py. ctl.py takes no `--home`: `<home>` comes from the
+    environment, and only the printed wait command carries it, because mail.py would otherwise use
+    `<home>/mail`. The default authority is a constant, not a setting (the spec lets the owner change
+    one session's level, never the default), so `ring` and the Codex ring check only the target's own
+    level, refusing `observe`. One ring line per kind: the `UNREAD` answer is `/control-attach <name>`,
+    not the spec's "unread control mail" line, so `typed` ignores one form; `<attach-name>` rings only
+    a Claude agent and `--brief` only a Codex one. The Stop hook reads one function,
+    `ctl.wait_command()`, not a subcommand, and finds the wait by substring, so no session-name
+    subcommand exists for the hook alone. `send` takes its text as one argument (no `--file`, no
+    stdin). `start` sends the objective file unchanged; no new message kind. `sessions` has no pane
+    column (a gone name rings its recorded pane inside `ring`) and marks an unattached agent
+    `unattached`. The record holds no name (its file name) and no session id (superseded: the Probe
+    note below adds `session`). `typed` prints nothing,
+    since a prompt-submit hook's output reaches the model. Wrong arguments are usage on stderr, not
+    `REFUSED` lines.
+- [x] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
   `skills/control-attach/tests/support.py`: the session-side subcommands, importing
   `agent-orchestration/scripts/mail.py` and `lib.py` as thread.py imports lib.
   - `attach <name> [--authority observe|relay|delegate] [--hold <minutes>]`: resolve this session's
@@ -50,7 +101,25 @@ last typed time). These files are private to `ctl.py`.
   Check: test_ctl.py passes, and fails against mutants: name collision allowed, rename skipped,
   mail lost on re-attach, default authority changed, quiet `need-decision`, report from the wrong
   name.
-- [ ] 4. `skills/control-attach/SKILL.md` (frontmatter hooks), `skills/control-attach/hooks/control_hook.py`,
+  - Lens: `attach` takes no `--authority`: every session starts at the default and `authority`
+    is the one way to change it, so there are not two.
+  - Review: the record keeps no session id (herdr's list gives it live and the pane identifies
+    the session; superseded by the Probe note below, which adds `session`) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
+    refuses `owner` and names outside herdr's pattern. The tests reuse agent-orchestration's
+    `FakeHerdr` by path instead of a new support.py.
+  - Lens (protocol): `attach` prints one line, `WAIT <command>`; the level and hold show in
+    `sessions`. A name is held when a live herdr agent in another pane has it: `attach` renames the
+    agent, so herdr's names are the live holders and no record lookup is needed. `detach` leaves the
+    herdr name alone. The session's subcommands find their record by `HERDR_PANE_ID` among attached
+    records, file-only, and `attach` un-attaches any other record from the same pane so that lookup
+    stays unique.
+  - Probe: a `/clear` and a resume drop the skill's hooks, and a compaction keeps them (spec "Shown
+    2026-10-15"), so re-running `attach` is the only way back, after either. A `/clear` keeps
+    herdr's pane and name and changes the session id, so the id is the only sign a cleared session
+    lost its hooks: the record keeps the session id `attach` saw after all, and re-attaching
+    replaces it. A live id that differs from the record's means the session needs attaching again,
+    which the controller's `sessions` (step 5) can show and ring as it does for `GONE`.
+- [x] 4. `skills/control-attach/SKILL.md` (frontmatter hooks), `skills/control-attach/hooks/control_hook.py`,
   `skills/control-attach/tests/test_hook.py`: the attached session.
   - Body, under 120 lines: the wait loop (read, re-arm, act), each down message and how to treat it,
     the owner's typed words winning, the consent limits, the up message, `authority` only on the
@@ -59,13 +128,49 @@ last typed time). These files are private to `ctl.py`.
     `background_tasks` and `stop_hook_active` is false, block the stop with a reason naming the
     command.
   - UserPromptSubmit hook: `typed`, unless the prompt is a task notification (starts
-    `<task-notification>`) or a non-owner form step 1 found.
+    `<task-notification>`) or a non-owner form step 1 found (superseded: the hook passes every
+    prompt, and `typed` ignores those forms; protocol.md "What the hooks call").
+  - Probe: the non-owner forms are a prompt starting `<task-notification>`, `<agent-message ` or
+    `<cross-session-message ` (spec "Shown 2026-10-15"); a typed `/control-attach` also reaches the
+    hook on a re-attach, and `typed` ignores it with the ring lines. Invoking the skill again doesn't
+    double the hooks. A wait started before a `/clear` keeps running and is in `background_tasks`
+    after the re-attach, so attaching must not start a second one: the session starts the wait only
+    when the Stop hook finds it missing. test_hook.py also feeds the recorded subagent report and
+    cross-session message.
   Check: test_hook.py feeds the 2026-10-14 probe's recorded inputs and passes, and fails against
   mutants: blocks while the wait runs, blocks on `stop_hook_active`, counts a task notification as
   typing. Three behaviour evals in `skills/control-attach/evals/` pass with the skill and fail
   without (an `OWNER:` steer acted on; a `CONTROL:` settings change refused and taken to the owner;
   a `CONTROL:` that conflicts with the owner's typed words yielding to them).
-- [ ] 5. `skills/control-attach/scripts/ctl.py`, `tests/test_ctl.py`: the controller subcommands,
+  - Probe: a skill's hook command gets no `${CLAUDE_SKILL_DIR}` (Claude Code 2.1.300; the docs
+    list it for the skill's text only, and anthropics/claude-code#36135, which asked for it in hook
+    commands, is closed). The hook's environment has `CLAUDE_PLUGIN_ROOT` set to the skill's own
+    folder, which the docs don't say for a non-plugin skill, so the declared hooks take it; with it
+    unset, or no script there, each hook does nothing. Step 6 confirms it live. A live `-p` run of the
+    real frontmatter, with a fake herdr on `PATH`, attached, blocked the first stop naming the wait,
+    started it, and reported on the next stop.
+  - Lens: one hook script picks its handler by `hook_event_name`, not one script per event; it runs
+    `report` and `typed` through `ctl.main` in its own process rather than as subprocesses, so
+    each event starts Python once and the test has nothing to replace. The prompt-submit hook
+    doesn't check attachment first: `typed` already does nothing for an unattached pane.
+  - Lens: the recorded hook inputs live in test_hook.py, not a fixtures file. `evals/` has no
+    README, planted answers or assertion checker: each case's `expected_behavior` names its rule
+    and trap, and each assertion was tried on real outputs of both arms. No `allowed-tools` in the
+    frontmatter (a permissions question, the owner's D2); `disable-model-invocation` stays, since
+    only the owner or a ring attaches.
+  - Lens (evals): on Opus without the skill, a session acted on a plain `OWNER:` code steer, push
+    included, and kept to the owner's typed words when `CONTROL:` conflicted. Neither is a gap. The
+    first case's trap is an `OWNER:` relay naming an authority level, which fails without the skill
+    for want of the `authority` subcommand; the third fails without it only on the `STATUS:` line.
+    Only the settings case fails without the skill on behaviour.
+  - Review (round 1): the Stop hook reports on every stop, the blocked one included, reversing step
+    2's "no report on a stop the hook blocks": that rule lost a `need-decision` or `done` whenever a
+    turn forgot the wait. The hook exits 0 and prints nothing but a block, whatever fails, since it
+    runs on every prompt and turn end of the owner's session; a broken install is then silent, and
+    the controller's `UNREAD` and `sessions` are the only sign. The `~/.claude/skills` fallback is
+    cut. A wait that prints anything but `MAIL` or `TIMEOUT` isn't restarted: the session reports
+    `STATUS: blocked`.
+- [x] 5. `skills/control-attach/scripts/ctl.py`, `tests/test_ctl.py`: the controller subcommands,
   with the spec's rules in the script rather than in prose.
   - `sessions`: herdr's agent list joined with the records: name or pane, kind, state, authority,
     held until, unread both ways. Codex sessions listed as observed.
@@ -84,21 +189,94 @@ last typed time). These files are private to `ctl.py`.
   Check: test_ctl.py passes, and fails against mutants: `CONTROL` at `relay`, sending inside the
   hold window, ringing a non-empty input line, ringing a working agent, starting outside the list,
   a fourth started session.
-- [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
+  - Lens: a Codex session is rung the way lanes are, with `Read <file> and follow it.`, the only
+    fixed line it can act on; the owner's "observe-and-ring" needs nothing more. The folders `start`
+    may use are one owner-written file, `<home>/control/folders`, a path per line; without it,
+    `start` refuses.
+  - Review: herdr clears a name when its agent exits, so a resumed session shows as `GONE`, not
+    `UNREAD`; the controller rings the pane in its record, once that pane holds an idle agent again.
+    `sessions` shows unread down only. A Codex ring is `ring <target> --brief <file>`, allowed while
+    the default authority is `delegate`. `start` counts records flagged `started` whose agent is
+    live, matches a folder that is a listed path or inside one, mails the objective to `<name>/in`
+    and types only `/control-attach <name>`.
+  - Lens (build): `read` and `wait` are mail.py's own calls on `owner/in`, printing no line of
+    their own. `start` counts running sessions from one `agent list`, not an `agent get` per record,
+    doesn't read the fresh agent's input line, and leaves the workspace of a failed agent start for
+    the owner to see rather than closing it. `ring` doesn't check that `--brief`'s file exists
+    (no line for it). The tests add only `agent read` (and a refused prompt) to
+    agent-orchestration's `FakeHerdr`, and read the typed prompts from its log.
+  - Review (core round 2, N10, F3 P): a record's name reaches its pane only when the record is
+    attached or `started`. A Codex agent is never attached, even under a matching record. A ring
+    goes to the agent by its herdr name when it has one, since a moved pane takes a new id.
+  - Review (controller round 1): herdr names whichever agent asks next, so an agent is a record's
+    session only in the record's pane, or under its session id while it is attached; attached or
+    `started` alone let a thread that took a gone session's name be rung. A detached session in
+    its own pane is rung back. A ring into a record's session attaches only that record's name
+    (`is attached as`), and `start` keeps an existing record's level and hold, so neither raises a
+    level. The input line runs to the rule under Claude's box, so a draft's later lines count;
+    `start` refuses a folder that isn't a directory and prints `BLOCKED` when its first prompt is
+    refused.
+  - Review (controller round 2): one function, `records_of`, says whose an agent is on every ring
+    path: a named agent's name's record, else for an unnamed one the attached record that belongs
+    to it, else every record that does; any at `observe` refuses, and only their names attach.
+    `start` keeps a level, so it checks the objective's first line against it before making
+    anything (a first line of no kind counts as `CONTROL:`), and checks the list before the
+    folder's existence. Left to step 6: whether Claude draws a placeholder or a suggestion that the
+    input-line reading counts as typing (it fails closed).
+- [x] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
   `ctl.py read`, type in the session and see the next send `HELD`. Check: each step's printed line
   recorded in spec.md "Shown"; the sessions and mail cleaned up.
-- [ ] 7. `docs/skill-audit/candidates.md`, `~/dev/prompts-evidence`: the readmission entry for
+  - Review: runs once `hooks` lands, with `mail.py send/read` against `<home>/control` if `ctl.py`'s
+    controller side hasn't landed yet; the `HELD` check moves to step 8.
+- [x] 7. `docs/skill-audit/candidates.md`, `~/dev/prompts-evidence`: the readmission entry for
   `control-attach` (the gap: the owner is the only path into MAIN and plain sessions), project names
   kept to the evidence store. Waits on the owner accepting the gap, per the readmission bar. Check:
   the names greps over the changed files print nothing.
-- [ ] 8. Live acceptance, recorded in spec.md: a controller driving `ctl.py` by hand, two attached
+- [x] 8. Live acceptance, recorded in spec.md: a controller driving `ctl.py` by hand, two attached
   sessions (a MAIN with a running probe build, and a plain one), one unattached Claude session and
   one Codex session. A steer relayed; a MAIN decision settled at `delegate` and escalated at
   `relay`; an owner-before decision escalated at both; the controller held while the owner types; a
   ring attaching the unattached session; `start` opening a new attached session; a `/compact` and a
   resume followed by `UNREAD` and a ring that brings the wait back; the owner's draft surviving
   every wake. Check: each line passes, and the probe's sessions, workspaces and mail are cleaned up.
-- [ ] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
+  - Lens: the MAIN runs orchestration-main on a probe build whose thread is played by mail sent
+    by hand to `<probe build>/main`: the decisions are what is under test, not a thread's work.
+  - Review: escalation at `relay` stays a step 5 test, not a live case. A detached session plays
+    the unattached one. The Codex session checks that `sessions` lists it observed and that a
+    `--brief` ring reaches it, if Codex starts in the scratch folder without a prompt.
+- [x] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
   recorded as evidence where the setup records keep it. Waits on the owner's answer. Check: the
   installed bridge still reports healthy, and the worktree is listed as set aside.
+  Recorded in the setup records of that build, under "Set aside (2026-10-15)";
+  `systemctl status openclaw-herdr-bridge.service` active (running) at 2026-10-15 13:33 UTC.
+
+## After the owner's answers (2026-10-15T13:29Z)
+
+The owner settled D3 (accept the gap once two evals fail without the skill on behaviour) and D4
+(set the supervisor build aside; keep the handoff bridge until OpenClaw uses this layer), and sent
+two steers: reverse D1, so the owner's newest words win, typed or relayed by `OWNER:`, while
+`CONTROL:` still never overrides the owner's typed words; and one more "Is this really necessary?"
+pass over session identity and unlikely guards before OpenClaw depends on the protocol.
+
+| Lane | Steps | Owns |
+| --- | --- | --- |
+| `owner` | 7, 10 | `SKILL.md`, `evals/`, spec.md's D1 line, `docs/skill-audit/candidates.md`, the evidence store |
+| `simplify` | 11 | `scripts/ctl.py`, `references/protocol.md`, `hooks/`, `tests/` |
+| `retire` | 9 | the setup records of the earlier supervisor build (outside this repository) |
+
+- [x] 10. D1 reversed in `SKILL.md`; the owner-steer and typed-words-conflict evals each fail
+  without the skill on behaviour (not on a command name or the `STATUS:` line). Check: an eval run
+  of all three cases, both arms, with each case failing without the skill and passing with it.
+- [x] 11. The simplification pass: session identity in `ctl.py` and protocol.md (records, pane vs
+  session id vs herdr name, cleared, resumed and moved sessions) and every guard whose case is
+  unlikely, cut where a simpler rule covers it; guards review found as real holes stay. D1 in
+  protocol.md; an `OWNER:` relay is not held. Check: the suites green, every cut guard's earlier
+  test either deleted with its reason or still passing, and every printed-line change listed for
+  the OpenClaw adapter.
+  - Simplify: the pane is the one tie between an agent and its record, so the record keeps no
+    session id. A cleared session shows attached in `sessions`, and `wait`'s `UNREAD` brings the
+    ring, as for a stopped wait. A pane moved to another workspace loses its record (`ring` refuses
+    it, fail closed). `ring` types into herdr's pane for the agent, and any record's name reaches
+    its pane; `start` counts a started session by its pane. `send` holds only `CONTROL:` and
+    `DECISION`: an `OWNER:` relay is the owner's newest words.
