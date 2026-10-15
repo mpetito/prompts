@@ -23,6 +23,8 @@ The examples are representative, not exhaustive; size by this repository's own s
 risky paths, from its brief. An API boundary is cheap to get working and expensive to change
 later: size it by the radius. Low on both: one adversarial pass, or a fact-check for docs-only and
 mechanical changes (every SHA, number and state against its source). State the depth and why.
+Then pick lenses from [review-lenses](../review-lenses/SKILL.md) and report its `Lenses:` line; a
+lens finding keeps the template's id and group, then `<Lens> · <tag> · <file>:<line>: `.
 
 ## 3. Interface design review
 
@@ -48,7 +50,7 @@ probes in a scratch copy, never the author's tree ([procedures](references/adver
 | Adds or changes tests | Mutants of the code under test for the named invariants (every guard when none are named); restore each targeted bug; compare test counts |
 | Fixes a flaky or timing-bound test | Reproduce on unfixed code under CI-like load; failure rates before and after; ablate the fix |
 | Relaxes a shared test helper | The old helper's real-code mutants still caught |
-| Adds a gate, validator or parser | Threat model stated; one mutant per bypass class; fails closed on bad input |
+| Adds a gate, validator or parser, unless the Trust boundary lens cuts it | Threat model stated; one mutant per bypass class; fails closed on bad input |
 | Touches secrets or redaction | A synthetic secret checked in every sink; each protection disabled in turn |
 | Claims no behaviour change | A mechanical identity proof, re-run independently |
 
@@ -88,6 +90,7 @@ trade-offs first, and waits for a yes. Never commit or push.
 ## Review: <what> at <head>
 **Verdict:** approve | changes-required | close
 **Depth:** <one pass | adversarial with mutants | interface design review>, because <risk or radius>
+Lenses: picked Reuse (<reason>), Adopt (<reason>); skipped Reversibility (<reason>), Trust boundary (<reason>)
 **Blocking** · **Follow-up** · **Nits**: - <file> `<function>`: <issue>. Evidence: <proof>. Fix: <validated fix>
 **Not required by any acceptance criterion:** <mechanism>; <primitive or cut>
 **Proofs:** <mutant or probe> | <killed, survived or not run> | <killing assertion>, survivors first
@@ -105,6 +108,7 @@ headings.
 ```text
 VERDICT: approve | changes-required | close for <head-sha>
 Depth: <depth>, because <risk or radius>
+Lenses: picked Reuse (<reason>), Adopt (<reason>); skipped Reversibility (<reason>), Trust boundary (<reason>)
 Blocking
 - B1 <file>:<line> <defect>. Evidence: <probe, log or quote>. Fix: <validated suggestion>
 Follow-up

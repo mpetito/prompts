@@ -14,11 +14,8 @@ who ran it, instead of the old notice in #ops-alerts."
 2. **Deploy notice.** Add `notify/deploy_notice.py`, run as `python -m notify.deploy_notice
    start|finish <version>`. It reads the deploying user from `$USER` and calls
    `post_to_channel(os.environ["DEPLOYS_WEBHOOK_URL"], ...)`. `scripts/deploy.sh` calls it before
-   and after the rollout, in place of its current call to `scripts/legacy_notify.sh`.
-3. **Housekeeping.** After step 2 nothing calls `scripts/legacy_notify.sh` (a curl to the
-   #ops-alerts webhook). Leave it in place with a "DEPRECATED, do not use" header comment, and
-   remove it in the Q1 cleanup sprint, in case something we forgot still calls it.
-4. **Tests.** Unit tests for `post_to_channel` (success, retry on 503, give up after three
+   and after the rollout.
+3. **Tests.** Unit tests for `post_to_channel` (success, retry on 503, give up after three
    attempts) and for the two messages `deploy_notice` builds.
 
 ## Acceptance

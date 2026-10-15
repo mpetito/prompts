@@ -7,7 +7,7 @@ Repository: `invoice-sync` (TypeScript, Node 22, Express). Branch `feature/invoi
 
 > Consumes `invoice.issued` events from the billing provider's queue, works out the due date from
 > the payment terms, and forwards the invoice to the ledger service, retrying when the ledger is
-> briefly down. Kept it dependency-free so it's easy to read. 9 tests pass.
+> briefly down. 9 tests pass.
 
 ## Diff
 
@@ -104,7 +104,35 @@ Repository: `invoice-sync` (TypeScript, Node 22, Express). Branch `feature/invoi
 
 The other six tests cover `isEnvelope` on a valid event and on five events with one field missing.
 
-## package.json (unchanged by this diff)
+## Test log
+
+```text
+PASS test/ingest/envelope.test.ts (6 tests)
+PASS test/ingest/dueDate.test.ts (3 tests)
+Tests: 9 passed, 9 total
+```
+
+## Repository context (unchanged by this diff)
+
+```text
+invoice-sync/
+  src/api/health.ts
+  src/api/invoices.ts
+  src/clients/ledger.ts
+  src/config.ts
+  src/log.ts
+  src/server.ts
+  test/api/invoices.test.ts
+  jest.config.js
+  package.json
+  tsconfig.json
+```
+
+`src/config.ts` reads `LEDGER_URL`, `PORT` and `LOG_LEVEL` from the environment. `src/log.ts`
+exports a pino logger. `src/clients/ledger.ts` wraps `fetch` with the ledger's base URL and a
+5 second timeout.
+
+package.json:
 
 ```json
 {
@@ -127,10 +155,4 @@ The other six tests cover `isEnvelope` on a valid event and on five events with 
 }
 ```
 
-## Test log
-
-```text
-PASS test/ingest/envelope.test.ts (6 tests)
-PASS test/ingest/dueDate.test.ts (3 tests)
-Tests: 9 passed, 9 total
-```
+tsconfig.json targets ES2022 with `strict: true`.

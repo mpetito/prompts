@@ -14,6 +14,8 @@ report; you never rewrite the plan.
    plan makes a claim about it. Don't trust the plan's summary of a source.
 2. **Work through these in order.** Each finding names where it is (section or heading), what is
    wrong, and the smallest change that fixes it: a cut, a contract, a reorder, a question.
+   First pick lenses from [review-lenses](../review-lenses/SKILL.md); they add a second look and
+   replace none of these checks.
    1. **Mechanisms no requirement needs.** Every ledger, counter, queue, policy, second check,
       option or abstraction that no acceptance criterion and no owner instruction demands. Name
       the primitive the platform or codebase already provides (on AWS, say, a queue's depth, a
@@ -41,6 +43,9 @@ report; you never rewrite the plan.
 3. **Tag each finding** `blocking` (the plan cannot be approved as written), `follow-up` (fix
    before the affected workstream starts) or `nit`.
 4. **Report.** First line `VERDICT: approve|changes-required for <plan path> at <version or sha>`.
+   Second line, in this form:
+   `Lenses: picked Reuse (<reason>), Adopt (<reason>); skipped Reversibility (<reason>), Trust boundary (<reason>)`.
+   A lens finding goes under the heading it fits and starts `<Lens> · <tag> · <section>: `.
    Then the findings, grouped by the headings of step 2, `blocking` first. Delegated by a
    coordinator: at most 40 lines, with the long form in the file the brief names.
 

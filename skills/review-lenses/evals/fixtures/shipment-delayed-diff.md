@@ -18,6 +18,8 @@ Repository: `fulfilment-api` (Python 3.12). Branch `feature/shipment-delayed`, h
 - `check_delays()` runs from our own nightly job and reads only rows already in our database. No
   code in this change reads a request, a file, a message or any other input from outside the
   service.
+- `docs/events/shipment.delayed.json` documents the event for partners; nothing validates
+  events against it.
 - The change adds no module, function, helper or script; it edits one existing function,
   `check_delays`, and adds one schema document.
 

@@ -22,7 +22,10 @@ so the app can show live tracking and analytics can stop scraping our database."
 2. **delivery:** a worker drains the outbox to the bus. Add a column
    `delivery_attempts INT NOT NULL DEFAULT 0` to `shipment_events_outbox`, incremented on every
    failed publish, for future needs. Nothing reads it in this plan.
-3. **worker settings:** the publish timeout is a module constant, `PUBLISH_TIMEOUT_S = 30`, and
+3. **failed publishes:** an event whose publish fails stays in the outbox and is retried on every
+   drain; the worker moves on to the events behind it, so one bad event never holds up the rest. A
+   poison event therefore retries forever, about once a minute. Fine for v1.
+4. **worker settings:** the publish timeout is a module constant, `PUBLISH_TIMEOUT_S = 30`, and
    the worker logs one line per batch: `drained <n> events in <ms> ms`.
 
 ## Acceptance
