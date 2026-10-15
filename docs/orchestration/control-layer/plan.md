@@ -52,7 +52,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     depends on it), and whether the prompt-submit hook fires for a typed `/control-attach`. `/clear`
     is cheap beside them. The wake mid-keystroke and another session's message come last, as time
     allows.
-- [ ] 2. `skills/control-attach/references/protocol.md`,
+- [x] 2. `skills/control-attach/references/protocol.md`,
   `skills/control-attach/tests/test_protocol.py`: the control protocol: layers, addresses, the four
   down messages and the `STATUS:` up message, authority levels and what each permits, the consent
   limits, the hold window, rings, and the controller subcommands with every line they print, under

@@ -75,8 +75,15 @@ Down, from the controller to `<name>/in`, sent only by `ctl.py send` (and `start
   raises it again. Only the session knows which of its decisions are owner-before, so no script
   tracks it.
 
-Up, from a session to `owner/in`, sent only by `ctl.py report` at the end of a turn: the turn's final
-text, unchanged. Its first line is, in the orchestration protocol's format,
+Up, from a session to `owner/in`: the turn's final text, unchanged, sent by `ctl.py report` at the
+end of every turn; and an answer to a `QUESTION:`, which the session sends at once, waking, and then
+carries on:
+
+```bash
+python3 "<mail.py>" send owner/in --home "<home>/control" --from <name> "STATUS: working - <answer>"
+```
+
+An answer is never quiet. Each up message's first line is, in the orchestration protocol's format,
 
 ```text
 STATUS: <working|need-decision|blocked|done> - <one line>
@@ -84,7 +91,7 @@ STATUS: <working|need-decision|blocked|done> - <one line>
 
 | State | When | Quiet |
 | --- | --- | --- |
-| `working` | Progress, a steer acted on, an answer to `QUESTION:`, a decision applied | yes |
+| `working` | Progress, a steer acted on, a decision applied | yes, except an answer to `QUESTION:`, sent with mail.py (above) |
 | `need-decision` | The owner or the controller must choose; a decision request follows | no |
 | `blocked` | Nothing can move without the owner or the controller; say what would unblock it | no |
 | `done` | The work asked for is finished; list what the owner should check | no |
