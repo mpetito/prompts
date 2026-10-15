@@ -1,0 +1,460 @@
+{
+  "version": 2,
+  "skill_name": "review-lenses",
+  "skill_paths": [
+    "SKILL.md"
+  ],
+  "variants": [
+    "with_skill",
+    "without_skill"
+  ],
+  "optional_variants": [
+    "old_skill"
+  ],
+  "cases": [
+    {
+      "id": "pos-reuse-plan",
+      "split": "tune",
+      "prompt": "Review the plan in deploy-notify-plan.md before it is approved, following the team's review procedure in plan-review-procedure.md. deploy-notify-repo.md is an excerpt of the repository it changes. Write your review exactly as you would deliver it. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/deploy-notify-plan.md",
+        "fixtures/deploy-notify-repo.md",
+        "fixtures/plan-review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The plan's new post_to_channel does what broadcast_note in lib/teamfeed.py already does; the review names that file and says what it would take for the existing callers and the deploy notice to share it",
+        "scripts/legacy_notify.sh, which the change makes obsolete (the owner replaces the #ops-alerts notice), is deleted in the same change, not deprecated or left for later",
+        "The review opens with a VERDICT line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:[*_#>`]+\\s*)?VERDICT[*_`]*:[*_`]*\\s*[*_`]*(?:approve|changes-required)\\b"
+        },
+        {
+          "name": "trap-deletes-obsolete-in-same-change",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review say to delete scripts/legacy_notify.sh (the old #ops-alerts notice, whose only caller is the deploy.sh line this plan replaces) as part of this same plan or change? Yes: an instruction to delete or remove the script in this plan, even if conditioned on confirming it has no other callers. No: keeping it, deprecating it, removing it later, in a follow-up or as out of scope; only removing the call in deploy.sh; mentioning it without proposing its deletion; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-extends-helper-for-both-callers",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose that broadcast_note in lib/teamfeed.py (it already posts {text} to CHAT_WEBHOOK_URL with retries) serve both its existing callers and the new deploy notice, and say what that takes, such as a webhook URL parameter? Yes: a proposal naming broadcast_note or lib/teamfeed.py together with the change that makes it fit both. No: only noting the duplication; 'use it' without saying how it reaches the deploy notice's different webhook; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "lens-lenses-line-picks-reuse",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bReuse\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-reuse-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bReuse[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The duplicate is found by behaviour, not by name: post_to_channel and broadcast_note both POST {text} to a webhook with retries, and the finding cites lib/teamfeed.py"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-adopt-diff",
+      "split": "tune",
+      "prompt": "Review the change in invoice-ingest-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/invoice-ingest-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The hand-rolled envelope check is replaced by a zod schema, zod being already a dependency",
+        "The hand-rolled month arithmetic (which overflows at month end) is replaced by date-fns, already a dependency, rather than patched",
+        "Any library proposed for the retry has its version, maintenance and cost marked unverified, since nothing could be checked; keeping the small loop is also acceptable",
+        "The report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-validation-uses-zod",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose replacing the hand-rolled envelope check isEnvelope with zod, which package.json already lists? Yes: a proposal to validate the envelope with a zod schema. No: patching isEnvelope with more typeof checks; naming zod only in passing, as a caveat, or in the Lenses line's reasons; a negated or waved-off mention. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-dates-use-date-fns",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose replacing the hand-rolled month arithmetic in shiftMonths with date-fns (for example addMonths), which package.json already lists? Yes: the review names date-fns as what does the fix, even with a caveat such as a time-zone condition. No: the review writes or prescribes its own clamp code and mentions date-fns only as a caveat or a rejected alternative, or names it only in the Lenses line's reasons. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-retry-library-facts-unverified",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "If the review proposes a third-party retry library (p-retry, async-retry and the like), does it mark that library's version, licence, size, popularity or maintenance as unverified rather than stating them as fact? Yes: no retry library is proposed (keeping the loop or using the platform counts), or every stated fact about the library is marked unverified or not checked. No: a library is proposed with any such fact stated as true. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "lens-lenses-line-picks-adopt",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bAdopt\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-adopt-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bAdopt[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "Both existing dependencies are named for the pieces they already cover: zod for the envelope check and date-fns for the month arithmetic, rather than patching the hand-rolled code"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-reversibility-plan",
+      "split": "tune",
+      "prompt": "Review the plan in shipment-events-plan.md before it is approved, following the team's review procedure in plan-review-procedure.md. Write your review exactly as you would deliver it. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/shipment-events-plan.md",
+        "fixtures/plan-review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The shipment.status_changed payload is decided now, before the workstreams build on it, naming the mobile apps, the analytics loader and the carriers as dependents and what a later change would cost",
+        "The delivery_attempts counter is deferred (not added), naming the signal that would bring it back",
+        "No guard, cap, dead-letter, option or abstraction is proposed for the reversible items: the counter, the poison events that retry forever, the timeout constant and the log line; the counter and the poison events, which the plan raises, are deferred with a signal"
+      ],
+      "assertions": [
+        {
+          "name": "control-verdict-first-line",
+          "type": "regex",
+          "pattern": "\\A\\s*(?:[*_#>`]+\\s*)?VERDICT[*_`]*:[*_`]*\\s*[*_`]*(?:approve|changes-required)\\b"
+        },
+        {
+          "name": "trap-defers-counter-with-signal",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review defer the delivery_attempts column (not add it now) and, in that same finding, name a concrete signal that would bring it back, such as someone asking to alert on events that keep failing, a second reader of the column, a stated failure rate, or the owner choosing a retry cap? Yes: a deferral plus a concrete return signal in the counter's own finding. No: cutting it with no signal; a vague signal ('when needed', 'if requirements change', 'when something reads it'); a signal that belongs to a different finding. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-no-guard-for-reversible",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review avoid proposing a new guard or mechanism for the plan's reversible items (the delivery_attempts counter, poison events that retry forever, PUBLISH_TIMEOUT_S, the batch log line): a cap, max-attempts limit, dead-letter queue or table, backoff, feature flag, or configuration option? Yes: none is proposed now. Changing a constant's value, adding a field to the event payload, tightening acceptance, or changing how the worker is triggered is not one. Deferring one with a signal, listing it as an owner option the review does not recommend, observing that a platform may already provide one, or logging or alerting on a failure does not count. No: the review proposes adding one now, in prose, a Fix line or as its recommendation. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "decide-now-payload-dependents",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review treat the shipment.status_changed payload, which the plan leaves to implementation, as a decision to make now (a contract before the workstreams build on it), naming who depends on it (the mobile apps, the analytics warehouse loader, partner carriers) and what changing it later would cost? Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "lens-lenses-line-picks-reversibility",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bReversibility\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-reversibility-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bReversibility[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The payload left 'to implementation' is decided now, as a contract reviewed by its main consumer, naming the mobile apps (old versions installed for months), the analytics loader (stored seven years) and the carriers as dependents"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-trust-boundary-diff",
+      "split": "tune",
+      "prompt": "Review the change in internal-requeue-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/internal-requeue-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The X-Caller allowlist on /internal/requeue gates the team's own orchestration script, a trusted caller on the private network; it is cut (removed, or turned into a warning), not given bypass-class mutants or extended with 'orchestrator'",
+        "The /hooks/refunds body, outside input from the public load balancer, is validated where it enters: the Provider-Signature HMAC checked and the body's fields validated before apply_refund",
+        "Each finding names the caller and whether it is trusted; the report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-cuts-allowlist",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose removing the X-Caller allowlist on /internal/requeue (require_known_caller and ALLOWED_CALLERS), or turning it into a warning or log line instead of a 403? Yes: an instruction to drop, remove, revert or downgrade it to a warning. No: keeping, extending or hardening it; only describing what it does; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-no-bypass-mutants-for-allowlist",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review avoid asking for mutants, bypass-class probes or a threat model for the allowlist gate on /internal/requeue? Yes: it plans none for that gate, or says none apply because the gate is cut. Mutants or probes for the refunds webhook's signature check are fine, and so is citing the spoofable X-Caller header as a reason to cut the gate. No: a mutant row, planted mutant or bypass probe that targets require_known_caller, ALLOWED_CALLERS or the X-Caller check, whatever its run status ('not run' still counts). Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-no-allowlist-extension",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review avoid proposing to add 'orchestrator' to ALLOWED_CALLERS, or otherwise widening the allowlist so the gate stays? Yes: no such proposal. A mutant or probe row that adds it, a negated mention, or a rejected alternative does not count. No: a proposal, in prose or a Fix line, to add the orchestrator to the list. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-names-caller-trust",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review say that scripts/orchestrate.py (the orchestrator, the team's own script on the private network) is a trusted caller? Yes: it calls the orchestrator trusted, or labels its trust as the team's own or internal. No: it names the caller without saying whether it is trusted, or calls it untrusted. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "webhook-validated-at-entry",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review require the /hooks/refunds request to be validated where it enters, before apply_refund: the Provider-Signature HMAC verified over the raw body, the body's fields validated, or both? Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "lens-lenses-line-picks-trust-boundary",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bTrust boundary\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-trust-boundary-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bTrust boundary[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "The allowlist is cut (removed, or turned into a warning): its only effect is refusing the team's own orchestration script, a trusted caller on the private network; the review does not ask for bypass mutants or a threat model for it"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-reuse-diff",
+      "split": "tune",
+      "prompt": "Review the change in invoice-email-diff.md and give your review with a merge recommendation, following the team's review procedure in review-procedure.md. Write your review exactly as you would deliver it, as the interactive report. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/invoice-email-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The new formatCents in src/billing duplicates moneyLabel in src/shared/text/labels.ts, outside the changed files; the review cites that location and says what it takes for the invoice email and the web pages to share it (the signatures already match, so the email calls moneyLabel and formatCents and its test go)",
+        "src/billing/legacyPrice.ts and its test, which the change leaves without a caller, are deleted in the same change",
+        "The report has a Depth line and states the lenses it picked and skipped"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-reuses-existing-helper",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review propose that invoiceEmail use the existing moneyLabel in src/shared/text/labels.ts (it formats a minor-unit amount with Intl.NumberFormat for a currency and locale; the receipt and statement pages call it) instead of the new formatCents, citing where moneyLabel lives? Yes: a proposal to call or reuse moneyLabel. No: reviewing formatCents only on its own terms; mentioning moneyLabel without proposing to use it; a negated or hedged wording. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "trap-deletes-obsolete-in-same-change",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the review say to delete src/billing/legacyPrice.ts, which this change leaves without a non-test caller, together with its test, in this same change? Yes: delete or remove them in this change or PR (saying the reviewer won't apply it because the review is read-only is fine). No: keeping or deprecating them, a later cleanup or follow-up PR, out of scope, or not mentioned. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "lens-lenses-line-picks-reuse",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?:(?!;\\s*skipped\\b)[^\\n])*?[*_`]*\\bReuse\\b",
+          "ci": false
+        },
+        {
+          "name": "lens-reuse-prefix",
+          "type": "regex",
+          "pattern": "[*_`]*\\bReuse[*_`]* · [*_`]*(?:blocking|follow-up|nit)[*_`]* · ",
+          "ci": false
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "formatCents is found to duplicate moneyLabel in src/shared/text/labels.ts by behaviour (both format an amount in the currency's minor unit with Intl.NumberFormat), and the finding cites that location"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pos-pick-lenses",
+      "split": "tune",
+      "prompt": "You coordinate the review of the change in shipment-delayed-diff.md, following the team's review procedure in review-procedure.md. Size the review, state its depth on a Depth: line, decide which reviewers to start, and write each reviewer's brief in full as text. Starting reviewers is not possible in this session, so do not try; the briefs you write are the deliverable. Read the input files; a read-only command such as cat is fine for that, but do not change any file or run anything else.",
+      "files": [
+        "fixtures/shipment-delayed-diff.md",
+        "fixtures/review-procedure.md"
+      ],
+      "expected_behavior": [
+        "The Lenses line picks Reversibility (a new public event schema) and Adopt (a hand-rolled retry loop beside tenacity, already a dependency), and skips Reuse (no new module, function or helper) and Trust boundary (nothing reads outside input), each with a reason",
+        "Depth is high because of the public schema, so there is one reviewer brief per picked lens, each on an explicit model",
+        "The Adopt brief points its reviewer at the retry loop and tenacity, the dependency the project already has"
+      ],
+      "assertions": [
+        {
+          "name": "control-depth-line",
+          "type": "regex",
+          "pattern": "(?m)^[\\s#*_>-]*Depth\\b[*_`]*(?:\\s*:|[ \\t]*$)"
+        },
+        {
+          "name": "trap-adopt-brief-proposes-tenacity",
+          "type": "judge",
+          "severity": "gate",
+          "rubric": [
+            "Does the brief for the reviewer who covers the hand-rolled retry loop in check_delays point that reviewer at tenacity (already pinned in pyproject.toml) as the existing dependency to use or check before keeping the loop? Yes: a brief names tenacity as the candidate replacement or the thing to check against. No: no brief names tenacity, or one names it only to dismiss it. Answer only this question, not the case's other expected behaviours. Return passed true and score 1 when the answer is yes, passed false and score 0 when it is no."
+          ]
+        },
+        {
+          "name": "tenacity-named",
+          "type": "regex",
+          "pattern": "\\btenacity\\b"
+        },
+        {
+          "name": "trap-lenses-line-picks-exactly-reversibility-and-adopt",
+          "type": "regex",
+          "pattern": "Lenses[*_]*:[*_]*\\s+picked\\b(?=(?:(?!;\\s*skipped\\b)[^\\n])*\\bReversibility\\b)(?=(?:(?!;\\s*skipped\\b)[^\\n])*\\bAdopt\\b)(?!(?:(?!;\\s*skipped\\b)[^\\n])*\\b(?:Reuse|Trust boundary)\\b)(?:(?!;\\s*skipped\\b)[^\\n])*;\\s*skipped\\b(?=[^\\n]*\\bReuse\\b)(?=[^\\n]*\\bTrust boundary\\b)",
+          "ci": false
+        },
+        {
+          "name": "trap-brief-explicit-model",
+          "type": "regex",
+          "pattern": "\\b(?:opus|claude-opus[\\w.-]*|gpt-[\\w.-]+|codex)\\b"
+        },
+        {
+          "name": "lens-quality",
+          "type": "judge",
+          "rubric": [
+            "One brief per picked lens (Reversibility and Adopt) and none for Reuse or Trust boundary; any other brief is the sibling procedure's own review"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "trig-repo-or-library",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review this plan for anything we already have in the repo or could get from a library.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-adopt-lens",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Run the adopt lens on this diff.",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "trig-decide-now-or-wait",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "In this plan, what should we decide now and what can wait?",
+      "expected_behavior": [
+        "The skill should trigger."
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-staged-changes",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review my staged changes.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a general code review goes to review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-plan-before-start",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Review this plan before we start.",
+      "expected_behavior": [
+        "The skill should NOT trigger: a general plan review goes to plan-review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-research-csv",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Research which CSV library to use.",
+      "expected_behavior": [
+        "The skill should NOT trigger: researching a library on its own is not a review"
+      ],
+      "assertions": []
+    },
+    {
+      "id": "neg-trig-date-helper",
+      "kind": "trigger",
+      "split": "tune",
+      "prompt": "Add a date helper to utils.",
+      "expected_behavior": [
+        "The skill should NOT trigger: writing code goes to code-style"
+      ],
+      "assertions": []
+    }
+  ]
+}
