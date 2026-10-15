@@ -247,9 +247,11 @@ not: what a prompt-submit hook prints reaches the model.
 
 ## Controller subcommands
 
-Run by the controller. A call with the wrong arguments prints usage on stderr and exits 1. Every
-other line is on stdout. `REFUSED herdr: <reason>` (exit 1) is herdr failing or giving a reply that
-isn't JSON holding a result.
+Run by the controller. A call with the wrong arguments prints usage on stderr and exits 1. After a
+`--` argument, every later argument is text, never an option, so
+`send <name> DECISION <ref> -- <answer>` sends an answer that starts with `--`, even `--owner`, as
+`By: controller`. Every other line is on stdout. `REFUSED herdr: <reason>` (exit 1) is herdr
+failing or giving a reply that isn't JSON holding a result.
 
 ### `ctl.py sessions`
 
@@ -311,6 +313,10 @@ mail.py's `wait` on `owner/in`, watching each attached session's herdr agent and
 | `GONE <name>` | herdr no longer lists the agent: it exited, or a `/clear` replaced it, and herdr cleared its name. A resumed or cleared session shows this way, its record `gone` in `sessions` and its pane `unattached`; ring `<name> <name>` once its recorded pane holds an idle agent |
 | `UNREAD <name> <n>` | The session sits idle with n messages unread for 5 minutes: its wait stopped. Ring `<name> <name>` |
 | `TIMEOUT` | Nothing happened within the timeout (default 3600) |
+
+`--timeout 0` takes one look and returns at once: `MAIL <n>`, else a watch line that is due, else
+`TIMEOUT`. A watch line compares herdr's state with the one the previous look recorded, so
+successive `--timeout 0` calls can poll.
 
 Run it as a background task, and start it again after each wake: a session attached since is
 watched from the next wait.

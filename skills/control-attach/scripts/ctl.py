@@ -15,7 +15,8 @@ subcommand's arguments, every line it prints, and the files under $ORCHESTRATION
   ctl.py ring <name|pane> <attach-name>
   ctl.py ring <name|pane> --brief <file>
   ctl.py start <name> <folder> <objective-file>
-A session's subcommands find its record by HERDR_PANE_ID. A refusal prints REFUSED <reason> and exits 1.
+After a "--" argument, every later argument is text, never an option. A session's subcommands find its record by
+HERDR_PANE_ID. A refusal prints REFUSED <reason> and exits 1.
 """
 import contextlib
 import io
@@ -552,7 +553,11 @@ def main(argv):
     if not argv or argv[0] not in COMMANDS:
         usage()
     handler, spec = COMMANDS[argv[0]]
-    args, opts = lib.take_options(argv[1:], spec)
+    # Text after "--" is never an option, so an answer of "--owner" can't make a decision the owner's.
+    rest = argv[1:]
+    cut = rest.index("--") if "--" in rest else len(rest)
+    args, opts = lib.take_options(rest[:cut], spec)
+    args += rest[cut + 1:]
     try:
         return handler(args, opts)
     except Refused as e:

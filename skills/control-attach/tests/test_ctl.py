@@ -532,6 +532,15 @@ class Send(ControllerCase):
                 self.refused(self.c("send", name, "OWNER", "go"))
         self.assertEqual(self.inbox("alpha"), [])
 
+    def test_text_after_a_double_dash_is_never_an_option(self):
+        cases = {("DECISION", "D1", "--", "--owner"): "DECISION D1: --owner\nBy: controller",
+                 ("OWNER", "--", "--owner"): "OWNER: --owner",
+                 ("DECISION", "D1", "yes", "--owner"): "DECISION D1: yes\nBy: owner"}
+        for args, expected in cases.items():
+            with self.subTest(args=args):
+                self.assertEqual(self.c("send", "alpha", *args)[0], 0)
+                self.assertEqual(body(self.inbox("alpha")[-1]), expected)
+
     def test_wrong_arguments_are_usage_errors(self):
         for args in (("alpha", "STEER", "go"), ("alpha", "OWNER", "go", "--owner"), ("alpha", "OWNER"),
                      ("alpha", "OWNER", " \n"), ("alpha", "DECISION", "D3:", "x"), ("alpha", "DECISION", "D 3", "x"),
@@ -558,6 +567,13 @@ class ReadAndWait(ControllerCase):
         self.attach_at("alpha", "w2:p1")
         self.c("report", stdin="STATUS: need-decision - D1\n")
         self.assertEqual(self.c("wait", "--timeout", "0"), (0, "MAIL 1\n", ""))
+
+    def test_a_zero_timeout_takes_one_look(self):
+        self.attach_at("alpha", "w2:p1")
+        with unittest.mock.patch.object(mail, "sleep", side_effect=AssertionError("a second look")):
+            self.assertEqual(self.c("wait", "--timeout", "0"), (0, "TIMEOUT\n", ""))
+            self.c("report", stdin="STATUS: done - shipped\n")
+            self.assertEqual(self.c("wait", "--timeout", "0"), (0, "MAIL 1\n", ""))
 
     def age(self, name):
         """Make name's unread mail six minutes old, past mail.py's UNREAD threshold."""
