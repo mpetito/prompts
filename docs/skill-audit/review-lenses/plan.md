@@ -156,19 +156,19 @@ These override the steps below where they differ.
   `skills/plan-review/`, `skills/review/` and `skills/agent-orchestration/SKILL.md`. Then MAIN,
   with the owner's approval of the link change, runs `python3 setup_skills_link.py` and
   `python3 verify_setup.py`. Check: both pass and `verify_setup.py` reports review-lenses linked.
-- [ ] 8. Eval run: `python3 scripts/run_skill_eval.py --skill review-lenses --runs 3
+- [x] 8. Eval run: `python3 scripts/run_skill_eval.py --skill review-lenses --runs 3
   --trigger-runs 3 --model opus`, then one `--agent codex --runs 1 --skip-trigger` run with a
   Codex model and `--effort` per `docs/evaluating-skills.md`, "Running on Codex". Read the
   outputs before trusting a failure. Iterate on the skill text (lane `skill`), never by widening
   an assertion after the fact unless it traces to a stated rule and an existing trap. Check:
   every behaviour case fails at least one assertion in every `without_skill` run and passes in
   `with_skill`; trigger rates recorded.
-- [ ] 9. Regression: run plan-review's, review's and agent-orchestration's suites with the
+- [x] 9. Regression: run plan-review's, review's and agent-orchestration's suites with the
   pre-wiring revision as `--baseline` (`docs/evaluating-skills.md`, "Compare against an earlier
   revision"; agent-orchestration on `--model opus --effort high`). Check: no `with_skill`
   objective rate drops below its baseline arm's, after reading every failed output (three runs
   are noisy; a drop that the outputs show is noise is recorded as such, not called a regression).
-- [ ] 10. `docs/skill-audit/2026-10-15-review-lenses-retrospective.md`: the eval numbers, the
+- [x] 10. `docs/skill-audit/2026-10-15-review-lenses-retrospective.md`: the eval numbers, the
   baseline comparisons, the `/simplify` comparison recorded as not runnable, what changed during
   iteration, and the 30-day load check date (2026-11-14, `python3 scripts/skill_usage.py`).
   Check: the file cites the run directories' timestamps and every number matches
