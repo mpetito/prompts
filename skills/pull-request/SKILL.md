@@ -36,7 +36,7 @@ already hold, so a PR whose time a build or an earlier session already logged ad
 
    A failed fetch is an error to report, never "no feedback". Read the review bodies too,
    including Copilot's collapsed "suppressed" section, and the conversation comments, where Codex
-   reports a review that found nothing. An empty thread list is not "no feedback";
+   keeps its review summary. An empty thread list is not "no feedback";
    a body-only finding gets no new public comment.
 2. Verify each claim against the code and docs before accepting it; reject with the evidence.
    Declining a blanket guard is [code-style](../code-style/SKILL.md)'s "trust your callers".

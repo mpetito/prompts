@@ -17,8 +17,10 @@ import lib
 USAGE = "usage: watch_gates.py <pr> <full head sha> [--check <name>] [--reviewers <name,...>] [--minutes <n>]"
 OPTIONS = {"--check": True, "--reviewers": True, "--minutes": True}
 FEEDBACK = Path(__file__).resolve().parents[2] / "pull-request" / "scripts" / "get_pr_feedback.py"
-# Four polls a minute notices a finished gate within 15 s at a cost of three API calls per poll.
+# Four polls a minute notices a finished check within 15 s at two API calls a poll. Reviewers take minutes and a
+# feedback read costs about six calls, so reviewer state is read once a minute.
 POLL_SECONDS = 15
+REVIEWER_EVERY = 4
 # Every wait goes through here, so tests replace it.
 sleep = time.sleep
 
@@ -43,7 +45,7 @@ def main(argv):
         raise lib.Fail("gh cannot read the repository")
     repo = r.stdout.strip()
     check_result, reviewed = "", []
-    for _ in range(int(minutes) * 4):
+    for poll in range(int(minutes) * 4):
         r = gh("pr", "view", pr, "--json", "headRefOid", "--jq", ".headRefOid")
         cur = r.stdout.strip() if r.returncode == 0 else ""
         if cur and cur != head:
@@ -56,7 +58,7 @@ def main(argv):
             st = r.stdout.strip() if r.returncode == 0 else "none"
             if st not in ("none", "running"):
                 check_result = st
-        if pending:
+        if pending and poll % REVIEWER_EVERY == 0:
             status = feedback(repo, pr)
             if status:
                 unknown = [n for n in pending if n not in status["automatedReviewers"]]

@@ -52,9 +52,10 @@ def thread(id, resolved, outdated):
 class FakeGh:
     """Stands in for gh; records each call as its arguments joined by spaces. scenario picks the call that fails or the data returned."""
 
-    def __init__(self, scenario="", comments=(), check_runs=(), copilot_commit=HEAD):
+    def __init__(self, scenario="", comments=(), check_runs=(), copilot_commit=HEAD, extra_reviews=()):
         self.scenario, self.calls = scenario, []
         self.comments, self.check_runs, self.copilot_commit = list(comments), list(check_runs), copilot_commit
+        self.extra_reviews = list(extra_reviews)
 
     def __call__(self, args):
         if args[0] != "gh":
@@ -94,7 +95,7 @@ class FakeGh:
                        "commit_id": self.copilot_commit, "html_url": "https://example.test/r100", "body": SUPPRESSED_BODY}
             human = {"id": 101, "user": {"login": "human"}, "state": "COMMENTED", "commit_id": "def456",
                      "html_url": "https://example.test/r101", "body": "Looks fine."}
-            return ok(json.dumps([[copilot] if self.copilot_commit else [], [human]]))
+            return ok(json.dumps([[copilot] if self.copilot_commit else [], [human, *self.extra_reviews]]))
         raise AssertionError(f"Unexpected gh call (network refused): {call}")
 
 
@@ -212,6 +213,16 @@ def comment(author, body):
             "html_url": "https://example.test/c7", "body": body}
 
 
+def codex_summary(head, status, author="chatgpt-codex-connector[bot]"):
+    state = {"headSha": head, "status": status, "mergeGateEnabled": False}
+    return comment(author, f"<!-- codex-pull-request-review-summary -->\n<!-- codex-security-review:v1 "
+                           f"{json.dumps(state)} -->\n## Codex Review Summary")
+
+
+def claude_run(status, text):
+    return {"name": "Claude Code Review", "status": status, "app": {"slug": "claude"}, "output": {"text": text}}
+
+
 class AutomatedReviewers(unittest.TestCase):
     """Whether Copilot, Codex and Claude each reviewed the head, from a review on it or their own clean signal."""
 
@@ -226,31 +237,47 @@ class AutomatedReviewers(unittest.TestCase):
     def test_a_review_on_an_earlier_commit_is_seen_but_not_the_head(self):
         self.assertEqual(self.reviewers(copilot_commit="def456")["copilot"], {"seen": True, "reviewedHead": False})
 
-    def test_codex_reports_a_clean_head_in_a_comment_naming_it(self):
-        clean = comment("chatgpt-codex-connector[bot]",
-                        f"Codex Review: Didn't find any major issues.\n\n**Reviewed commit:** `{HEAD[:10]}`")
-        self.assertEqual(self.reviewers(comments=[clean])["codex"], {"seen": True, "reviewedHead": True})
+    def test_codex_reports_the_head_in_its_summary_header(self):
+        self.assertEqual(self.reviewers(comments=[codex_summary(HEAD, "completed")])["codex"],
+                         {"seen": True, "reviewedHead": True})
 
-    def test_a_codex_comment_naming_another_commit_is_not_the_head(self):
-        stale = comment("chatgpt-codex-connector[bot]", "**Reviewed commit:** `def4567890`")
-        self.assertEqual(self.reviewers(comments=[stale])["codex"], {"seen": True, "reviewedHead": False})
+    def test_a_running_codex_review_overrides_its_review_on_the_head(self):
+        codex = {"id": 102, "user": {"login": "chatgpt-codex-connector[bot]"}, "state": "COMMENTED",
+                 "commit_id": HEAD, "html_url": "u", "body": "**Reviewed commit:** `abc1234567`"}
+        self.assertEqual(self.reviewers(comments=[codex_summary(HEAD, "running")], extra_reviews=[codex])["codex"],
+                         {"seen": True, "reviewedHead": False})
+        self.assertEqual(self.reviewers(extra_reviews=[codex])["codex"], {"seen": True, "reviewedHead": True})
 
-    def test_only_codex_can_report_a_head_in_a_comment(self):
-        quoted = comment("human", f"**Reviewed commit:** `{HEAD[:10]}`")
+    def test_a_codex_summary_of_another_commit_is_not_the_head(self):
+        self.assertEqual(self.reviewers(comments=[codex_summary("def4567890", "completed")])["codex"],
+                         {"seen": True, "reviewedHead": False})
+
+    def test_only_codex_can_report_a_head_in_a_summary(self):
+        quoted = codex_summary(HEAD, "completed", author="human")
         self.assertEqual(self.reviewers(comments=[quoted])["codex"], {"seen": False, "reviewedHead": False})
 
+    def test_a_comment_without_an_author_is_skipped(self):
+        ghost = dict(codex_summary(HEAD, "completed"), user=None)
+        self.assertEqual(self.reviewers(comments=[ghost])["codex"], {"seen": False, "reviewedHead": False})
+
     def test_claude_reports_a_head_with_its_finished_check_run(self):
-        claude = {"slug": "claude"}
-        self.assertEqual(self.reviewers(check_runs=[{"name": "Claude Code Review", "status": "completed",
-                                                     "app": claude}])["claude"], {"seen": True, "reviewedHead": True})
-        for run in ({"name": "Claude Code Review", "status": "in_progress", "app": claude},
-                    {"name": "ci", "status": "completed", "app": claude},
-                    {"name": "Claude Code Review", "status": "completed", "app": {"slug": "github-actions"}}):
+        done = claude_run("completed", 'Found 1 issue.\n<!-- bughunter-severity: {"normal":1,"nit":0} -->')
+        self.assertEqual(self.reviewers(check_runs=[done])["claude"], {"seen": True, "reviewedHead": True})
+
+    def test_a_running_or_failed_claude_check_is_seen_but_not_reviewed(self):
+        for run in (claude_run("in_progress", ""), claude_run("completed", "Code review timed out.")):
+            with self.subTest(run=run):
+                self.assertEqual(self.reviewers(check_runs=[run])["claude"], {"seen": True, "reviewedHead": False})
+
+    def test_only_the_claude_apps_check_run_counts(self):
+        marker = '<!-- bughunter-severity: {"normal":0} -->'
+        for run in (dict(claude_run("completed", marker), name="ci"),
+                    dict(claude_run("completed", marker), app={"slug": "github-actions"})):
             with self.subTest(run=run):
                 self.assertEqual(self.reviewers(check_runs=[run])["claude"], {"seen": False, "reviewedHead": False})
 
     def test_a_person_named_like_a_reviewer_is_not_that_reviewer(self):
-        spoof = comment("chatgpt-codex-connector", f"**Reviewed commit:** `{HEAD[:10]}`")
+        spoof = codex_summary(HEAD, "completed", author="chatgpt-codex-connector")
         self.assertEqual(self.reviewers(comments=[spoof, comment("claude", "LGTM")]),
                          {"copilot": {"seen": True, "reviewedHead": True},
                           "codex": {"seen": False, "reviewedHead": False},

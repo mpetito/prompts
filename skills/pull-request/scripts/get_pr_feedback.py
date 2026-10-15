@@ -10,9 +10,9 @@ page is dropped. Each thread carries its threadId (PRRT_..., for resolveReviewTh
 to 100 comments, each with its REST fullDatabaseId as a string id (for .../comments/<id>/replies). A bot's login
 ends in [bot] everywhere, as REST spells it.
 automatedReviewers has one entry per reviewer in REVIEWERS: {seen, reviewedHead}; seen means it has posted anything
-on this pull request, reviewedHead that it has reported on the head commit, findings or none. Exits 1 when any fetch
-fails, a missing pull request included: a failed fetch is never reported as "no feedback". Requires an authenticated
-gh CLI.
+on this pull request or reports on the head, reviewedHead that it has finished reviewing the head, findings or none.
+Exits 1 when any fetch fails, a missing pull request included: a failed fetch is never reported as "no feedback".
+Requires an authenticated gh CLI.
 """
 import json
 import re
@@ -33,31 +33,42 @@ QUERY = """query($owner: String!, $name: String!, $pr: Int!, $endCursor: String)
   }
 }"""
 
-# Codex reports a review that found nothing as a conversation comment, not a review: "**Reviewed commit:** `ec42780f14`".
-CODEX_REVIEWED = re.compile(r"Reviewed commit:\**\s*`([0-9a-f]{7,40})`")
+# Codex keeps one summary comment per pull request whose header tracks every Codex review (code and security) of a
+# head: <!-- codex-security-review:v1 {"headSha": "<sha>", "status": "running" | "completed", ...} -->
+CODEX_SUMMARY = re.compile(r"<!-- codex-security-review:v1 (\{.*?\}) -->")
 
 
-def codex_clean_comment(feedback, check_runs, logins):
-    """Codex's no-findings comment names the head it reviewed."""
-    return any(c["author"].lower() in logins and m and feedback["head"].startswith(m.group(1))
-               for c in feedback["comments"] for m in [CODEX_REVIEWED.search(c["body"] or "")])
+def codex_summary(feedback, check_runs, logins):
+    """Whether Codex has finished every review of the head, by its summary comment's header; None without one."""
+    states = [state["status"] == "completed" for c in feedback["comments"] if who(c["author"]) in logins
+              for m in [CODEX_SUMMARY.search(c["body"] or "")] if m
+              for state in [json.loads(m.group(1))] if state.get("headSha") == feedback["head"]]
+    return any(states) if states else None
 
 
 def claude_check_run(feedback, check_runs, logins):
-    """Claude's managed Code Review finishes a check run on the head, neutral whatever it found. Only the Claude app's
-    run counts: a workflow in the pull request could name a job the same."""
-    return any(r["app"] == "claude" and r["name"] == "Claude Code Review" and r["status"] == "completed"
-               for r in check_runs)
+    """Whether Claude's managed Code Review finished on the head, by its check run; None without one. The run's
+    conclusion is neutral whatever happened, so a finished review is the one whose output carries the severity counts
+    Code Review writes last; a failed or timed-out run lacks them. Only the Claude app's run counts: a workflow in the
+    pull request could name a job the same."""
+    runs = [r for r in check_runs if r["app"] == "claude" and r["name"] == "Claude Code Review"]
+    return any(r["status"] == "completed" and "bughunter-severity:" in r["text"] for r in runs) if runs else None
 
 
-# Each automated reviewer: the bot logins it posts under (lowercase), and how it reports a head it reviewed other than
-# by a review on that commit, or None. A review whose commit is the head counts for every one of them. The [bot] suffix
-# is part of each login, so a person's account of the same name, which anyone can comment from, never matches.
+# Each automated reviewer: the bot logins it posts under (lowercase), and its own report on the head, or None. A
+# report returns True (finished on the head), False (running, or failed) or None (no report for the head), and only
+# None falls back to the rule that a review on the head counts. The [bot] suffix is part of each login, so a person's
+# account of the same name, which anyone can comment from, never matches.
 REVIEWERS = {
     "copilot": ({"copilot-pull-request-reviewer[bot]", "copilot[bot]", "github-copilot[bot]"}, None),
-    "codex": ({"chatgpt-codex-connector[bot]"}, codex_clean_comment),
+    "codex": ({"chatgpt-codex-connector[bot]"}, codex_summary),
     "claude": ({"claude[bot]"}, claude_check_run),
 }
+
+
+def who(author):
+    """An author's login for matching; a deleted account has none."""
+    return (author or "").lower()
 
 
 def login(actor):
@@ -83,13 +94,14 @@ def rest_pages(path, what):
 
 
 def automated_reviewers(feedback, check_runs):
-    authors = {(a or "").lower() for a in [r["author"] for r in feedback["reviews"]] + [c["author"] for c in feedback["comments"]]
+    authors = {who(a) for a in [r["author"] for r in feedback["reviews"]] + [c["author"] for c in feedback["comments"]]
                + [c["author"] for t in feedback["threads"] for c in t["comments"]]}
     status = {}
-    for name, (logins, reported) in REVIEWERS.items():
-        reviewed = any((r["author"] or "").lower() in logins and r["commitId"] == feedback["head"] for r in feedback["reviews"]) \
-            or bool(reported and reported(feedback, check_runs, logins))
-        status[name] = {"seen": reviewed or bool(authors & logins), "reviewedHead": reviewed}
+    for name, (logins, reports) in REVIEWERS.items():
+        report = reports(feedback, check_runs, logins) if reports else None
+        reviewed = any(who(r["author"]) in logins and r["commitId"] == feedback["head"] for r in feedback["reviews"]) \
+            if report is None else report
+        status[name] = {"seen": report is not None or bool(authors & logins), "reviewedHead": reviewed}
     return status
 
 
@@ -126,7 +138,8 @@ def main(argv):
                  "body": c["body"]}
                 for page in rest_pages(f"repos/{repo}/issues/{pr}/comments", f"comments on {repo}#{pr}")
                 for c in page]
-    check_runs = [{"name": c["name"], "status": c["status"], "app": (c.get("app") or {}).get("slug")}
+    check_runs = [{"name": c["name"], "status": c["status"], "app": (c.get("app") or {}).get("slug"),
+                   "text": (c.get("output") or {}).get("text") or ""}
                   for page in rest_pages(f"repos/{repo}/commits/{head}/check-runs", f"check runs on {head}")
                   for c in page["check_runs"]]
 

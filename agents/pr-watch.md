@@ -88,9 +88,11 @@ python3 "$HOME/.claude/skills/pull-request/scripts/get_pr_feedback.py" --pr <num
 It prints the head SHA, unresolved threads, review bodies, conversation comments, and
 `automatedReviewers`: for each of copilot, codex and claude, `seen` (it has posted anything on
 this PR) and `reviewedHead` (it has reported on the head, findings or none). Each reports a clean
-head its own way (Copilot an empty review, Codex a "Didn't find any major issues" comment naming
-the commit, Claude its check run), and the script knows each way; don't re-derive it. A failed
-run is an error to report, never "no feedback".
+head its own way (Copilot a review on it, Codex its summary comment's header, which covers its
+code and security reviews, Claude its check run), and the script knows each way; don't
+re-derive it. A failed run is an error to report, never "no feedback". A reviewer whose comment
+says it cannot run here (Codex: "To use Codex here, create an environment for this repo") will
+not review: report that in Notes and don't wait for it.
 
 Failing checks: `gh pr checks <number> --json name,state,link`, then `gh run view <run-id> --log-failed`
 for the excerpt.
@@ -104,8 +106,10 @@ passes, say so and name its trigger in Notes for the caller: re-request Copilot 
 or a PR comment `@codex review` or `@claude review`.
 
 **Approvals.** Report each automated review's state as observed (`COMMENTED`, `APPROVED`,
-`CHANGES_REQUESTED`). Copilot can approve only where its approving reviews are enabled; Codex
-and Claude comment only. An approval is evidence to report, not a verdict of yours.
+`CHANGES_REQUESTED`), and Copilot's approval assessment, the heading of its overview (such as
+"Needs a closer look"). Copilot can approve only where its approving reviews are enabled; Codex
+and Claude comment only, though Codex can gate merges where its summary header shows
+`mergeGateEnabled: true`. An approval is evidence to report, not a verdict of yours.
 
 Distinguish new from pre-existing. A thread whose newest comment predates the caller's
 `since` marker, or the current head SHA, is not new feedback — count it, do not quote it.

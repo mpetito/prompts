@@ -200,6 +200,7 @@ class WatchGates(Remote):
         out = call(self.watch, "7", self.sha, "--reviewers", "copilot,claude", "--minutes", "1")[1]
         self.assertRegex(out, r" reviewers=copilot:reviewed,claude:timeout ")
         self.assertEqual(self.slept, [15] * 4)
+        self.assertEqual(len(self.feedback_calls), 2, "reviewers once a minute, plus the final thread count")
 
     def test_reports_a_moved_head(self):
         self.gh.pr_head = "0123456789012345678901234567890123456789"
