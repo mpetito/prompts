@@ -223,7 +223,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     anything (a first line of no kind counts as `CONTROL:`), and checks the list before the
     folder's existence. Left to step 6: whether Claude draws a placeholder or a suggestion that the
     input-line reading counts as typing (it fails closed).
-- [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
+- [x] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
   `ctl.py read`, type in the session and see the next send `HELD`. Check: each step's printed line
   recorded in spec.md "Shown"; the sessions and mail cleaned up.
@@ -233,7 +233,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   `control-attach` (the gap: the owner is the only path into MAIN and plain sessions), project names
   kept to the evidence store. Waits on the owner accepting the gap, per the readmission bar. Check:
   the names greps over the changed files print nothing.
-- [ ] 8. Live acceptance, recorded in spec.md: a controller driving `ctl.py` by hand, two attached
+- [x] 8. Live acceptance, recorded in spec.md: a controller driving `ctl.py` by hand, two attached
   sessions (a MAIN with a running probe build, and a plain one), one unattached Claude session and
   one Codex session. A steer relayed; a MAIN decision settled at `delegate` and escalated at
   `relay`; an owner-before decision escalated at both; the controller held while the owner types; a
