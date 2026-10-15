@@ -127,6 +127,21 @@ class Send(MailTest):
         self.assertEqual([l for l in out.splitlines() if l.startswith("STATUS")],
                          ["STATUS: working - old", "STATUS: working - new"])
 
+    def read_back(self, sends, **clock):
+        """The STATUS lines read back after sends sends, with time_ns patched by clock (patch.object's keywords)."""
+        with unittest.mock.patch.object(self.mail.time, "time_ns", **clock):
+            for n in range(sends):
+                self.out("send", "b1/main", "--from", "b1/thread", f"STATUS: working - {n}")
+        return [l for l in self.out("read", "b1/main").splitlines() if l.startswith("STATUS")]
+
+    def test_a_stamp_raised_past_the_last_nanosecond_of_a_second_names_the_next_second(self):
+        self.assertEqual(self.read_back(2, return_value=1_800_000_000_999_999_999),
+                         ["STATUS: working - 0", "STATUS: working - 1"])
+
+    def test_nanoseconds_of_different_lengths_in_one_second_read_in_send_order(self):
+        self.assertEqual(self.read_back(2, side_effect=[1_800_000_000_000_005_000, 1_800_000_000_050_000_000]),
+                         ["STATUS: working - 0", "STATUS: working - 1"])
+
     def test_home_option_overrides_the_environment(self):
         other = self.tmp / "other"
         self.out("send", "b1/main", "--from", "b1/thread", "--home", other, "STATUS: working - elsewhere")

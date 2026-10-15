@@ -106,7 +106,8 @@ def read(root, args, opts):
     if len(args) != 1:
         usage()
     box = box_dir(root, args[0])
-    # The names start with the send time, so name order is send order.
+    # The names start with the send time, so name order is send order for each sender; two senders inside one tick
+    # of the clock order by pid.
     messages = sorted(p for p in (box / "new").iterdir() if p.is_file())
     if not messages:
         print("NO MAIL")
