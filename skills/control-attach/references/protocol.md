@@ -369,8 +369,10 @@ The control-attach skill's hooks run in the attached session and call only this:
 - **The Stop hook.** When `wait_command()` is `None`, it does nothing. The wait is up when the
   command of any of the Stop input's `background_tasks` contains `wait_command()` verbatim (an
   entry with no command, such as a subagent, never matches).
-  When the wait is up, or `stop_hook_active` is true, it runs `ctl.py report` with
-  `last_assistant_message` on stdin. Otherwise it blocks the stop with a reason naming the command,
-  and sends no report: the turn that follows ends in the stop that reports.
+  On every stop it runs `ctl.py report` with `last_assistant_message` on stdin, so a turn that
+  forgot the wait still sends its report. Then, unless the wait is up or `stop_hook_active` is
+  true, it blocks the stop with a reason naming the command; the turn that follows ends with a line
+  that isn't a waking `STATUS:`, so its report is quiet. The hook prints nothing but that block and
+  exits 0, whatever fails.
 - **The prompt-submit hook** runs `ctl.py typed` with every prompt on stdin. It filters nothing:
   `typed` decides what is the owner typing.
