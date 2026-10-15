@@ -142,7 +142,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   typing. Three behaviour evals in `skills/control-attach/evals/` pass with the skill and fail
   without (an `OWNER:` steer acted on; a `CONTROL:` settings change refused and taken to the owner;
   a `CONTROL:` that conflicts with the owner's typed words yielding to them).
-- [ ] 5. `skills/control-attach/scripts/ctl.py`, `tests/test_ctl.py`: the controller subcommands,
+- [x] 5. `skills/control-attach/scripts/ctl.py`, `tests/test_ctl.py`: the controller subcommands,
   with the spec's rules in the script rather than in prose.
   - `sessions`: herdr's agent list joined with the records: name or pane, kind, state, authority,
     held until, unread both ways. Codex sessions listed as observed.
@@ -171,6 +171,19 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     the default authority is `delegate`. `start` counts records flagged `started` whose agent is
     live, matches a folder that is a listed path or inside one, mails the objective to `<name>/in`
     and types only `/control-attach <name>`.
+  - Lens (build): `read` and `wait` are mail.py's own calls on `owner/in`, printing no line of
+    their own. `start` counts running sessions from one `agent list`, not an `agent get` per record,
+    doesn't check the objective's first line (the controller's duty; protocol.md names no refusal for
+    it), doesn't read the fresh agent's input line, and leaves the workspace of a failed agent start
+    for the owner to see rather than closing it. `ring` doesn't check that `--brief`'s file exists
+    (no line for it). The input line is the last line opening with the prompt mark; a multi-line
+    draft whose first line is empty isn't seen. The tests add only `agent read` to agent-orchestration's
+    `FakeHerdr`, and read the typed prompts from its log.
+  - Review (core round 2, N10, F3 P): a herdr name counts as a control record's only when that
+    record is attached or `started`, and a record's name reaches its pane only then. So a detached
+    session that kept its herdr name is not rung; the owner attaches it again. A Codex agent is
+    never attached, even under a matching record. A ring goes to the agent by its herdr name when it
+    has one, since a moved pane takes a new id.
 - [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
   `ctl.py read`, type in the session and see the next send `HELD`. Check: each step's printed line
