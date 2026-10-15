@@ -223,7 +223,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     anything (a first line of no kind counts as `CONTROL:`), and checks the list before the
     folder's existence. Left to step 6: whether Claude draws a placeholder or a suggestion that the
     input-line reading counts as typing (it fails closed).
-- [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
+- [x] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
   `ctl.py read`, type in the session and see the next send `HELD`. Check: each step's printed line
   recorded in spec.md "Shown"; the sessions and mail cleaned up.

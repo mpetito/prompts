@@ -182,6 +182,28 @@ end-of-turn and a prompt-submit hook that log their input:
   all in the input box afterwards, in order. The wake's turn ran in between, and its prompt held the
   task notification and none of the typed characters.
 
+## Shown 2026-10-15: the live check
+
+On Claude Code 2.1.300 and herdr 0.9.5, with the control-attach skill loaded as a project skill
+from a scratch folder (no folder-trust prompt) and a scratch control home:
+
+- **Attach.** The owner typed `/control-attach plain` in a plain session. `ctl.py attach plain`
+  printed `WAIT python3 "<mail.py>" wait plain/in --home "<home>/control"`, and the session ended
+  its turn without starting the wait. The Stop hook blocked that stop naming the command (Claude
+  Code shows the block as `Stop hook error: The control wait isn't running. …`); the session
+  started the wait in the background and ended its turn. Both stops' reports reached `owner/in`,
+  quiet. The Stop hook running at all from a project skill shows `CLAUDE_PLUGIN_ROOT` set there.
+- **A steer, acted on.** From another pane, `ctl.py sessions` listed `plain claude done delegate
+  - 0`, and `ctl.py send plain OWNER "Create a file named steer-ok.txt …"` printed
+  `SENT plain/in <file>`. The wait woke the session, which read the mail, started the wait again,
+  made the file, and ended with `STATUS: done - created steer-ok.txt`.
+- **The report.** `ctl.py wait` printed `MAIL 1`, and `ctl.py read` showed the two quiet attach
+  reports and the waking `STATUS: done` one, each after its `=== <file>` line, `From: plain`.
+- **The input line ring reads.** Read with `herdr agent read --format ansi`, an empty input line
+  right after a turn, and again 8 s later, and after a wake's turn, was the prompt mark and a
+  no-break space with nothing after it: Claude Code drew no placeholder or suggested prompt there.
+  ctl.py's input-line check found each empty, and found a typed draft not empty.
+
 ## Considered and not used
 
 - **Claude Code's cross-session inbox.** Native, and a script can post to a session, but only as the
