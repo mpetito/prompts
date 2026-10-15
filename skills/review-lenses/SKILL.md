@@ -14,7 +14,8 @@ verdict and report stay as they are, and a lens adds findings to them, never rep
 
 ## 1. Pick the lenses
 
-While sizing the review, match what the plan or change contains:
+Pick where the sibling says to: plan-review at the start of its step 2, before its checks;
+review in §2, once the depth is set. Match what the plan or change contains:
 
 | The plan or change contains | Lens |
 | --- | --- |
@@ -27,8 +28,8 @@ While sizing the review, match what the plan or change contains:
   lenses run.
 - State the pick on one line, in exactly this form, each lens with a one-line reason:
   `Lenses: picked Reuse (<reason>), Adopt (<reason>); skipped Reversibility (<reason>), Trust boundary (<reason>)`.
-  Every lens appears once, in whichever group it falls. Put the line where the sibling's report template
-  places it, or straight after the report's first line.
+  Every lens appears once, in whichever group it falls; an empty group reads `picked none` or
+  `skipped none`. The line goes where the sibling's report template places it.
 - Lens names are always written `Reuse`, `Adopt`, `Reversibility` and `Trust boundary`.
 
 ## 2. Run them by depth
@@ -42,8 +43,11 @@ applied to what the plan or change builds.
   one per picked lens and never more than four, each on explicit `opus`, or a cross-family model
   where the host offers one. Each brief names its one lens and its reference file, the sibling
   skill whose tags and delegated report it follows, the input and the head or version under
-  review. You still run the sibling's own review; then merge the lens reviewers' findings into
-  your report, folding duplicates into one and settling conflicts by section 3.
+  review. The sibling's own review still runs, yours or one more reviewer's; merge the lens
+  reviewers' findings into that report, folding duplicates into one and settling conflicts by
+  section 3.
+- **High on either, but you cannot start reviewers:** apply each picked lens inline, as at low
+  depth.
 - **Delegated** (a coordinator briefed you): apply the brief's lenses inline and report. Never
   start reviewers of your own ([review §7](../review/SKILL.md), Delegated).
 
@@ -63,7 +67,9 @@ applied to what the plan or change builds.
   location: `<Lens> · <tag> · <location>: <issue>`, for example
   `Reuse · follow-up · <location>: <issue>`. Findings from several lens reviewers then merge
   without rewriting.
-- Where the report numbers its findings, the prefix follows the id:
+- A lens finding sits where the sibling's report template puts it
+  ([plan-review step 4](../plan-review/SKILL.md), [review §7](../review/SKILL.md)). Where the
+  report numbers its findings, the prefix follows the id:
   `- B1 Reuse · blocking · <file>:<line>: <issue>`. The rest of the line keeps the report's own
   form (evidence, fix).
 - Tags are the sibling's own: [review §6](../review/SKILL.md) for a change,

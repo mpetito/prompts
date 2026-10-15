@@ -39,15 +39,15 @@ Propose the first that does the job; a later one needs the earlier ones ruled ou
 ## What the lens does
 
 - Adopting the replacement deletes the hand-rolled code in the same change (code-style rule 6).
-- When no dependency the project has does the job, and the hand-rolled code is smaller than the
-  one it would bring in and meets none of the edge cases that one exists for, no finding.
+- No finding only at the last rung of the order: rungs 1 to 3 are each ruled out by name, only a
+  new library would do the job, the hand-rolled code is smaller than that library, and its inputs
+  never reach the cases the library exists for. Both options are then reversible, and the smaller
+  one wins ([SKILL.md section 3](../SKILL.md)).
 
 ## What the lens must not do
 
 - State a library fact from memory. A version, maintenance signal, licence or API you could not
   check in this review is marked unverified, with the check that would settle it.
-- Propose a new library where an existing dependency, the standard library or the platform does
-  the job.
 
 ## Tagging
 

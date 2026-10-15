@@ -42,4 +42,6 @@ now and what to ask of it; the lens adds the other half, what to defer and when 
 
 Tag by [review §6](../../review/SKILL.md) or [plan-review step 3](../../plan-review/SKILL.md).
 A costly-to-change shape with no answer to review §3 is `blocking`, as §3 says. A reversible
-mechanism built now is over-engineering, tagged by its upkeep.
+mechanism built now is over-engineering, tagged by its upkeep. In a change, an unneeded mechanism
+that persists state is tagged by what removing it after it ships would cost (a migration, data
+others have read), not by its upkeep.

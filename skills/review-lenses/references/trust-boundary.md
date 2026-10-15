@@ -27,17 +27,18 @@ scripts and services; validate outside input where it enters) and decides which 
 
 - Missing validation of outside input is a finding: validate once, where it enters.
 - A gate on the project's own callers is a finding: cut it, or turn it into a warning, as
-  code-style rule 3 says. The cut gate gets no bypass-class mutants.
+  code-style rule 3 says. Which gates still need review §4's proofs:
+  [SKILL.md section 3](../SKILL.md).
 - The same input checked again deeper inside trusted code is a finding: keep the check at entry.
 
 ## What the lens must not do
 
 - Propose a gate, allowlist or refusal on the project's own callers.
-- Ask for review §4's gate proofs on a gate this lens cuts; they apply only to gates that stay.
 
 ## Tagging
 
 Tag by [review §6](../../review/SKILL.md) or [plan-review step 3](../../plan-review/SKILL.md).
-Unvalidated outside input is a security hole (`blocking`). A gate on a trusted caller is
-over-engineering, tagged by its upkeep, and `blocking` when it refuses work the project's own
-callers need.
+Unvalidated outside input is `blocking` when its path reaches a harmful sink (a query, a shell,
+a file path, a redirect, stored data others read) or gives wrong behaviour; otherwise
+`follow-up`. A gate on a trusted caller is over-engineering, tagged by its upkeep, and `blocking`
+when it refuses work the project's own callers need.
