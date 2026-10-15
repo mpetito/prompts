@@ -177,6 +177,14 @@ class Attach(CtlCase):
         os.environ["HERDR_PANE_ID"] = "w1:p1"
         self.assertIsNone(ctl.wait_command())
 
+    def test_reattaching_takes_the_sessions_current_id_and_keeps_its_level(self):
+        self.c("attach", "alpha")
+        self.c("authority", "observe")
+        # A /clear gives the session a new id and herdr clears its name.
+        self.agent("w1:p1").update(name=None, agent_session={"value": "s2"})
+        self.c("attach", "alpha")
+        self.assertEqual((self.record("alpha")["session"], self.record("alpha")["authority"]), ("s2", "observe"))
+
     def test_attaching_another_name_from_the_pane_unattaches_the_first(self):
         self.c("attach", "alpha")
         self.c("attach", "beta")
@@ -440,6 +448,12 @@ class Sessions(ControllerCase):
                                        "shop-web claude working unattached - -", "w3:p2 codex done unattached - -",
                                        "w3:p3 null null unattached - -", "beta - gone relay - 0"])
 
+    def test_a_session_whose_pane_moved_shows_its_record_gone(self):
+        # herdr gives a moved pane a new id; the session keeps its name and its session id.
+        self.attach_at("alpha", "w2:p1")
+        self.agent("w2:p1").update(name="alpha", pane_id="w5:p3")
+        self.assertEqual(self.rows()[-2:], ["alpha claude idle unattached - -", "alpha - gone delegate - 0"])
+
     def test_a_gone_session_stays_gone_when_another_agent_takes_its_name(self):
         self.attach_at("alpha", "w2:p1")
         self.herdr.agents[:] = [{"name": "alpha", "agent": "claude", "agent_status": "idle", "pane_id": "w9:p1"}]
@@ -687,7 +701,7 @@ class Ring(ControllerCase):
         self.rung("w1:p1", "beta", prompt="w1:p1 /control-attach beta")
 
     def resumed_elsewhere(self, session):
-        """An unnamed agent in w3:p1 under session id session: alpha's session continued there, if it is alpha's."""
+        """An unnamed agent in w3:p1 under session id session, as a session resumed there."""
         self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w3:p1",
                                   "agent_session": {"value": session}})
 
@@ -711,6 +725,17 @@ class Ring(ControllerCase):
                 self.resumed_elsewhere(session)
                 self.herdr.log.clear()
                 self.rung("w3:p1", "beta", prompt="w3:p1 /control-attach beta")
+
+    def test_a_session_resumed_into_another_records_pane_is_rung_only_as_itself(self):
+        # alpha exited from w3:p1 still attached; zeta, at observe, was resumed into w3:p1 under its own id.
+        self.attach_at("alpha", "w3:p1")
+        self.attach_at("zeta", "w2:p1", authority="observe")
+        self.herdr.agents[:] = []
+        self.resumed_elsewhere("s-zeta")
+        for target, attach_name in (("w3:p1", "alpha"), ("alpha", "alpha"), ("w3:p1", "zeta")):
+            with self.subTest(target=target, attach_name=attach_name):
+                self.assertEqual(self.c("ring", target, attach_name), (1, f"REFUSED {target} is at observe\n", ""))
+        self.assertEqual(self.herdr.prompts(), [])
 
     def test_a_detached_session_in_its_own_pane_is_rung_back(self):
         self.attach_at("alpha", "w2:p1")

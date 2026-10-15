@@ -291,17 +291,17 @@ def records_of(agent):
     """The records agent is the session of, as [(name, record)]; or None for a named agent that isn't its name's
     record's session, such as orchestration's. A record's session is the agent in its pane: herdr names whatever
     agent asks next, so after a session exits its name alone says nothing about who holds it. A named agent has only
-    its name's record. An unnamed one, whose name herdr cleared or never gave, has its attached record, else every
-    record in its pane: one pane can hold a record for each name it was detached or started under. Its attached
-    record is the one in its pane or, since a resume keeps the session id, the one with its session id: a session
-    continued in another pane keeps its name's level."""
+    its name's record. An unnamed one, whose name herdr cleared or never gave, has the attached record with its
+    session id, which a resume keeps, so a session continued in another pane keeps its name's level; else its pane's
+    attached record; else every record in its pane: one pane can hold a record for each name it was detached or
+    started under. The session id comes first because a pane's attached record may be an exited session's."""
     if agent.get("name"):
         record = named(agent["name"])
         return [(agent["name"], record)] if record and record["pane"] == agent.get("pane_id") else None
-    sid = session_id(agent)
-    mine = [(n, r) for n, r in records()
-            if r["pane"] == agent.get("pane_id") or (r["attached"] and sid and r.get("session") == sid)]
-    return [m for m in mine if m[1]["attached"]][:1] or mine
+    sid, every = session_id(agent), records()
+    tied = [(n, r) for n, r in every if r["attached"] and sid and r.get("session") == sid]
+    mine = [(n, r) for n, r in every if r["pane"] == agent.get("pane_id")]
+    return tied[:1] or [m for m in mine if m[1]["attached"]][:1] or mine
 
 
 def agents():

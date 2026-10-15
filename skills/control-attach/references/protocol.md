@@ -54,10 +54,10 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   to another workspace takes a new id, so its session is no longer its record's: `ring` refuses it
   and `sessions` shows its record gone, while its mail still reaches it. An agent's records: a
   named agent's is its name's record, when it is that record's session. An unnamed agent's (herdr
-  cleared the name, or never gave one) is its attached record, else every record in its pane: one
-  pane can hold a record for each name it was detached or started under. Its attached record is the
-  attached one in its pane or the attached one with its non-empty session id: `claude --resume` and
-  `-c` keep the id, so a session continued in another pane keeps its name and its level for `ring`,
+  cleared the name, or never gave one) is the attached record with its non-empty session id, else
+  its pane's attached record, else every record in its pane: one pane can hold a record for each name
+  it was detached or started under. `claude --resume` and `-c` keep the id, so a session continued in
+  another pane keeps its name and its level for `ring`, even in a pane another attached record left,
   though `sessions` shows its record gone and the controller rings it by its new pane.
 - **The folders file**, `folders`, written by the owner and never by `ctl.py`: one absolute folder
   per line, blank lines ignored. `start` uses a folder only when it is a listed one or inside one.
