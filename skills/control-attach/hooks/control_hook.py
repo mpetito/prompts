@@ -40,7 +40,8 @@ def stop(ctl, data):
         print(json.dumps({"decision": "block", "reason": (
             "The control wait isn't running. Start this exact command as a background task (run_in_background):\n"
             f"{command}\nThen end your turn with one short line and no STATUS line: this turn's report is already "
-            "sent.")}))
+            "sent. If the wait just printed anything but MAIL or TIMEOUT, don't start it: end the turn with "
+            "STATUS: blocked - control wait fails: <its output>.")}))
 
 
 def prompt(ctl, data):
