@@ -61,6 +61,11 @@ These override the steps below where they differ.
   `--judge-model`. Step 9 covers plan-review and review only (the spec asks for no
   agent-orchestration regression), on `--model opus --skip-trigger`, baseline `e646294`, the
   pre-wiring revision. Spend for steps 8 and 9: cap USD 60, check in with the thread at USD 40.
+- A11 (steps 3, 8; after the 1-run pilot). `pos-reuse-plan` saturates: plan-review's mechanisms
+  step already finds the duplicate and the obsolete script. It stays as a no-regression case and
+  step 8's trap criterion excludes it. Reuse's evidence comes from a new `pos-reuse-diff`, where
+  the existing helper lies outside the changed files. `pos-pick-lenses`' explicit-model assertion
+  becomes a `trap-` (the spec requires an explicit model; the pilot baseline omitted it).
 
 ## Steps
 
