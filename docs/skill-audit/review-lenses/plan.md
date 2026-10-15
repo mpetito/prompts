@@ -64,7 +64,7 @@ These override the steps below where they differ.
 
 ## Steps
 
-- [ ] 1. `skills/review-lenses/SKILL.md`: frontmatter and body. Description under about 900
+- [x] 1. `skills/review-lenses/SKILL.md`: frontmatter and body. Description under about 900
   characters: what it does; "Use when" a review request or brief asks for a lens, asks whether
   something in the repository or a library already does what a plan or change under review
   builds, asks what in a plan or change to decide now versus defer, or asks whether a change's
@@ -80,7 +80,7 @@ These override the steps below where they differ.
   yaml; t=open('skills/review-lenses/SKILL.md').read().split('---')[1]; d=yaml.safe_load(t);
   assert d['name']=='review-lenses' and len(d['description'])<=900"` passes (PyYAML 6.0.3 is
   installed), and `wc -l skills/review-lenses/SKILL.md` is under 120.
-- [ ] 2. `skills/review-lenses/references/{reuse,adopt,reversibility,trust-boundary}.md`: one
+- [x] 2. `skills/review-lenses/references/{reuse,adopt,reversibility,trust-boundary}.md`: one
   file per lens, each with: the question, where to look (for Reuse, search the repository beyond
   the changed files for the same responsibility by name and by behaviour; for Adopt, the
   manifest's dependencies first), the evidence a finding must carry, what the lens must not do
@@ -130,18 +130,18 @@ These override the steps below where they differ.
     utils".
   Check: `python3 -c "import json,re,os; d=json.load(open('skills/review-lenses/evals/shared-benchmark.json')); [os.stat('skills/review-lenses/evals/'+f) for c in d['cases'] for f in c.get('files',[])]; [re.compile(a['pattern']) for c in d['cases'] for a in c.get('assertions',[]) if a['type']=='regex']"`
   passes.
-- [ ] 4. `skills/plan-review/SKILL.md`, `skills/review/SKILL.md`: one short pointer each, in the
+- [x] 4. `skills/plan-review/SKILL.md`, `skills/review/SKILL.md`: one short pointer each, in the
   sizing step (review §2) and before the checks (plan-review step 2): pick lenses from
   `../review-lenses/SKILL.md` and put the spec's `Lenses:` line in the report; each report
   template gains that line. In review §4, the gate row's proofs apply to gates the Trust boundary
   lens keeps (one clause). No existing guidance moves or is removed. Check: `git diff --numstat`
   on both files shows 0 deleted lines except the one §4 row it amends; plan-review stays under
   120 lines; review grows by at most 4 lines.
-- [ ] 5. `skills/agent-orchestration/SKILL.md`: one line in "5. Reviews, merges and releases":
+- [x] 5. `skills/agent-orchestration/SKILL.md`: one line in "5. Reviews, merges and releases":
   a reviewer's brief names its lenses from review-lenses. Check: the line is present, and
   `python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration`
   passes.
-- [ ] 6. `docs/skill-audit/candidates.md`: an entry dated 2026-10-15 recording the owner's
+- [x] 6. `docs/skill-audit/candidates.md`: an entry dated 2026-10-15 recording the owner's
   acceptance of the Reversibility gap as known, and mapping the existing entries to the lenses as
   the spec does (`reuse` to Adopt; `dead code` and `dispatch` to Reuse; `least mechanism` to both;
   `trust` to Trust boundary). `README.md`: a row for review-lenses in the skills table, and the
