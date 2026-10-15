@@ -248,3 +248,27 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
 - [ ] 9. Retire the earlier supervisor build (spec question 6): its worktree set aside unmerged and
   recorded as evidence where the setup records keep it. Waits on the owner's answer. Check: the
   installed bridge still reports healthy, and the worktree is listed as set aside.
+
+## After the owner's answers (2026-10-15T13:29Z)
+
+The owner settled D3 (accept the gap once two evals fail without the skill on behaviour) and D4
+(set the supervisor build aside; keep the handoff bridge until OpenClaw uses this layer), and sent
+two steers: reverse D1, so the owner's newest words win, typed or relayed by `OWNER:`, while
+`CONTROL:` still never overrides the owner's typed words; and one more "Is this really necessary?"
+pass over session identity and unlikely guards before OpenClaw depends on the protocol.
+
+| Lane | Steps | Owns |
+| --- | --- | --- |
+| `owner` | 7, 10 | `SKILL.md`, `evals/`, spec.md's D1 line, `docs/skill-audit/candidates.md`, the evidence store |
+| `simplify` | 11 | `scripts/ctl.py`, `references/protocol.md`, `hooks/`, `tests/` |
+| `retire` | 9 | the setup records of the earlier supervisor build (outside this repository) |
+
+- [ ] 10. D1 reversed in `SKILL.md`; the owner-steer and typed-words-conflict evals each fail
+  without the skill on behaviour (not on a command name or the `STATUS:` line). Check: an eval run
+  of all three cases, both arms, with each case failing without the skill and passing with it.
+- [ ] 11. The simplification pass: session identity in `ctl.py` and protocol.md (records, pane vs
+  session id vs herdr name, cleared, resumed and moved sessions) and every guard whose case is
+  unlikely, cut where a simpler rule covers it; guards review found as real holes stay. D1 in
+  protocol.md; an `OWNER:` relay is not held. Check: the suites green, every cut guard's earlier
+  test either deleted with its reason or still passing, and every printed-line change listed for
+  the OpenClaw adapter.
