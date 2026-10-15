@@ -263,6 +263,19 @@ PERMITS = {
     "relay": ("OWNER", "QUESTION", "DECISION owner"),
     "delegate": ("OWNER", "QUESTION", "DECISION owner", "CONTROL", "DECISION controller"),
 }
+
+
+def message_kind(text):
+    """The PERMITS kind of a down message's text: OWNER, CONTROL, QUESTION, or DECISION and who made it from its
+    second line. Text that opens with none of them is the controller's own direction, so it counts as CONTROL."""
+    lines = text.split("\n")
+    if m := re.match(r"(OWNER|CONTROL|QUESTION):", lines[0]):
+        return m[1]
+    if re.match(r"DECISION [^\s:]+:", lines[0]):
+        return f"DECISION {'owner' if lines[1:2] == ['By: owner'] else 'controller'}"
+    return "CONTROL"
+
+
 # The input line's prompt mark: Claude Code's, then Codex's.
 PROMPT_MARK = re.compile(r"\s*[❯›]")
 CSI = re.compile(r"\x1b\[([0-9;?]*)([A-Za-z])")
@@ -283,13 +296,16 @@ def belongs(agent, record):
         record["attached"] and record["session"] and session_id(agent) == record["session"])
 
 
-def record_of(agent):
-    """(name, record) of the record agent is the session of, or None: for a named agent the record of its name when
-    the agent belongs to it, for an unnamed one the record attached from its pane."""
+def records_of(agent):
+    """The records agent is the session of, as [(name, record)]; or None for a named agent that isn't its name's
+    record's session, such as orchestration's. A named agent has only its name's record. An unnamed one, whose name
+    herdr cleared or never gave, has the attached record that belongs to it, else every record that does: one pane
+    can hold a record for each name it was detached or started under."""
     if agent.get("name"):
         record = named(agent["name"])
-        return (agent["name"], record) if record and belongs(agent, record) else None
-    return next(((n, r) for n, r in records() if r["attached"] and r["pane"] == agent.get("pane_id")), None)
+        return [(agent["name"], record)] if record and belongs(agent, record) else None
+    mine = [(n, r) for n, r in records() if belongs(agent, r)]
+    return [m for m in mine if m[1]["attached"]][:1] or mine
 
 
 def agents():
@@ -424,24 +440,23 @@ def ring(args, opts):
         line = f"Read {lib.native(lib.canon(opts['--brief']))} and follow it."
     else:
         usage()
-    agent, via = live_agent(target), None
+    agent = live_agent(target)
     if agent is None:
         # A moved pane takes a new id, so a record's pane is the way in only when herdr no longer has its name.
         record = named(target)
         if record and (record["attached"] or record["started"]):
-            agent, via = live_agent(record["pane"]), (target, record)
+            agent = live_agent(record["pane"])
     if agent is None:
         raise Refused(f"no agent at {target}")
     herdr_name, pane = agent.get("name"), agent.get("pane_id")
-    mine = record_of(agent)
-    if herdr_name and not mine:
+    mine = records_of(agent)
+    if mine is None:
         raise Refused(f"{target} is named {herdr_name}")
-    mine = mine or via
-    if mine and mine[1]["authority"] == "observe":
+    if any(r["authority"] == "observe" for _, r in mine):
         raise Refused(f"{target} is at observe")
     # Attaching under another name would give the session that name's level, which only the owner sets.
-    if mine and attach_name and attach_name != mine[0]:
-        raise Refused(f"{target} is attached as {mine[0]}")
+    if mine and attach_name and attach_name not in [n for n, _ in mine]:
+        raise Refused(f"{target} is attached as {mine[0][0]}")
     if agent.get("agent") != kind:
         raise Refused(f"{target} is {agent.get('agent') or 'null'}")
     state = agent.get("agent_status") or "null"
@@ -465,16 +480,23 @@ def start(args, opts):
         allowed = [f.strip() for f in lib.read_lines(listing) if f.strip()]
     except FileNotFoundError:
         raise Refused(f"no folders file at {lib.native(listing)}") from None
-    if not os.path.isdir(folder):
-        raise Refused(f"{folder} is not a folder")
+    # The list first, so a refusal never says whether a path outside it exists.
     if not any(lib.inside(folder, f) for f in allowed):
         raise Refused(f"{folder} is not a listed folder")
+    if not os.path.isdir(folder):
+        raise Refused(f"{folder} is not a folder")
     try:
         text = Path(objective).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         text = ""
     if not text.strip():
         raise Refused(f"cannot read {objective}")
+    # A name's level and hold outlive its sessions, as on attach: only the owner changes a level. The objective is
+    # a down message, so the kept level must permit it, as send checks.
+    old = load(name) or {}
+    level = old.get("authority", DEFAULT_AUTHORITY)
+    if message_kind(text) not in PERMITS[level]:
+        raise Refused(f"{name} is at {level}")
     listed = agents()
     live = {a.get("name") for a in listed} | {a.get("pane_id") for a in listed}
     # Spec question 4. A started session counts while herdr lists its name or its pane.
@@ -497,9 +519,7 @@ def start(args, opts):
         if e.code != "agent_not_ready":
             raise
         ready = False
-    # A name's level and hold outlive its sessions, as on attach: only the owner changes a level.
-    old = load(name) or {}
-    save(name, {"pane": pane, "session": "", "authority": old.get("authority", DEFAULT_AUTHORITY),
+    save(name, {"pane": pane, "session": "", "authority": level,
                 "hold": old.get("hold", DEFAULT_HOLD), "typed": "", "attached": False, "started": True})
     with contextlib.redirect_stdout(io.StringIO()):
         mail.send(mail_root(), [f"{name}/in", text.rstrip("\n")], {"--from": OWNER})

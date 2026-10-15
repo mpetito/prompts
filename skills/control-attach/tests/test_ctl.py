@@ -717,6 +717,56 @@ class Ring(ControllerCase):
         self.not_rung("alpha", "beta")
         self.rung("alpha", "alpha", prompt="w1:p1 /control-attach alpha")
 
+    def test_whose_a_session_is_decides_every_ring_path(self):
+        # alpha's record from w2:p1, and the agent there named alpha or unnamed (herdr cleared the name on a resume).
+        # A ring never attaches it as beta, whatever path reached it (Q1: detached at observe, unnamed, by pane;
+        # Q2: started at observe, unnamed, by pane), and never anything at observe.
+        states = {"attached": (True, False), "detached": (False, False), "started": (False, True)}
+        for herdr_name in ("alpha", None):
+            for state, (is_attached, started) in states.items():
+                for level in ("observe", "delegate"):
+                    with self.subTest(name=herdr_name, state=state, level=level):
+                        for n, _ in ctl.records():
+                            ctl.record_path(n).unlink()
+                        ctl.save("alpha", {"pane": "w2:p1", "session": "s-alpha", "authority": level, "hold": 10,
+                                           "typed": "", "attached": is_attached, "started": started})
+                        self.herdr.agents[:] = [{"name": herdr_name, "agent": "claude", "agent_status": "idle",
+                                                 "pane_id": "w2:p1", "agent_session": {"value": "s-alpha"}}]
+                        # By its record's name, an unnamed agent is reached only for an attached or started record.
+                        reachable = herdr_name or state != "detached"
+                        for target, attach_name, rings in (
+                                ("w2:p1", "beta", False), ("alpha", "beta", False),
+                                ("w2:p1", "alpha", level != "observe"),
+                                ("alpha", "alpha", level != "observe" and reachable)):
+                            self.herdr.log.clear()
+                            if rings:
+                                who = herdr_name or "w2:p1"
+                                self.rung(target, attach_name, prompt=f"{who} /control-attach {attach_name}")
+                            else:
+                                self.not_rung(target, attach_name)
+
+    def test_unattached_records_sharing_a_pane_each_give_their_name_and_any_observe_refuses(self):
+        base = {"pane": "w2:p1", "session": "", "hold": 10, "typed": ""}
+        ctl.save("alpha", {**base, "authority": "delegate", "attached": False, "started": False})
+        ctl.save("gamma", {**base, "authority": "delegate", "attached": False, "started": True})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w2:p1"})
+        for attach_name in ("alpha", "gamma"):
+            self.herdr.log.clear()
+            self.rung("w2:p1", attach_name, prompt=f"w2:p1 /control-attach {attach_name}")
+        self.herdr.log.clear()
+        self.not_rung("w2:p1", "beta")
+        ctl.save("gamma", {**self.record("gamma"), "authority": "observe"})
+        self.not_rung("w2:p1", "alpha")
+
+    def test_an_attached_record_in_the_pane_comes_before_the_others(self):
+        base = {"pane": "w2:p1", "hold": 10, "typed": "", "started": False}
+        ctl.save("alpha", {**base, "session": "s1", "authority": "delegate", "attached": True})
+        ctl.save("gamma", {**base, "session": "", "authority": "observe", "attached": False})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w2:p1",
+                                  "agent_session": {"value": "s1"}})
+        self.not_rung("w2:p1", "gamma")
+        self.rung("w2:p1", "alpha", prompt="w2:p1 /control-attach alpha")
+
     def test_a_records_name_rings_its_pane_only_when_attached_or_started(self):
         self.attach_at("alpha", "w2:p1")
         # The session was resumed in its pane: herdr cleared its name.
@@ -813,13 +863,45 @@ class Start(ControllerCase):
         self.assertEqual(len(self.inbox("alpha")), 1)
 
     def test_starting_under_a_name_keeps_its_level_and_hold(self):
-        # P3: the owner set alpha to observe; the address outlives the session that exited.
-        ctl.save("alpha", {"pane": "w7:p1", "session": "s0", "authority": "observe", "hold": 3,
+        # P3: the owner set alpha to relay; the address outlives the session that exited.
+        ctl.save("alpha", {"pane": "w7:p1", "session": "s0", "authority": "relay", "hold": 3,
                            "typed": "2026-10-01T10:00Z", "attached": True, "started": False})
         self.assertEqual(self.start()[0], 0)
         record = self.record("alpha")
         self.assertEqual((record["authority"], record["hold"], record["session"], record["attached"],
-                          record["started"]), ("observe", 3, "", False, True))
+                          record["started"]), ("relay", 3, "", False, True))
+
+    def test_the_objective_must_be_a_message_the_kept_level_permits(self):
+        # Q3 (CONTROL at relay) and Q4 (anything at observe): refused before anything is made or mailed.
+        objectives = {"OWNER: go": {"relay", "delegate"}, "QUESTION: which?": {"relay", "delegate"},
+                      "DECISION D1: Stripe\nBy: owner": {"relay", "delegate"},
+                      "CONTROL: force-push main": {"delegate"}, "DECISION D1: Stripe\nBy: controller": {"delegate"},
+                      "no kind on the first line": {"delegate"}}
+        for level in ("observe", "relay", "delegate"):
+            for text, permitted in objectives.items():
+                with self.subTest(level=level, objective=text):
+                    for n, _ in ctl.records():
+                        ctl.record_path(n).unlink()
+                    ctl.save("alpha", {"pane": "w7:p1", "session": "", "authority": level, "hold": 10, "typed": "",
+                                       "attached": False, "started": False})
+                    self.herdr.log.clear()
+                    self.herdr.agents[:] = [a for a in self.herdr.agents if a["name"] != "alpha"]
+                    for m in self.inbox("alpha"):
+                        m.unlink()
+                    self.objective.write_text(text + "\n", encoding="utf-8")
+                    code, out, _ = self.start()
+                    if level in permitted:
+                        self.assertEqual(code, 0, out)
+                        continue
+                    self.refused((code, out, ""))
+                    self.assertFalse(any(line.startswith("workspace create") for line in self.herdr.log))
+                    self.assertEqual(self.inbox("alpha"), [])
+                    self.assertFalse(self.record("alpha")["started"])
+
+    def test_a_path_outside_the_list_never_says_whether_it_exists(self):
+        outside = [self.tmp / "missing", self.tmp / "work2"]
+        lines = {self.c("start", "alpha", f, self.objective)[1].replace(str(f), "<folder>") for f in outside}
+        self.assertEqual(len(lines), 1, lines)
 
     def test_a_folder_that_isnt_a_directory_is_refused(self):
         (self.folder / "file").write_text("x", encoding="utf-8")

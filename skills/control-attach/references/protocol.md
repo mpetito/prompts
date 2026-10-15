@@ -52,7 +52,11 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   subcommands find its record by `HERDR_PANE_ID`: the record that is `attached` with that `pane`.
 - **A record's session** is an agent in the record's `pane`, or, while the record is attached, an
   agent with its `session` id, which a moved pane keeps. herdr gives an exited session's name to
-  whichever agent asks for it next, so a name alone never ties an agent to a record.
+  whichever agent asks for it next, so a name alone never ties an agent to a record. An agent's
+  records: a named agent's is its name's record, when it is that record's session. An unnamed
+  agent's (herdr cleared the name, or never gave one) is the attached record it is the session of,
+  else every record it is: one pane can hold a record for each name it was detached or started
+  under.
 - **The folders file**, `folders`, written by the owner and never by `ctl.py`: one absolute folder
   per line, blank lines ignored. `start` uses a folder only when it is a listed one or inside one.
   Without the file, `start` refuses.
@@ -148,8 +152,9 @@ relays the answer to the thread as `DECISION D<n>: …`.
   opening with Claude's `❯` or Codex's `›`, with the lines between it and the rule that closes
   Claude's input box, where a draft goes on. Dim text there, a placeholder or a suggested prompt,
   is not typing, and a screen that shows no input line is not known to be empty.
-- **A ring never changes a level.** Into a record's session, a ring attaches only that record's
-  name: under another name the session would take that name's level, and only the owner sets one.
+- **A ring never changes a level.** Into a record's session, a ring attaches only one of the
+  agent's records' names: under another name the session would take that name's level, and only
+  the owner sets one.
 - **Never into orchestration's agents.** A ring refuses an agent with a herdr name unless it is
   that name's record's session, so a record whose name a lane later took doesn't count.
   Orchestration names its threads `<build>` and its lanes `<build>-<lane>`, the controller
@@ -249,6 +254,9 @@ single spaces:
 <target> <kind> <state> <authority> <held> <unread>
 ```
 
+A gone row can share its target with a live agent's row, when another agent took the name, so a
+parser keys rows on target and state together.
+
 | Field | Value |
 | --- | --- |
 | `target` | The attached name, else herdr's agent name, else the pane id |
@@ -309,8 +317,8 @@ when herdr has no agent by that name, an attached or started record's name, whic
 the record's pane. herdr gives a moved pane a new id, so the line goes to the agent by its herdr
 name whenever it has one, and by pane only when it has none. `<attach-name>` types
 `/control-attach <attach-name>` into a Claude agent; `--brief` types `Read <file> and follow it.`
-into a Codex agent. The target's record is the one it is the session of: its name's, else the one
-attached from its pane, else the record named as the target.
+into a Codex agent. The target's records are the agent's records (A record's session, above),
+whichever way the target reached it.
 
 | Line | Exit | When |
 | --- | --- | --- |
@@ -318,8 +326,8 @@ attached from its pane, else the record named as the target.
 | `REFUSED no agent at <target>` | 1 | Neither herdr nor an attached or started record knows the target, or the record's pane holds no agent |
 | `REFUSED <target> is <state>` | 1 | herdr's state is neither `idle` nor `done` |
 | `REFUSED <target>'s input line is not empty` | 1 | Its visible input line holds text: the owner may be typing |
-| `REFUSED <target> is at observe` | 1 | The target's record is at `observe` |
-| `REFUSED <target> is attached as <name>` | 1 | `<attach-name>` isn't the name of the target's record (A ring never changes a level, above) |
+| `REFUSED <target> is at observe` | 1 | Any of the target's records is at `observe` |
+| `REFUSED <target> is attached as <name>` | 1 | `<attach-name>` isn't the name of one of the target's records, the first of which is `<name>` (A ring never changes a level, above) |
 | `REFUSED <target> is <kind>` | 1 | `<attach-name>` into an agent that isn't Claude, or `--brief` into one that isn't Codex |
 | `REFUSED <target> is named <herdr name>` | 1 | The agent has a herdr name and isn't that name's record's session: an orchestration thread or lane (Never into orchestration's agents, above) |
 | `REFUSED not a name: <attach-name>` | 1 | Outside the name pattern |
@@ -332,17 +340,21 @@ writes `<name>`'s record (`started` true, not yet attached; a record that exists
 and hold, as on `attach`, and a new one gets the defaults), sends the objective file's text
 unchanged to `<name>/in` from `owner` (its first line is an `OWNER:` or `CONTROL:` line), and types
 `/control-attach <name>` as the agent's first prompt. The session attaches and its first wait finds
-the objective.
+the objective. The objective is a down message, so before anything is made the record's level
+must permit its first line's kind, as `send` checks; a first line of no kind counts as `CONTROL:`.
+The folder is checked against the list before it is checked to exist, so a refusal never says
+whether a path outside the list exists.
 
 | Line | Exit | When |
 | --- | --- | --- |
 | `STARTED <name> <pane>` | 0 | Started |
 | `BLOCKED <name> waiting on a startup prompt` | 0 | Started, but a startup dialog (folder trust) waits for the owner, or herdr refused the first prompt; once it is idle, ring `<name> <name>` |
 | `REFUSED no folders file at <path>` | 1 | `<home>/control/folders` doesn't exist |
-| `REFUSED <folder> is not a folder` | 1 | `<folder>` isn't an existing directory |
 | `REFUSED <folder> is not a listed folder` | 1 | Neither a listed folder nor inside one |
+| `REFUSED <folder> is not a folder` | 1 | A listed path, or one inside it, that isn't an existing directory |
 | `REFUSED 3 started sessions are running` | 1 | Three records with `started` are running: herdr lists the record's name or its pane |
 | `REFUSED cannot read <objective-file>` | 1 | Missing, not UTF-8 text, or empty |
+| `REFUSED <name> is at <level>` | 1 | `<name>`'s level (kept, or the default for a new name) doesn't permit the objective (Authority) |
 | `REFUSED not a name: <name>` | 1 | Outside the name pattern |
 | `REFUSED owner is the controller's address` | 1 | `<name>` is `owner` |
 | `REFUSED <name> is held by pane <pane>` | 1 | A live herdr agent is named `<name>` |

@@ -173,9 +173,8 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     and types only `/control-attach <name>`.
   - Lens (build): `read` and `wait` are mail.py's own calls on `owner/in`, printing no line of
     their own. `start` counts running sessions from one `agent list`, not an `agent get` per record,
-    doesn't check the objective's first line (the controller's duty; protocol.md names no refusal for
-    it), doesn't read the fresh agent's input line, and leaves the workspace of a failed agent start
-    for the owner to see rather than closing it. `ring` doesn't check that `--brief`'s file exists
+    doesn't read the fresh agent's input line, and leaves the workspace of a failed agent start for
+    the owner to see rather than closing it. `ring` doesn't check that `--brief`'s file exists
     (no line for it). The tests add only `agent read` (and a refused prompt) to
     agent-orchestration's `FakeHerdr`, and read the typed prompts from its log.
   - Review (core round 2, N10, F3 P): a record's name reaches its pane only when the record is
@@ -188,7 +187,13 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     (`is attached as`), and `start` keeps an existing record's level and hold, so neither raises a
     level. The input line runs to the rule under Claude's box, so a draft's later lines count;
     `start` refuses a folder that isn't a directory and prints `BLOCKED` when its first prompt is
-    refused. Left to step 6: whether Claude draws a placeholder or a suggestion that the
+    refused.
+  - Review (controller round 2): one function, `records_of`, says whose an agent is on every ring
+    path: a named agent's name's record, else for an unnamed one the attached record that belongs
+    to it, else every record that does; any at `observe` refuses, and only their names attach.
+    `start` keeps a level, so it checks the objective's first line against it before making
+    anything (a first line of no kind counts as `CONTROL:`), and checks the list before the
+    folder's existence. Left to step 6: whether Claude draws a placeholder or a suggestion that the
     input-line reading counts as typing (it fails closed).
 - [ ] 6. Live check the owner can watch: from this repository, attach one plain session, then from
   a second pane `ctl.py send` an `OWNER:` steer, see it acted on, see its report arrive with
