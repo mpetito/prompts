@@ -23,8 +23,11 @@ A session is active between two of its records at most IDLE_GAP apart, counting 
 files' records as its own; a longer gap is not counted. Every timestamped record counts, typed by a person or
 not. Sessions whose working directory is under a temporary directory (eval and harness runs) are left out.
 Claude's transcript retention (`cleanupPeriodDays`, 30 days by default) bounds the range: days whose
-transcripts are gone print nothing. Lines that are not JSON, and timestamps that are not ISO 8601, are skipped
-and counted on stderr. Reads only; sends nothing. --to defaults to --from; exit 1 on a usage error.
+transcripts are gone print nothing. These are skipped and counted on stderr: lines that are not a JSON object;
+records whose session id, working directory, pull-request link or recorded remote is not a string without NUL,
+or whose link or remote is not a parseable URL; a Codex session_meta whose payload or payload.git is not an
+object; timestamps that are not ISO 8601 with a time zone, or fall in year 1 or 9999. Reads only; sends
+nothing. --to defaults to --from; exit 1 on a usage error.
 """
 import argparse
 import json
@@ -35,7 +38,7 @@ import subprocess
 import sys
 import tempfile
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from datetime import MAXYEAR, MINYEAR, date, datetime, time, timedelta, timezone
 from functools import cache
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -81,14 +84,24 @@ def recent_files(root, patterns, first):
 
 
 def records(path, bad):
-    """The file's JSON records in file order; a line that does not parse adds one to bad[path]."""
+    """The file's JSON objects in file order; a line that is not one adds one to bad[path]."""
     with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             if line.strip():
                 try:
-                    yield json.loads(line)
+                    r = json.loads(line)
                 except json.JSONDecodeError:
+                    r = None
+                if isinstance(r, dict):
+                    yield r
+                else:
                     bad[path] += 1
+
+
+def text(*values):
+    """True when every value is absent (None) or a string without NUL, so a reader can pass it on as a
+    session id, path or remote: os.path and subprocess raise on a NUL, the rest on another type."""
+    return all(v is None or isinstance(v, str) and "\0" not in v for v in values)
 
 
 def repo_key(url):
@@ -136,9 +149,16 @@ def claude_events(path, bad, pr_links):
     lack one. A pr-link record's repo key goes into pr_links under its session id."""
     events, cwd = [], None
     for r in records(path, bad):
+        if not text(r.get("sessionId"), r.get("cwd"), r.get("prUrl")):
+            bad[path] += 1
+            continue
         sid = r.get("sessionId", path.stem)
         if r.get("type") == "pr-link" and r.get("prUrl"):
-            pr_links[sid] = repo_key(r["prUrl"])
+            try:
+                pr_links[sid] = repo_key(r["prUrl"])
+            except ValueError:  # urlsplit rejects it, e.g. an unclosed IPv6 host
+                bad[path] += 1
+                continue
         cwd = r.get("cwd") or cwd
         if "timestamp" in r and cwd:
             events.append((sid, cwd, r["timestamp"], None))
@@ -149,11 +169,19 @@ def codex_events(path, bad, pr_links):
     """(session id, cwd, timestamp, remote key) per timestamped record of a rollout; pr_links is unused."""
     events, sid, cwd, remote = [], path.stem, None, None
     for r in records(path, bad):
-        payload = r.get("payload") or {}
         if r.get("type") == "session_meta":
-            sid, cwd = payload.get("id", sid), payload.get("cwd", cwd)
-            if url := (payload.get("git") or {}).get("repository_url"):
-                remote = repo_key(url)
+            # A session_meta with any bad field is dropped whole: its id, cwd and remote describe one session.
+            meta = r.get("payload") or {}
+            git = (meta.get("git") or {}) if isinstance(meta, dict) else None
+            if not (isinstance(git, dict) and text(meta.get("id"), meta.get("cwd"), git.get("repository_url"))):
+                bad[path] += 1
+                continue
+            try:
+                key = repo_key(url) if (url := git.get("repository_url")) else remote
+            except ValueError:  # urlsplit rejects it, e.g. an unclosed IPv6 host
+                bad[path] += 1
+                continue
+            sid, cwd, remote = meta.get("id", sid), meta.get("cwd", cwd), key
         if "timestamp" in r and cwd:
             events.append((sid, cwd, r["timestamp"], remote))
     return events
@@ -211,12 +239,17 @@ def scan(claude_root, codex_root, first, last, tz=None, temp_roots=TEMP_ROOTS):
     for source, path, sid, cwd, ts, recorded in events:
         if is_temp(cwd, temp_roots):
             continue
-        # The remote a Codex rollout recorded comes first; a session's PR link is the last resort after git.
+        # A zoneless time cannot be ordered against the others. A local day lies within a day of UTC, so a
+        # year strictly inside MINYEAR..MAXYEAR keeps the local conversion and the next midnight in range.
         try:
             stamp = datetime.fromisoformat(ts)
-        except (TypeError, ValueError):
+            ok = stamp.tzinfo is not None and MINYEAR < stamp.astimezone(timezone.utc).year < MAXYEAR
+        except (TypeError, ValueError, OverflowError):
+            ok = False
+        if not ok:
             bad[path] += 1
             continue
+        # The remote a Codex rollout recorded comes first; a session's PR link is the last resort after git.
         repo = recorded or git_remote(cwd) or pr_links.get(sid) or f"unmapped:{cwd}"
         streams[source, sid, repo].append(stamp)
     days = defaultdict(lambda: ([], set(), set()))
