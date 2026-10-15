@@ -67,7 +67,7 @@ holds the personal style rules (project conventions win); `review` judges the di
 `pull-request` takes it through review feedback. When a review claim stays ambiguous after
 checking the code and docs, `model-council` gets a blind Claude and Codex answer and reports
 consensus or the crux for the human.
-`plan-review` and `review` pick lenses from `review-lenses` while sizing a review and name
+`plan-review` and `review` pick lenses from `review-lenses` before their checks and name
 the picked and skipped lenses in the report.
 
 These routes are stated in the skill bodies themselves, because Codex and other hosts do not
