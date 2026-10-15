@@ -52,7 +52,7 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     depends on it), and whether the prompt-submit hook fires for a typed `/control-attach`. `/clear`
     is cheap beside them. The wake mid-keystroke and another session's message come last, as time
     allows.
-- [ ] 2. `skills/control-attach/references/protocol.md`,
+- [x] 2. `skills/control-attach/references/protocol.md`,
   `skills/control-attach/tests/test_protocol.py`: the control protocol: layers, addresses, the four
   down messages and the `STATUS:` up message, authority levels and what each permits, the consent
   limits, the hold window, rings, and the controller subcommands with every line they print, under
@@ -70,7 +70,24 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     `sessions` row format the adapter parses; one controller reads `owner/in` at a time.
     `DECISION` says who made it (`--owner` or not); the session, which raised the decision and knows
     it is owner-before, refuses a controller-made answer to one, so no script tracks owner-before.
-- [ ] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
+  - Lens (protocol): the session's wait and read are mail.py's own `wait <name>/in` and `read
+    <name>/in` with `--home <home>/control`, so ctl.py has no subcommand for them; the controller keeps
+    `read`, since the adapter reaches only ctl.py. ctl.py takes no `--home`: `<home>` comes from the
+    environment, and only the printed wait command carries it, because mail.py would otherwise use
+    `<home>/mail`. The default authority is a constant, not a setting (the spec lets the owner change
+    one session's level, never the default), so `ring` and the Codex ring check only the target's own
+    level, refusing `observe`. One ring line per kind: the `UNREAD` answer is `/control-attach <name>`,
+    not the spec's "unread control mail" line, so `typed` ignores one form; `<attach-name>` rings only
+    a Claude agent and `--brief` only a Codex one. The Stop hook reads one function,
+    `ctl.wait_command()`, not a subcommand, and finds the wait by substring, so no session-name
+    subcommand exists for the hook alone. `send` takes its text as one argument (no `--file`, no
+    stdin). `start` sends the objective file unchanged; no new message kind. `sessions` has no pane
+    column (a gone name rings its recorded pane inside `ring`) and marks an unattached agent
+    `unattached`. The record holds no name (its file name) and no session id (superseded: the Probe
+    note below adds `session`). `typed` prints nothing,
+    since a prompt-submit hook's output reaches the model. Wrong arguments are usage on stderr, not
+    `REFUSED` lines.
+- [x] 3. `skills/control-attach/scripts/ctl.py`, `skills/control-attach/tests/test_ctl.py`,
   `skills/control-attach/tests/support.py`: the session-side subcommands, importing
   `agent-orchestration/scripts/mail.py` and `lib.py` as thread.py imports lib.
   - `attach <name> [--authority observe|relay|delegate] [--hold <minutes>]`: resolve this session's
@@ -87,9 +104,15 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
   - Lens: `attach` takes no `--authority`: every session starts at the default and `authority`
     is the one way to change it, so there are not two.
   - Review: the record keeps no session id (herdr's list gives it live and the pane identifies
-    the session) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
+    the session; superseded by the Probe note below, which adds `session`) and gains `attached` (detach clears it, authority unchanged) and `started`. `attach`
     refuses `owner` and names outside herdr's pattern. The tests reuse agent-orchestration's
     `FakeHerdr` by path instead of a new support.py.
+  - Lens (protocol): `attach` prints one line, `WAIT <command>`; the level and hold show in
+    `sessions`. A name is held when a live herdr agent in another pane has it: `attach` renames the
+    agent, so herdr's names are the live holders and no record lookup is needed. `detach` leaves the
+    herdr name alone. The session's subcommands find their record by `HERDR_PANE_ID` among attached
+    records, file-only, and `attach` un-attaches any other record from the same pane so that lookup
+    stays unique.
   - Probe: a `/clear` and a resume drop the skill's hooks, and a compaction keeps them (spec "Shown
     2026-10-15"), so re-running `attach` is the only way back, after either. A `/clear` keeps
     herdr's pane and name and changes the session id, so the id is the only sign a cleared session
@@ -105,7 +128,8 @@ Step 2 fixes everything the hook calls, so `hooks` never edits `ctl.py`.
     `background_tasks` and `stop_hook_active` is false, block the stop with a reason naming the
     command.
   - UserPromptSubmit hook: `typed`, unless the prompt is a task notification (starts
-    `<task-notification>`) or a non-owner form step 1 found.
+    `<task-notification>`) or a non-owner form step 1 found (superseded: the hook passes every
+    prompt, and `typed` ignores those forms; protocol.md "What the hooks call").
   - Probe: the non-owner forms are a prompt starting `<task-notification>`, `<agent-message ` or
     `<cross-session-message ` (spec "Shown 2026-10-15"); a typed `/control-attach` also reaches the
     hook on a re-attach, and `typed` ignores it with the ring lines. Invoking the skill again doesn't
