@@ -189,6 +189,18 @@ class ScanTest(unittest.TestCase):
         self.claude_session("s1", self.shop, minutes("11:00", 7))
         self.assertEqual(self.scan(), [f"2026-10-13 {SHOP} 0.50 1 claude 11:00-11:30"])
 
+    def test_temp_root_spelled_differently_from_the_session_cwd_is_excluded(self):
+        # On Windows TEMP names the runner's profile by its 8.3 short name (RUNNER~1) while the cwd resolves to the
+        # long one; a symlinked temp root makes the same split on any OS. On Windows the link needs Developer Mode
+        # or elevation.
+        real = self.tmp / "real-temp"
+        (real / "claude-ws-1").mkdir(parents=True)
+        self.temp_root.symlink_to(real, target_is_directory=True)
+        self.claude_session("eval", real / "claude-ws-1", minutes("09:00", 13))
+        self.codex_session("c-eval", self.temp_root / "claude-ws-1", minutes("09:00", 13), "2026-10-13")
+        self.claude_session("s1", self.shop, minutes("11:00", 7))
+        self.assertEqual(self.scan(), [f"2026-10-13 {SHOP} 0.50 1 claude 11:00-11:30"])
+
     def test_subagent_counts_with_its_parent_session(self):
         self.claude_session("s1", self.shop, minutes("09:00", 7))
         self.claude_session("s1", self.shop, minutes("09:20", 9), subagent="a1")
