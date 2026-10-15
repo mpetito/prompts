@@ -26,7 +26,8 @@ class CtlCase(support.OrchTest):
 
     def setUp(self):
         super().setUp()
-        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p1"})
+        self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p1",
+                                  "agent_session": {"agent": "claude", "kind": "id", "value": "s1"}})
         os.environ["HERDR_PANE_ID"] = "w1:p1"
         self.owner_box = mail.box_dir(ctl.mail_root(), "owner/in")
 
@@ -41,8 +42,11 @@ class CtlCase(support.OrchTest):
     def record(self, name):
         return json.loads(ctl.record_path(name).read_text(encoding="utf-8"))
 
+    def agent(self, pane):
+        return next(a for a in self.herdr.agents if a["pane_id"] == pane)
+
     def name_of(self, pane):
-        return next(a["name"] for a in self.herdr.agents if a["pane_id"] == pane)
+        return self.agent(pane)["name"]
 
     def owner_mail(self):
         return sorted((self.owner_box / "new").iterdir())
@@ -68,8 +72,8 @@ class Attach(CtlCase):
 
     def test_a_new_record_takes_the_default_authority_and_hold(self):
         self.c("attach", "alpha")
-        self.assertEqual(self.record("alpha"), {"pane": "w1:p1", "authority": "delegate", "hold": 10, "typed": "",
-                                                "attached": True, "started": False})
+        self.assertEqual(self.record("alpha"), {"pane": "w1:p1", "session": "s1", "authority": "delegate", "hold": 10,
+                                                "typed": "", "attached": True, "started": False})
         os.environ["HERDR_PANE_ID"] = "w1:p2"
         self.herdr.agents.append({"name": None, "agent": "claude", "agent_status": "idle", "pane_id": "w1:p2"})
         self.c("attach", "beta", "--hold", "3")
@@ -104,6 +108,14 @@ class Attach(CtlCase):
         self.assertEqual((code, out), (0, f"WAIT {ctl.wait_line('alpha')}\n"))
         self.assertEqual(self.record("alpha"), before)
         self.assertEqual(mail.waking(mail.box_dir(ctl.mail_root(), "alpha/in")), 1)
+
+    def test_reattaching_after_a_clear_takes_the_new_session_id(self):
+        self.c("attach", "alpha")
+        self.c("authority", "relay")
+        # A /clear keeps the pane and the herdr name and changes the session id.
+        self.agent("w1:p1")["agent_session"]["value"] = "s2"
+        self.c("attach", "alpha")
+        self.assertEqual((self.record("alpha")["session"], self.record("alpha")["authority"]), ("s2", "relay"))
 
     def test_attaching_another_name_from_the_pane_unattaches_the_first(self):
         self.c("attach", "alpha")
@@ -186,3 +198,24 @@ class Unattached(CtlCase):
         os.environ["HERDR_PANE_ID"] = "w1:p2"
         self.check_silent()
         self.assertEqual(self.record("alpha")["typed"], "")
+
+
+class AttachedAs(CtlCase):
+    """Whether an agent from herdr's list counts as attached, which sessions shows."""
+
+    def setUp(self):
+        super().setUp()
+        self.c("attach", "alpha")
+        self.me = self.agent("w1:p1")
+
+    def test_the_attached_agent_with_its_session_id(self):
+        self.assertEqual(ctl.attached_as(self.me), "alpha")
+
+    def test_a_cleared_session_is_unattached(self):
+        self.me["agent_session"]["value"] = "s2"
+        self.assertIsNone(ctl.attached_as(self.me))
+
+    def test_a_detached_or_unnamed_agent_is_unattached(self):
+        self.assertIsNone(ctl.attached_as({**self.me, "name": None}))
+        self.c("detach")
+        self.assertIsNone(ctl.attached_as(self.me))

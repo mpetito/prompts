@@ -87,6 +87,19 @@ def attached():
     return next(((n, r) for n, r in records() if r["attached"] and r["pane"] == pane), None) if pane else None
 
 
+def session_id(agent):
+    """herdr's session id for an agent record, or "" when herdr gives none."""
+    return (agent.get("agent_session") or {}).get("value", "")
+
+
+def attached_as(agent):
+    """The name an agent from herdr's list is attached under, or None. An attached record must have the agent's
+    herdr name and the session id herdr gives it now: a /clear keeps the pane and the name but changes the id and
+    drops the session's hooks, so a cleared session is unattached until it attaches again."""
+    record = load(agent["name"]) if agent.get("name") else None
+    return agent["name"] if record and record["attached"] and record["session"] == session_id(agent) else None
+
+
 def wait_command():
     """For the session's hooks: the command of this pane's WAIT line, or None when the pane isn't attached. Reads
     the records only, never herdr."""
@@ -150,7 +163,7 @@ def attach(args, opts):
         if other != name and record["attached"] and record["pane"] == pane:
             save(other, {**record, "attached": False})
     old = load(name) or {}
-    save(name, {"pane": pane, "authority": old.get("authority", DEFAULT_AUTHORITY),
+    save(name, {"pane": pane, "session": session_id(me), "authority": old.get("authority", DEFAULT_AUTHORITY),
                 "hold": int(hold) if hold is not None else old.get("hold", DEFAULT_HOLD),
                 "typed": old.get("typed", ""), "attached": True, "started": old.get("started", False)})
     print(f"WAIT {wait_line(name)}")

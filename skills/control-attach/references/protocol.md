@@ -40,14 +40,15 @@ what [What the hooks call](#what-the-hooks-call) names, and nothing else.
   | Field | Value |
   | --- | --- |
   | `pane` | The herdr pane id the session attached from, or `start` started it in |
+  | `session` | herdr's session id for the pane's agent (`agent_session.value`) when `attach` last ran, or `""` before it |
   | `authority` | `observe`, `relay` or `delegate` |
   | `hold` | The hold window in minutes, a whole number, 0 for none |
   | `typed` | When the owner last typed a prompt in the session, UTC `YYYY-MM-DDTHH:MMZ`, or `""` |
   | `attached` | `true` from `attach` until `detach`, or until another name attaches from the same pane |
   | `started` | `true` when `start` started the session; it never changes after |
 
-  The session id is not recorded: herdr's agent list gives it live, and the pane identifies the
-  session to `ctl.py` (a `/clear` changes the session id, never the pane). A session's own
+  A `/clear` keeps the pane and the herdr name but changes the session id and drops the session's
+  hooks, so `session` is the only sign that a cleared session needs attaching again. A session's own
   subcommands find its record by `HERDR_PANE_ID`: the record that is `attached` with that `pane`.
 - **The folders file**, `folders`, written by the owner and never by `ctl.py`: one absolute folder
   per line, blank lines ignored. `start` uses a folder only when it is a listed one or inside one.
@@ -150,13 +151,14 @@ A call with the wrong arguments prints usage on stderr and exits 1.
 
 Attaches the session in this pane under `<name>`: names its herdr agent `<name>`, writes the record
 (`attached` true), and marks any other record attached from this pane not attached. Repeatable: a
-record that exists keeps its authority, hold, `typed` and `started`, and the mail waiting at
-`<name>/in` stays unread, so a resumed or compacted session comes back by attaching again. A new
+record that exists keeps its authority, hold, `typed` and `started`, and takes the agent's current
+`session`; the mail waiting at `<name>/in` stays unread. A `/clear` and a resume drop the session's
+hooks (a compaction keeps them), so attaching again is how a session comes back after either. A new
 record gets the defaults. `--hold` sets the hold window.
 
 | Line | Exit | When |
 | --- | --- | --- |
-| `WAIT <command>` | 0 | Attached. Run `<command>` as a background task |
+| `WAIT <command>` | 0 | Attached. The session doesn't start the wait here: its Stop hook names `<command>` when it isn't among the running background tasks, since a wait started before a `/clear` is still running and must not be doubled |
 | `REFUSED not a name: <name>` | 1 | `<name>` is outside the name pattern |
 | `REFUSED owner is the controller's address` | 1 | `<name>` is `owner` |
 | `REFUSED not in a herdr pane` | 1 | `HERDR_PANE_ID` is unset |
@@ -232,8 +234,10 @@ separated by single spaces:
 | `held` | The hold's end, `YYYY-MM-DDTHH:MMZ`, while it lasts, else `-` |
 | `unread` | Messages unread at `<name>/in`, or `-` when not attached |
 
-An agent is attached when an attached record's name is its herdr name. With no rows it prints
-`NONE`. Exit 0.
+An agent is attached when an attached record has its herdr name and its session id
+(`agent_session.value`). A cleared session keeps its pane and name under a new id, so it shows
+`unattached`, and the controller rings `/control-attach <name>` into it as into any unattached
+Claude session. With no rows it prints `NONE`. Exit 0.
 
 ### `ctl.py send <name> OWNER|CONTROL|QUESTION <text>` and `ctl.py send <name> DECISION <ref> <answer> [--owner]`
 
@@ -262,8 +266,8 @@ mail.py's `wait` on `owner/in`, watching each attached session's herdr agent and
 | --- | --- |
 | `MAIL <n>` | n waking messages are unread at `owner/in` |
 | `BLOCKED <name>` | The session hit a permission or question dialog: tell the owner, never answer it |
-| `GONE <name>` | herdr no longer lists the agent: it exited, and herdr cleared its name. A resumed session shows this way; ring `<name>` once its recorded pane holds an idle agent |
-| `UNREAD <name> <n>` | The session sits idle with n messages unread for 5 minutes: its wait stopped. Ring `<name> <name>` |
+| `GONE <name>` | herdr no longer lists the agent: it exited, and herdr cleared its name. A resumed session shows this way, then `unattached` in `sessions`; ring `<name> <name>` once its recorded pane holds an idle agent |
+| `UNREAD <name> <n>` | The session sits idle with n messages unread for 5 minutes: its wait stopped, or a `/clear` dropped its hooks (`sessions` then shows it `unattached`). Either way, ring `<name> <name>` |
 | `TIMEOUT` | Nothing happened within the timeout (default 3600) |
 
 Run it as a background task, and start it again after each wake: a session attached since is
