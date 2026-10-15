@@ -45,7 +45,7 @@ def thread_page(nodes, more):
 
 def thread(id, resolved, outdated):
     return {"id": id, "isResolved": resolved, "isOutdated": outdated, "path": "src/a.py", "line": 3,
-            "comments": {"nodes": [{"fullDatabaseId": "4197153031", "author": {"login": "copilot-pull-request-reviewer"},
+            "comments": {"nodes": [{"fullDatabaseId": "4197153031", "author": {"login": "copilot-pull-request-reviewer", "__typename": "Bot"},
                                     "body": "Check this.", "url": "u"}]}}
 
 
@@ -140,7 +140,7 @@ class GetPrFeedback(unittest.TestCase):
 
     def test_carries_each_comment(self):
         c = self.result["threads"][0]["comments"][0]
-        self.assertEqual((c["author"], c["body"], c["url"]), ("copilot-pull-request-reviewer", "Check this.", "u"))
+        self.assertEqual((c["author"], c["body"], c["url"]), ("copilot-pull-request-reviewer[bot]", "Check this.", "u"))
 
     def test_keeps_reviews_from_every_page(self):
         self.assertEqual(len(self.result["reviews"]), 2)
@@ -161,7 +161,7 @@ class GetPrFeedback(unittest.TestCase):
             self.assertRegex(self.thread_call, pattern)
 
     def test_the_thread_query_requests_each_field(self):
-        for field in ("isResolved", "isOutdated", "path", "line", "fullDatabaseId", "author { login }", "body", "url"):
+        for field in ("isResolved", "isOutdated", "path", "line", "fullDatabaseId", "author { login __typename }", "body", "url"):
             with self.subTest(field=field):
                 self.assertRegex(self.thread_call, rf"[{{\s]{re.escape(field)}[\s}}]")
 
@@ -240,12 +240,21 @@ class AutomatedReviewers(unittest.TestCase):
         self.assertEqual(self.reviewers(comments=[quoted])["codex"], {"seen": False, "reviewedHead": False})
 
     def test_claude_reports_a_head_with_its_finished_check_run(self):
-        self.assertEqual(self.reviewers(check_runs=[{"name": "Claude Code Review", "status": "completed"}])["claude"],
-                         {"seen": True, "reviewedHead": True})
-        self.assertEqual(self.reviewers(check_runs=[{"name": "Claude Code Review", "status": "in_progress"}])["claude"],
-                         {"seen": False, "reviewedHead": False})
-        self.assertEqual(self.reviewers(check_runs=[{"name": "ci", "status": "completed"}])["claude"],
-                         {"seen": False, "reviewedHead": False})
+        claude = {"slug": "claude"}
+        self.assertEqual(self.reviewers(check_runs=[{"name": "Claude Code Review", "status": "completed",
+                                                     "app": claude}])["claude"], {"seen": True, "reviewedHead": True})
+        for run in ({"name": "Claude Code Review", "status": "in_progress", "app": claude},
+                    {"name": "ci", "status": "completed", "app": claude},
+                    {"name": "Claude Code Review", "status": "completed", "app": {"slug": "github-actions"}}):
+            with self.subTest(run=run):
+                self.assertEqual(self.reviewers(check_runs=[run])["claude"], {"seen": False, "reviewedHead": False})
+
+    def test_a_person_named_like_a_reviewer_is_not_that_reviewer(self):
+        spoof = comment("chatgpt-codex-connector", f"**Reviewed commit:** `{HEAD[:10]}`")
+        self.assertEqual(self.reviewers(comments=[spoof, comment("claude", "LGTM")]),
+                         {"copilot": {"seen": True, "reviewedHead": True},
+                          "codex": {"seen": False, "reviewedHead": False},
+                          "claude": {"seen": False, "reviewedHead": False}})
 
     def test_a_thread_comment_alone_makes_a_reviewer_seen(self):
         self.assertEqual(self.reviewers(copilot_commit=None)["copilot"], {"seen": True, "reviewedHead": False})

@@ -7,7 +7,8 @@ automated reviewer (Copilot, Codex, Claude) has reviewed the current head.
 Prints one JSON object: {repo, pr, head, threads, reviews, comments, automatedReviewers}. Threads come from GraphQL;
 reviews, conversation comments and the head's check runs from REST, all through `gh api --paginate --slurp`, so no
 page is dropped. Each thread carries its threadId (PRRT_..., for resolveReviewThread), isOutdated, path, line and up
-to 100 comments, each with its REST fullDatabaseId as a string id (for .../comments/<id>/replies).
+to 100 comments, each with its REST fullDatabaseId as a string id (for .../comments/<id>/replies). A bot's login
+ends in [bot] everywhere, as REST spells it.
 automatedReviewers has one entry per reviewer in REVIEWERS: {seen, reviewedHead}; seen means it has posted anything
 on this pull request, reviewedHead that it has reported on the head commit, findings or none. Exits 1 when any fetch
 fails, a missing pull request included: a failed fetch is never reported as "no feedback". Requires an authenticated
@@ -25,7 +26,7 @@ QUERY = """query($owner: String!, $name: String!, $pr: Int!, $endCursor: String)
         pageInfo { hasNextPage endCursor }
         nodes {
           id isResolved isOutdated path line
-          comments(first: 100) { nodes { fullDatabaseId author { login } body url } }
+          comments(first: 100) { nodes { fullDatabaseId author { login __typename } body url } }
         }
       }
     }
@@ -38,30 +39,31 @@ CODEX_REVIEWED = re.compile(r"Reviewed commit:\**\s*`([0-9a-f]{7,40})`")
 
 def codex_clean_comment(feedback, check_runs, logins):
     """Codex's no-findings comment names the head it reviewed."""
-    return any(bare(c["author"]) in logins and m and feedback["head"].startswith(m.group(1))
+    return any(c["author"].lower() in logins and m and feedback["head"].startswith(m.group(1))
                for c in feedback["comments"] for m in [CODEX_REVIEWED.search(c["body"] or "")])
 
 
 def claude_check_run(feedback, check_runs, logins):
-    """Claude's managed Code Review finishes a check run on the head, neutral whatever it found."""
-    return any(r["name"] == "Claude Code Review" and r["status"] == "completed" for r in check_runs)
+    """Claude's managed Code Review finishes a check run on the head, neutral whatever it found. Only the Claude app's
+    run counts: a workflow in the pull request could name a job the same."""
+    return any(r["app"] == "claude" and r["name"] == "Claude Code Review" and r["status"] == "completed"
+               for r in check_runs)
 
 
-# Each automated reviewer: the logins it posts under (lowercase, without [bot]), and how it reports a head it reviewed
-# other than by a review on that commit, or None. A review whose commit is the head counts for every one of them.
+# Each automated reviewer: the bot logins it posts under (lowercase), and how it reports a head it reviewed other than
+# by a review on that commit, or None. A review whose commit is the head counts for every one of them. The [bot] suffix
+# is part of each login, so a person's account of the same name, which anyone can comment from, never matches.
 REVIEWERS = {
-    "copilot": ({"copilot-pull-request-reviewer", "copilot", "github-copilot"}, None),
-    "codex": ({"chatgpt-codex-connector"}, codex_clean_comment),
-    "claude": ({"claude"}, claude_check_run),
+    "copilot": ({"copilot-pull-request-reviewer[bot]", "copilot[bot]", "github-copilot[bot]"}, None),
+    "codex": ({"chatgpt-codex-connector[bot]"}, codex_clean_comment),
+    "claude": ({"claude[bot]"}, claude_check_run),
 }
 
 
 def login(actor):
-    return (actor or {}).get("login")
-
-
-def bare(name):
-    return (name or "").lower().removesuffix("[bot]")
+    """The actor's login, with [bot] for a bot: REST includes it, GraphQL drops it but names the Bot type."""
+    actor = actor or {}
+    return f"{actor.get('login')}[bot]" if actor.get("__typename") == "Bot" else actor.get("login")
 
 
 def gh_value(args, missing):
@@ -81,11 +83,11 @@ def rest_pages(path, what):
 
 
 def automated_reviewers(feedback, check_runs):
-    authors = {bare(a) for a in [r["author"] for r in feedback["reviews"]] + [c["author"] for c in feedback["comments"]]
+    authors = {(a or "").lower() for a in [r["author"] for r in feedback["reviews"]] + [c["author"] for c in feedback["comments"]]
                + [c["author"] for t in feedback["threads"] for c in t["comments"]]}
     status = {}
     for name, (logins, reported) in REVIEWERS.items():
-        reviewed = any(bare(r["author"]) in logins and r["commitId"] == feedback["head"] for r in feedback["reviews"]) \
+        reviewed = any((r["author"] or "").lower() in logins and r["commitId"] == feedback["head"] for r in feedback["reviews"]) \
             or bool(reported and reported(feedback, check_runs, logins))
         status[name] = {"seen": reviewed or bool(authors & logins), "reviewedHead": reviewed}
     return status
@@ -124,7 +126,7 @@ def main(argv):
                  "body": c["body"]}
                 for page in rest_pages(f"repos/{repo}/issues/{pr}/comments", f"comments on {repo}#{pr}")
                 for c in page]
-    check_runs = [{"name": c["name"], "status": c["status"]}
+    check_runs = [{"name": c["name"], "status": c["status"], "app": (c.get("app") or {}).get("slug")}
                   for page in rest_pages(f"repos/{repo}/commits/{head}/check-runs", f"check runs on {head}")
                   for c in page["check_runs"]]
 
