@@ -42,9 +42,9 @@ from urllib.parse import urlsplit
 
 IDLE_GAP = timedelta(minutes=15)
 ROUND_TO_HOURS = 0.25
-TEMP_ROOTS = tuple({Path(p).resolve() for p in (
+TEMP_ROOTS = tuple(p for p in (
     tempfile.gettempdir(), *(os.environ.get(v) for v in ("TEMP", "TMP", "TMPDIR", "CLAUDE_CODE_TMPDIR")),
-    Path.home() / "AppData" / "Local" / "Temp", "/tmp") if p})
+    Path.home() / "AppData" / "Local" / "Temp", "/tmp") if p)
 
 
 CLAUDE_FILES = ("*/*.jsonl", "*/*/subagents/*.jsonl")  # under a Claude projects folder
@@ -118,9 +118,17 @@ def git_remote(cwd):
     return repo_key(r.stdout) if r.returncode == 0 and r.stdout.strip() else None
 
 
+@cache
+def canon(path):
+    """path as the temp check compares it: os.path.realpath (symlinks, and 8.3 short names such as RUNNER~1 on
+    Windows) then os.path.normcase, so two spellings of one directory compare equal."""
+    return os.path.normcase(os.path.realpath(path))
+
+
 def is_temp(cwd, temp_roots):
-    path = Path(cwd).resolve()
-    return any(path.is_relative_to(root) for root in temp_roots)
+    """True when cwd is a temp root or below one, both sides in canon form."""
+    path = canon(cwd)
+    return any(path == root or path.startswith(root.rstrip(os.sep) + os.sep) for root in map(canon, temp_roots))
 
 
 def claude_events(path, bad, pr_links):

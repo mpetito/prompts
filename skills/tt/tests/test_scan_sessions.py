@@ -39,6 +39,7 @@ def minutes(start, count, step=5, day="2026-10-13"):
 class ScanTest(unittest.TestCase):
     def setUp(self):
         scan_sessions.git_remote.cache_clear()
+        scan_sessions.canon.cache_clear()
         folder = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)  # git leaves read-only objects on Windows
         self.addCleanup(folder.cleanup)
         self.tmp = Path(folder.name)
@@ -188,6 +189,29 @@ class ScanTest(unittest.TestCase):
         self.codex_session("c-eval", work, minutes("09:00", 13), "2026-10-13")
         self.claude_session("s1", self.shop, minutes("11:00", 7))
         self.assertEqual(self.scan(), [f"2026-10-13 {SHOP} 0.50 1 claude 11:00-11:30"])
+
+    def test_temp_root_spelled_differently_from_the_session_cwd_is_excluded(self):
+        # On Windows TEMP names the runner's profile by its 8.3 short name (RUNNER~1) while the cwd resolves to the
+        # long one; a symlinked temp root makes the same split on any OS. On Windows the link needs Developer Mode
+        # or elevation.
+        real = self.tmp / "real-temp"
+        (real / "claude-ws-1").mkdir(parents=True)
+        self.temp_root.symlink_to(real, target_is_directory=True)
+        self.claude_session("eval", real / "claude-ws-1", minutes("09:00", 13))
+        self.codex_session("c-eval", self.temp_root / "claude-ws-1", minutes("09:00", 13), "2026-10-13")
+        self.claude_session("s1", self.shop, minutes("11:00", 7))
+        self.assertEqual(self.scan(), [f"2026-10-13 {SHOP} 0.50 1 claude 11:00-11:30"])
+
+    def test_session_in_the_temp_root_itself_is_excluded(self):
+        self.temp_root.mkdir()
+        self.claude_session("eval", self.temp_root, minutes("09:00", 13))
+        self.claude_session("s1", self.shop, minutes("11:00", 7))
+        self.assertEqual(self.scan(), [f"2026-10-13 {SHOP} 0.50 1 claude 11:00-11:30"])
+
+    def test_sibling_whose_name_extends_the_temp_root_is_counted(self):
+        sibling = self.repo(self.temp_root.name + "-2", "https://github.com/acme/site.git")
+        self.claude_session("s1", sibling, minutes("09:00", 13))
+        self.assertEqual(self.scan(), ["2026-10-13 github.com/acme/site 1.00 1 claude 09:00-10:00"])
 
     def test_subagent_counts_with_its_parent_session(self):
         self.claude_session("s1", self.shop, minutes("09:00", 7))

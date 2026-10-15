@@ -26,17 +26,19 @@ There is no package manager here. Run what CI runs, from the repository root:
 ```sh
 python3 -m unittest discover -s tests -t .
 python3 -m unittest discover -s skills/agent-orchestration/tests -t skills/agent-orchestration   # Python 3.12+
+python3 -m unittest discover -s skills/control-attach/tests -t skills/control-attach
 python3 -m unittest discover -s skills/pull-request/tests -t skills/pull-request
 python3 -m unittest discover -s statusline/tests -t statusline
 python3 -m unittest discover -s skills/orchestration-main/tests -t skills/orchestration-main
 python3 -m unittest discover -s scripts/tests -t scripts
+python3 -m unittest discover -s skills/tt/tests -t skills/tt
 python3 -m unittest discover -s skills/model-council/tests -t skills/model-council
 ```
 
-On Windows, the model-council suite makes native symlinks, which need Developer Mode or an
+On Windows, the model-council and tt suites make native symlinks, which need Developer Mode or an
 elevated shell.
 
-All seven are offline: they use disposable directories and mocked CLIs, and touch neither your
+All nine are offline: they use disposable directories and mocked CLIs, and touch neither your
 real home directory nor Docker. `.github/workflows/validate.yml` runs the same set on Windows and
 Ubuntu under Python 3.12.
 
