@@ -64,7 +64,7 @@ These override the steps below where they differ.
 
 ## Steps
 
-- [ ] 1. `skills/review-lenses/SKILL.md`: frontmatter and body. Description under about 900
+- [x] 1. `skills/review-lenses/SKILL.md`: frontmatter and body. Description under about 900
   characters: what it does; "Use when" a review request or brief asks for a lens, asks whether
   something in the repository or a library already does what a plan or change under review
   builds, asks what in a plan or change to decide now versus defer, or asks whether a change's
@@ -80,7 +80,7 @@ These override the steps below where they differ.
   yaml; t=open('skills/review-lenses/SKILL.md').read().split('---')[1]; d=yaml.safe_load(t);
   assert d['name']=='review-lenses' and len(d['description'])<=900"` passes (PyYAML 6.0.3 is
   installed), and `wc -l skills/review-lenses/SKILL.md` is under 120.
-- [ ] 2. `skills/review-lenses/references/{reuse,adopt,reversibility,trust-boundary}.md`: one
+- [x] 2. `skills/review-lenses/references/{reuse,adopt,reversibility,trust-boundary}.md`: one
   file per lens, each with: the question, where to look (for Reuse, search the repository beyond
   the changed files for the same responsibility by name and by behaviour; for Adopt, the
   manifest's dependencies first), the evidence a finding must carry, what the lens must not do
