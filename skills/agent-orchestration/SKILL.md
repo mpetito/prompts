@@ -124,6 +124,10 @@ fires, or a subagent finishes. On mail, read it first, then start the next wait,
   reviewer's suggested fix against the contract before passing it on.
 - Verify any claim about existing code or a vendor (read the file, cite the doc) before putting
   it in a ruling or a brief, or label it a guess.
+- A report that recommends a fix or gives an estimate (an investigation's findings, a design)
+  goes to a worker with [plan-review](../plan-review/SKILL.md) before it reaches MAIN, the same as
+  a plan. Lead with the smallest design that meets the acceptance criteria, and offer anything
+  larger as an option with its cost. An estimate lists its line items.
 - When the same mechanism comes back for a second round, ask the author to fix the whole class of
   problem and rerun the earlier checks. After a third round, send it to MAIN as a decision.
 - Decide a recurring flaky test once: its signature, its owner, when to rerun. Record it.
