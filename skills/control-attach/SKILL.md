@@ -43,7 +43,7 @@ after either. Attaching again keeps the session's authority and its unread mail.
 - When the wait's task finishes, it has printed one line:
   - `MAIL <n>`: run the read, which is the wait command with `wait` replaced by `read`; start the wait again; then
     act on each message, oldest first.
-  - `TIMEOUT`: start the wait again.
+  - `TIMEOUT`: start the wait again, and say nothing.
   - Anything else: the wait is failing. Don't start it again; end the turn with
     `STATUS: blocked - control wait fails: <its output>`.
 

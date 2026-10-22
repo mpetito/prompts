@@ -59,13 +59,15 @@ wakes it, with one line:
 | `BLOCKED <agent>` | a watched agent hit a permission prompt; reported once per prompt |
 | `GONE <agent>` | a watched agent's pane closed |
 | `UNREAD <agent> <n>` | a watched agent has sat idle for 5 minutes with n messages unread: it stopped waiting |
-| `TIMEOUT` | nothing happened |
+| `TIMEOUT` | nothing happened; without `--timeout`, a wait lasts as long as its box has been quiet (1 to 8 hours), so an idle build wakes its waiter less and less often |
 
 - The thread waits on `<build>/thread`, watching its lanes: `--watch <build>-<lane>,…`.
 - MAIN waits on `<build>/main` once per running build, watching the thread and its inbox:
   `--watch <build>=<build>/thread`.
 - On `MAIL`, read first, then start the next wait, then act. A wait started before the read sees the
   same mail and ends at once.
+- On `TIMEOUT`, start the next wait and end the turn without a message: nothing happened, so there is
+  nothing to say. Don't pass `--timeout` to make an idle wait shorter.
 - Never wait in the foreground: while you wait, nothing else reaches you.
 
 ## Messages to MAIN

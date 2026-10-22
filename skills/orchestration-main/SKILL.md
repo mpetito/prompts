@@ -73,7 +73,8 @@ You wake when a build's wait ends or the owner writes. A wait prints one line:
   `herdr agent prompt <build> "You have unread mail: run python3 '$HOME/.claude/skills/agent-orchestration/scripts/mail.py' read <build>/thread and resume your loop."`
   Then start the next wait.
 - `GONE <build>`: the thread's pane closed; see section 6.
-- `TIMEOUT`: start the next wait.
+- `TIMEOUT`: start the next wait and end the turn with no reply. The owner sees nothing for a
+  timeout, ever.
 
 Never type anything else into a thread's pane, and never task text.
 

@@ -3,7 +3,7 @@ the build, thread is the thread's inbox.
   mail.py send <build>/<box> --from <build>/<box or lane> [--quiet] [<text> | --file <path>]   the body is stdin
                                                                          when neither; never empty
   mail.py read <build>/<box>
-  mail.py wait <build>/<box> [--watch <agent>[=<build>/<box>],...] [--timeout <seconds, default 3600>]
+  mail.py wait <build>/<box> [--watch <agent>[=<build>/<box>],...] [--timeout <seconds>]
   Every subcommand takes --home <path>: <home> is that path, else $ORCHESTRATION_HOME, else ~/.orchestration.
   A Codex lane's sandbox can't see its pane's environment, so its brief passes --home.
 send prints SENT <to> <file>. A quiet message wakes no wait; the next read prints it with the rest. read prints each
@@ -14,7 +14,9 @@ prints one line, then exits 0:
   GONE <agent>        a watched agent left herdr's agent list
   UNREAD <agent> <n>  a watched agent sits idle while its own box (after the =) holds n messages, not quiet, older
                       than 5 minutes, so it stopped waiting; once until it works again
-  TIMEOUT
+  TIMEOUT             no news within --timeout; without it, within as long as the box has been quiet since its newest
+                      message, read or not, at least an hour and at most 8, so an idle build wakes its waiter less
+                      and less often
 A message is written to tmp/ and renamed into new/, so a reader never sees half of one; read moves it to cur/.
 A waiter keeps what it last saw of each watched agent in <box>/.watch/<agent>: "<herdr state> <unread reported>".
 """
@@ -32,6 +34,9 @@ import lib
 # between reading mail and starting the next wait.
 UNREAD_AFTER = 5 * 60
 POLL = 2
+# A wait without --timeout lasts as long as its box has been quiet, between these bounds, in seconds.
+WAIT_MIN = 3600
+WAIT_MAX = 8 * 3600
 # wait's clock and pause; tests replace them to pass time without waiting.
 clock = time.time
 sleep = time.sleep
@@ -68,6 +73,12 @@ def older(path, epoch):
         return path.stat().st_mtime < epoch
     except FileNotFoundError:
         return False
+
+
+def quiet_for(box):
+    """Seconds since the newest message in box, read or not, arrived; 0 when it holds none."""
+    times = [p.stat().st_mtime for sub in ("new", "cur") for p in (box / sub).iterdir() if p.is_file()]
+    return clock() - max(times) if times else 0
 
 
 def send(root, args, opts):
@@ -164,7 +175,7 @@ def wait(root, args, opts):
         usage()
     box = box_dir(root, args[0])
     try:
-        timeout = int(opts.get("--timeout", 3600))
+        timeout = int(opts["--timeout"]) if "--timeout" in opts else min(WAIT_MAX, max(WAIT_MIN, quiet_for(box)))
     except ValueError:
         raise lib.Fail(f"not a number of seconds: {opts['--timeout']}") from None
     end = clock() + timeout

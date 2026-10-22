@@ -291,9 +291,34 @@ class Waiting(MailTest):
         self.assertEqual(self.out("wait", "b1/main", "--timeout", "10"), "TIMEOUT\n")
         self.assertEqual(self.pauses, [2] * 5)
 
-    def test_default_timeout_is_an_hour(self):
+    def test_default_timeout_is_an_hour_for_an_empty_or_recently_used_box(self):
         self.assertEqual(self.out("wait", "b1/main"), "TIMEOUT\n")
         self.assertEqual(sum(self.pauses), 3600)
+        self.sent(minutes_ago=20, read=True)
+        self.pauses = []
+        self.assertEqual(self.out("wait", "b1/main"), "TIMEOUT\n")
+        self.assertEqual(sum(self.pauses), 3600)
+
+    def test_default_timeout_grows_with_the_quiet_since_the_newest_message_up_to_8_hours(self):
+        self.sent(minutes_ago=600, read=True)
+        self.sent(minutes_ago=180, read=True)
+        self.assertEqual(self.out("wait", "b1/main"), "TIMEOUT\n")
+        self.assertEqual(sum(self.pauses), 180 * 60)
+        for p in (self.box / "b1" / "main" / "cur").iterdir():
+            os.utime(p, (self.now - 86400, self.now - 86400))
+        self.pauses = []
+        self.assertEqual(self.out("wait", "b1/main"), "TIMEOUT\n")
+        self.assertEqual(sum(self.pauses), 8 * 3600)
+
+    def sent(self, minutes_ago, read):
+        """Send one message to b1/main, read it when read is true, and date it minutes_ago before the fake clock."""
+        self.out("send", "b1/main", "--from", "b1/thread", "STATUS: working - x")
+        if read:
+            self.out("read", "b1/main")
+        newest = max((self.box / "b1" / "main" / sub / name for sub in ("new", "cur")
+                      for name in os.listdir(self.box / "b1" / "main" / sub)), key=os.path.getmtime)
+        then = self.now - minutes_ago * 60
+        os.utime(newest, (then, then))
 
     def test_wakes_when_mail_arrives(self):
         self.on_pause = lambda: len(self.pauses) == 3 and self.out("send", "b1/main", "--from", "b1/thread", "hi")
