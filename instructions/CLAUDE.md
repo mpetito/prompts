@@ -47,6 +47,12 @@ them; then source or a probe to confirm. If the docs are silent, say so explicit
 claim to the exact installed version. Never write a durable rule — an AGENTS.md entry, a comment
 asserting a contract — from source-reading alone.
 
+## Python on Windows
+
+Without UTF-8 mode, Python on Windows writes pipes and files in the ANSI code page (cp1252), so
+non-ASCII output raises `UnicodeEncodeError`. `-I` implies `-E`, which ignores `PYTHONUTF8` and
+`PYTHONIOENCODING`: run `python -I -X utf8`, and open files with `encoding="utf-8"`.
+
 ## Delegation
 
 Delegate bounded work when the independent result justifies another agent. Select its model
