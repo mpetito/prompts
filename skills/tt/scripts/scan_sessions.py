@@ -11,9 +11,9 @@ Prints one line per (local day, repository) with active time in the range, sorte
   between the two days, and the second day's part starts at 00:00.
 - repo key is the origin remote as lowercase host/path (no scheme, user, port or .git; an Azure DevOps
   remote of any form as dev.azure.com/<org>/<project>/_git/<repo>), taken from, in order: the Codex
-  rollout's own record of it, git on the session's working directory, a pull-request link anywhere in the
-  session (its subagents included), else `unmapped:<working directory>` (a removed worktree with no PR
-  link ends here).
+  rollout's own record of it, git on the session's working directory, the session's pull-request links
+  (its subagents' included) when they all name one repository, else `unmapped:<working directory>` (a
+  removed worktree with no PR link, or a session linking PRs in several repositories, ends here).
 - hours is the union of every session's active intervals for that day and repository, rounded up to the
   next ROUND_TO_HOURS. Parallel sessions and a resumed session's repeated records count once.
 - sessions counts the distinct session ids (a subagent counts with its parent); sources is claude, codex
@@ -146,7 +146,7 @@ def is_temp(cwd, temp_roots):
 
 def claude_events(path, bad, pr_links):
     """(session id, cwd, timestamp, None) per timestamped record; the cwd carries forward to records that
-    lack one. A pr-link record's repo key goes into pr_links under its session id."""
+    lack one. A pr-link record's repo key joins the set pr_links holds for its session id."""
     events, cwd = [], None
     for r in records(path, bad):
         if not text(r.get("sessionId"), r.get("cwd"), r.get("prUrl")):
@@ -155,7 +155,7 @@ def claude_events(path, bad, pr_links):
         sid = r.get("sessionId", path.stem)
         if r.get("type") == "pr-link" and r.get("prUrl"):
             try:
-                pr_links[sid] = repo_key(r["prUrl"])
+                pr_links[sid].add(repo_key(r["prUrl"]))
             except ValueError:  # urlsplit rejects it, e.g. an unclosed IPv6 host
                 bad[path] += 1
                 continue
@@ -227,7 +227,7 @@ def merged(pieces):
 def scan(claude_root, codex_root, first, last, tz=None, temp_roots=TEMP_ROOTS):
     """Rows (date, repo key, hours, sessions, sources, intervals) for first..last inclusive, as the module
     docstring defines them. Missing roots read as empty."""
-    bad, pr_links = defaultdict(int), {}
+    bad, pr_links = defaultdict(int), defaultdict(set)
     # Every file is read before any repository is resolved: a session's PR link may sit in another file.
     events = [(source, path, *event)
               for source, read, root, patterns in (("claude", claude_events, claude_root, CLAUDE_FILES),
@@ -249,8 +249,10 @@ def scan(claude_root, codex_root, first, last, tz=None, temp_roots=TEMP_ROOTS):
         if not ok:
             bad[path] += 1
             continue
-        # The remote a Codex rollout recorded comes first; a session's PR link is the last resort after git.
-        repo = recorded or git_remote(cwd) or pr_links.get(sid) or f"unmapped:{cwd}"
+        # The remote a Codex rollout recorded comes first; a session's PR links are the last resort after git,
+        # and only when they agree: a session that opened PRs across repositories did work none of them owns.
+        links = pr_links.get(sid, set())
+        repo = recorded or git_remote(cwd) or (len(links) == 1 and next(iter(links))) or f"unmapped:{cwd}"
         streams[source, sid, repo].append(stamp)
     days = defaultdict(lambda: ([], set(), set()))
     for (source, sid, repo), stamps in streams.items():

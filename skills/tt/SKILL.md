@@ -62,4 +62,5 @@ inside an orchestrated lane, a subagent or a Codex worker, where the same hours 
 text a work item search; `/tt` alone infers everything. `/tt backfill [from] [to]` runs the back-fill.
 
 Scanner rows reading `unmapped:<path>` are sessions in a folder git can no longer resolve, such as a removed
-worktree; the owner assigns or drops them in the table.
+worktree, or in a folder with no repository that opened PRs in several, such as a rollout across repositories;
+the owner assigns or drops them in the table.

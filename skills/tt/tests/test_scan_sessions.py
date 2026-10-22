@@ -151,6 +151,17 @@ class ScanTest(unittest.TestCase):
         self.claude_session("s1", gone, minutes("09:00", 7), extra=[link])
         self.assertEqual(self.scan(), [f"2026-10-13 {SHOP} 0.75 1 claude 09:00-09:35"])
 
+    def test_session_linking_prs_in_several_repositories_is_unmapped_once_with_its_fork(self):
+        # A rollout across repositories from one folder: its last PR link once took all its time, and a fork
+        # of it without links landed on a second row.
+        hub = self.tmp / "hub"
+        links = [{"type": "pr-link", "sessionId": "s1", "prUrl": f"https://github.com/acme/{name}/pull/{n}",
+                  "timestamp": utc("2026-10-13 09:20")} for n, name in enumerate(("shop", "api"), 1)]
+        stamps = minutes("09:00", 7)
+        self.claude_session("s1", hub, stamps, extra=links)
+        self.claude_session("s2", hub, stamps)
+        self.assertEqual(self.scan(), [f"2026-10-13 unmapped:{hub} 0.50 2 claude 09:00-09:30"])
+
     def test_removed_worktree_without_a_pr_link_is_unmapped(self):
         gone = self.tmp / "gone-worktree"
         self.claude_session("s1", gone, minutes("09:00", 7))
