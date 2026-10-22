@@ -75,6 +75,11 @@ visible immediately after `git pull`; restart clients if they cache their skill 
   with `python3 <script.py>` from Bash or PowerShell.
 - The Claude status line needs Python 3.12+, Git, a machine-local `settings.json` entry and a
   Nerd Font; see [`statusline/README.md`](../statusline/README.md).
+- Commit and PR attribution is off in each machine's `~/.claude/settings.json`:
+  `"attribution": { "commit": "", "pr": "", "sessionUrl": false }`. Without it, Claude Code tells
+  every session and subagent to add a `Co-Authored-By: Claude` trailer, and workers follow that
+  over the CLAUDE.md rule
+  ([settings reference](https://code.claude.com/docs/en/settings-reference#attribution)).
 - Claude Code plugins are not linked; install them from the list in [plugins.md](plugins.md).
 - MCP configuration is a separate opt-in step; see [`mcp/README.md`](../mcp/README.md). Docker
   Engine alone is insufficient: the profiles also require the Docker MCP Toolkit and their
