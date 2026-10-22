@@ -346,6 +346,20 @@ class Lane(OrchTest):
         self.assertRegex(self.start("lb", "ui", "--kind", "claude", "--model", "opus")[1], r"^LANE lb-ui ")
         self.assertEqual(self.herdr.started["lb-ui"], ["--agent", "lane", "--model", "opus"])
 
+    def test_a_claude_lane_gets_the_main_checkouts_local_settings(self):
+        main = self.repo(self.tmp / "app")
+        wt = self.tmp / "app-lane"
+        subprocess.run(["git", "-C", str(main), "worktree", "add", "-q", "-b", "lane", str(wt)], check=True)
+        self.wt = wt
+        self.start("lb", "plain", "--kind", "claude", "--model", "opus")
+        self.assertEqual(self.herdr.started["lb-plain"], ["--agent", "lane", "--model", "opus"])
+        local = main / ".claude" / "settings.local.json"
+        local.parent.mkdir()
+        local.write_text('{"enabledMcpjsonServers": ["db"]}\n', encoding="utf-8")
+        self.start("lb", "mcp", "--kind", "claude", "--model", "opus")
+        self.assertEqual(self.herdr.started["lb-mcp"],
+                         ["--agent", "lane", "--model", "opus", "--settings", lib.native(str(local))])
+
     def test_refusals_are_failed_lines(self):
         for opts, pattern in [(("lb", "x", "--kind", "claude"), r"^FAILED --model is required"),
                               (("lb", "x", "--kind", "gemini", "--model", "g"), r"^FAILED --kind takes claude or codex"),

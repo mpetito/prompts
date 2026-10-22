@@ -5,7 +5,9 @@ The agent is named <build>-<lane> and reports to the thread with
   mail.py send <build>/thread --from <build>/<lane> "<STATUS: ... line>"
 Codex runs with --approve-for-me, so its automatic reviewer grants its approvals (commits in the worktree's protected
 git directory among them), and --add-dir on the build's mail folder; --network lets its sandbox reach the network.
-Claude runs the lane agent definition, which carries the guard hooks a subagent worker inherits.
+Claude runs the lane agent definition, which carries the guard hooks a subagent worker inherits, with --settings on
+the main checkout's .claude/settings.local.json when it has one: on Windows Claude Code keeps that file per worktree,
+so a new lane worktree has none, and the project's MCP approval dialog would swallow the pointer prompt.
 A non-default ORCHESTRATION_HOME is passed to the lane's tab; Codex's sandbox doesn't see the pane's environment, so a
 Codex lane's brief then gives its send command as mail.py send --home <home> ....
 Prints one line: LANE <name> pane=<pane> kind=<kind>, BLOCKED <name> <reason> (started, but waiting on a startup
@@ -65,6 +67,14 @@ def main(argv):
         return 1
 
 
+def main_checkout_settings(wt):
+    """["--settings", <file>] for the local settings of the main checkout holding worktree wt, which carry the
+    owner's project MCP approvals; [] when it has none or wt is outside git."""
+    common = lib.git(wt, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    local = os.path.join(os.path.dirname(lib.canon(common)), ".claude", "settings.local.json") if common else ""
+    return ["--settings", lib.native(local)] if os.path.isfile(local) else []
+
+
 def start(build, lane, wt, brief, kind, model, network):
     """The lane's one-line result, LANE or BLOCKED; Failed on anything else."""
     name = f"{build}-{lane}"
@@ -80,7 +90,7 @@ def start(build, lane, wt, brief, kind, model, network):
     home = os.environ.get("ORCHESTRATION_HOME", "")
     mail = os.path.join(home or Path.home() / ".orchestration", "mail", build)
     if kind == "claude":
-        args = ["--agent", "lane", "--model", model]
+        args = ["--agent", "lane", "--model", model, *main_checkout_settings(wt)]
     elif kind == "codex":
         os.makedirs(mail, exist_ok=True)
         args = ["--approve-for-me", "--add-dir", mail, "--model", model]
