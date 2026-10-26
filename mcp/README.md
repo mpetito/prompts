@@ -132,14 +132,19 @@ every request except `/health`. The client entries name that variable and never 
 | Codex | `bearer_token_env_var = "MCP_GATEWAY_AUTH_TOKEN"` ([MCP docs](https://learn.chatgpt.com/docs/extend/mcp)) |
 | OpenCode | header `Authorization: Bearer {env:MCP_GATEWAY_AUTH_TOKEN}`, with `oauth: false` ([MCP format](https://opencode.ai/docs/mcp-servers/)) |
 
+The token stops other local processes, and web pages, from using the gateways. It cannot stop a
+local user who binds a gateway's port before the gateway starts from receiving the token, since
+no client can check who is listening; on a machine shared with untrusted users, do not use the
+shared gateways.
+
 The URLs use `127.0.0.1` rather than `localhost`: the gateway listens on IPv4 only, and on Windows
 a refused `::1` costs each new connection about two seconds before the IPv4 fallback.
 
 `python3 mcp/bootstrap/gateways.py install` creates a random token when there is none, then has the
 user's service manager start `gateways.py run <profile>` for each profile at logon. The runner waits
 for the Docker engine, runs the gateway, and starts it again whenever it exits; stopping the
-service stops its gateway. Gateway output goes to `mcp-gateway-<profile>.log` in the user's
-temporary folder. Install records the paths of this checkout and of the Python that ran it, so
+service stops its gateway. Gateway output goes to `mcp-gateway-<profile>.log`, readable only by
+you: in the user's temporary folder on Windows, beside the token on Linux. Install records the paths of this checkout and of the Python that ran it, so
 rerun it after moving either or upgrading that Python. `--what-if` previews install and uninstall.
 
 | | Windows | Linux |

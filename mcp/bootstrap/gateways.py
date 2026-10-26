@@ -11,8 +11,8 @@ run this script's run for each profile from logon:
   profile is an instance of a systemd user unit.
 Clients started before the token was stored must be restarted (on Linux, from a new login) to read it. uninstall stops
 and removes the services, with their gateways, and the token. run waits for the Docker engine, then runs the
-profile's gateway on its loopback port, again whenever it exits; its output goes to mcp-gateway-<profile>.log in the
-temporary folder. A failed command stops install or uninstall (exit 1).
+profile's gateway on its loopback port, again whenever it exits; its output goes to log_path(profile). A failed command stops install or uninstall
+(exit 1).
 """
 import os
 import secrets
@@ -217,6 +217,13 @@ def die_with_this_process():
     # The handle stays open, deliberately, for the life of this process.
 
 
+def log_path(profile):
+    """The gateway's log, which only this user can read: Windows' temporary folder is the user's own, but elsewhere it
+    is usually the shared /tmp, so the log goes beside the token."""
+    folder = tempfile.gettempdir() if os.name == "nt" else os.path.dirname(mcp.token_file())
+    return os.path.join(folder, f"mcp-gateway-{profile}.log")
+
+
 def run(args):
     """Serve the profile's gateway until this process is stopped: wait for the Docker engine, run the gateway, and
     after it exits wait and start again. Fail when the token is unset; under the service manager, that shows only as
@@ -228,8 +235,9 @@ def run(args):
     os.environ[mcp.TOKEN_VARIABLE] = token
     if os.name == "nt":
         die_with_this_process()
-    with open(Path(tempfile.gettempdir()) / f"mcp-gateway-{args.profile}.log", "w", encoding="utf-8",
-              buffering=1) as log:
+    log = log_path(args.profile)
+    os.makedirs(os.path.dirname(log), exist_ok=True)
+    with open(os.open(log, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w", encoding="utf-8", buffering=1) as log:
         while True:
             # A starting engine can hold docker info; the timeout turns that into one more wait.
             if not sc.run(["docker", "info", "--format", "{{.ServerVersion}}"], timeout=60).returncode:

@@ -496,7 +496,13 @@ class Gateways(McpTest):
         # Loopback only: without --host the gateway listens on every interface.
         self.assertIn("--host 127.0.0.1 --port 8812", gateway)
         self.assertEqual(set(tokens), {"token-value"})
-        self.assertTrue((self.tmp / "mcp-gateway-envative.log").exists())
+        with unittest.mock.patch.object(tempfile, "gettempdir", return_value=str(self.tmp)):
+            log = Path(self.GATEWAYS.log_path("envative"))
+        self.assertTrue(log.is_relative_to(self.tmp))
+        if os.name == "posix":
+            # Not the temporary folder, which is usually the shared /tmp.
+            self.assertEqual(log.parent, Path(mcp.token_file()).parent)
+            self.assertEqual(log.stat().st_mode & 0o777, 0o600)
 
     def test_run_without_a_token_starts_nothing(self):
         with unittest.mock.patch.object(mcp, "gateway_token", return_value=None), \
