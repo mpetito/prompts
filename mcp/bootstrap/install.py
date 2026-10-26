@@ -1,5 +1,5 @@
-"""Build the local MCP images, import the core-dev and envative profiles into Docker MCP, and register both gateways
-with the selected clients.
+"""Build the local MCP images, import the core-dev and envative profiles into Docker MCP, and register both shared
+gateways with the selected clients, which reach them over HTTP; gateways.py runs the gateways.
   python3 mcp/bootstrap/install.py [--tools codex,claude,opencode] [--aws-region <region>]
                                    [--skip-credential-migration] [--skip-gateway-setup] [--what-if]
 Without --tools, registers the clients found on PATH; a selected client that is not installed is skipped. Every
@@ -27,8 +27,9 @@ def register_codex(paths, what_if):
         return
     config = os.path.join(paths.codex_root, "config.toml")
     mcp.backup_config(config)
-    for name, profile in mcp.GATEWAYS:
-        sc.run_checked(["codex", "mcp", "add", name, "--", *mcp.gateway_command(profile)])
+    for name, _, port in mcp.GATEWAYS:
+        sc.run_checked(["codex", "mcp", "add", name, "--url", mcp.gateway_url(port), "--bearer-token-env-var",
+                        mcp.TOKEN_VARIABLE])
         mcp.set_codex_startup_timeout(config, name)
 
 
@@ -37,10 +38,12 @@ def register_claude(paths, what_if):
         return
     mcp.backup_config(paths.claude_config)
     servers = mcp.read_json(paths.claude_config).get("mcpServers") or {}
-    for name, profile in mcp.GATEWAYS:
+    for name, _, port in mcp.GATEWAYS:
         if name in servers:
             sc.run_checked(["claude", "mcp", "remove", "--scope", "user", name])
-        sc.run_checked(["claude", "mcp", "add", "--scope", "user", name, "--", *mcp.gateway_command(profile)])
+        # Kept as ${...} in the config: Claude Code expands it from the environment at each connection.
+        sc.run_checked(["claude", "mcp", "add", "--scope", "user", "--transport", "http", name, mcp.gateway_url(port),
+                        "--header", f"Authorization: Bearer ${{{mcp.TOKEN_VARIABLE}}}"])
 
 
 REGISTER = {"codex": register_codex, "claude": register_claude, "opencode": register_opencode}
@@ -104,6 +107,9 @@ def main(argv):
         print("MCP preview complete. No commands were run and no files were changed.")
     else:
         print(f"Registered Docker MCP gateways for: {', '.join(selected)}.")
+        if not mcp.gateway_token():
+            sc.warn(f"{mcp.TOKEN_VARIABLE} is unset, so clients cannot reach the gateways. Run"
+                    " 'python3 mcp/bootstrap/gateways.py install'.")
         print("Authorize hosted services with 'docker mcp oauth authorize <server> --open-browser'.")
     return 0
 

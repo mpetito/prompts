@@ -47,9 +47,11 @@ class Parser(argparse.ArgumentParser):
 
 
 def entry(main):
-    """Run a script's main(argv) as a program: UTF-8 stdio, a Fail printed on stderr, its exit code."""
+    """Run a script's main(argv) as a program: UTF-8 stdio, a Fail printed on stderr, its exit code. Under pythonw,
+    which has no stdio, a Fail is lost unless main sends it elsewhere."""
     for stream in (sys.stdin, sys.stdout, sys.stderr):
-        stream.reconfigure(encoding="utf-8")
+        if stream:
+            stream.reconfigure(encoding="utf-8")
     try:
         code = main(sys.argv[1:])
     except Fail as e:
@@ -71,18 +73,25 @@ def should(what_if, target, action):
 
 # --- processes ---------------------------------------------------------------------------------------------------
 
-def run(args, *, input=None, timeout=None, capture=True):
+def run(args, *, input=None, timeout=None, capture=True, output=None):
     """Run args (a list, no shell) and return a CompletedProcess, with text stdout and stderr decoded as UTF-8 when
-    capture is set; without it the command writes straight to this process's console and both are empty.
+    capture is set; without it the command writes straight to this process's console and both are empty. output, an
+    open file, takes both streams instead, for a command that runs too long to buffer.
 
     args[0] is resolved on PATH (PATHEXT on Windows, so an npm .cmd shim is found); a command that isn't found
     returns code 127 with the reason on stderr, as a shell would. On timeout, in seconds, the whole process tree is
-    killed and the result has code 124, as timeout(1) gives."""
+    killed and the result has code 124, as timeout(1) gives. Outside Windows, an interruption such as Ctrl+C kills the
+    tree too: the command runs in its own session, which the interruption never reaches. A Windows wait cannot be
+    interrupted, so there it lands only once the command has exited."""
     exe = shutil.which(args[0])
     if not exe:
         return subprocess.CompletedProcess(args, 127, "", f"{args[0]}: command not found\n")
-    pipe = subprocess.PIPE if capture else None
-    kw = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+    pipe = output or (subprocess.PIPE if capture else None)
+    kw = {"start_new_session": True}
+    if os.name == "nt":
+        # Under pythonw there is no console to share, and each console command would open a window of its own.
+        kw = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP |
+              (subprocess.CREATE_NO_WINDOW if sys.__stdout__ is None else 0)}
     with subprocess.Popen([exe, *args[1:]], stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
                           stdout=pipe, stderr=pipe, text=True, encoding="utf-8", errors="replace", **kw) as p:
         try:
@@ -92,6 +101,10 @@ def run(args, *, input=None, timeout=None, capture=True):
             kill_tree(p)
             out, err = p.communicate()
             code = 124
+        except BaseException:
+            kill_tree(p)
+            p.wait()
+            raise
     return subprocess.CompletedProcess(args, code, out or "", err or "")
 
 
@@ -124,6 +137,7 @@ class Paths:
     codex_root: str
     claude_root: str
     claude_config: str
+    config_root: str
     opencode_config: str
     shared_skills: str
     copilot_skills: str
@@ -151,6 +165,7 @@ def setup_paths(home=None):
         codex_root=override("CODEX_HOME", os.path.join(user_root, ".codex")),
         claude_root=claude_root,
         claude_config=os.path.join(claude_root if env.get("CLAUDE_CONFIG_DIR") else user_root, ".claude.json"),
+        config_root=config_root,
         opencode_config=override("OPENCODE_CONFIG", opencode_default),
         shared_skills=os.path.join(user_root, ".agents", "skills"),
         copilot_skills=os.path.join(user_root, ".copilot", "skills"),

@@ -2,11 +2,14 @@
 into a throwaway home: selections, previews, reruns, relative and broken links, conflicts, backups, migration,
 verification and its python3 checks."""
 import contextlib
+import ctypes
 import io
 import os
 import re
+import signal
 import subprocess
 import sys
+import threading
 import time
 import unittest.mock
 from pathlib import Path
@@ -412,6 +415,38 @@ class Run(SetupTest):
         started = time.monotonic()
         self.assertEqual(sc.run([sys.executable, "-c", sleeper], timeout=1).returncode, 124)
         self.assertLess(time.monotonic() - started, 15)
+
+    @unittest.skipUnless(os.name == "posix", "a Windows wait cannot be interrupted until the command exits")
+    def test_an_interruption_kills_the_command_and_what_it_started(self):
+        marker = self.tmp / "survived"
+        grandchild = f"import time; time.sleep(2); open({str(marker)!r}, 'w')"
+        child = f"import subprocess, sys; subprocess.run([sys.executable, '-c', {grandchild!r}])"
+        # A real SIGINT, as Ctrl+C sends: it interrupts the wait, which interrupt_main does not.
+        threading.Timer(0.5, os.kill, (os.getpid(), signal.SIGINT)).start()
+        with self.assertRaises(KeyboardInterrupt):
+            sc.run([sys.executable, "-c", child])
+        time.sleep(3)
+        self.assertFalse(marker.exists())
+
+    def test_output_takes_both_streams(self):
+        with open(self.tmp / "out.log", "w", encoding="utf-8") as log:
+            r = sc.run([sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr)"], output=log)
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, "", ""))
+        self.assertEqual(sorted((self.tmp / "out.log").read_text(encoding="utf-8").split()), ["err", "out"])
+
+    @unittest.skipUnless(os.name == "nt" and ctypes.windll.kernel32.GetConsoleWindow(), "needs a console to share")
+    def test_a_parent_without_stdio_gives_its_children_no_console_window(self):
+        probe = [sys.executable, "-c", "import ctypes; print(bool(ctypes.windll.kernel32.GetConsoleWindow()))"]
+        self.assertEqual(sc.run(probe).stdout.strip(), "True")
+        # pythonw's signature: no console, so a console child would otherwise open a window of its own.
+        with unittest.mock.patch.object(sys, "__stdout__", None):
+            self.assertEqual(sc.run(probe).stdout.strip(), "False")
+
+    def test_entry_runs_without_stdio_as_under_pythonw(self):
+        with unittest.mock.patch.multiple(sys, stdin=None, stdout=None, stderr=None), \
+                self.assertRaises(SystemExit) as exit:
+            sc.entry(lambda argv: 0)
+        self.assertEqual(exit.exception.code, 0)
 
 
 class LinkDestination(SetupTest):

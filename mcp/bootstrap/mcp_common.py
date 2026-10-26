@@ -1,8 +1,10 @@
 """Shared by the MCP installer and its verification: prerequisites, client config backups and edits, credentials.
 
 Builds on scripts/setup_common.py for paths, tool selection and commands. Only the two gateway names in GATEWAYS are
-managed in a client's configuration; every other entry is kept. Secret values reach Docker on stdin, never on a
-command line or in an error.
+managed in a client's configuration; every other entry is kept. Each client connects over streamable HTTP to one
+shared gateway per profile on loopback (gateways.py runs them), sending the Bearer token held in TOKEN_VARIABLE: client
+configs name the variable, never its value. Secret values reach Docker on stdin, never on a command line or in an
+error.
 """
 import json
 import os
@@ -19,7 +21,9 @@ import setup_common as sc  # noqa: E402
 
 CLIENTS = ("codex", "claude", "opencode")
 PROFILES = ("core-dev", "envative")
-GATEWAYS = (("MCP_DOCKER_CORE", "core-dev"), ("MCP_DOCKER_ENVATIVE", "envative"))
+# (client name, profile, loopback port of the profile's shared gateway)
+GATEWAYS = (("MCP_DOCKER_CORE", "core-dev", 8811), ("MCP_DOCKER_ENVATIVE", "envative", 8812))
+TOKEN_VARIABLE = "MCP_GATEWAY_AUTH_TOKEN"
 OPENCODE_TIMEOUT_MS = 30000
 
 # A JSON string, kept whole so nothing inside one is taken for a comment or a trailing comma.
@@ -28,8 +32,18 @@ _COMMENT = re.compile(_STRING + r"|//[^\n]*|/\*.*?\*/", re.DOTALL)
 _TRAILING_COMMA = re.compile(_STRING + r"|,(?=\s*[\]}])")
 
 
-def gateway_command(profile):
-    return ["docker", "mcp", "gateway", "run", "--profile", profile]
+def gateway_command(profile, port):
+    """The shared gateway for profile: streamable HTTP on 127.0.0.1:port only, requiring the Bearer token in
+    TOKEN_VARIABLE. Not --long-lived: that keeps every session's server containers until the gateway stops, and a
+    service gateway never stops."""
+    return ["docker", "mcp", "gateway", "run", "--profile", profile, "--transport", "streaming", "--host", "127.0.0.1",
+            "--port", str(port)]
+
+
+def gateway_url(port, path="mcp"):
+    # 127.0.0.1, not localhost: the gateway listens on IPv4 only, and on Windows a refused ::1 costs each new
+    # connection about 2 s before the fallback to IPv4.
+    return f"http://127.0.0.1:{port}/{path}"
 
 
 def assert_prerequisites():
@@ -77,19 +91,19 @@ def read_json(path):
 
 
 def set_opencode_config(path, *, validate_only=False, what_if=False):
-    """Merge both gateways into OpenCode's mcp object at path. A changed file is backed up first and rewritten as
-    JSON, so its comments survive only in the backup; an unchanged one is not touched. validate_only reads and checks
-    the file and writes nothing. Fail when the file or its mcp entry is not an object."""
+    """Merge both gateways into OpenCode's mcp object at path, as remote servers reading the token from
+    TOKEN_VARIABLE. A changed file is backed up first and rewritten as JSON, so its comments survive only in the
+    backup; an unchanged one is not touched. validate_only reads and checks the file and writes nothing. Fail when the
+    file or its mcp entry is not an object."""
     config = read_json(path)
     if not isinstance(config.setdefault("mcp", {}), dict):
         raise sc.Fail(f"Expected an mcp object in {path}")
     changed = False
-    for name, profile in GATEWAYS:
-        expected = {"type": "local", "command": gateway_command(profile), "enabled": True,
-                    "timeout": OPENCODE_TIMEOUT_MS}
-        current = config["mcp"].get(name)
-        if isinstance(current, dict) and current.get("type") == "local" and current.get("enabled") is True and \
-                current.get("timeout") == OPENCODE_TIMEOUT_MS and current.get("command") == expected["command"]:
+    for name, _, port in GATEWAYS:
+        # oauth false: a 401 from the gateway means a missing token, not a server to sign in to.
+        expected = {"type": "remote", "url": gateway_url(port), "enabled": True, "oauth": False,
+                    "headers": {"Authorization": f"Bearer {{env:{TOKEN_VARIABLE}}}"}, "timeout": OPENCODE_TIMEOUT_MS}
+        if config["mcp"].get(name) == expected:
             continue
         config["mcp"][name] = expected
         changed = True
@@ -143,6 +157,23 @@ def user_env(name):
         except OSError:
             return None
     return None
+
+
+def token_file():
+    """Where gateways.py install keeps the token outside Windows: one TOKEN_VARIABLE=<value> line, which a shell can
+    source, readable only by its owner."""
+    return os.path.join(sc.setup_paths().config_root, "mcp-gateway", "token.env")
+
+
+def gateway_token():
+    """The gateway token: TOKEN_VARIABLE from this process's environment, else where gateways.py install keeps it (the
+    user's persisted environment on Windows, token_file() elsewhere); None when there is none."""
+    if os.name == "nt" or os.environ.get(TOKEN_VARIABLE):
+        return user_env(TOKEN_VARIABLE)
+    try:
+        return Path(token_file()).read_text(encoding="utf-8").strip().partition("=")[2] or None
+    except FileNotFoundError:
+        return None
 
 
 def copy_credentials(claude_config_path):

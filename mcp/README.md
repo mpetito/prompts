@@ -7,14 +7,20 @@ This directory is the source-controlled registry for the MCP tools used by Claud
 - Both profiles are intentionally disjoint because each selected client connects to both profiles.
 - Dynamic MCP is disabled so profile contents remain explicit and reproducible.
 - Tool-name prefixes are enabled so each exposed tool retains its source server identity (for example, Azure DevOps rather than only `core_list_projects`).
+- Every client session shares one gateway per profile over streamable HTTP on loopback: `core-dev` at
+  `http://127.0.0.1:8811/mcp` and `envative` at `http://127.0.0.1:8812/mcp`. See [Shared gateways](#shared-gateways).
 
 Run these commands from the repository root with **Python 3.12+** (`python3`) on Windows or Ubuntu:
 
 ```sh
 python3 mcp/bootstrap/install.py --what-if
 python3 mcp/bootstrap/install.py
+python3 mcp/bootstrap/gateways.py install
 python3 mcp/bootstrap/verify.py
 ```
+
+Restart Claude Code, Codex and OpenCode after the first `gateways.py install`, so they read the token it stores
+(on Linux, from a new login).
 
 MCP setup is optional and independent of skill linking. Prerequisites are Docker with a running
 daemon, a compatible **Docker MCP Toolkit** (`docker mcp version`), and the secret backend used
@@ -107,6 +113,53 @@ development server. On standalone Linux Docker, host access depends on the gatew
 network configuration; do not assume that hostname is available automatically.
 
 Run `python3 mcp/bootstrap/verify.py` from the repository root to validate both
-gateways and list detected clients' registrations. Use `--tools` to narrow the client checks.
+profiles, check that both shared gateways answer `/health`, and list detected clients'
+registrations. Use `--tools` to narrow the client checks.
 This verification can start gateway containers and contact configured services; the offline
 regression tests in `tests/` mock those calls instead.
+
+## Shared gateways
+
+A stdio registration starts a gateway per client session, so ten restored sessions start ten
+gateways, each with its own server containers. Instead, each client registers a streamable HTTP
+entry, and `gateways.py` runs one gateway per profile with `--transport streaming --host 127.0.0.1
+--port <port>`. The gateway requires a Bearer token from `MCP_GATEWAY_AUTH_TOKEN` on
+every request except `/health`. The client entries name that variable and never hold its value:
+
+| Client | Token reference |
+| --- | --- |
+| Claude Code | header `Authorization: Bearer ${MCP_GATEWAY_AUTH_TOKEN}`, expanded at each connection ([MCP docs](https://code.claude.com/docs/en/mcp)) |
+| Codex | `bearer_token_env_var = "MCP_GATEWAY_AUTH_TOKEN"` ([MCP docs](https://learn.chatgpt.com/docs/extend/mcp)) |
+| OpenCode | header `Authorization: Bearer {env:MCP_GATEWAY_AUTH_TOKEN}`, with `oauth: false` ([MCP format](https://opencode.ai/docs/mcp-servers/)) |
+
+The URLs use `127.0.0.1` rather than `localhost`: the gateway listens on IPv4 only, and on Windows
+a refused `::1` costs each new connection about two seconds before the IPv4 fallback.
+
+`python3 mcp/bootstrap/gateways.py install` creates a random token when there is none, then has the
+user's service manager start `gateways.py run <profile>` for each profile at logon. The runner waits
+for the Docker engine, runs the gateway, and starts it again whenever it exits; stopping the
+service stops its gateway. Gateway output goes to `mcp-gateway-<profile>.log` in the user's
+temporary folder. Install records the paths of this checkout and of the Python that ran it, so
+rerun it after moving either or upgrading that Python. `--what-if` previews install and uninstall.
+
+| | Windows | Linux |
+| --- | --- | --- |
+| Token | user environment variable | `~/.config/mcp-gateway/token.env` (owner-only), exported to login shells by a line added to `~/.profile` |
+| Service | hidden per-user logon task per profile, `Docker MCP gateway <profile>`, run under the `pythonw.exe` beside the Python that ran install | systemd user unit instance per profile, `docker-mcp-gateway@<profile>.service` |
+| Status | Task Scheduler | `systemctl --user status 'docker-mcp-gateway@*'` |
+
+On Linux, `~/.config` follows `XDG_CONFIG_HOME`. The `~/.profile` line reaches login shells and
+the desktop sessions started from them; a shell that does not read `~/.profile` (zsh, or bash
+with a `~/.bash_profile`) needs the same line in its own startup file. The units need a systemd
+user manager, so on WSL enable systemd first. They run while you are logged in; for a gateway that
+outlives your sessions, `loginctl enable-linger`.
+
+`python3 mcp/bootstrap/gateways.py uninstall` stops and removes the services, the `~/.profile`
+line and the token. To return to per-session stdio gateways, run it, then restore the client
+configs from their `.prompts-backup-*` copies or rerun the previous revision's `install.py`.
+
+The gateway lists every server's tools once, at startup; a session that connects and lists tools
+starts no containers. Sessions do not share server containers: each gets its own instance of each
+containerized server it calls, such as its own Playwright browser. The gateway runs without
+`--long-lived`, which keeps those containers until the gateway stops, so a session that exits
+without an HTTP `DELETE` would leave them running.
