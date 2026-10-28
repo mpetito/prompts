@@ -1,8 +1,9 @@
 # Global instructions (all projects)
 
 <!-- Source of truth: instructions/CLAUDE.md in the agentic coding toolkit repository,
-     symlinked to ~/.claude/CLAUDE.md by setup_skills_link.py. Edit it there, not in
-     ~/.claude. This file loads into every session — keep it short and keep every line
+     imported by the @ line setup_skills_link.py puts in ~/.claude/CLAUDE.md, a local
+     file that keeps whatever tools append to it out of this repository. Edit this file,
+     not ~/.claude. It loads into every session — keep it short and keep every line
      load-bearing. -->
 
 ## Attribution
@@ -12,7 +13,7 @@
 ## Skills
 
 Most of the skill collection is archived (`archive/skills/` in the configuration repository
-that this file links from; `readlink -f ~/.claude/CLAUDE.md` finds it); `skills/` there holds
+that holds this file; the `@` line in `~/.claude/CLAUDE.md` names it); `skills/` there holds
 the readmitted ones. A skill returns only through the readmission bar in
 `docs/skill-audit/readmission.md` there.
 

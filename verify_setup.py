@@ -1,4 +1,4 @@
-"""Check this checkout's links for the selected clients, and the python3 its scripts run on.
+"""Check this checkout's links and instructions import for the selected clients, and the python3 its scripts run on.
   python3 verify_setup.py [--tools codex,claude,opencode,copilot] [--home-directory <path>]
 Prints [OK] for each link in place and [AVAILABLE] for each optional command found; a missing optional command only
 warns. Exits 1 naming how many checks failed: a missing or conflicting link, a skills folder that is not a real
@@ -38,6 +38,39 @@ def check_python():
     return None
 
 
+def check_link(target):
+    """The number of failed checks: 0 when target.path is this checkout's link to target.source, else 1."""
+    if os.path.exists(target.source) and sc.is_repo_link(target.path, target.source):
+        print(f"[OK] {target.path}")
+        return 0
+    sc.warn(f"Missing or conflicting link: {target.path}")
+    return 1
+
+
+def check_children(target):
+    """The number of failed checks: target.path must be a real folder holding a link to each skill folder."""
+    failed = 0
+    if sc.is_link(target.path) or not os.path.isdir(target.path):
+        sc.warn(f"Skills root must be a real directory: {target.path}")
+        failed += 1
+    return failed + sum(check_link(sc.Target(child, os.path.join(target.path, name), "link"))
+                        for name, child in sc.skill_dirs(target.source))
+
+
+def check_import(target):
+    """The number of failed checks: 0 when target.path is a local file importing target.source, else 1."""
+    if os.path.exists(target.source) and sc.imports(target.path, target.source):
+        print(f"[OK] {target.path} imports {target.source}")
+        return 0
+    sc.warn(f"Missing import or conflicting entry: {target.path} must be a file with the line"
+            f" {sc.import_line(target.source)}")
+    return 1
+
+
+# A check for each Target.action.
+CHECKS = {"link": check_link, "link_children": check_children, "import_into": check_import}
+
+
 def main(argv):
     parser = sc.Parser(prog="verify_setup.py", description="Check this checkout's links and python3.")
     parser.add_argument("--tools", help="comma-separated: codex, claude, opencode, copilot")
@@ -47,21 +80,7 @@ def main(argv):
     selected = sc.select_tools(args.tools)
     if not selected:
         raise sc.Fail("No clients detected. Use --tools to verify prepared client files.")
-    failed = 0
-    for target in sc.skill_targets(REPO, paths, selected):
-        links = [target]
-        if target.children:
-            if sc.is_link(target.path) or not os.path.isdir(target.path):
-                sc.warn(f"Skills root must be a real directory: {target.path}")
-                failed += 1
-            links = [sc.Target(child, os.path.join(target.path, name), False)
-                     for name, child in sc.skill_dirs(target.source)]
-        for link in links:
-            if os.path.exists(link.source) and sc.is_repo_link(link.path, link.source):
-                print(f"[OK] {link.path}")
-            else:
-                sc.warn(f"Missing or conflicting link: {link.path}")
-                failed += 1
+    failed = sum(CHECKS[target.action](target) for target in sc.skill_targets(REPO, paths, selected))
     for command in [*selected, "gh"]:
         if shutil.which(command):
             print(f"[AVAILABLE] {command}")

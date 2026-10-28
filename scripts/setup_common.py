@@ -1,9 +1,9 @@
 """Shared by the skill linker, its verification and the MCP installer. Importing it changes no files.
 
-setup_paths gives every destination in one home. Linker makes a home's links to this checkout: it keeps a conflicting
-entry unless told to replace it, backs up what it replaces outside every skill discovery folder, and with what_if
-changes nothing and prints what it would do. External commands run only through run(), so tests replace that one
-function.
+setup_paths gives every destination in one home. Linker makes a home's links to this checkout, and the local
+instructions file that imports this checkout's: it keeps a conflicting entry unless told to replace it, backs up what
+it replaces outside every skill discovery folder, and with what_if changes nothing and prints what it would do.
+External commands run only through run(), so tests replace that one function.
 
 A link belongs to this checkout only when it points, one hop, at the exact absolute repository path setup would make
 it for. That is deliberately not realpath, unlike the plan's path convention: ownership decides what setup may
@@ -27,12 +27,15 @@ if os.name == "nt":
 
 CLIENTS = ("codex", "claude", "opencode", "copilot")
 
-# The non-skill files Claude Code gets: repository source (forward slashes) -> name under the Claude config folder.
+# The non-skill files Claude Code gets linked: repository source (forward slashes) -> name under the Claude config
+# folder.
 CLAUDE_FILES = (
     ("agents", "agents"),
-    ("instructions/CLAUDE.md", "CLAUDE.md"),
     ("statusline/statusline.py", "statusline.py"),
 )
+# Imported, not linked: tools append their own instructions to the Claude config folder's CLAUDE.md, and through a
+# link those would land in this checkout.
+CLAUDE_INSTRUCTIONS = ("instructions/CLAUDE.md", "CLAUDE.md")
 
 
 class Fail(Exception):
@@ -225,23 +228,38 @@ def skill_dirs(source):
     return sorted((e.name, e.path) for e in os.scandir(source) if e.is_dir())
 
 
+def import_line(source):
+    """The CLAUDE.md line that imports source: @ and its absolute path, with forward slashes, since a backslash
+    escapes the space after it."""
+    return "@" + Path(source).absolute().as_posix().replace(" ", "\\ ")
+
+
+def imports(path, source):
+    """True when path is a file with a line importing source."""
+    return os.path.isfile(path) and import_line(source) in Path(path).read_text(encoding="utf-8").splitlines()
+
+
 @dataclass(frozen=True)
 class Target:
     source: str
     path: str
-    children: bool    # link each folder of source into path, which stays a real folder, instead of path itself
+    # The Linker method that puts source at path: link; link_children, which links each folder of source into path, a
+    # real folder; or import_into.
+    action: str
 
 
 def skill_targets(repo, paths, tools):
-    """What setup links for tools: skills one by one into each client's skills folder (Codex and OpenCode share
-    one), and Claude Code's CLAUDE_FILES."""
+    """What setup puts in place for tools: skills linked one by one into each client's skills folder (Codex and
+    OpenCode share one), Claude Code's CLAUDE_FILES linked, and its CLAUDE_INSTRUCTIONS imported."""
     skills = os.path.join(repo, "skills")
     roots = {"codex": paths.shared_skills, "opencode": paths.shared_skills, "copilot": paths.copilot_skills,
              "claude": os.path.join(paths.claude_root, "skills")}
-    targets = [Target(skills, root, True) for root in dict.fromkeys(r for t, r in roots.items() if t in tools)]
+    targets = [Target(skills, root, "link_children")
+               for root in dict.fromkeys(r for t, r in roots.items() if t in tools)]
     if "claude" in tools:
-        targets += [Target(os.path.join(repo, *source.split("/")), os.path.join(paths.claude_root, name), False)
-                    for source, name in CLAUDE_FILES]
+        targets += [Target(os.path.join(repo, *source.split("/")), os.path.join(paths.claude_root, name), action)
+                    for (source, name), action in [*((f, "link") for f in CLAUDE_FILES),
+                                                   (CLAUDE_INSTRUCTIONS, "import_into")]]
     return targets
 
 
@@ -310,6 +328,38 @@ class Linker:
             for name in sorted(os.listdir(path)):
                 self.remove_stale(os.path.join(path, name), os.path.join(source, name))
         return complete
+
+    def import_into(self, source, path):
+        """Make path a local instructions file whose first line imports source, so what a tool appends to path stays
+        out of this checkout. A missing path is created; an existing file gets the line before its own text, which is
+        kept; this checkout's link to source, as setup used to make, becomes a file of the line alone. Any other link,
+        or a folder, is a conflict, as in link. True when path imports source; Fail when source is missing."""
+        if not os.path.exists(source):
+            raise Fail(f"Repository source is missing: {source}")
+        if imports(path, source):
+            print(f"[IMPORTED] {path}")
+            return True
+        text = ""
+        if is_repo_link(path, source):
+            if not should(self.what_if, path, f"Replace the link with a local file that imports {source}"):
+                return False
+            os.unlink(path)
+        elif is_link(path) or os.path.lexists(path) and not os.path.isfile(path):
+            if not self.replace:
+                warn(f"Conflict preserved: {path}. Use --replace-conflicts to back it up and replace it.")
+                return False
+            if not should(self.what_if, path, f"Back up existing entry and import {source}"):
+                return False
+            self.move_conflict(path)
+        else:
+            if not should(self.what_if, path, f"Import {source}"):
+                return False
+            text = Path(path).read_text(encoding="utf-8") if os.path.exists(path) else ""
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        Path(path).write_text(f"{import_line(source)}\n" + (f"\n{text}" if text else ""), encoding="utf-8",
+                              newline="\n")
+        print(f"[IMPORTED] {path} -> {source}")
+        return True
 
     def remove_stale(self, path, source, action="Remove stale repository skill link"):
         """Remove the link at path when it points exactly at source and source is gone from the repository. Any

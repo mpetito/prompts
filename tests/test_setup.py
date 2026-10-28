@@ -6,6 +6,7 @@ import ctypes
 import io
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -61,6 +62,7 @@ class Linking(SetupTest):
         self.source = str(self.repo / "skills" / "example")
         self.link = os.path.join(self.paths.shared_skills, "example")
         self.legacy = Path(self.paths.codex_root) / "skills"
+        self.instructions = os.path.join(self.paths.claude_root, "CLAUDE.md")
 
     def setup(self, *argv, home=None):
         return call(SETUP, "--home-directory", home or self.dest, *argv)
@@ -90,10 +92,58 @@ class Linking(SetupTest):
                                         str(self.repo / "skills" / "pr-scripts")))
         for root in (os.path.join(self.paths.claude_root, "skills"), self.paths.copilot_skills):
             self.assertTrue(sc.is_repo_link(os.path.join(root, "example"), self.source), root)
-        self.assertTrue(sc.is_repo_link(os.path.join(self.paths.claude_root, "CLAUDE.md"),
-                                        str(self.repo / "instructions" / "CLAUDE.md")))
+        self.assertTrue(sc.imports(self.instructions, self.repo / "instructions" / "CLAUDE.md"))
         self.assertTrue(sc.is_repo_link(os.path.join(self.paths.claude_root, "statusline.py"),
                                         str(self.repo / "statusline" / "statusline.py")))
+
+    def test_instructions_are_imported_so_what_a_tool_appends_stays_out_of_the_checkout(self):
+        source = self.repo / "instructions" / "CLAUDE.md"
+        self.assertEqual(self.setup("--tools", "claude")[0], 0)
+        # One line, the path's spaces escaped, as Claude Code reads an @ import.
+        self.assertEqual(Path(self.instructions).read_text().splitlines(), [sc.import_line(source)])
+        self.assertIn("repo\\ with\\ spaces", sc.import_line(source))
+        with open(self.instructions, "a") as f:
+            f.write("\n# Appended by a tool\n")
+        self.assertEqual(source.read_text(), "instructions\n")
+        before = Path(self.instructions).read_text()
+        self.assertEqual(self.setup("--tools", "claude")[0], 0)
+        self.assertEqual(Path(self.instructions).read_text(), before)
+
+    def test_a_local_instructions_file_keeps_its_text_after_the_import(self):
+        os.makedirs(self.paths.claude_root)
+        Path(self.instructions).write_text("# Mine\nlocal rule\n")
+        self.assertEqual(self.setup("--tools", "claude")[0], 0)
+        lines = Path(self.instructions).read_text().splitlines()
+        self.assertEqual(lines, [sc.import_line(self.repo / "instructions" / "CLAUDE.md"), "", "# Mine", "local rule"])
+
+    def test_the_old_link_to_the_instructions_becomes_an_import(self):
+        source = self.repo / "instructions" / "CLAUDE.md"
+        os.makedirs(self.paths.claude_root)
+        os.symlink(source, self.instructions)
+        self.assertEqual(self.setup("--tools", "claude")[0], 0)
+        self.assertFalse(sc.is_link(self.instructions))
+        self.assertTrue(sc.imports(self.instructions, source))
+        self.assertEqual(source.read_text(), "instructions\n")
+
+    def test_a_foreign_link_or_folder_at_the_instructions_is_a_conflict(self):
+        source = self.repo / "instructions" / "CLAUDE.md"
+        for kind, make in (("a foreign link", lambda: os.symlink(self.tmp / "other.md", self.instructions)),
+                           ("a folder", lambda: os.makedirs(self.instructions))):
+            with self.subTest(kind):
+                shutil.rmtree(self.paths.claude_root, ignore_errors=True)
+                os.makedirs(self.paths.claude_root)
+                make()
+                self.assert_incomplete("--tools", "claude")
+                self.assertFalse(sc.imports(self.instructions, source))
+                self.assertEqual(self.setup("--tools", "claude", "--replace-conflicts")[0], 0)
+                self.assertTrue(sc.imports(self.instructions, source))
+
+    def test_verification_fails_without_the_import(self):
+        self.assertEqual(self.setup("--tools", "claude")[0], 0)
+        Path(self.instructions).write_text("no import\n")
+        code, _, err = call(VERIFY, "--tools", "claude", "--home-directory", self.dest)
+        self.assertEqual(code, 1)
+        self.assertIn(self.instructions, err)
 
     def test_setup_alone_removes_the_retired_status_line_link_and_only_when_it_is_ours(self):
         self.setup("--tools", "claude")
@@ -228,6 +278,7 @@ class Linking(SetupTest):
         destinations = [(self.paths.shared_skills, skills), (self.paths.copilot_skills, skills),
                         (os.path.join(self.paths.claude_root, "skills"), skills), (str(self.legacy), skills),
                         *((os.path.join(self.paths.claude_root, name), source) for name, source in claude.items()),
+                        (self.instructions, self.repo / "instructions" / "CLAUDE.md"),
                         (os.path.join(self.paths.claude_root, "statusline.js"),
                          self.repo / "statusline" / "statusline.js")]
 

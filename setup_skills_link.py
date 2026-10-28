@@ -31,7 +31,7 @@ def main(argv):
     linker = sc.Linker(paths.backup_root, args.replace_conflicts, args.what_if)
     complete = True
     for target in sc.skill_targets(REPO, paths, selected):
-        if not (linker.link_children if target.children else linker.link)(target.source, target.path):
+        if not getattr(linker, target.action)(target.source, target.path):
             complete = False
     if "codex" in selected:
         linker.remove_legacy_codex_links(REPO, paths)

@@ -33,13 +33,20 @@ Linux and macOS need no elevation when writing your own home directory. Run as y
 | `skills/*` | Claude Code | `~/.claude/skills/*` |
 | `skills/*` | GitHub Copilot | `~/.copilot/skills/*` |
 | `agents/` | Claude Code | `~/.claude/agents` |
-| `instructions/CLAUDE.md` | Claude Code | `~/.claude/CLAUDE.md` |
+| `instructions/CLAUDE.md` | Claude Code | imported by `~/.claude/CLAUDE.md` |
 | `statusline/statusline.py` | Claude Code | `~/.claude/statusline.py` |
 
 [Codex](https://learn.chatgpt.com/docs/build-skills) and
 [OpenCode](https://opencode.ai/docs/skills/) both discover `~/.agents/skills`.
 Skills are linked individually, so the destination remains a real directory and client-managed
 entries stay local. Global Claude instructions and agents keep their Claude-specific formats.
+
+`~/.claude/CLAUDE.md` is a local file, not a link: its first line,
+`@<checkout>/instructions/CLAUDE.md`, imports the repository's instructions
+([imports](https://code.claude.com/docs/en/memory#import-additional-files)). Tools such as
+SonarQube's agent integration append their own instructions to `~/.claude/CLAUDE.md`; through a
+link those would land in this repository, ready to be committed. Setup turns an existing link into
+the import, and adds the import line above any local text already there.
 
 ## Environment overrides
 
